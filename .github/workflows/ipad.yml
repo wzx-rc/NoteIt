@@ -3,6 +3,7 @@ name: Build iPad (.ipa non signé)
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:

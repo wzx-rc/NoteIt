@@ -464,6 +464,84 @@ main { max-width: none; padding: 0; margin: 0; display: block; }
   .task[aria-selected="true"] { background: var(--raised); }
 }
 .toast { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+
+/* ---------- Assistant IA : bouton micro, petit chat, configuration de la clé ---------- */
+:root { --ok: #34C38F; --err: #E5594F; --kb: 0px; }
+.ai-fab { position: fixed; right: calc(22px + env(safe-area-inset-right, 0px)); bottom: calc(70px + env(safe-area-inset-bottom, 0px)); z-index: 70; width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; box-shadow: 0 0 0 4px var(--app), 0 12px 26px -8px rgba(0,0,0,.6); }
+.ai-fab svg { width: 22px; height: 22px; stroke-width: 1.8; }
+.ai-panel { position: fixed; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(16px + max(var(--kb), env(safe-area-inset-bottom, 0px))); z-index: 75; width: min(400px, calc(100vw - 32px)); height: min(600px, calc(100dvh - 32px - var(--kb) - env(safe-area-inset-top, 0px))); display: flex; flex-direction: column; background: var(--app); border: 1px solid var(--line-strong); border-radius: var(--r-xl); box-shadow: 0 30px 70px -20px rgba(0,0,0,.6); overflow: hidden; }
+.ai-h { display: flex; align-items: center; gap: 4px; padding: 10px 8px 10px 14px; border-bottom: 1px solid var(--line); }
+.ai-h b { font-size: 15px; font-weight: 600; }
+.ai-h small { color: var(--text-3); font-size: 12px; margin: 0 auto 0 6px; }
+.ai-log { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.ai-hello { margin: auto 4px; display: grid; gap: 8px; color: var(--text-2); font-size: 13.5px; text-align: center; justify-items: center; }
+.ai-hello svg { width: 28px; height: 28px; color: var(--accent-ink); }
+.ai-hello em { font-style: normal; color: var(--text); }
+.ai-m { max-width: 86%; padding: 8px 11px; border-radius: 14px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ai-m.me { align-self: flex-end; background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 4px; }
+.ai-m.bot { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.ai-note { align-self: center; max-width: 92%; font-size: 12.5px; color: var(--text-3); text-align: center; }
+.ai-note.err { color: var(--err); }
+.ai-acts { align-self: stretch; display: grid; gap: 5px; padding: 9px 11px; border: 1px dashed var(--line-strong); border-radius: 12px; font-size: 13px; color: var(--text-2); }
+.ai-act { display: flex; gap: 7px; align-items: flex-start; }
+.ai-act svg { color: var(--accent-ink); margin-top: 3px; }
+.ai-undo { justify-self: start; margin-top: 2px; font-size: 12.5px; font-weight: 600; color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+.ai-draft { align-self: stretch; display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); font-size: 13px; }
+.ai-draft .k { color: var(--text-3); font-size: 11.5px; }
+.ai-draft p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+.ai-draft .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.ai-draft .btn { text-decoration: none; }
+.ai-typing { align-self: flex-start; display: flex; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.ai-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); animation: aiDot 1s infinite; }
+.ai-typing i:nth-child(2) { animation-delay: .15s; } .ai-typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes aiDot { 0%, 60%, 100% { opacity: .3; } 30% { opacity: 1; } }
+.ai-in { display: flex; align-items: flex-end; gap: 6px; padding: 8px; border-top: 1px solid var(--line); }
+.ai-in textarea { flex: 1; min-width: 0; resize: none; height: 38px; max-height: 120px; padding: 9px 13px; border: 1px solid var(--line-strong); border-radius: 19px; background: var(--surface); color: var(--text); font: inherit; font-size: 14.5px; line-height: 1.35; outline: 0; }
+.ai-in textarea:focus { border-color: var(--accent-line); }
+.ai-mic, .ai-send { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.ai-mic { border: 1px solid var(--line-strong); color: var(--text); }
+.ai-mic[aria-pressed="true"] { background: var(--err); border-color: var(--err); color: #fff; animation: aiPulse 1.2s infinite; }
+.ai-send { background: var(--accent); color: var(--on-accent); }
+.ai-mic:disabled, .ai-send:disabled { opacity: .4; cursor: default; }
+.ai-mic svg, .ai-send svg { width: 18px; height: 18px; stroke-width: 1.8; }
+@keyframes aiPulse { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--err) 55%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+
+/* Configuration de la clé et guide illustré */
+#aiSetup .modal-box { width: min(540px, 100%); max-height: min(90dvh, 820px); }
+.g-intro { margin: 10px 0 4px; color: var(--text-2); font-size: 13.5px; }
+.g-intro b { color: var(--text); }
+.g-steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 16px; counter-reset: g; }
+.g-steps > li { display: grid; grid-template-columns: 24px minmax(0,1fr); gap: 6px 10px; counter-increment: g; }
+.g-steps > li::before { content: counter(g); width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; font-size: 12px; display: grid; place-items: center; grid-row: span 2; }
+.g-txt { font-size: 13.5px; line-height: 1.45; }
+.g-txt small { display: block; color: var(--text-2); font-size: 12.5px; margin-top: 2px; }
+.g-txt .btn { margin-top: 6px; text-decoration: none; }
+.g-shot { border: 1px solid var(--line-strong); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); font-size: 11.5px; user-select: none; -webkit-user-select: none; }
+.g-bar { display: flex; align-items: center; gap: 4px; padding: 5px 8px; border-bottom: 1px solid var(--line); background: var(--raised); }
+.g-bar i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); }
+.g-bar span { margin-left: 6px; flex: 1; background: var(--app); border-radius: 4px; padding: 2px 7px; color: var(--text-3); font-family: var(--font-mono); font-size: 10px; }
+.g-body { padding: 10px 12px; display: grid; gap: 7px; color: var(--text-2); }
+.g-row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.g-h { font-weight: 700; color: var(--text); font-size: 12.5px; }
+.g-line { height: 6px; border-radius: 3px; background: var(--line); }
+.g-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 6px; border: 1px solid var(--line-strong); color: var(--text); font-weight: 600; white-space: nowrap; }
+.g-btn.hl { background: var(--text); color: var(--bg); border-color: var(--text); box-shadow: 0 0 0 3px var(--app), 0 0 0 5px var(--accent); }
+.g-field { flex: 1; min-width: 0; border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; color: var(--text); font-family: var(--font-mono); font-size: 10.5px; background: var(--app); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-key { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.g-key label { font-weight: 600; font-size: 13.5px; }
+.g-key .in { display: flex; gap: 6px; }
+.g-key input { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); font-family: var(--font-mono); font-size: 13px; outline: 0; }
+.g-key input:focus { border-color: var(--accent-line); }
+.g-key .btn { height: 38px; padding: 0 14px; font-size: 13px; }
+.ai-state { display: flex; gap: 8px; align-items: flex-start; padding: 9px 11px; border-radius: var(--r-lg); font-size: 13px; line-height: 1.4; }
+.ai-state svg { margin-top: 1px; }
+.ai-state.ok { background: color-mix(in oklab, var(--ok) 16%, transparent); color: color-mix(in oklab, var(--ok) 75%, var(--text)); font-weight: 600; }
+.ai-state.err { background: color-mix(in oklab, var(--err) 14%, transparent); color: color-mix(in oklab, var(--err) 80%, var(--text)); }
+.ai-state.busy { background: var(--surface); color: var(--text-2); }
+.ai-ready { display: flex; gap: 8px; flex-wrap: wrap; }
+.ai-ready .btn { height: 36px; padding: 0 14px; font-size: 13px; }
+.g-foot { color: var(--text-3); font-size: 12px; margin: 4px 0 0; }
+.set-l small.on { color: color-mix(in oklab, var(--ok) 75%, var(--text)); }
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -501,6 +579,10 @@ main { max-width: none; padding: 0; margin: 0; display: block; }
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
   <symbol id="i-swipe" viewBox="0 0 24 24"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 8.5-8.5M16 7l2.5 2.5M14 9l2 2"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="m4.5 7.5 7.5 5.5 7.5-5.5"/></symbol>
 </svg>
 
 <header class="bar">
@@ -723,12 +805,63 @@ main { max-width: none; padding: 0; margin: 0; display: block; }
           <button class="switch" id="miniSet" role="switch" aria-checked="false" aria-label="Mode minimaliste"><i></i></button></div>
       </section>
       <section>
+        <h3>Assistant IA</h3>
+        <div class="set-row"><span class="set-l">Clé ChatGPT (OpenAI)<small id="aiKeyInfo">Aucune clé</small></span>
+          <div class="ctrl"><button class="btn ghost" id="aiDelBtn" hidden>Retirer</button><button class="btn ghost" id="aiSetBtn">Configurer</button></div></div>
+      </section>
+      <section>
         <h3>Données</h3>
         <div class="comp-row">
           <button class="btn ghost" id="copyCss"><svg class="i sm"><use href="#i-copy"/></svg>Copier les tokens CSS</button>
           <button class="btn ghost" id="resetBtn">Réinitialiser la démo</button>
         </div>
       </section>
+    </div>
+  </div>
+</div>
+<button class="ai-fab" id="aiFab" aria-label="Assistant vocal"><svg class="i"><use href="#i-mic"/></svg></button>
+<div class="ai-panel" id="aiPanel" hidden role="dialog" aria-label="Assistant">
+  <div class="ai-h"><b>Assistant</b><small id="aiModel">ChatGPT</small>
+    <button class="iconbtn" id="aiClear" aria-label="Nouvelle conversation" title="Nouvelle conversation"><svg class="i"><use href="#i-trash"/></svg></button>
+    <button class="iconbtn" id="aiKeyBtn" aria-label="Clé personnelle" title="Clé personnelle"><svg class="i"><use href="#i-key"/></svg></button>
+    <button class="iconbtn" id="aiClose" aria-label="Fermer"><svg class="i"><use href="#i-close"/></svg></button></div>
+  <div class="ai-log" id="aiLog" aria-live="polite"></div>
+  <div class="ai-in">
+    <textarea id="aiText" rows="1" placeholder="Écrivez, ou touchez le micro…" aria-label="Votre demande" autocomplete="off"></textarea>
+    <button class="ai-mic" id="aiMic" aria-pressed="false" aria-label="Dicter"><svg class="i"><use href="#i-mic"/></svg></button>
+    <button class="ai-send" id="aiSend" aria-label="Envoyer"><svg class="i"><use href="#i-send"/></svg></button>
+  </div>
+</div>
+<div class="modal" id="aiSetup" hidden role="dialog" aria-modal="true" aria-labelledby="aiSetupTitle">
+  <div class="modal-box">
+    <div class="modal-h"><h2 id="aiSetupTitle">Brancher ChatGPT</h2><button class="iconbtn" id="aiSetupClose" aria-label="Fermer"><svg class="i"><use href="#i-close"/></svg></button></div>
+    <div class="modal-b">
+      <p class="g-intro">L'assistant utilise votre propre <b>clé personnelle OpenAI</b>. Elle ne se trouve pas dans l'app ChatGPT : elle se crée sur le site <b>OpenAI Platform</b>, avec le même compte. Comptez deux minutes.</p>
+      <ol class="g-steps">
+        <li><div class="g-txt">Ouvrez la page des clés et connectez-vous avec votre compte ChatGPT.<br><a class="btn ghost" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">Ouvrir platform.openai.com</a></div>
+          <div class="g-shot" aria-hidden="true"><div class="g-bar"><i></i><i></i><i></i><span>platform.openai.com/api-keys</span></div>
+            <div class="g-body"><div class="g-row"><span class="g-h">OpenAI Platform</span><span class="g-btn hl">Log in</span></div><div class="g-line" style="width:70%"></div></div></div></li>
+        <li><div class="g-txt">Touchez <b>Create new secret key</b>.</div>
+          <div class="g-shot" aria-hidden="true"><div class="g-bar"><i></i><i></i><i></i><span>platform.openai.com/api-keys</span></div>
+            <div class="g-body"><div class="g-row"><span class="g-h">API keys</span><span class="g-btn hl">+ Create new secret key</span></div><div class="g-line" style="width:85%"></div><div class="g-line" style="width:55%"></div></div></div></li>
+        <li><div class="g-txt">Donnez-lui un nom, par exemple <b>NoteIt</b>, puis touchez <b>Create secret key</b>.</div>
+          <div class="g-shot" aria-hidden="true"><div class="g-body"><span class="g-h">Create new secret key</span>
+            <div class="g-row"><span>Name</span><span class="g-field" style="font-family:var(--font-ui)">NoteIt</span></div>
+            <div class="g-row" style="justify-content:flex-end"><span class="g-btn">Cancel</span><span class="g-btn hl">Create secret key</span></div></div></div></li>
+        <li><div class="g-txt">Touchez <b>Copy</b>.<small>La clé commence par « sk- » et ne s'affiche qu'une seule fois. Si vous la perdez, créez-en une autre.</small></div>
+          <div class="g-shot" aria-hidden="true"><div class="g-body"><span class="g-h">Save your key</span>
+            <div class="g-row"><span class="g-field">sk-proj-Ab3x••••••••••••••••••••Qz9</span><span class="g-btn hl">Copy</span></div></div></div></li>
+        <li><div class="g-txt">Vérifiez qu'il reste du crédit : <b>Settings</b>, puis <b>Billing</b>.<small>L'API se paie à l'usage, à part de l'abonnement ChatGPT Plus. Une demande à l'assistant coûte en général bien moins d'un centime.</small></div>
+          <div class="g-shot" aria-hidden="true"><div class="g-bar"><i></i><i></i><i></i><span>platform.openai.com/settings/organization/billing</span></div>
+            <div class="g-body"><div class="g-row"><span>Credit balance <b style="color:var(--text)">$5.00</b></span><span class="g-btn hl">Add to credit balance</span></div></div></div></li>
+      </ol>
+      <div class="g-key">
+        <label for="aiKey">Collez votre clé ici</label>
+        <div class="in"><input id="aiKey" type="password" placeholder="sk-…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="btn primary" id="aiVerify">Valider</button></div>
+        <div class="ai-state" id="aiState" hidden></div>
+        <div class="ai-ready" id="aiReady" hidden><button class="btn primary" id="aiOpenChat"><svg class="i sm"><use href="#i-mic"/></svg>Ouvrir l'assistant</button></div>
+        <p class="g-foot">La clé est rangée dans le trousseau sécurisé de l'iPad et sert uniquement à parler à OpenAI. Les intitulés du site OpenAI sont en anglais et peuvent changer un peu.</p>
+      </div>
     </div>
   </div>
 </div>
@@ -1132,12 +1265,13 @@ main { max-width: none; padding: 0; margin: 0; display: block; }
       { icon: "chev", label: secs.every(s => s.closed) ? "Tout déplier" : "Tout replier", fn: () => { const c = !secs.every(s => s.closed); secs.forEach(s => s.closed = c); render(); } }
     ]);
   }
-  function createList(name) {
+  function addList(name) {
     const used = Object.values(LISTS).map(l => (l.hex || "").toUpperCase());
     const hex = LIST_COLORS.find(c => !used.includes(c)) || LIST_COLORS[Object.keys(LISTS).length % LIST_COLORS.length];
-    const key = "l" + Date.now().toString(36);
-    LISTS[key] = { name, c: hex, hex }; addingList = false; view = "list:" + key; query = ""; render();
+    let key = "l" + Date.now().toString(36); while (LISTS[key]) key += "x";
+    LISTS[key] = { name, c: hex, hex }; return key;
   }
+  function createList(name) { const key = addList(name); addingList = false; view = "list:" + key; query = ""; render(); }
   function listsMenu(anchor) {
     showMenu(anchor, [...Object.entries(LISTS).map(([k, l]) => ({ icon: "folder", label: l.name, check: view === "list:" + k, fn: () => setView("list:" + k) })),
       { sep: true }, { input: true, placeholder: "Nouvelle liste", onSubmit: createList }]);
@@ -1531,6 +1665,339 @@ main { max-width: none; padding: 0; margin: 0; display: block; }
     const fallback = () => { const ta = $("#cssout"); ta.value = txt; ta.select(); try { document.execCommand("copy"); toast("Tokens copiés"); } catch (e) { toast("Copie impossible ici"); } };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast("Tokens copiés"), fallback); else fallback();
   });
+
+  /* ---------- Assistant IA : clé personnelle, petit chat texte et vocal, actions sur l'app ---------- */
+  // Dans l'app iPad, la clé vit dans le trousseau et les requêtes partent du natif (voir AIProvider.swift).
+  // Dans un simple navigateur (prototype), la clé reste en mémoire le temps de la page.
+  const bridge = (() => { try { return window.webkit.messageHandlers.noteitAsk || null; } catch (e) { return null; } })();
+  const ask = (cmd, args) => bridge.postMessage(Object.assign({ cmd }, args || {}));
+  const parseJSON = (s) => { try { return JSON.parse(s); } catch (e) { return null; } };
+  const AKEY = "noteit-ai";
+  const aiCfg = { provider: "openai", model: "" };
+  try { const v = JSON.parse(store.get(AKEY) || "{}"); if (typeof v.model === "string") aiCfg.model = v.model; } catch (e) {}
+  let memKey = "", aiHasKey = false;
+
+  async function aiFetch(method, path, body, key) {
+    const P = PROVIDERS[aiCfg.provider];
+    try {
+      if (bridge) {
+        const r = await ask("ai.request", { provider: P.id, method, path, body: body ? JSON.stringify(body) : "", key: key || "" });
+        if (!r || r.error === "nokey") return { status: 0, error: "nokey" };
+        return { status: r.status, data: parseJSON(r.body), error: r.error };
+      }
+      const k = key || memKey; if (!k) return { status: 0, error: "nokey" };
+      const res = await fetch(P.base + path, { method, headers: P.headers(k), body: body ? JSON.stringify(body) : undefined });
+      return { status: res.status, data: parseJSON(await res.text()) };
+    } catch (e) { return { status: 0, error: String((e && e.message) || e) }; }
+  }
+  function aiError(r) {
+    const e = (r.data && r.data.error) || {};
+    if (r.error === "nokey") return "Aucune clé enregistrée. Touchez la clé en haut du chat pour l'ajouter.";
+    if (r.status === 0) return "Pas de connexion à OpenAI. Vérifiez internet, puis réessayez.";
+    if (r.status === 401) return "Clé refusée par OpenAI. Vérifiez qu'elle est complète, ou créez-en une nouvelle.";
+    if (r.status === 429 && e.code === "insufficient_quota") return "Plus de crédit sur ce compte OpenAI. Ajoutez-en dans Settings, puis Billing.";
+    if (r.status === 429) return "Trop de demandes d'un coup. Réessayez dans un instant.";
+    if (r.status === 403) return "Ce compte OpenAI n'a pas accès à ce service depuis ici.";
+    return `Erreur OpenAI (${r.status})${e.message ? " : " + e.message : ""}`;
+  }
+
+  // Un fournisseur = vérifier une clé + faire un tour de conversation avec outils. Claude viendra s'ajouter ici.
+  const PROVIDERS = {
+    openai: {
+      id: "openai", name: "ChatGPT", base: "https://api.openai.com",
+      headers: (k) => ({ Authorization: "Bearer " + k, "Content-Type": "application/json" }),
+      models: ["gpt-5-mini", "gpt-4.1-mini", "gpt-4o-mini", "gpt-5", "gpt-4.1", "gpt-4o"],
+      async verify(key) {
+        const r = await aiFetch("GET", "/v1/models", null, key);
+        if (r.status !== 200) return { ok: false, error: aiError(r) };
+        const ids = ((r.data && r.data.data) || []).map(m => m.id);
+        const model = this.models.find(m => ids.includes(m)) || ids.find(id => /^gpt-/.test(id) && !/audio|realtime|image|transcribe|tts|search/.test(id));
+        return model ? { ok: true, model } : { ok: false, error: "Clé valide, mais ce compte n'a aucun modèle de chat disponible." };
+      },
+      async turn(system, history, tools) {
+        const r = await aiFetch("POST", "/v1/chat/completions", {
+          model: aiCfg.model || this.models[0],
+          messages: [{ role: "system", content: system }, ...history],
+          tools: tools.map(t => ({ type: "function", function: t }))
+        });
+        if (r.status !== 200 || !r.data || !r.data.choices) return { error: aiError(r), status: r.status };
+        const m = r.data.choices[0].message || {};
+        const calls = (m.tool_calls || []).map(c => ({ id: c.id, name: c.function.name, args: parseJSON(c.function.arguments) || {} }));
+        const message = { role: "assistant", content: m.content || null };
+        if (m.tool_calls) message.tool_calls = m.tool_calls;
+        return { text: m.content || "", calls, message };
+      },
+      user: (text) => ({ role: "user", content: text }),
+      toolResult: (call, out) => ({ role: "tool", tool_call_id: call.id, content: JSON.stringify(out) })
+    }
+  };
+
+  /* Actions que l'IA peut déclencher : simples, bien nommées, sur les données de l'app. */
+  const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+  const okDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d || "") ? d : "";
+  const okTime = (h) => /^\d{1,2}:\d{2}$/.test(h || "") ? h.padStart(5, "0") : "";
+  const noteHTML = (s) => esc(String(s)).replace(/\n/g, "<br>");
+  const dateFR = (d) => new Date(d + "T00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+  function findSec(ref, create) {
+    const s = secs.find(x => x.id === ref) || secs.find(x => norm(x.name) === norm(ref));
+    if (s || !create || !String(ref || "").trim()) return s;
+    const ns = { id: "s" + nextSec++, name: String(ref).trim(), ids: [], closed: false }; secs.push(ns); return ns;
+  }
+  function findList(ref, create) {
+    if (LISTS[ref]) return ref;
+    const k = Object.keys(LISTS).find(x => norm(LISTS[x].name) === norm(ref));
+    return k || (create && String(ref || "").trim() ? addList(String(ref).trim()) : null);
+  }
+  const S = { type: "string" }, ID = { type: "integer", description: "Id de la tâche" };
+  const obj = (properties, required) => ({ type: "object", properties, required });
+  const TOOLS = [
+    { name: "ajouter_tache", description: "Ajoute une tâche, un rendez-vous ou une note. La section et la liste sont créées si elles n'existent pas.",
+      parameters: obj({ titre: S, section: { type: "string", description: "Id ou nom de section (par défaut la première)" }, liste: { type: "string", description: "Id ou nom de liste" },
+        echeance: { type: "string", description: "Date AAAA-MM-JJ" }, heure: { type: "string", description: "HH:MM" }, note: S, sous_taches: { type: "array", items: S }, favori: { type: "boolean" } }, ["titre"]) },
+    { name: "modifier_tache", description: "Modifie une tâche : titre, date, heure (pour reporter un rendez-vous), liste, favori, ou ajoute du texte à sa note. Une chaîne vide retire la date ou l'heure.",
+      parameters: obj({ id: ID, titre: S, echeance: S, heure: S, liste: S, favori: { type: "boolean" }, ajouter_note: S }, ["id"]) },
+    { name: "deplacer_tache", description: "Déplace une tâche dans une autre section (créée si besoin).", parameters: obj({ id: ID, section: S }, ["id", "section"]) },
+    { name: "cocher_tache", description: "Marque une tâche comme faite, ou la rouvre.", parameters: obj({ id: ID, fait: { type: "boolean" } }, ["id", "fait"]) },
+    { name: "ajouter_sous_taches", description: "Ajoute des sous-tâches à une tâche.", parameters: obj({ id: ID, elements: { type: "array", items: S } }, ["id", "elements"]) },
+    { name: "supprimer_tache", description: "Supprime une tâche. Seulement si l'utilisateur le demande clairement.", parameters: obj({ id: ID }, ["id"]) },
+    { name: "creer_section", description: "Crée une section (colonne) vide.", parameters: obj({ nom: S }, ["nom"]) },
+    { name: "renommer_section", description: "Renomme une section.", parameters: obj({ section: { type: "string", description: "Id ou nom actuel" }, nom: S }, ["section", "nom"]) },
+    { name: "creer_liste", description: "Crée une liste (catégorie colorée, comme Perso ou Travail).", parameters: obj({ nom: S }, ["nom"]) },
+    { name: "preparer_email", description: "Prépare un brouillon de mail que l'utilisateur relira et enverra lui-même.", parameters: obj({ destinataire: { type: "string", description: "Adresse si connue" }, objet: S, corps: S }, ["objet", "corps"]) }
+  ];
+  function runTool(name, a) {
+    const fail = (erreur) => ({ out: { ok: false, erreur } });
+    const t = a.id != null ? T[+a.id] : null;
+    if (["modifier_tache", "deplacer_tache", "cocher_tache", "ajouter_sous_taches", "supprimer_tache"].includes(name) && !t) return fail("tâche introuvable");
+    switch (name) {
+      case "ajouter_tache": {
+        const titre = String(a.titre || "").trim(); if (!titre) return fail("titre manquant");
+        const s = (a.section && findSec(a.section, true)) || secs[0];
+        const l = (a.liste && findList(a.liste, true)) || (LISTS.perso ? "perso" : Object.keys(LISTS)[0]);
+        const id = nextId++;
+        T[id] = { id, t: titre, l, due: okDate(a.echeance), time: okTime(a.heure), star: !!a.favori, done: false, archived: false, open: true, res: [],
+          sub: (a.sous_taches || []).map(x => String(x).trim()).filter(Boolean).map(x => [x, false]), notes: a.note ? noteHTML(a.note) : "" };
+        s.ids.push(id); sel = id;
+        if (!matchView(T[id], view) && !query.trim()) view = "all";
+        return { out: { ok: true, id, section: s.name }, label: `Ajoutée dans ${s.name} : ${titre}` };
+      }
+      case "modifier_tache": {
+        const ch = [];
+        if (a.titre && String(a.titre).trim()) { t.t = String(a.titre).trim(); ch.push("renommée"); }
+        if (a.echeance !== undefined) { t.due = okDate(a.echeance); ch.push(t.due ? "le " + dateFR(t.due) : "sans date"); }
+        if (a.heure !== undefined) { t.time = okTime(a.heure); ch.push(t.time ? "à " + t.time : "sans heure"); }
+        if (a.liste) { const l = findList(a.liste, true); if (l) { t.l = l; ch.push("liste " + LISTS[l].name); } }
+        if (a.favori !== undefined) { t.star = !!a.favori; ch.push(t.star ? "en favori" : "retirée des favoris"); }
+        if (a.ajouter_note) { t.notes += (t.notes ? "<br>" : "") + noteHTML(a.ajouter_note); ch.push("note complétée"); }
+        sel = t.id;
+        return { out: { ok: true }, label: `${t.t} : ${ch.join(", ") || "inchangée"}` };
+      }
+      case "deplacer_tache": {
+        const to = findSec(a.section, true); if (!to) return fail("section manquante");
+        secs.forEach(s => { s.ids = s.ids.filter(x => x !== t.id); }); to.ids.push(t.id); sel = t.id;
+        return { out: { ok: true, section: to.name }, label: `Déplacée dans ${to.name} : ${t.t}` };
+      }
+      case "cocher_tache": t.done = !!a.fait; return { out: { ok: true }, label: `${t.done ? "Terminée" : "Rouverte"} : ${t.t}` };
+      case "ajouter_sous_taches": {
+        const items = (a.elements || []).map(x => String(x).trim()).filter(Boolean); if (!items.length) return fail("aucun élément");
+        items.forEach(x => t.sub.push([x, false])); t.open = true; sel = t.id;
+        return { out: { ok: true }, label: `${items.length} sous-tâche(s) ajoutée(s) à ${t.t}` };
+      }
+      case "supprimer_tache": secs.forEach(s => { s.ids = s.ids.filter(x => x !== t.id); }); delete T[t.id]; return { out: { ok: true }, label: `Supprimée : ${t.t}` };
+      case "creer_section": {
+        const nom = String(a.nom || "").trim(); if (!nom) return fail("nom manquant");
+        const s = findSec(nom, true); return { out: { ok: true, id: s.id }, label: `Section : ${s.name}` };
+      }
+      case "renommer_section": {
+        const s = findSec(a.section, false), nom = String(a.nom || "").trim(); if (!s || !nom) return fail("section introuvable");
+        const old = s.name; s.name = nom; return { out: { ok: true }, label: `Section renommée : ${old} devient ${nom}` };
+      }
+      case "creer_liste": {
+        const nom = String(a.nom || "").trim(); if (!nom) return fail("nom manquant");
+        const k = findList(nom, true); return { out: { ok: true, id: k }, label: `Liste : ${LISTS[k].name}` };
+      }
+      case "preparer_email": {
+        const draft = { to: String(a.destinataire || "").trim(), subject: String(a.objet || ""), body: String(a.corps || "") };
+        return { out: { ok: true, info: "Brouillon affiché. L'utilisateur l'enverra lui-même." }, draft };
+      }
+    }
+    return fail("action inconnue");
+  }
+  function aiSystem() {
+    const now = new Date();
+    const tache = (id) => { const t = T[id], o = { id, titre: t.t, liste: t.l }; if (t.due) o.date = t.due; if (t.time) o.heure = t.time; if (t.done) o.fait = true; if (t.star) o.favori = true;
+      if (t.sub.length) o.sous_taches = t.sub.map(s => (s[1] ? "[x] " : "[ ] ") + s[0]); const n = textOf(t.notes); if (n) o.note = n.slice(0, 160); return o; };
+    const data = { listes: Object.entries(LISTS).map(([id, l]) => ({ id, nom: l.name })),
+      sections: secs.map(s => ({ id: s.id, nom: s.name, taches: s.ids.filter(id => T[id] && !T[id].archived).slice(0, 80).map(tache) })) };
+    return [
+      "Tu es l'assistant intégré à NoteIt, une app de notes et de tâches. L'utilisateur te parle en français, souvent à la voix : la transcription peut contenir des fautes.",
+      "Exécute ses demandes avec les outils, toutes d'un coup s'il en enchaîne plusieurs. Réutilise les sections, listes et tâches existantes quand elles correspondent, sans tenir compte des majuscules ni des accents.",
+      "Un rendez-vous est une tâche avec une date et une heure : pour le déplacer ou le reporter, modifie sa date et son heure.",
+      "Pour un mail, utilise preparer_email : tu prépares un brouillon, l'utilisateur l'envoie lui-même. Ne dis jamais qu'un mail est envoyé.",
+      "Si plusieurs tâches peuvent correspondre et qu'une erreur est probable, demande une précision au lieu d'agir.",
+      "Après les actions, réponds en une ou deux phrases courtes, sans markdown.",
+      `Nous sommes le ${now.toLocaleDateString("fr-FR", { weekday: "long" })} ${todayISO()}, il est ${pad(now.getHours())}:${pad(now.getMinutes())}.`,
+      "Contenu actuel de l'app (JSON) :", JSON.stringify(data)
+    ].join("\n");
+  }
+
+  /* Chat */
+  let aiHist = [], aiBusy = false;
+  const log = $("#aiLog"), box = $("#aiText");
+  function logEl(cls, html) { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; $("#aiHello") && $("#aiHello").remove(); log.appendChild(d); log.scrollTop = log.scrollHeight; return d; }
+  function logHello() {
+    log.innerHTML = `<div class="ai-hello" id="aiHello">${ico("mic", "i")}<span>Dites ou écrivez ce qu'il faut faire, par exemple :<br><em>« Crée une section Cours 3D avec répondre à Théo et préparer le mail pour Aurélie, puis reporte le rendez-vous de demain à vendredi 14 h. »</em></span></div>`;
+  }
+  function logActs(labels, before) {
+    const d = logEl("ai-acts", labels.map(l => `<div class="ai-act">${ico("check")}<span>${esc(l)}</span></div>`).join("") + `<button class="ai-undo">Annuler</button>`);
+    d.querySelector(".ai-undo").addEventListener("click", (e) => {
+      applyState(JSON.parse(before)); render(); e.target.remove(); d.insertAdjacentHTML("beforeend", `<div class="ai-act" style="color:var(--text-3)">Actions annulées</div>`);
+      aiHist.push(PROVIDERS[aiCfg.provider].user("(Note : j'ai annulé tes dernières actions dans l'app.)"));
+    });
+  }
+  function logDraft(dr) {
+    const href = `mailto:${encodeURIComponent(dr.to)}?subject=${encodeURIComponent(dr.subject)}&body=${encodeURIComponent(dr.body)}`;
+    const d = logEl("ai-draft", `<span class="k">Brouillon de mail${dr.to ? " · " + esc(dr.to) : ""}</span><p><b>${esc(dr.subject)}</b></p><p>${esc(dr.body)}</p>
+      <div class="row"><a class="btn primary" href="${esc(href)}">${ico("mail")}Ouvrir dans Mail</a><button class="btn ghost" data-copy>${ico("copy")}Copier</button></div>`);
+    d.querySelector("[data-copy]").addEventListener("click", () => {
+      const txt = `${dr.subject}\n\n${dr.body}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast("Mail copié"), () => toast("Copie impossible ici")); else toast("Copie impossible ici");
+    });
+  }
+  const aiNote = (msg, err) => logEl("ai-note" + (err ? " err" : ""), esc(msg));
+  function renderBusy() {
+    $("#aiSend").disabled = aiBusy; $("#aiMic").disabled = aiBusy;
+    const ty = $("#aiTyping"); if (aiBusy && !ty) { logEl("ai-typing", "<i></i><i></i><i></i>").id = "aiTyping"; } else if (!aiBusy && ty) ty.remove();
+  }
+  function autoGrow() { box.style.height = "38px"; box.style.height = Math.min(120, box.scrollHeight + 2) + "px"; }
+  function trimHist() { while (aiHist.length > 30) { const i = aiHist.findIndex((m, k) => k > 0 && m.role === "user"); if (i < 0) break; aiHist = aiHist.slice(i); } }
+
+  async function aiSend() {
+    const text = box.value.trim(); if (!text || aiBusy) return;
+    if (voice.on) voiceStop(false);
+    box.value = ""; autoGrow(); logEl("ai-m me", esc(text));
+    const P = PROVIDERS[aiCfg.provider];
+    aiHist.push(P.user(text)); trimHist();
+    aiBusy = true; renderBusy();
+    const before = snapshot(), labels = [], drafts = [];
+    let reply = "", retried = false;
+    try {
+      for (let round = 0; round < 8; round++) {
+        const r = await P.turn(aiSystem(), aiHist, TOOLS);
+        if (r.error && r.status === 404 && !retried) {   // modèle retiré : on en choisit un autre et on recommence
+          retried = true; const v = await P.verify(""); if (v.ok) { aiCfg.model = v.model; store.set(AKEY, JSON.stringify(aiCfg)); renderAiInfo(); round--; continue; }
+        }
+        if (r.error) { if (round === 0) aiHist.pop(); aiNote(r.error, true); break; }
+        aiHist.push(r.message);
+        if (!r.calls.length) { reply = r.text; break; }
+        for (const c of r.calls) {
+          let res; try { res = runTool(c.name, c.args); } catch (e) { res = { out: { ok: false, erreur: "échec" } }; }
+          if (res.label) labels.push(res.label); if (res.draft) drafts.push(res.draft);
+          aiHist.push(P.toolResult(c, res.out));
+        }
+        render();
+      }
+    } finally {
+      aiBusy = false; renderBusy();
+      if (labels.length) logActs(labels, before);
+      drafts.forEach(logDraft);
+      if (reply) logEl("ai-m bot", esc(reply.replace(/\*\*(.+?)\*\*/g, "$1")));
+    }
+  }
+
+  /* Dictée : reconnaissance vocale d'iOS dans l'app, Web Speech dans un navigateur qui l'a */
+  const voice = { on: false, base: "", text: "", send: false, timer: 0, rec: null };
+  function renderVoice() { $("#aiMic").setAttribute("aria-pressed", String(voice.on)); $("#aiMic").setAttribute("aria-label", voice.on ? "Arrêter et envoyer" : "Dicter"); box.placeholder = voice.on ? "J'écoute…" : "Écrivez, ou touchez le micro…"; }
+  async function voiceStart() {
+    if (voice.on || aiBusy) return;
+    voice.base = box.value.trim(); voice.text = ""; voice.send = false;
+    if (bridge) {
+      voice.on = true; renderVoice();
+      const err = await ask("speech.start");
+      if (err) { voice.on = false; renderVoice(); aiNote(err, true); }
+      return;
+    }
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!R) { aiNote("La dictée n'est pas disponible ici : écrivez votre demande."); return; }
+    const rec = new R(); rec.lang = "fr-FR"; rec.interimResults = true; rec.continuous = true;
+    rec.onresult = (e) => { let s = ""; for (const x of e.results) s += x[0].transcript; onSpeech({ type: "partial", text: s }); };
+    rec.onerror = (e) => { if (e.error === "not-allowed") aiNote("Autorisez le micro pour dicter.", true); };
+    rec.onend = () => onSpeech({ type: "end" });
+    voice.rec = rec; voice.on = true; renderVoice();
+    try { rec.start(); } catch (e) { voice.on = false; renderVoice(); }
+  }
+  function voiceStop(send) {
+    if (!voice.on) return;
+    voice.send = send;
+    if (bridge) ask("speech.stop"); else if (voice.rec) voice.rec.stop();
+    clearTimeout(voice.timer); voice.timer = setTimeout(() => onSpeech({ type: "end" }), 2500);
+  }
+  function onSpeech(ev) {
+    if (!voice.on || !ev) return;
+    if (ev.text) { voice.text = ev.text; box.value = (voice.base ? voice.base + " " : "") + ev.text; autoGrow(); }
+    if (ev.type !== "end") return;
+    clearTimeout(voice.timer); voice.on = false; voice.rec = null; renderVoice();
+    if (ev.error && !voice.text) aiNote(ev.error, true);
+    if (voice.send && box.value.trim()) aiSend();
+  }
+  window.__noteitSpeech = onSpeech;
+
+  /* Ouverture du chat et configuration de la clé */
+  function renderAiInfo() {
+    $("#aiModel").textContent = aiCfg.model ? `ChatGPT · ${aiCfg.model}` : "ChatGPT";
+    const info = $("#aiKeyInfo"); info.textContent = aiHasKey ? "Connectée" + (aiCfg.model ? ` · ${aiCfg.model}` : "") : "Aucune clé"; info.classList.toggle("on", aiHasKey);
+    $("#aiSetBtn").textContent = aiHasKey ? "Changer" : "Configurer"; $("#aiDelBtn").hidden = !aiHasKey;
+  }
+  function fitPanel() { const v = window.visualViewport; if (v) root.style.setProperty("--kb", Math.max(0, innerHeight - v.height - v.offsetTop) + "px"); }
+  if (window.visualViewport) { visualViewport.addEventListener("resize", fitPanel); visualViewport.addEventListener("scroll", fitPanel); }
+  function openPanel(listen) {
+    if (!aiHasKey) { openSetup(); return; }
+    $("#aiPanel").hidden = false; $("#aiFab").hidden = true;
+    if (!log.children.length) logHello();
+    if (listen) voiceStart();
+  }
+  function closePanel() { if (voice.on) voiceStop(false); $("#aiPanel").hidden = true; $("#aiFab").hidden = false; }
+  function setKeyState(kind, msg) {
+    const st = $("#aiState"); st.hidden = !kind; st.className = "ai-state " + kind;
+    st.innerHTML = kind ? (kind === "ok" ? ico("check", "i") : kind === "err" ? ico("close", "i") : "") + `<span>${esc(msg)}</span>` : "";
+    $("#aiReady").hidden = kind !== "ok"; $("#aiVerify").disabled = kind === "busy";
+  }
+  function openSetup() { if (!$("#settings").hidden) closeSettings(); $("#aiKey").value = ""; setKeyState(""); $("#aiSetup").hidden = false; $("#aiSetup .modal-box").scrollTop = 0; }
+  function closeSetup() { $("#aiSetup").hidden = true; }
+  async function verifyKey() {
+    const key = $("#aiKey").value.replace(/\s+/g, "");
+    if (!key) { setKeyState("err", "Collez d'abord votre clé dans le champ."); return; }
+    if (!/^sk-/.test(key)) { setKeyState("err", "Une clé OpenAI commence par « sk- ». Vérifiez que vous l'avez copiée en entier."); return; }
+    setKeyState("busy", "Vérification auprès d'OpenAI…");
+    const r = await PROVIDERS[aiCfg.provider].verify(key);
+    if (!r.ok) { setKeyState("err", r.error); return; }
+    if (bridge) { if (!(await ask("ai.saveKey", { provider: aiCfg.provider, key }))) { setKeyState("err", "Impossible de ranger la clé dans le trousseau de l'iPad."); return; } }
+    else memKey = key;
+    aiCfg.model = r.model; store.set(AKEY, JSON.stringify(aiCfg)); aiHasKey = true; $("#aiKey").value = "";
+    setKeyState("ok", "C'est bon, la clé fonctionne. L'assistant est prêt."); renderAiInfo();
+  }
+  async function deleteKey() {
+    if (bridge) await ask("ai.deleteKey", { provider: aiCfg.provider });
+    memKey = ""; aiHasKey = false; aiHist = []; log.innerHTML = ""; closePanel(); renderAiInfo(); toast("Clé retirée");
+  }
+  $("#aiFab").addEventListener("click", () => openPanel(true));
+  $("#aiClose").addEventListener("click", closePanel);
+  $("#aiClear").addEventListener("click", () => { aiHist = []; logHello(); });
+  $("#aiKeyBtn").addEventListener("click", openSetup);
+  $("#aiSend").addEventListener("click", aiSend);
+  $("#aiMic").addEventListener("click", () => voice.on ? voiceStop(true) : voiceStart());
+  box.addEventListener("input", autoGrow);
+  box.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); aiSend(); } });
+  $("#aiVerify").addEventListener("click", verifyKey);
+  $("#aiKey").addEventListener("keydown", e => { if (e.key === "Enter") verifyKey(); });
+  $("#aiSetupClose").addEventListener("click", closeSetup);
+  $("#aiSetup").addEventListener("pointerdown", e => { if (e.target === $("#aiSetup")) closeSetup(); });
+  $("#aiOpenChat").addEventListener("click", () => { closeSetup(); openPanel(false); });
+  $("#aiSetBtn").addEventListener("click", openSetup);
+  $("#aiDelBtn").addEventListener("click", deleteKey);
+  document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (!$("#aiSetup").hidden) closeSetup(); else if (!$("#aiPanel").hidden && $("#settings").hidden) closePanel(); });
+  if (bridge) ask("ai.hasKey", { provider: aiCfg.provider }).then(v => { aiHasKey = !!v; renderAiInfo(); }, () => {});
+  renderAiInfo();
 
   applySettings();
   render();
