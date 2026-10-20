@@ -24,3 +24,13 @@ iPadOS 16.4 ou plus récent.
 
 - L'app expire au bout de **7 jours** : il suffit de refaire l'étape 4 (ou d'activer le rafraîchissement automatique de Sideloadly). Les données restent, tant que l'app n'est pas supprimée.
 - 3 apps installées ainsi au maximum par appareil, et 10 identifiants d'app créés par semaine.
+
+## Notely Hub pour iPad
+
+Une deuxième app, **Notely Hub** (notes, tâches, dessin à l'Apple Pencil, boards façon Excalidraw, moodboard), à côté de NoteIt.
+
+- `NotelyHub/Web/index.html` : la page Notely Hub complète (copie de `notely-hub.html`), servie à l'app par l'adresse interne `notely://app/`.
+- `NotelyHub/Sources/` : la coque iOS. Les données restent dans l'app et sont recopiées dans **Fichiers > Sur mon iPad > Notely Hub > NotelyHub** (dossier `kv` et `assets`) ; les exports `.json` vont dans `Exports`.
+- `.github/workflows/hub-ipad.yml` : compile `NotelyHub.ipa` (artefact **NotelyHub-ipa**) à chaque changement, ou à la demande.
+
+L'installation est la même que pour NoteIt (étapes 1 à 6 ci-dessus), avec l'artefact **NotelyHub-ipa** et le fichier `NotelyHub.ipa`.

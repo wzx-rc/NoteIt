@@ -1,0 +1,51 @@
+name: Build Notely Hub iPad (.ipa non signé)
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['NotelyHub/**', 'project.yml', '.github/workflows/hub-ipad.yml']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer XcodeGen
+        run: brew install xcodegen
+
+      - name: Générer le projet Xcode
+        run: xcodegen generate
+
+      - name: Compiler pour iPadOS (sans signature)
+        run: |
+          xcodebuild build \
+            -project NoteIt.xcodeproj \
+            -scheme NotelyHub \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            > build.log 2>&1 || { grep -E "error:" build.log | head -60; tail -30 build.log; exit 1; }
+          tail -3 build.log
+
+      - name: Emballer le .ipa
+        run: |
+          mkdir -p out/Payload
+          cp -R build/Build/Products/Release-iphoneos/NotelyHub.app out/Payload/
+          cd out && zip -qry NotelyHub.ipa Payload && ls -lh NotelyHub.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NotelyHub-ipa
+          path: out/NotelyHub.ipa
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-log
+          path: build.log
