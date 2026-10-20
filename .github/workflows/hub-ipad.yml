@@ -8,7 +8,13 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    # GitHub's macOS runners sometimes stay queued until the job is cancelled:
+    # two images in parallel, the first one that gets a machine gives the .ipa
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-14]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -46,12 +52,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: NotelyHub-ipa
+          name: NotelyHub-ipa-${{ matrix.os }}
           path: out/NotelyHub.ipa
           retention-days: 30
 
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: build-log
+          name: build-log-${{ matrix.os }}
           path: build.log
