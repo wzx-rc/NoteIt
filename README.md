@@ -32,5 +32,6 @@ Une deuxième app, **Notely Hub** (notes, tâches, dessin à l'Apple Pencil, boa
 - `NotelyHub/Web/index.html` : la page Notely Hub complète (copie de `notely-hub.html`), servie à l'app par l'adresse interne `notely://app/`.
 - `NotelyHub/Sources/` : la coque iOS. Les données restent dans l'app et sont recopiées dans **Fichiers > Sur mon iPad > Notely Hub > NotelyHub** (dossier `kv` et `assets`) ; les exports `.json` vont dans `Exports`.
 - `.github/workflows/hub-ipad.yml` : compile `NotelyHub.ipa` (artefact **NotelyHub-ipa**) à chaque changement, ou à la demande.
+- Deux styles d'interface au choix dans **Réglages > Style de l'interface** : *Notely* (clair ou sombre) et *Inkspace* (carnet sombre façon tableau noir, mindmaps avec bloc central en parchemin, branches colorées lumineuses avec pictogrammes et étiquettes pastel).
 
 L'installation est la même que pour NoteIt (étapes 1 à 6 ci-dessus), avec l'artefact **NotelyHub-ipa** et le fichier `NotelyHub.ipa`.
