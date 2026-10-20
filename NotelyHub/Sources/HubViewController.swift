@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 /// Affiche Notely Hub depuis notely://app/ : une vraie origine pour IndexedDB, servie depuis le dossier Web de l'app.
 final class HubViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     private let store = HubStore()
+    private let voice = HubVoice()
     private var webView: WKWebView!
     private static let background = UIColor(red: 0x17 / 255, green: 0x18 / 255, blue: 0x1C / 255, alpha: 1)
 
@@ -19,6 +20,7 @@ final class HubViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             """, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         content.add(WeakHandler(self), name: "hubStore")
         content.add(WeakHandler(self), name: "hubFile")
+        content.add(WeakHandler(self), name: "hubVoice")
 
         let config = WKWebViewConfiguration()
         config.userContentController = content
@@ -38,6 +40,7 @@ final class HubViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         web.uiDelegate = self
         if #available(iOS 16.4, *) { web.isInspectable = true }
         webView = web
+        voice.webView = web
 
         let root = UIView()
         root.backgroundColor = Self.background
@@ -68,6 +71,7 @@ final class HubViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any] else { return }
         if message.name == "hubStore" { store.handle(body); return }
+        if message.name == "hubVoice" { voice.handle(body); return }
         if message.name == "hubFile", let name = body["name"] as? String, let data = body["data"] as? String,
            let url = store.saveExport(name: name, base64: data) {
             let share = UIActivityViewController(activityItems: [url], applicationActivities: nil)
@@ -117,6 +121,8 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
         var result: (Data, String)?
         if path.hasPrefix("/__store/") {
             result = store.read(String(path.dropFirst("/__store/".count)))
+        } else if path.hasPrefix("/__voice/") {
+            if let data = HubVoice.read(String(path.dropFirst("/__voice/".count))) { result = (data, "audio/mp4") }
         } else if let web = web {
             let file = web.appendingPathComponent(String(path.dropFirst())).standardizedFileURL
             if file.path.hasPrefix(web.standardizedFileURL.path), let data = try? Data(contentsOf: file) {

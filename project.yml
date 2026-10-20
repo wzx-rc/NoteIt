@@ -67,7 +67,7 @@ targets:
         buildPhase: resources
     settings:
       base:
-        MARKETING_VERSION: "0.6.1"
+        MARKETING_VERSION: "0.7"
         PRODUCT_BUNDLE_IDENTIFIER: com.wzxrc.notelyhub
         PRODUCT_NAME: NotelyHub
         TARGETED_DEVICE_FAMILY: "2"
@@ -80,6 +80,7 @@ targets:
       path: NotelyHub/Info.plist
       properties:
         CFBundleDisplayName: Notely Hub
+        NSMicrophoneUsageDescription: "Notely Hub utilise le micro pour la dictée : votre voix est envoyée à OpenAI pour être transcrite en texte."
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true
