@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100">
+<defs>
+<filter id="craie" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="7" result="lo"/>
+  <feDisplacementMap in="SourceGraphic" in2="lo" scale="1.2" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.13" numOctaves="4" seed="10" result="m"/>
+  <feColorMatrix in="m" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1.1 0 0 0 .62" result="mott"/>
+  <feComposite in="mott" in2="rough" operator="in" result="mott2"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.66" numOctaves="2" seed="14" result="n"/>
+  <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1" result="keep"/>
+  <feComposite in="rough" in2="keep" operator="in" result="eaten"/>
+  <feTurbulence type="fractalNoise" baseFrequency="1.32" numOctaves="1" seed="20" result="n2"/>
+  <feColorMatrix in="n2" type="matrix" values="0 0 0 0 1  0 0 0 0 0.97  0 0 0 0 0.9  12 0 0 0 -8.1" result="sp"/>
+  <feComposite in="sp" in2="eaten" operator="in" result="sp2"/>
+  <feComponentTransfer in="sp2" result="sp3"><feFuncA type="linear" slope="0"/></feComponentTransfer>
+  <feComposite in="mott2" in2="eaten" operator="in" result="mott3"/>
+  <feComponentTransfer in="mott3" result="mott4"><feFuncA type="linear" slope=".2"/></feComponentTransfer>
+  <feMerge><feMergeNode in="eaten"/><feMergeNode in="mott4"/><feMergeNode in="sp3"/></feMerge>
+</filter>
+</defs>
+<g fill="none" stroke="#cfc6b4" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" filter="url(#craie)"><path d="M10 60 C16.67 57.33 36.67 43.33 50 44 C63.33 44.67 76.67 63.67 90 64 C103.33 64.33 115 47 130 46 C145 45 171.67 56 180 58"/><path d="M169.38 60.88 L180 58 L171.84 50.62"/></g>
+</svg>

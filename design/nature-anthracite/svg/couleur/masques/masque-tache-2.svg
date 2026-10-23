@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<defs>
+<filter id="g" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="22" result="lo"/>
+  <feDisplacementMap in="SourceGraphic" in2="lo" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.11" numOctaves="4" seed="25" result="m"/>
+  <feColorMatrix in="m" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1.1 0 0 0 .62" result="mott"/>
+  <feComposite in="mott" in2="rough" operator="in" result="mott2"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.54" numOctaves="2" seed="29" result="n"/>
+  <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1" result="keep"/>
+  <feComposite in="rough" in2="keep" operator="in" result="eaten"/>
+  <feTurbulence type="fractalNoise" baseFrequency="1.08" numOctaves="1" seed="35" result="n2"/>
+  <feColorMatrix in="n2" type="matrix" values="0 0 0 0 1  0 0 0 0 0.97  0 0 0 0 0.9  12 0 0 0 -8.1" result="sp"/>
+  <feComposite in="sp" in2="eaten" operator="in" result="sp2"/>
+  <feComponentTransfer in="sp2" result="sp3"><feFuncA type="linear" slope="0"/></feComponentTransfer>
+  <feComposite in="mott2" in2="eaten" operator="in" result="mott3"/>
+  <feComponentTransfer in="mott3" result="mott4"><feFuncA type="linear" slope=".2"/></feComponentTransfer>
+  <feMerge><feMergeNode in="eaten"/><feMergeNode in="mott4"/><feMergeNode in="sp3"/></feMerge>
+</filter>
+</defs>
+<path d="M44.76 80.3 L43.08 81.02 L41.45 81.03 L39.96 80.31 L38.35 80.09 L37.17 78.57 L35.38 78.8 L34.42 77 L33 76.34 L31.24 76.2 L29.8 75.42 L28.21 74.79 L27.17 73.41 L25.7 72.53 L24.78 71.04 L23.46 69.95 L20.58 70.05 L21.14 67.35 L19.97 66.01 L18.97 64.51 L18.13 62.91 L17.9 61.01 L17.76 59.14 L17.36 57.38 L15.94 55.89 L16.53 53.89 L16.91 52.01 L15.34 50.34 L16.16 48.46 L17.25 46.68 L16.55 44.85 L16.4 42.99 L17.16 41.29 L20.72 40.41 L18.88 38.08 L20.1 36.7 L21.83 35.64 L21.84 33.81 L23.07 32.62 L22.55 30.29 L24.54 29.69 L24.69 27.68 L25.9 26.53 L27.28 25.6 L28.99 25.13 L29.21 22.83 L30.3 21.53 L32.6 22.18 L32.2 18.14 L34.99 20.1 L36.06 18.64 L37.68 18.49 L39.95 20.71 L40.6 17.47 L42.01 16.7 L43.5 16.18 L45.28 18.57 L46.52 14.27 L48.14 14.12 L49.79 13.57 L51.34 14.7 L53.02 14.3 L54.71 14.19 L56.06 15.61 L57.78 15.49 L59.78 14.73 L61.25 15.67 L63.26 15.41 L64.1 17.59 L66.52 16.84 L66.81 19.66 L68.58 20.14 L70.28 20.83 L70.74 22.98 L72.64 23.55 L72.35 26.23 L73.25 27.69 L73.32 29.75 L75.47 30.35 L76.37 31.86 L76.55 33.75 L77.71 35.15 L79.72 36.32 L78.74 38.58 L78.78 40.43 L78.69 42.26 L78.12 44.12 L78.06 45.85 L78.93 47.55 L78.85 49.32 L78.98 51.11 L77.41 52.66 L77.5 54.42 L78.87 56.59 L77.64 58.09 L77.49 59.94 L76.47 61.44 L75.91 63.14 L74.32 64.23 L73.76 65.93 L72.78 67.34 L71.22 68.25 L69.92 69.3 L69.55 71.3 L68.2 72.29 L66.94 73.38 L65.46 74.12 L63.93 74.71 L63.41 77.11 L61.45 76.85 L60.31 78.29 L58.42 77.8 L57.44 79.99 L55.48 78.83 L54.01 79.41 L52.62 80.68 L51.03 80.74 L49.46 81.14 L47.87 80.05 L46.34 79.82 Z" fill="#fff" filter="url(#g)"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="292" height="40" viewBox="0 0 292 40">
+<defs>
+<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1d1d"/><stop offset="1" stop-color="#232424"/></linearGradient>
+</defs>
+<rect x=".5" y=".5" width="291" height="39" rx="11" fill="url(#g)" stroke="#fff" stroke-opacity=".12"/><text x="16" y="25.0" font-family="Figtree, 'Segoe UI', sans-serif" font-size="14" fill="#e6ddcb">Crayon naturel</text><g transform="translate(258 8.0)" fill="none" stroke="#e9dfc9" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 9.5 12 15l5.5-5.5"/></g>
+</svg>

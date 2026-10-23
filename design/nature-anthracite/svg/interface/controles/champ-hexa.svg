@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="222" height="88" viewBox="0 0 222 88">
+<defs>
+<filter id="o" x="-30%" y="-30%" width="160%" height="170%" color-interpolation-filters="sRGB">
+  <feGaussianBlur in="SourceAlpha" stdDeviation="6"/><feOffset dy="4" result="b"/>
+  <feFlood flood-color="#000" flood-opacity="0.55"/><feComposite in2="b" operator="in" result="s"/>
+  <feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262727"/><stop offset="1" stop-color="#1c1d1d"/></linearGradient>
+</defs>
+<g transform="translate(16 12)"><rect width="190" height="56" rx="14" fill="url(#g)" filter="url(#o)"/><rect x=".5" y=".5" width="189" height="55" rx="13.5" fill="none" stroke="#fff" stroke-opacity=".09"/><rect x="12" y="10" width="36" height="36" rx="8" fill="#6e8f6a" stroke="#cfc4ae" stroke-width="1.6"/><text x="64" y="33.0" font-family="Figtree, 'Segoe UI', sans-serif" font-size="15" fill="#e6ddcb">#6E8F6A</text><g transform="translate(152 16.0)" fill="none" stroke="#e9dfc9" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8.4" y="8.4" width="11" height="11" rx="2.2"/><path d="M15.6 8.2V6.6a2 2 0 0 0-2-2H6.6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1.6"/></g></g>
+</svg>

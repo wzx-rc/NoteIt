@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="62" height="62" viewBox="0 0 62 62">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#333331"/><stop offset="1" stop-color="#2a2a29"/></linearGradient>
+<filter id="bs" x="-30%" y="-30%" width="160%" height="180%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="3"/><feOffset dy="3"/><feComponentTransfer><feFuncA type="linear" slope=".55"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g transform="translate(8 6)"><rect width="46" height="46" rx="23" fill="url(#bg)" filter="url(#bs)"/><rect x="0.5" y="0.5" width="45" height="45" rx="22.5" fill="none" stroke="#ffffff" stroke-opacity=".07" stroke-width="1"/><path d="M23 1.2 H23" stroke="#fff" stroke-opacity=".08"/></g>
+</svg>
