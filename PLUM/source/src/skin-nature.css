@@ -167,3 +167,6 @@
   [data-skin="nature"] #app::before, [data-skin="nature"] .card::after { display: none; }
 }
 @media (max-width: 900px) { .skins { grid-template-columns: minmax(0, 1fr); } }
+[data-skin="nature"] :is(.tsub.on, .tchk-r.on) .cb { background: var(--cream); border-color: var(--cream); color: #2A251C; }
+[data-skin="nature"] .tchk .pbar i { background: var(--cream); }
+[data-skin="nature"] .tedit .tchk-r input[type="text"] { background: none; border-color: transparent; }

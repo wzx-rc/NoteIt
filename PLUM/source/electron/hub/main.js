@@ -36,7 +36,7 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'app', 'index.html'));
   win.webContents.setVisualZoomLevelLimits(1, 1);
   win.webContents.on('will-navigate', e => e.preventDefault());
-  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
+  win.webContents.setWindowOpenHandler(({ url }) => { if (/^(https:\/\/|mailto:)/i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
   const pen = wintab.attach(win);
   pens.set(win, pen);
   if (!pen.info().ok && process.platform === 'win32') console.warn('[wintab]', pen.info().reason);

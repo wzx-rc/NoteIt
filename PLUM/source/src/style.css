@@ -220,6 +220,30 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 .tedit textarea { height: 64px; padding: 8px 10px; resize: vertical; width: 100%; }
 .tedit :is(input, textarea, select):focus { border-color: var(--accent-line); }
 .tedit .del { margin-left: auto; }
+/* sub-tasks (from NoteIt): counter chip on the row, open list under it, checklist in the editor */
+.chip.subc { cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip.subc:hover, .chip.subc.on { color: var(--ink); }
+.cb.sm { width: 16px; height: 16px; border-radius: 5px; }
+.cb.sm svg { width: 11px; height: 11px; }
+.tsubs { display: grid; gap: 1px; padding: 0 8px 6px 38px; }
+.tsub { display: flex; align-items: center; gap: 9px; min-height: 28px; padding: 2px 6px; border-radius: 7px; text-align: left; font-size: 13px; color: var(--ink-2); }
+.tsub:hover { background: var(--raise); }
+.tsub .st { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tsub.on .st { color: var(--ink-3); text-decoration: line-through; }
+.tsub.on .cb, .tchk-r.on .cb { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tchk { display: grid; gap: 4px; }
+.tchk-h { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.tchk-h span { color: var(--ink-3); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tchk .pbar { height: 4px; border-radius: 4px; background: var(--sunk); overflow: hidden; margin: 2px 0 4px; }
+.tchk .pbar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; transition: width .2s; }
+.tchk-r { display: flex; align-items: center; gap: 8px; }
+.tedit .tchk-r input[type="text"] { flex: 1; height: 30px; font-weight: 400; border-color: transparent; background: none; padding: 0 6px; }
+.tedit .tchk-r input[type="text"]:hover { border-color: var(--line); }
+.tedit .tchk-r.on input[type="text"] { color: var(--ink-3); text-decoration: line-through; }
+.tchk-r .tb.sm { height: 26px; min-width: 26px; padding: 0; opacity: .5; }
+.tchk-r:hover .tb.sm { opacity: 1; }
+.tchk-add { display: flex; align-items: center; gap: 8px; color: var(--ink-3); padding-left: 2px; }
+.tedit .tchk-add input[type="text"] { flex: 1; height: 30px; font-weight: 400; }
 details.donegrp > summary { cursor: pointer; list-style: none; color: var(--ink-3); font-weight: 600; font-size: 13px; padding: 6px 4px; display: flex; align-items: center; gap: 6px; }
 details.donegrp > summary::-webkit-details-marker { display: none; }
 details.donegrp[open] > summary .i { transform: rotate(90deg); }
@@ -453,6 +477,11 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .acts .a .i { color: var(--ok); margin-top: 1px; width: 15px; height: 15px; }
 .acts .row { display: flex; gap: 12px; margin-top: 3px; }
 .acts .row button { font-weight: 700; color: var(--accent); font-size: 12.5px; }
+.aidraft { align-self: stretch; display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--card); font-size: 13px; }
+.aidraft .k { font-size: 11px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.aidraft p { margin: 0; color: var(--ink-2); white-space: normal; max-height: 220px; overflow: auto; }
+.aidraft .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.aidraft a.btn { text-decoration: none; }
 .ainote { align-self: center; text-align: center; font-size: 12.5px; color: var(--ink-3); max-width: 92%; }
 .ainote.err { color: var(--err); }
 .aiin { display: flex; align-items: flex-end; gap: 6px; padding: 10px; border-top: 1px solid var(--line); flex: none; padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }

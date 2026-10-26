@@ -23,8 +23,15 @@ function newDoc(type, o = {}) {
   S.docs.push(d); save(); return d;
 }
 function newTask(o) {
-  const t = { id: uid('t'), t: String(o.t || '').trim() || 'Nouvelle tâche', sp: o.sp || ctxSpace() || (S.spaces[0] || {}).id || '', due: o.due || '', time: o.time || '', done: false, star: !!o.star, note: o.note || '', created: Date.now() };
+  const t = { id: uid('t'), t: String(o.t || '').trim() || 'Nouvelle tâche', sp: o.sp || ctxSpace() || (S.spaces[0] || {}).id || '', due: o.due || '', time: o.time || '', done: false, star: !!o.star, note: o.note || '', sub: (o.sub || []).map(x => Array.isArray(x) ? [String(x[0]), !!x[1]] : [String(x), false]).filter(x => x[0].trim()), created: Date.now() };
   S.tasks.push(t); save(); return t;
+}
+/* sub-tasks (from NoteIt): t.sub = [[text, done], …], t.open = shown under the row */
+const subsOf = t => Array.isArray(t.sub) ? t.sub : (t.sub = []);
+const subCount = t => { const s = subsOf(t); return s.length ? `${s.filter(x => x[1]).length}/${s.length}` : ''; };
+function dupTask(t) {
+  const c = JSON.parse(JSON.stringify(t)); c.id = uid('t'); c.t += ' (copie)'; c.done = false; c.doneAt = 0; c.created = Date.now();
+  S.tasks.splice(S.tasks.indexOf(t) + 1, 0, c); save(); return c;
 }
 function setTaskDone(t, v) { t.done = v; t.doneAt = v ? Date.now() : 0; save(); refreshTaskViews(); }
 function ctxSpace() { if (R.name === 'space') return R.id; if (R.name === 'doc') { const d = docById(R.id); if (d) return d.sp; } return ''; }
@@ -192,40 +199,84 @@ function docMenu(anchor, d) {
 
 /* ================= shared bits ================= */
 function taskRow(t, o = {}) {
-  const di = dueInfo(t.due), sp = spaceById(t.sp);
+  const di = dueInfo(t.due), sp = spaceById(t.sp), sc = subCount(t), subs = subsOf(t);
+  const open = sc && t.open && !t.done ? `<div class="tsubs" data-subs-of="${t.id}">${subs.map((x, k) => `<button class="tsub${x[1] ? ' on' : ''}" data-subck="${k}" role="checkbox" aria-checked="${x[1]}"><span class="cb sm">${icon('check')}</span><span class="st">${esc(x[0])}</span></button>`).join('')}</div>` : '';
   return `<div class="trow${t.done ? ' done' : ''}" data-task="${t.id}">
     <button class="cb" role="checkbox" aria-checked="${t.done}" aria-label="Terminer" data-done="${t.id}">${icon('check')}</button>
     <button class="tt" data-edit="${t.id}">${esc(t.t)}</button>
+    ${sc ? `<button class="chip subc${t.open ? ' on' : ''}" data-subs="${t.id}" aria-expanded="${!!t.open}" title="Sous-tâches">${icon('chk')}${sc}</button>` : ''}
     ${t.star ? `<span class="star">${icon('star', 'sm')}</span>` : ''}
     ${o.space && sp ? `<span class="chip"><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</span>` : ''}
     ${t.time && o.time !== false ? `<span class="chip time">${icon('clock')}${t.time}</span>` : ''}
     ${di && !t.done ? `<span class="chip ${di.cls}">${di.label}</span>` : ''}
     <button class="tb" data-edit="${t.id}" aria-label="Modifier" style="height:28px;min-width:28px;padding:0">${icon('chev', 'sm')}</button>
-  </div>`;
+  </div>${open}`;
 }
 function bindTaskList(root, rerender) {
   root.addEventListener('click', e => {
     const dn = e.target.closest('[data-done]'); if (dn) { const t = taskById(dn.dataset.done); if (t) { setTaskDone(t, !t.done); if (t.done) toast('Tâche terminée', { label: 'Annuler', run: () => setTaskDone(t, false) }); } return; }
+    const sb = e.target.closest('[data-subs]'); if (sb) { const t = taskById(sb.dataset.subs); if (t) { t.open = !t.open; save(); rerender(); } return; }
+    const ck = e.target.closest('[data-subck]'); if (ck) { const t = taskById(ck.closest('[data-subs-of]').dataset.subsOf), x = t && subsOf(t)[+ck.dataset.subck]; if (x) { x[1] = !x[1]; save(); refreshSubs(t); } return; }
     const ed = e.target.closest('[data-edit]'); if (ed) { const row = ed.closest('.trow'); toggleTaskEdit(row, taskById(ed.dataset.edit), rerender); }
   });
 }
+/* redraw a task's row, its open sub-tasks and its editor's checklist in place, so an open editor stays open */
+function refreshSubs(t) {
+  for (const row of $$(`.trow[data-task="${t.id}"]`)) {
+    const nx = row.nextElementSibling, had = nx && nx.classList.contains('tsubs');
+    const tmp = document.createElement('div'); tmp.innerHTML = taskRow(t, { space: !!row.querySelector('.chip .sdot') });
+    if (had) nx.remove();
+    row.replaceWith(...tmp.children);
+  }
+  const ed = $(`.tedit[data-for="${t.id}"]`); if (ed) renderSubEditor(ed, t);
+  renderSide();
+}
+function renderSubEditor(ed, t) {
+  const box = $('.tchk', ed), subs = subsOf(t), done = subs.filter(x => x[1]).length;
+  box.innerHTML = `<div class="tchk-h">Sous-tâches${subs.length ? `<span>${done}/${subs.length}</span>` : ''}</div>
+    ${subs.length ? `<div class="pbar"><i style="width:${Math.round(done / subs.length * 100)}%"></i></div>` : ''}
+    ${subs.map((x, k) => `<div class="tchk-r${x[1] ? ' on' : ''}" data-k="${k}"><button class="cb sm" role="checkbox" aria-checked="${x[1]}" aria-label="Cocher" data-sk="${k}">${icon('check')}</button><input type="text" value="${esc(x[0])}" data-sn="${k}" aria-label="Sous-tâche"><button class="tb sm" data-sx="${k}" aria-label="Supprimer la sous-tâche" title="Supprimer">${icon('x', 'sm')}</button></div>`).join('')}
+    <label class="tchk-add">${icon('plus', 'sm')}<input type="text" data-sadd placeholder="Ajouter une sous-tâche" aria-label="Ajouter une sous-tâche" autocomplete="off"></label>`;
+}
 function toggleTaskEdit(row, t, rerender) {
   if (!t) return;
-  const nx = row.nextElementSibling; if (nx && nx.classList.contains('tedit')) { nx.remove(); return; }
+  let nx = row.nextElementSibling; if (nx && nx.classList.contains('tsubs')) nx = nx.nextElementSibling;
+  if (nx && nx.classList.contains('tedit')) { nx.remove(); return; }
   $$('.tedit').forEach(x => x.remove());
-  const ed = document.createElement('div'); ed.className = 'tedit';
+  const ed = document.createElement('div'); ed.className = 'tedit'; ed.dataset.for = t.id;
   ed.innerHTML = `<div class="row"><input type="text" id="te-t" value="${esc(t.t)}" aria-label="Titre"></div>
     <div class="row"><input type="date" id="te-d" value="${t.due}" aria-label="Échéance"><input type="time" id="te-h" value="${t.time}" aria-label="Heure">
       <select id="te-s" aria-label="Espace">${S.spaces.map(s => `<option value="${s.id}"${s.id === t.sp ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
       <button class="btn sm ghost" id="te-star" aria-pressed="${t.star}">${icon('star', 'sm')}${t.star ? 'Important' : 'Marquer important'}</button>
-      <button class="btn sm ghost danger del" id="te-del">${icon('trash', 'sm')}Supprimer</button></div>
+      <button class="btn sm ghost del" id="te-dup" title="Dupliquer la tâche">${icon('dup', 'sm')}Dupliquer</button>
+      <button class="btn sm ghost danger" id="te-del">${icon('trash', 'sm')}Supprimer</button></div>
+    <div class="tchk"></div>
     <textarea id="te-n" placeholder="Note…" aria-label="Note">${esc(t.note)}</textarea>`;
-  row.after(ed);
+  renderSubEditor(ed, t);
+  const after = row.nextElementSibling && row.nextElementSibling.classList.contains('tsubs') ? row.nextElementSibling : row;
+  after.after(ed);
   const upd = () => { t.t = $('#te-t', ed).value.trim() || t.t; t.due = $('#te-d', ed).value; t.time = $('#te-h', ed).value; t.sp = $('#te-s', ed).value; t.note = $('#te-n', ed).value; save(); };
-  ed.addEventListener('change', () => { upd(); rerender(); });
+  ed.addEventListener('change', e => { if (e.target.closest('.tchk')) return; upd(); rerender(); });
+  // sub-tasks: tick, rename, remove, add (Enter keeps the field ready for the next one)
+  const chk = $('.tchk', ed);
+  chk.addEventListener('click', e => {
+    const k = e.target.closest('[data-sk]'), x = e.target.closest('[data-sx]');
+    if (k) { const s = subsOf(t)[+k.dataset.sk]; s[1] = !s[1]; save(); refreshSubs(t); }
+    else if (x) { const i = +x.dataset.sx, old = subsOf(t)[i]; subsOf(t).splice(i, 1); save(); refreshSubs(t); toast('Sous-tâche supprimée', { label: 'Annuler', run: () => { subsOf(t).splice(i, 0, old); save(); refreshSubs(t); } }); }
+  });
+  chk.addEventListener('change', e => { const n = e.target.closest('[data-sn]'); if (n) { const v = n.value.trim(); if (v) subsOf(t)[+n.dataset.sn][0] = v; save(); refreshSubs(t); } });
+  chk.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const a = e.target.closest('[data-sadd]'), n = e.target.closest('[data-sn]');
+    if (n) { e.preventDefault(); n.blur(); return; }
+    if (!a || !a.value.trim()) return;
+    e.preventDefault(); subsOf(t).push([a.value.trim(), false]); t.open = true; save(); refreshSubs(t);
+    const f = $(`.tedit[data-for="${t.id}"] [data-sadd]`); if (f) f.focus();
+  });
   $('#te-t', ed).onkeydown = e => { if (e.key === 'Enter') { upd(); rerender(); } };
   $('#te-n', ed).oninput = () => { t.note = $('#te-n', ed).value; save(); };
   $('#te-star', ed).onclick = () => { t.star = !t.star; save(); rerender(); };
+  $('#te-dup', ed).onclick = () => { const c = dupTask(t); rerender(); toast('Tâche dupliquée', { label: 'Annuler', run: () => { S.tasks = S.tasks.filter(x => x !== c); save(); rerender(); } }); };
   $('#te-del', ed).onclick = () => { const i = S.tasks.indexOf(t); S.tasks.splice(i, 1); save(); rerender(); toast('Tâche supprimée', { label: 'Annuler', run: () => { S.tasks.splice(i, 0, t); save(); rerender(); } }); };
   $('#te-t', ed).focus();
 }
@@ -448,7 +499,7 @@ function searchAll(q) {
   const n = norm(q); if (!n) return [];
   const out = [];
   for (const d of liveDocs()) { const ti = norm(d.title).includes(n), tx = !ti && norm(docText(d)).includes(n); if (ti || tx) out.push({ kind: d.type, id: d.id, title: d.title, score: ti ? 2 : 1, sp: d.sp }); }
-  for (const t of S.tasks) if (norm(t.t).includes(n) || norm(t.note).includes(n)) out.push({ kind: 'task', id: t.id, title: t.t, score: 1.5, sp: t.sp, done: t.done });
+  for (const t of S.tasks) if (norm(t.t).includes(n) || norm(t.note).includes(n) || subsOf(t).some(x => norm(x[0]).includes(n))) out.push({ kind: 'task', id: t.id, title: t.t, score: 1.5, sp: t.sp, done: t.done });
   for (const s of S.spaces) if (norm(s.name).includes(n)) out.push({ kind: 'space', id: s.id, title: s.name, score: 3 });
   return out.sort((a, b) => b.score - a.score).slice(0, 30);
 }
