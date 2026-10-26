@@ -33,6 +33,8 @@ const THEME_BASE = {
   decor: [],                 // decoration layers: { at: CSS selector of a lasting element, cls } -> <div class="th-decor cls">
   ring: 'grain',             // atelier hue ring: 'grain' (fine pastel grain) or 'patches' (touches laid by hand)
   mindTags: false,           // mindmap: level-2 ideas as tags on a centred curve, level-1 blocks with an icon
+  wheel: null,               // function (el, o) building the theme's own colour wheel instead of Radial (same o, returns { update, el })
+  atlInk: '#E6DCC8',         // colour of the brush previews and brush / texture tiles in the atelier (light on the dark atelier)
   apply: null                // function (on) called when the theme is put on (true) or taken off (false)
 };
 function defineTheme(t) { THEMES[t.id] = Object.assign({}, THEME_BASE, t, { colors: Object.assign({}, t.colors) }); }

@@ -1606,7 +1606,7 @@ const Board = (() => {
     mount, unmount, key, keyUp, paste: onPaste,
     get mounted() { return mounted; }, get doc() { return D; },
     refreshRefs() { if (!mounted) return; for (const [id, n] of nodes) { const it = byId.get(id); if (it && (it.k === 'task' || it.k === 'doc' || it.k === 'todo')) { n._sig = ''; n._it = null; } } propSig = ''; schedule(); },
-    retheme() { if (!mounted) return; measCache.clear(); items = relayout(items); reindex(); D.items = items; for (const n of nodes.values()) { n._sig = ''; n._it = null; } propSig = ''; qSig = ''; schedule(); },
+    retheme() { if (!mounted) return; Studio.retheme(); measCache.clear(); items = relayout(items); reindex(); D.items = items; for (const n of nodes.values()) { n._sig = ''; n._it = null; } propSig = ''; qSig = ''; schedule(); },
     layoutChanged,
     /* used by the assistant and the space page */
     items: () => items, select: ids => { sel = new Set(ids); schedule(); },

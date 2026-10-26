@@ -13,7 +13,7 @@ const LATIN_EXT = 'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02
 const face = (fam, file, w, range) => `@font-face{font-family:"${fam}";font-style:normal;font-weight:${w};font-display:swap;src:url(data:font/woff2;base64,${rd(file).trim()}) format("woff2");unicode-range:${range}}`;
 const fonts = [face('Figtree', 'figtree-latin.b64', '300 900', LATIN), face('Figtree', 'figtree-latin-ext.b64', '300 900', LATIN_EXT), face('Caveat', 'caveat-latin.b64', '400 700', LATIN), face('Caveat', 'caveat-latin-ext.b64', '400 700', LATIN_EXT)].join('\n');
 /* themes: every folder of src/themes is one theme (a folder starting with _ is left out, like the _modele template).
-   theme.js comes right after 00-util.js (which defines defineTheme), theme.css then the other .css after style.css.
+   theme.js (then the theme's other .js) comes right after 00-util.js (which defines defineTheme), theme.css then the other .css after style.css.
    "asset:<file>" in a theme's js or css becomes a data: URL of src/themes/<id>/assets/<file>. */
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', avif: 'image/avif', woff2: 'font/woff2' };
 const themesDir = join(src, 'themes');
@@ -24,7 +24,8 @@ const inlineAssets = (id, text) => text.replace(/asset:([\w./-]+)/g, (m, f) => {
   if (!MIME[ext]) throw new Error(`theme ${id}: unknown asset type ${f}`);
   return `data:${MIME[ext]};base64,${readFileSync(file).toString('base64')}`;
 });
-const themeJs = themes.filter(id => existsSync(join(themesDir, id, 'theme.js'))).map(id => `/* ---- themes/${id}/theme.js ---- */\n` + inlineAssets(id, rd(`themes/${id}/theme.js`))).join('\n');
+/* a theme can bring more js than its theme.js (e.g. its own colour wheel): theme.js first, then the others by name */
+const themeJs = themes.flatMap(id => readdirSync(join(themesDir, id)).filter(f => f.endsWith('.js')).sort((a, b) => (b === 'theme.js') - (a === 'theme.js') || a.localeCompare(b)).map(f => `/* ---- themes/${id}/${f} ---- */\n` + inlineAssets(id, rd(`themes/${id}/${f}`)))).join('\n');
 const themeCss = themes.flatMap(id => readdirSync(join(themesDir, id)).filter(f => f.endsWith('.css')).sort((a, b) => (b === 'theme.css') - (a === 'theme.css') || a.localeCompare(b)).map(f => inlineAssets(id, rd(`themes/${id}/${f}`))));
 const jsFiles = readdirSync(join(src, 'js')).filter(f => f.endsWith('.js')).sort();
 const js = `const APP_VERSION = ${JSON.stringify(VERSION)};\n` + jsFiles.map(f => `/* ---- ${f} ---- */\n` + rd('js/' + f) + (f.startsWith('00-') ? '\n' + themeJs : '')).join('\n');

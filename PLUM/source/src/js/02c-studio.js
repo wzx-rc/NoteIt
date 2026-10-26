@@ -271,6 +271,7 @@ function radialFrame() {
     <circle cx="${C}" cy="${C}" r="${RI - 10}" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="3"/></svg>`;
 }
 function Radial(el, o) {
+  if (theme().wheel) return theme().wheel(el, o);
   const { W, C, R, RI, RB } = RAD, TR = RI - 16;
   const pos = (deg, rad) => { const a = deg * Math.PI / 180; return `left:${(C + Math.cos(a) * rad).toFixed(1)}px;top:${(C + Math.sin(a) * rad).toFixed(1)}px`; };
   el.classList.add('rad'); el.style.setProperty('--W', W + 'px');
@@ -372,21 +373,23 @@ const hasEyeDropper = () => typeof window.EyeDropper === 'function';
 async function screenPick() { if (!hasEyeDropper()) { toast('La pipette d’écran n’est pas disponible dans ce navigateur'); return null; } try { const r = await new window.EyeDropper().open(); return Colors.valid(r.sRGBHex) || null; } catch (e) { return null; } }
 
 /* ---------- brush panel (board card, note popover, Style tab) ---------- */
+/* the atelier is dark unless the theme draws its previews in a dark ink (atlInk) */
+const atlOnDark = () => lum(theme().atlInk) > .3;
 const _nibThumb = new Map();
 function nibThumb(sh) {
-  let v = _nibThumb.get(sh); if (v) return v;
+  const ink = theme().atlInk, key = sh + ink; let v = _nibThumb.get(key); if (v) return v;
   const c = mkCanvas(80), x = c.getContext('2d');
-  if (sh === 'native') { v = ''; _nibThumb.set(sh, v); return v; }
-  x.translate(40, 40); x.rotate((NIBS[sh].ang || 0)); x.globalAlpha = .95; x.drawImage(nibTinted(sh, '#EDE3D2'), -34, -34, 68, 68);
-  v = c.toDataURL(); _nibThumb.set(sh, v); return v;
+  if (sh === 'native') { v = ''; _nibThumb.set(key, v); return v; }
+  x.translate(40, 40); x.rotate((NIBS[sh].ang || 0)); x.globalAlpha = .95; x.drawImage(nibTinted(sh, ink), -34, -34, 68, 68);
+  v = c.toDataURL(); _nibThumb.set(key, v); return v;
 }
 const _texThumb = new Map();
 function texThumb(tx) {
-  let v = _texThumb.get(tx); if (v) return v;
-  const c = mkCanvas(80), x = c.getContext('2d'); x.fillStyle = '#E4DACA'; x.beginPath(); x.ellipse(40, 40, 33, 27, -.5, 0, 7); x.fill();
+  const ink = theme().atlInk, key = tx + ink; let v = _texThumb.get(key); if (v) return v;
+  const c = mkCanvas(80), x = c.getContext('2d'); x.fillStyle = ink; x.beginPath(); x.ellipse(40, 40, 33, 27, -.5, 0, 7); x.fill();
   if (tx === 'none') { x.globalCompositeOperation = 'destination-out'; x.beginPath(); x.ellipse(40, 40, 20, 14, -.5, 0, 7); x.fill(); }
   else applyTexture(x, tx, 0, 0, .55);
-  v = c.toDataURL(); _texThumb.set(tx, v); return v;
+  v = c.toDataURL(); _texThumb.set(key, v); return v;
 }
 const SLIDERS = [['s', 'Taille', 'sz-size'], ['o', 'Opacité', 'sz-op'], ['fl', 'Flux', 'sz-flow'], ['sp', 'Espacement', 'sz-space']];
 /* size: the slider runs on a square curve so that small sizes stay precise up to 200 */
@@ -426,12 +429,12 @@ const PenPanel = {
     </div>`;
   },
   /* the preview of the concept: the stroke in ivory chalk, whatever the colour (the wheel shows the colour) */
-  preview(pen, w = 260, h = 64) { const pr = penPref(pen); return brushPreview(pen, Object.assign({}, pr, { c: '#E6DCC8', o: Math.max(.75, pr.o) }), w, h, true); },
+  preview(pen, w = 260, h = 64) { const pr = penPref(pen); return brushPreview(pen, Object.assign({}, pr, { c: theme().atlInk, o: Math.max(.75, pr.o) }), w, h, atlOnDark()); },
   list(pen) {
-    const row = k => { const p = penPref(k); return `<button class="bp-li" data-pen="${k}" aria-pressed="${k === pen}">${brushPreview(k, Object.assign({}, p, { c: '#E6DCC8', s: Math.min(p.s, 14) }), 120, 28, true)}<span>${PENS[k].name}</span></button>`; };
+    const row = k => { const p = penPref(k); return `<button class="bp-li" data-pen="${k}" aria-pressed="${k === pen}">${brushPreview(k, Object.assign({}, p, { c: theme().atlInk, s: Math.min(p.s, 14) }), 120, 28, atlOnDark())}<span>${PENS[k].name}</span></button>`; };
     const mine = studioPrefs().presets || [];
     return `<div class="bp-list" hidden><div class="bp-lh">Atelier</div>${ATL_PENS.filter(k => PENS[k]).map(row).join('')}
-      ${mine.length ? `<div class="bp-lh">Mes préréglages</div>${mine.map(m => `<div class="bp-li my"><button data-preset="${m.id}">${brushPreview(m.pen, Object.assign({}, penPref(m.pen), m.cfg, { c: '#E6DCC8', s: Math.min(m.cfg.s || 8, 14) }), 120, 28, true)}<span>${esc(m.name)}</span></button><button class="bp-x" data-predel="${m.id}" title="Supprimer ce préréglage" aria-label="Supprimer">${icon('x', 'sm')}</button></div>`).join('')}` : ''}
+      ${mine.length ? `<div class="bp-lh">Mes préréglages</div>${mine.map(m => `<div class="bp-li my"><button data-preset="${m.id}">${brushPreview(m.pen, Object.assign({}, penPref(m.pen), m.cfg, { c: theme().atlInk, s: Math.min(m.cfg.s || 8, 14) }), 120, 28, atlOnDark())}<span>${esc(m.name)}</span></button><button class="bp-x" data-predel="${m.id}" title="Supprimer ce préréglage" aria-label="Supprimer">${icon('x', 'sm')}</button></div>`).join('')}` : ''}
       ${PENS[pen] ? `<button class="bp-li sv" data-presave="1">${icon('plus')}<span>Enregistrer ces réglages comme préréglage…</span></button>` : ''}
       <div class="bp-lh">Classiques</div>${PEN_ORDER.filter(k => !PENS[k].stamp).map(row).join('')}<button class="bp-li er" data-pen="eraser" aria-pressed="${pen === 'eraser'}">${icon('eraser')}<span>Gomme</span></button></div>`;
   },
@@ -733,7 +736,10 @@ const Studio = (() => {
     clearTimeout(chipEl._t); chipEl._t = setTimeout(() => { chipEl.hidden = true; }, 4500);
   }
 
-  return { mount, unmount, sync, refresh, showLoupe, hideLoupe, picked, toggleCard, planche: v => { if (on) setPlanche(v === undefined ? !planche : v); }, get on() { return on; }, get isPlanche() { return planche; } };
+  /* another theme: the wheel and the cards are built again in its look */
+  function retheme() { if (!root || !on) return; renderBar(); renderFavs(); renderDock(); renderStack(); }
+
+  return { mount, unmount, sync, refresh, retheme, showLoupe, hideLoupe, picked, toggleCard, planche: v => { if (on) setPlanche(v === undefined ? !planche : v); }, get on() { return on; }, get isPlanche() { return planche; } };
 })();
 
 /* the radial picker in a popover, for notes */
