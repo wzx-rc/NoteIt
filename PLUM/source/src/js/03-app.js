@@ -23,9 +23,25 @@ function newDoc(type, o = {}) {
   S.docs.push(d); save(); return d;
 }
 function newTask(o) {
-  const t = { id: uid('t'), t: String(o.t || '').trim() || 'Nouvelle tâche', sp: o.sp || ctxSpace() || (S.spaces[0] || {}).id || '', due: o.due || '', time: o.time || '', done: false, star: !!o.star, note: o.note || '', created: Date.now() };
+  const t = { id: uid('t'), t: String(o.t || '').trim() || 'Nouvelle tâche', sp: o.sp || ctxSpace() || (S.spaces[0] || {}).id || '', due: o.due || '', time: o.time || '', done: false, star: !!o.star, note: o.note || '', sub: (o.sub || []).map(x => Array.isArray(x) ? [String(x[0]), !!x[1]] : [String(x), false]).filter(x => x[0].trim()), created: Date.now() };
   S.tasks.push(t); save(); return t;
 }
+/* sub-tasks, images and manual order (from NoteIt): t.sub = [[text, done], …], t.open = sub-tasks shown under the row,
+   t.res = image asset ids, t.ord = position chosen by dragging inside its space */
+const subsOf = t => Array.isArray(t.sub) ? t.sub : (t.sub = []);
+const resOf = t => Array.isArray(t.res) ? t.res : (t.res = []);
+const subCount = t => { const s = subsOf(t); return s.length ? `${s.filter(x => x[1]).length}/${s.length}` : ''; };
+function dupTask(t) {
+  const c = JSON.parse(JSON.stringify(t)); c.id = uid('t'); c.t += ' (copie)'; c.done = false; c.doneAt = 0; c.created = Date.now();
+  if (typeof c.ord === 'number') c.ord += .5;
+  S.tasks.splice(S.tasks.indexOf(t) + 1, 0, c); save(); return c;
+}
+async function addTaskImages(t, files) {
+  const imgs = [...(files || [])].filter(f => f && f.type && f.type.startsWith('image/'));
+  for (const f of imgs) { try { const im = await importImage(f, 1800); resOf(t).push(im.id); } catch (e) { toast(`« ${f.name || 'Image'} » n'a pas pu être lue`); } }
+  if (imgs.length) save(); return imgs.length;
+}
+function showImage(id) { const u = Assets.url(id); if (!u) return; const l = document.createElement('div'); l.className = 'lightbox'; l.innerHTML = `<img src="${u}" alt="">`; l.onclick = () => l.remove(); document.body.append(l); }
 function setTaskDone(t, v) { t.done = v; t.doneAt = v ? Date.now() : 0; save(); refreshTaskViews(); }
 function ctxSpace() { if (R.name === 'space') return R.id; if (R.name === 'doc') { const d = docById(R.id); if (d) return d.sp; } return ''; }
 /* the moodboard of a space: what was dropped into it, plus every image, file and link of its notes and boards */
@@ -192,42 +208,228 @@ function docMenu(anchor, d) {
 
 /* ================= shared bits ================= */
 function taskRow(t, o = {}) {
-  const di = dueInfo(t.due), sp = spaceById(t.sp);
-  return `<div class="trow${t.done ? ' done' : ''}" data-task="${t.id}">
+  const di = dueInfo(t.due), sp = spaceById(t.sp), sc = subCount(t), subs = subsOf(t), nimg = resOf(t).filter(id => Assets.has(id)).length;
+  const open = sc && t.open && !t.done ? `<div class="tsubs">${subs.map((x, k) => `<button class="tsub${x[1] ? ' on' : ''}" data-subck="${k}" role="checkbox" aria-checked="${x[1]}" style="--i:${k}"><span class="cb sm">${icon('check')}</span><span class="st">${esc(x[0])}</span></button>`).join('')}</div>` : '';
+  return `<div class="tw" data-tw="${t.id}"${o.drag ? ' data-drag="1"' : ''}${o.space ? ' data-showsp="1"' : ''}><div class="trow${t.done ? ' done' : ''}" data-task="${t.id}">
+    ${o.drag ? `<span class="rgrip" title="Glisser pour réordonner" aria-hidden="true">${GRIP}</span>` : ''}
     <button class="cb" role="checkbox" aria-checked="${t.done}" aria-label="Terminer" data-done="${t.id}">${icon('check')}</button>
     <button class="tt" data-edit="${t.id}">${esc(t.t)}</button>
+    ${sc ? `<button class="chip subc${t.open ? ' on' : ''}" data-subs="${t.id}" aria-expanded="${!!t.open}" title="Sous-tâches">${icon('chk')}${sc}</button>` : ''}
+    ${nimg ? `<button class="chip imgc" data-edit="${t.id}" title="Images">${icon('image')}${nimg}</button>` : ''}
     ${t.star ? `<span class="star">${icon('star', 'sm')}</span>` : ''}
     ${o.space && sp ? `<span class="chip"><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</span>` : ''}
     ${t.time && o.time !== false ? `<span class="chip time">${icon('clock')}${t.time}</span>` : ''}
     ${di && !t.done ? `<span class="chip ${di.cls}">${di.label}</span>` : ''}
     <button class="tb" data-edit="${t.id}" aria-label="Modifier" style="height:28px;min-width:28px;padding:0">${icon('chev', 'sm')}</button>
-  </div>`;
+  </div>${open}</div>`;
 }
 function bindTaskList(root, rerender) {
+  const re = () => smoothTasks(rerender);
   root.addEventListener('click', e => {
-    const dn = e.target.closest('[data-done]'); if (dn) { const t = taskById(dn.dataset.done); if (t) { setTaskDone(t, !t.done); if (t.done) toast('Tâche terminée', { label: 'Annuler', run: () => setTaskDone(t, false) }); } return; }
-    const ed = e.target.closest('[data-edit]'); if (ed) { const row = ed.closest('.trow'); toggleTaskEdit(row, taskById(ed.dataset.edit), rerender); }
+    const dn = e.target.closest('[data-done]'); if (dn) {
+      const t = taskById(dn.dataset.done); if (!t) return;
+      const undo = () => smoothTasks(() => setTaskDone(t, false));
+      // a ticked task fades out before the list closes up
+      const tw = dn.closest('.tw');
+      if (!t.done && tw && !reduceMotion()) { dn.setAttribute('aria-checked', 'true'); tw.classList.add('completing'); setTimeout(() => { smoothTasks(() => setTaskDone(t, true)); toast('Tâche terminée', { label: 'Annuler', run: undo }); }, 300); return; }
+      smoothTasks(() => setTaskDone(t, !t.done)); if (t.done) toast('Tâche terminée', { label: 'Annuler', run: undo }); return;
+    }
+    const sb = e.target.closest('[data-subs]'); if (sb) { const t = taskById(sb.dataset.subs); if (t) { t.open = !t.open; save(); re(); if (t.open) $$(`.tw[data-tw="${t.id}"] .tsubs`).forEach(x => x.classList.add('enter')); } return; }
+    const ck = e.target.closest('[data-subck]'); if (ck) { const t = taskById(ck.closest('.tw').dataset.tw), k = +ck.dataset.subck, x = t && subsOf(t)[k]; if (x) { x[1] = !x[1]; save(); refreshTask(t, k); } return; }
+    const ed = e.target.closest('[data-edit]'); if (ed) toggleTaskEdit(ed.closest('.tw'), taskById(ed.dataset.edit), re);
   });
+  // drag the rows to reorder them, or into another space's block; drag the open sub-tasks to reorder them
+  if (root.querySelector('.tw[data-drag]')) sortable(root, { item: '.tw[data-drag]', lists: '.tlist, [data-tlist]', skip: '.cb, .chip, .tb, .tsubs, .tedit, input, textarea, select, a', grip: '.rgrip', prune: '.tedit', listAt: el => { const g = el.closest('.tgroup'); return g && g.querySelector('.tlist'); }, onDrop: dropTask });
+  sortable(root, { item: '.tsub', lists: '.tsubs', sameList: true, onDrop: (el, list) => reorderSubs(taskById(list.closest('.tw').dataset.tw), list, '.tsub', 'subck') });
 }
-function toggleTaskEdit(row, t, rerender) {
+function dropTask(el, list) {
+  const t = taskById(el.dataset.tw); if (!t) return;
+  const blk = list.closest('[data-sp]'), sp = blk && spaceById(blk.dataset.sp) ? blk.dataset.sp : t.sp, moved = sp !== t.sp;
+  t.sp = sp;
+  // the new position among every open task of the space, the hidden ones (other filter) keep theirs
+  const vis = [...list.children].filter(c => c.matches('.tw')).map(c => c.dataset.tw), i = vis.indexOf(t.id);
+  const all = S.tasks.filter(x => x.sp === t.sp && !x.done && x !== t).sort(taskSort);
+  const next = vis.slice(i + 1).map(taskById).find(x => all.includes(x)), prev = vis.slice(0, i).reverse().map(taskById).find(x => all.includes(x));
+  all.splice(next ? all.indexOf(next) : prev ? all.indexOf(prev) + 1 : all.length, 0, t);
+  all.forEach((x, k) => { x.ord = k; });
+  save(); smoothTasks(refreshTaskViews);
+  if (moved) toast(`Déplacée dans ${spaceById(sp).name}`);
+}
+function reorderSubs(t, list, sel, key) {
   if (!t) return;
-  const nx = row.nextElementSibling; if (nx && nx.classList.contains('tedit')) { nx.remove(); return; }
+  const order = [...list.children].filter(c => c.matches(sel)).map(c => +c.dataset[key]), subs = subsOf(t);
+  if (order.length === subs.length && order.every(k => subs[k])) t.sub = order.map(k => subs[k]);
+  save(); refreshTask(t);
+}
+/* redraw a task's rows in place (an open editor stays open); pop = index of the sub-task just ticked */
+function refreshTask(t, pop) {
+  for (const tw of $$(`.tw[data-tw="${t.id}"]`)) {
+    const ed = tw.querySelector('.tedit'), tmp = document.createElement('div');
+    tmp.innerHTML = taskRow(t, { space: !!tw.dataset.showsp, drag: !!tw.dataset.drag });
+    const nw = tmp.firstElementChild; if (ed) nw.append(ed);
+    tw.replaceWith(nw);
+    if (pop !== undefined) { const b = nw.querySelector(`.tsubs [data-subck="${pop}"] .cb`); if (b) b.classList.add('pop'); }
+  }
+  const ed = $(`.tedit[data-for="${t.id}"]`); if (ed) { renderSubEditor(ed, t, pop); renderTaskImages(ed, t); }
+  renderSide();
+}
+function renderSubEditor(ed, t, pop) {
+  const box = $('.tchk', ed), subs = subsOf(t), done = subs.filter(x => x[1]).length, pct = subs.length ? Math.round(done / subs.length * 100) : 0;
+  const was = $('.pbar i', box), w0 = was ? was.style.width : '0%';
+  box.innerHTML = `<div class="tchk-h">Sous-tâches${subs.length ? `<span>${done}/${subs.length}</span>` : ''}</div>
+    ${subs.length ? `<div class="pbar"><i style="width:${w0}"></i></div>` : ''}
+    ${subs.map((x, k) => `<div class="tchk-r${x[1] ? ' on' : ''}" data-k="${k}"><span class="sgrip" title="Glisser pour réordonner" aria-hidden="true">${GRIP}</span><button class="cb sm${k === pop ? ' pop' : ''}" role="checkbox" aria-checked="${x[1]}" aria-label="Cocher" data-sk="${k}">${icon('check')}</button><input type="text" value="${esc(x[0])}" data-sn="${k}" aria-label="Sous-tâche"><button class="tb sm" data-sx="${k}" aria-label="Supprimer la sous-tâche" title="Supprimer">${icon('x', 'sm')}</button></div>`).join('')}
+    <label class="tchk-add">${icon('plus', 'sm')}<input type="text" data-sadd placeholder="Ajouter une sous-tâche" aria-label="Ajouter une sous-tâche" autocomplete="off"></label>`;
+  // the bar grows from where it was
+  const bar = $('.pbar i', box); if (bar) { void bar.offsetWidth; bar.style.width = pct + '%'; }
+}
+function renderTaskImages(ed, t) {
+  const ids = resOf(t).filter(id => Assets.has(id));
+  $('.timgs', ed).innerHTML = `<div class="tchk-h">Images${ids.length ? `<span>${ids.length}</span>` : ''}</div>
+    <div class="tthumbs">${ids.map(id => `<div class="tthumb" data-img="${id}"><img src="${Assets.url(id)}" alt="" draggable="false"><button class="x" data-imgx="${id}" aria-label="Retirer l'image" title="Retirer">${icon('x', 'sm')}</button></div>`).join('')}
+      <button class="tthumb add" data-imgadd title="Ajouter des images. Vous pouvez aussi les glisser ou les coller ici." aria-label="Ajouter une image">${icon('plus')}</button></div>`;
+}
+function toggleTaskEdit(tw, t, rerender) {
+  tw = tw && (tw.closest('.tw') || tw); if (!t || !tw) return;
+  const cur = tw.querySelector('.tedit'); if (cur) { cur.remove(); return; }
   $$('.tedit').forEach(x => x.remove());
-  const ed = document.createElement('div'); ed.className = 'tedit';
+  const ed = document.createElement('div'); ed.className = 'tedit'; ed.dataset.for = t.id;
   ed.innerHTML = `<div class="row"><input type="text" id="te-t" value="${esc(t.t)}" aria-label="Titre"></div>
     <div class="row"><input type="date" id="te-d" value="${t.due}" aria-label="Échéance"><input type="time" id="te-h" value="${t.time}" aria-label="Heure">
       <select id="te-s" aria-label="Espace">${S.spaces.map(s => `<option value="${s.id}"${s.id === t.sp ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
       <button class="btn sm ghost" id="te-star" aria-pressed="${t.star}">${icon('star', 'sm')}${t.star ? 'Important' : 'Marquer important'}</button>
-      <button class="btn sm ghost danger del" id="te-del">${icon('trash', 'sm')}Supprimer</button></div>
+      <button class="btn sm ghost del" id="te-dup" title="Dupliquer la tâche">${icon('dup', 'sm')}Dupliquer</button>
+      <button class="btn sm ghost danger" id="te-del">${icon('trash', 'sm')}Supprimer</button></div>
+    <div class="tchk"></div>
+    <div class="timgs"></div>
     <textarea id="te-n" placeholder="Note…" aria-label="Note">${esc(t.note)}</textarea>`;
-  row.after(ed);
+  renderSubEditor(ed, t); renderTaskImages(ed, t);
+  tw.append(ed);
   const upd = () => { t.t = $('#te-t', ed).value.trim() || t.t; t.due = $('#te-d', ed).value; t.time = $('#te-h', ed).value; t.sp = $('#te-s', ed).value; t.note = $('#te-n', ed).value; save(); };
-  ed.addEventListener('change', () => { upd(); rerender(); });
+  ed.addEventListener('change', e => { if (e.target.closest('.tchk')) return; upd(); rerender(); });
+  // sub-tasks: tick, rename, remove, add (Enter keeps the field ready for the next one), drag by the grip
+  const chk = $('.tchk', ed);
+  chk.addEventListener('click', e => {
+    const k = e.target.closest('[data-sk]'), x = e.target.closest('[data-sx]');
+    if (k) { const i = +k.dataset.sk, s = subsOf(t)[i]; s[1] = !s[1]; save(); refreshTask(t, i); }
+    else if (x) { const i = +x.dataset.sx, old = subsOf(t)[i]; subsOf(t).splice(i, 1); save(); refreshTask(t); toast('Sous-tâche supprimée', { label: 'Annuler', run: () => { subsOf(t).splice(i, 0, old); save(); refreshTask(t); } }); }
+  });
+  chk.addEventListener('change', e => { const n = e.target.closest('[data-sn]'); if (n) { const v = n.value.trim(); if (v) subsOf(t)[+n.dataset.sn][0] = v; save(); refreshTask(t); } });
+  chk.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const a = e.target.closest('[data-sadd]'), n = e.target.closest('[data-sn]');
+    if (n) { e.preventDefault(); n.blur(); return; }
+    if (!a || !a.value.trim()) return;
+    e.preventDefault(); subsOf(t).push([a.value.trim(), false]); t.open = true; save(); refreshTask(t);
+    const box = $(`.tedit[data-for="${t.id}"] .tchk`); if (!box) return;
+    const rows = $$('.tchk-r', box); if (rows.length) rows[rows.length - 1].classList.add('in');
+    $('[data-sadd]', box).focus();
+  });
+  sortable(chk, { item: '.tchk-r', lists: '.tchk', sameList: true, skip: 'input, button', grip: '.sgrip', onDrop: (el, list) => reorderSubs(t, list, '.tchk-r', 'k') });
+  // images: add with the button, by dropping files on the editor or by pasting
+  const addImgs = async files => { const n = await addTaskImages(t, files); if (n) { refreshTask(t); toast(`${n} image${n > 1 ? 's' : ''} ajoutée${n > 1 ? 's' : ''}`); } return n; };
+  $('.timgs', ed).addEventListener('click', e => {
+    const x = e.target.closest('[data-imgx]'); if (x) { const i = resOf(t).indexOf(x.dataset.imgx); if (i < 0) return; const id = resOf(t).splice(i, 1)[0]; save(); refreshTask(t); toast('Image retirée', { label: 'Annuler', run: () => { resOf(t).splice(i, 0, id); save(); refreshTask(t); } }); return; }
+    const im = e.target.closest('[data-img]'); if (im) { showImage(im.dataset.img); return; }
+    if (e.target.closest('[data-imgadd]')) { const i = $('#fileIn'); i.accept = 'image/*'; i.onchange = () => { const f = [...i.files]; i.value = ''; i.accept = ''; addImgs(f); }; i.click(); }
+  });
+  ed.addEventListener('dragover', e => { if ([...(e.dataTransfer.types || [])].includes('Files')) { e.preventDefault(); e.stopPropagation(); ed.classList.add('over'); } });
+  ed.addEventListener('dragleave', e => { if (!ed.contains(e.relatedTarget)) ed.classList.remove('over'); });
+  ed.addEventListener('drop', e => { const f = [...(e.dataTransfer.files || [])]; ed.classList.remove('over'); if (!f.length) return; e.preventDefault(); e.stopPropagation(); addImgs(f); });
+  ed.addEventListener('paste', e => { const f = [...((e.clipboardData && e.clipboardData.files) || [])].filter(x => x.type.startsWith('image/')); if (f.length) { e.preventDefault(); addImgs(f); } });
   $('#te-t', ed).onkeydown = e => { if (e.key === 'Enter') { upd(); rerender(); } };
   $('#te-n', ed).oninput = () => { t.note = $('#te-n', ed).value; save(); };
   $('#te-star', ed).onclick = () => { t.star = !t.star; save(); rerender(); };
-  $('#te-del', ed).onclick = () => { const i = S.tasks.indexOf(t); S.tasks.splice(i, 1); save(); rerender(); toast('Tâche supprimée', { label: 'Annuler', run: () => { S.tasks.splice(i, 0, t); save(); rerender(); } }); };
+  $('#te-dup', ed).onclick = () => { const c = dupTask(t); rerender(); toast('Tâche dupliquée', { label: 'Annuler', run: () => { S.tasks = S.tasks.filter(x => x !== c); save(); smoothTasks(refreshTaskViews); } }); };
+  $('#te-del', ed).onclick = () => { const i = S.tasks.indexOf(t); S.tasks.splice(i, 1); save(); rerender(); toast('Tâche supprimée', { label: 'Annuler', run: () => { S.tasks.splice(i, 0, t); save(); smoothTasks(refreshTaskViews); } }); };
   $('#te-t', ed).focus();
+}
+
+/* ---------- motion: rows slide to their new place after a change, and drag to reorder ---------- */
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EASE = 'cubic-bezier(.2,.8,.2,1)';
+/* FLIP: note where the elements are, change the page, then let each one glide from its old place to the new one */
+function glide(els, before, ms = 240) {
+  const moves = els.map(el => { const y0 = before(el); return y0 === undefined ? null : [el, y0 - el.getBoundingClientRect().top]; }).filter(m => m && Math.abs(m[1]) > .5 && Math.abs(m[1]) < innerHeight * 1.5);
+  for (const [el, dy] of moves) { el.style.transition = 'none'; el.style.transform = `translateY(${dy}px)`; }
+  if (!moves.length) return;
+  void document.body.offsetHeight;
+  for (const [el] of moves) { el.style.transition = `transform ${ms}ms ${EASE}`; el.style.transform = ''; el.addEventListener('transitionend', () => { el.style.transition = ''; }, { once: true }); }
+}
+function smoothTasks(fn) {
+  if (reduceMotion()) return fn();
+  const before = new Map($$('.tw[data-tw]').map(el => [el.dataset.tw, el.getBoundingClientRect().top]));
+  fn();
+  if (!before.size) return;
+  const els = $$('.tw[data-tw]');
+  els.forEach(el => { if (!before.has(el.dataset.tw)) el.classList.add('tw-in'); });
+  glide(els, el => before.get(el.dataset.tw));
+}
+/* drag to reorder (from NoteIt): the mouse drags after a few pixels, a finger or the pen after a short hold (so the page
+   still scrolls), a grip starts at once. The others make room as you go and the item glides into its slot on release. */
+function sortable(root, o) {
+  let st = null, noClick = 0;
+  root.addEventListener('click', e => { if (Date.now() < noClick) { e.stopPropagation(); e.preventDefault(); } }, true);
+  root.addEventListener('touchmove', e => { if (st && st.active) e.preventDefault(); }, { passive: false });
+  root.addEventListener('contextmenu', e => { if (st) e.preventDefault(); });
+  root.addEventListener('pointerdown', e => {
+    if (st || e.button > 0) return;
+    const it = e.target.closest(o.item); if (!it || !root.contains(it) || !it.parentElement.matches(o.lists)) return;
+    const grip = o.grip && e.target.closest(o.grip);
+    if (!grip && o.skip && e.target.closest(o.skip)) return;
+    st = { it, home: it.parentElement, list: it.parentElement, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pid: e.pointerId, touch: e.pointerType !== 'mouse', active: false };
+    addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', end); addEventListener('pointercancel', end);
+    if (grip) { e.preventDefault(); begin(); } else if (st.touch) st.timer = setTimeout(begin, 280);
+  });
+  function begin() {
+    const s = st; if (!s || s.active) return;
+    s.active = true; clearTimeout(s.timer);
+    if (o.prune) s.it.querySelectorAll(o.prune).forEach(x => x.remove());
+    const r = s.it.getBoundingClientRect(); s.r0 = r;
+    const g = s.it.cloneNode(true); g.className += ' sort-ghost'; g.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+    Object.assign(g.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    document.body.append(g); s.g = g; requestAnimationFrame(() => g.classList.add('lift'));
+    s.it.classList.add('sort-ph'); document.body.classList.add('sorting');
+    try { navigator.vibrate && navigator.vibrate(8); } catch (e) {}
+    place(); loop();
+  }
+  function move(e) {
+    const s = st; if (!s || e.pointerId !== s.pid) return;
+    s.x = e.clientX; s.y = e.clientY;
+    if (!s.active) { const d = Math.hypot(s.x - s.sx, s.y - s.sy); if (s.touch) { if (d > 8) stop(); } else if (d > 5) begin(); return; }
+    e.preventDefault(); place();
+  }
+  function place() {
+    const s = st; s.g.style.transform = `translate(${s.x - s.sx}px, ${s.y - s.sy}px)`;
+    let list = s.list;
+    if (!o.sameList) { const u = document.elementFromPoint(s.x, s.y), l = u && (u.closest(o.lists) || (o.listAt && o.listAt(u))); if (l && root.contains(l) && l.matches(o.lists)) list = l; }
+    const items = [...list.children].filter(c => c.matches(o.item) && c !== s.it);
+    let before = items.find(c => { const r = c.getBoundingClientRect(); return s.y < r.top + r.height / 2; }) || null;
+    if (!before && items.length) before = items[items.length - 1].nextElementSibling;
+    if (s.it.parentElement === list && (before === s.it || s.it.nextElementSibling === before)) return;
+    const moving = [s.it, ...items, ...(list !== s.list ? [...s.list.children].filter(c => c.matches(o.item)) : [])];
+    const tops = new Map(moving.map(el => [el, el.getBoundingClientRect().top]));
+    list.insertBefore(s.it, before); s.list = list;
+    if (!reduceMotion()) glide(moving, el => tops.get(el), 180);
+  }
+  function loop() {
+    const s = st; if (!s || !s.active) return;
+    const sc = $('#view');
+    if (sc) { const r = sc.getBoundingClientRect(), E = 56; const v = s.y < r.top + E ? -(r.top + E - s.y) / 4 : s.y > r.bottom - E ? (s.y - r.bottom + E) / 4 : 0; if (v) { sc.scrollTop += Math.max(-18, Math.min(18, v)); place(); } }
+    s.raf = requestAnimationFrame(loop);
+  }
+  function stop() { const s = st; if (!s) return null; removeEventListener('pointermove', move); removeEventListener('pointerup', end); removeEventListener('pointercancel', end); clearTimeout(s.timer); cancelAnimationFrame(s.raf); st = null; return s; }
+  function end(e) {
+    if (!st || (e && e.pointerId !== st.pid)) return;
+    const s = stop(); if (!s.active) return;
+    noClick = Date.now() + 350;
+    const done = () => { s.g.remove(); s.it.classList.remove('sort-ph'); document.body.classList.remove('sorting'); o.onDrop(s.it, s.it.parentElement, s.home); };
+    if (reduceMotion()) { done(); return; }
+    const r = s.it.getBoundingClientRect();
+    s.g.style.transition = `transform .2s ${EASE}, scale .2s ${EASE}, box-shadow .2s`; s.g.classList.remove('lift');
+    s.g.style.transform = `translate(${r.left - s.r0.left}px, ${r.top - s.r0.top}px)`;
+    setTimeout(done, 200);
+  }
 }
 function refreshTaskViews() {
   renderSide();
@@ -348,7 +550,7 @@ function renderSpace(v) {
   const open = S.tasks.filter(t => t.sp === sp.id && !t.done).sort(taskSort), done = S.tasks.filter(t => t.sp === sp.id && t.done);
   v.innerHTML = `<div class="page"><div class="ph"><div><h1><span class="sdot" style="background:${sp.color};width:16px;height:16px;margin-right:10px;vertical-align:middle"></span>${esc(sp.name)}</h1><div class="sub">${docs.length} document${docs.length > 1 ? 's' : ''} · ${open.length} tâche${open.length > 1 ? 's' : ''} à faire</div></div>
     <div class="acts"><button class="btn" data-new="note">${icon('note')}Note</button><button class="btn pri" data-new="board">${icon('board')}Board</button></div></div>
-    <section class="card"><h2>${icon('tasks')}Tâches</h2>${quickAddBox('sAdd', `Ajouter une tâche à ${sp.name}…`, sp.id)}<div id="sTasks" style="margin-top:8px">${open.map(t => taskRow(t)).join('') || '<div class="empty">Rien à faire ici pour le moment.</div>'}</div>
+    <section class="card"><h2>${icon('tasks')}Tâches</h2>${quickAddBox('sAdd', `Ajouter une tâche à ${sp.name}…`, sp.id)}<div id="sTasks" data-tlist data-sp="${sp.id}" style="margin-top:8px">${open.map(t => taskRow(t, { drag: true })).join('') || '<div class="empty">Rien à faire ici pour le moment.</div>'}</div>
       ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div id="sDone">${done.map(t => taskRow(t)).join('')}</div></details>` : ''}</section>
     <div class="docs"><button class="newcard" data-new="note">${icon('plus', 'lg')}Nouvelle note</button>${docs.map(docCard).join('')}</div>
     <section class="card" id="spMood"><h2>${icon('image')}Moodboard <span class="ct">${spaceMedia(sp.id).filter(m => m.type !== 'doc').length || ''}</span><button class="more" id="mAdd">Ajouter des documents</button></h2>
@@ -387,7 +589,8 @@ function bindMood(v, sp) {
 
 /* ================= tasks ================= */
 let taskFilter = 'all';
-const taskSort = (a, b) => (a.due || '9999').localeCompare(b.due || '9999') || (a.time || '99').localeCompare(b.time || '99') || a.created - b.created;
+const ordOf = t => typeof t.ord === 'number' ? t.ord : 1e9;
+const taskSort = (a, b) => ordOf(a) - ordOf(b) || (a.due || '9999').localeCompare(b.due || '9999') || (a.time || '99').localeCompare(b.time || '99') || a.created - b.created;
 function renderTasks(v) {
   const T = today(), wEnd = addDays(T, 7 - (new Date(T + 'T12:00').getDay() || 7));
   const F = { all: ['Toutes', () => true], today: ["Aujourd'hui", t => t.due && t.due <= T], week: ['Cette semaine', t => t.due && t.due <= wEnd], late: ['En retard', t => t.due && t.due < T], nodate: ['Sans date', t => !t.due], star: ['Importantes', t => t.star] };
@@ -402,8 +605,8 @@ function renderTasks(v) {
     ${quickAddBox('tAdd', 'Ajouter une tâche…')}
     <div class="qhint">Astuce : <b>demain 14h</b>, <b>vendredi</b>, <b>#Perso</b> pour l'espace, <b>!</b> pour important.</div>
     <div class="chips" id="tFil">${Object.entries(F).map(([k, [l, fn]]) => { const n = open.filter(fn).length; return k === 'late' && !n ? '' : `<button class="fchip" data-f="${k}" aria-pressed="${taskFilter === k}">${l}<span class="n">${n}</span></button>`; }).join('')}</div>
-    <div id="tGroups" style="display:grid;gap:16px">${groups.map(([s, ts]) => `<div class="tgroup" data-sp="${s.id}"><h3><span class="tgrip" title="Glisser pour réordonner" aria-label="Réordonner">${GRIP}</span><span class="sdot" style="background:${s.color}"></span>${esc(s.name)} <small>${ts.length}</small></h3><div class="tlist">${ts.map(t => taskRow(t)).join('') || '<div class="tempty">Aucune tâche</div>'}</div></div>`).join('')}
-      ${orphan.length ? `<div class="tgroup"><h3>Sans espace</h3><div class="tlist">${orphan.map(t => taskRow(t)).join('')}</div></div>` : ''}
+    <div id="tGroups" style="display:grid;gap:16px">${groups.map(([s, ts]) => `<div class="tgroup" data-sp="${s.id}"><h3><span class="tgrip" title="Glisser pour réordonner" aria-label="Réordonner">${GRIP}</span><span class="sdot" style="background:${s.color}"></span>${esc(s.name)} <small>${ts.length}</small></h3><div class="tlist">${ts.map(t => taskRow(t, { drag: true })).join('') || '<div class="tempty">Aucune tâche</div>'}</div></div>`).join('')}
+      ${orphan.length ? `<div class="tgroup"><h3>Sans espace</h3><div class="tlist">${orphan.map(t => taskRow(t, { drag: true })).join('')}</div></div>` : ''}
       ${!shown.length ? `<div class="empty">Rien dans ce filtre.${taskFilter === 'all' ? ' Ajoutez une tâche ci-dessus.' : ''}</div>` : ''}</div>
     ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div class="tlist">${done.slice(0, 60).map(t => taskRow(t, { space: true })).join('')}</div></details>` : ''}
   </div>`;
@@ -425,8 +628,10 @@ function bindGroupGrips(box) {
     const move = ev => {
       const sibs = [...box.querySelectorAll('.tgroup[data-sp]')].filter(b => b !== blk);
       const after = sibs.find(b => { const r = b.getBoundingClientRect(); return ev.clientY < r.top + r.height / 2; });
-      if (after) { if (blk.nextElementSibling !== after) box.insertBefore(blk, after); }
-      else { const last = sibs[sibs.length - 1]; if (last && last.nextElementSibling !== blk) last.after(blk); }
+      const all = [blk, ...sibs], tops = new Map(all.map(b => [b, b.getBoundingClientRect().top]));
+      if (after) { if (blk.nextElementSibling !== after) box.insertBefore(blk, after); else return; }
+      else { const last = sibs[sibs.length - 1]; if (last && last.nextElementSibling !== blk) last.after(blk); else return; }
+      if (!reduceMotion()) glide(sibs, b => tops.get(b), 220);
     };
     const up = () => {
       removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
@@ -448,7 +653,7 @@ function searchAll(q) {
   const n = norm(q); if (!n) return [];
   const out = [];
   for (const d of liveDocs()) { const ti = norm(d.title).includes(n), tx = !ti && norm(docText(d)).includes(n); if (ti || tx) out.push({ kind: d.type, id: d.id, title: d.title, score: ti ? 2 : 1, sp: d.sp }); }
-  for (const t of S.tasks) if (norm(t.t).includes(n) || norm(t.note).includes(n)) out.push({ kind: 'task', id: t.id, title: t.t, score: 1.5, sp: t.sp, done: t.done });
+  for (const t of S.tasks) if (norm(t.t).includes(n) || norm(t.note).includes(n) || subsOf(t).some(x => norm(x[0]).includes(n))) out.push({ kind: 'task', id: t.id, title: t.t, score: 1.5, sp: t.sp, done: t.done });
   for (const s of S.spaces) if (norm(s.name).includes(n)) out.push({ kind: 'space', id: s.id, title: s.name, score: 3 });
   return out.sort((a, b) => b.score - a.score).slice(0, 30);
 }
@@ -489,12 +694,25 @@ function applyTheme() {
   r.dataset.skin = sk;
   if (t === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t);
   r.dataset.resolved = t === 'auto' ? (mqDark.matches ? 'dark' : 'light') : t;
-  // Windows title bar follows the skin: light for Papier clair, dark for Papier sombre, Inkspace and Nature
-  if (DESKTOP && window.notely.setTheme) window.notely.setTheme(t === 'auto' ? 'system' : t);
+  syncTitleBar(t);
   const tc = $('meta[name="theme-color"]'); if (tc) tc.content = sk === 'inkspace' ? '#111214' : sk === 'nature' ? '#1B1C1B' : '';
   if (S) { renderSide(); if (R.name === 'doc' && typeof Board !== 'undefined') { Board.retheme(); Note.retheme(); } }
 }
 mqDark.addEventListener && mqDark.addEventListener('change', applyTheme);
+/* Windows app: the title bar is drawn here in the skin's colours (sidebar colour on the left, page colour on the right),
+   and the window buttons drawn by Windows take the page colour (--tb-r) and the ink colour (--tb-sym) */
+function syncTitleBar(t) {
+  if (!DESKTOP || !window.notely.setTheme) return;
+  let bar = $('#tbar');
+  if (!bar) {
+    document.documentElement.classList.add('tbar');
+    bar = document.createElement('div'); bar.id = 'tbar';
+    bar.innerHTML = `<span class="tb-l"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.4 21.4C4.4 21 .8 15.8 1.2 7.6c7.4.6 11 5.6 10.2 13.8zM12.7 19c-.9-8.2 2.7-13.8 10.1-15.2.8 8-2.9 13.9-10.1 15.2z"/></svg>PLUM <small>${APP_VERSION}</small></span>`;
+    document.body.prepend(bar);
+  }
+  const cs = getComputedStyle(bar), v = k => cs.getPropertyValue(k).trim();
+  window.notely.setTheme({ mode: t === 'auto' ? 'system' : t, color: v('--tb-r'), symbol: v('--tb-sym') });
+}
 
 /* the assistant stays out of sight until it is switched on in Réglages */
 function applyAi() {
@@ -597,13 +815,13 @@ function bindPenTest(m) {
 
 /* ================= export / import ================= */
 async function blobToDataURL(b) { return new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.onerror = () => r(''); f.readAsDataURL(b); }); }
-function usedAssets(docs, spaces = S.spaces) { const ids = new Set(); for (const d of docs) { if (d.type === 'board') for (const it of d.items || []) if (it.asset) ids.add(it.asset); if (d.type === 'note') for (const m of (d.html || '').matchAll(/data-asset="([^"]+)"/g)) ids.add(m[1]); } for (const sp of spaces || []) for (const m of sp.media || []) if (m.asset) ids.add(m.asset); return ids; }
+function usedAssets(docs, spaces = S.spaces, tasks = S.tasks) { const ids = new Set(); for (const t of tasks || []) for (const id of t.res || []) ids.add(id); for (const d of docs) { if (d.type === 'board') for (const it of d.items || []) if (it.asset) ids.add(it.asset); if (d.type === 'note') for (const m of (d.html || '').matchAll(/data-asset="([^"]+)"/g)) ids.add(m[1]); } for (const sp of spaces || []) for (const m of sp.media || []) if (m.asset) ids.add(m.asset); return ids; }
 async function gcAssets() { const keep = usedAssets(S.docs); for (const id of [...Assets.blobs.keys()]) if (!keep.has(id)) await Assets.drop(id); }
 async function exportJSON(data, filename) {
   const docs = data.docs || [];
   const assets = {};
   const spaces = data.spaces || S.spaces;
-  for (const id of usedAssets(docs, data.docs && !data.spaces ? [] : spaces)) { const b = Assets.blobs.get(id); if (b) assets[id] = await blobToDataURL(b); }
+  for (const id of usedAssets(docs, data.docs && !data.spaces ? [] : spaces, data.tasks || [])) { const b = Assets.blobs.get(id); if (b) assets[id] = await blobToDataURL(b); }
   const payload = JSON.stringify({ notely: 'hub', v: 2, exported: new Date().toISOString(), spaces, docs, tasks: data.tasks || [], prefs: undefined, assets });
   if (DESKTOP && window.notely.saveFile) { const r = await window.notely.saveFile({ name: filename, kind: 'json', data: new TextEncoder().encode(payload) }); if (r && r.ok) toast('Fichier enregistré'); return; }
   if (IPAD && window.webkit && window.webkit.messageHandlers.hubFile) { const b = await blobToDataURL(new Blob([payload], { type: 'application/json' })); window.webkit.messageHandlers.hubFile.postMessage({ name: filename, data: b.split(',')[1] }); return; }

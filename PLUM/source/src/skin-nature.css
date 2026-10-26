@@ -23,6 +23,7 @@
   color-scheme: dark;
 }
 [data-skin="nature"] body { background: var(--side); }
+:root[data-skin="nature"] { --tb-l: #1D1E1C; --tb-r: #1C1D1B; }
 [data-skin="nature"] ::selection { background: rgba(201, 180, 142, .35); }
 [data-skin="nature"] * { scrollbar-color: #3A3A36 transparent; }
 
@@ -167,3 +168,9 @@
   [data-skin="nature"] #app::before, [data-skin="nature"] .card::after { display: none; }
 }
 @media (max-width: 900px) { .skins { grid-template-columns: minmax(0, 1fr); } }
+[data-skin="nature"] :is(.tsub.on, .tchk-r.on) .cb { background: var(--cream); border-color: var(--cream); color: #2A251C; }
+[data-skin="nature"] .tchk .pbar i { background: var(--cream); }
+[data-skin="nature"] .tedit .tchk-r input[type="text"] { background: none; border-color: transparent; }
+[data-skin="nature"] .sort-ghost { background: var(--nt-panel); border: 1px solid rgba(233,223,201,.12); }
+[data-skin="nature"] .tw.completing .cb { background: var(--cream); border-color: var(--cream); color: #2A251C; }
+[data-skin="nature"] .tthumb { border-color: rgba(233,223,201,.1); }
