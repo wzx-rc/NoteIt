@@ -9,6 +9,7 @@ src/themes/
   notely/      Papier (le style de base ; l'id "notely" est gardé pour les données existantes)
   inkspace/    Inkspace
   nature/      Nature
+  pokedex/     Pokédex (boîtier rouge, papier crème ; polices Nunito et Kalam intégrées)
   _modele/     modèle à copier (un dossier qui commence par _ n'est pas inclus dans l'app)
 ```
 
@@ -39,8 +40,11 @@ Un dossier de thème contient :
 7. **Outils et composants** : toute partie de l'interface se restyle dans `theme.css` avec des
    règles qui commencent par `[data-skin="<id>"]` (îlots d'outils `.isl`, outils `.tl`, panneau
    `.props`, post-it `.it.note`, cartes `.card`, atelier `.atl-*`, etc.).
-8. **Aperçu** dans Réglages : les règles `.sk-<id> .skin-pv` en bas de `theme.css`.
-9. `node build.mjs` : le thème apparaît dans Réglages.
+8. **Polices** : déposer les .woff2 dans `assets/fonts/` et les déclarer en haut de `theme.css`
+   (`@font-face { font-family: "X"; src: url("asset:fonts/x.woff2") format("woff2"); }`), puis
+   `--font-ui` / `--font-hand` dans les variables. Exemple : `pokedex/theme.css`.
+9. **Aperçu** dans Réglages : les règles `.sk-<id> .skin-pv` en bas de `theme.css`.
+10. `node build.mjs` : le thème apparaît dans Réglages.
 
 Règles :
 
