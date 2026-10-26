@@ -745,7 +745,7 @@ function switchTheme(id) {
 }
 mqDark.addEventListener && mqDark.addEventListener('change', applyTheme);
 /* Windows app: the title bar is drawn here in the skin's colours (sidebar colour on the left, page colour on the right),
-   and the window buttons drawn by Windows take the page colour (--tb-r) and the ink colour (--tb-sym) */
+   window buttons included, so each skin can dress them (the base ones copy Windows 11, in --tb-sym on --tb-r) */
 function syncTitleBar(t) {
   if (!DESKTOP || !window.notely.setTheme) return;
   let bar = $('#tbar');
@@ -753,6 +753,18 @@ function syncTitleBar(t) {
     document.documentElement.classList.add('tbar');
     bar = document.createElement('div'); bar.id = 'tbar';
     bar.innerHTML = `<span class="tb-l"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.4 21.4C4.4 21 .8 15.8 1.2 7.6c7.4.6 11 5.6 10.2 13.8zM12.7 19c-.9-8.2 2.7-13.8 10.1-15.2.8 8-2.9 13.9-10.1 15.2z"/></svg>PLUM <small>${APP_VERSION}</small></span>`;
+    if (window.notely.win) {
+      const g = { min: '<path d="M2 6h8"/>', max: '<rect x="2" y="2" width="8" height="8" rx="1"/>', restore: '<rect x="2" y="4" width="6" height="6" rx="1"/><path d="M4 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H8"/>', close: '<path d="m2.5 2.5 7 7m0-7-7 7"/>' };
+      const b = (k, t) => `<button class="tb-w-${k}" data-w="${k}" title="${t}" aria-label="${t}"><svg viewBox="0 0 12 12" aria-hidden="true">${g[k === 'max' ? 'max' : k]}</svg></button>`;
+      bar.insertAdjacentHTML('beforeend', `<span class="tb-w">${b('min', 'Réduire')}${b('max', 'Agrandir')}${b('close', 'Fermer')}</span>`);
+      bar.addEventListener('click', e => { const w = e.target.closest('[data-w]'); if (w) window.notely.win(w.dataset.w); });
+      const mx = $('.tb-w-max', bar);
+      if (window.notely.onWinState) window.notely.onWinState(st => {
+        document.documentElement.classList.toggle('win-max', !!st.max);
+        const t = st.max || st.full ? 'Restaurer' : 'Agrandir';
+        mx.title = t; mx.setAttribute('aria-label', t); $('svg', mx).innerHTML = st.max || st.full ? g.restore : g.max;
+      });
+    }
     document.body.prepend(bar);
   }
   const cs = getComputedStyle(bar), v = k => cs.getPropertyValue(k).trim();

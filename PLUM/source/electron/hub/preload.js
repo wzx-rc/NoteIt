@@ -11,8 +11,11 @@ contextBridge.exposeInMainWorld('notely', {
   aiTranscribe: req => ipcRenderer.invoke('ai-transcribe', req),
   // board imports: { url, as: 'bytes' } -> { ok, type, data } (images only), { url, as: 'meta' } -> { ok, title, desc, image, site, isImage }
   fetchUrl: req => ipcRenderer.invoke('fetch-url', req),
-  // { mode: 'light' | 'dark' | 'system', color, symbol }: native theme + colours of the window buttons
+  // { mode: 'light' | 'dark' | 'system' }: native theme
   setTheme: t => ipcRenderer.send('set-theme', t),
+  // window buttons: 'min' | 'max' (maximise or restore) | 'close'; onWinState(cb({ max, full })) returns an unsubscribe function
+  win: a => ipcRenderer.send('win', a),
+  onWinState: cb => { const h = (e, d) => cb(d); ipcRenderer.on('win-state', h); return () => ipcRenderer.removeListener('win-state', h); },
   // cb(rows), rows = [[pressure 0..1, tilt deg, azimuth deg, eraser 0|1, down 0|1, inProximity 0|1, pkTime ms], ...]
   // Returns an unsubscribe function.
   onPen: cb => { const h = (e, d) => cb(d); ipcRenderer.on('pen', h); return () => ipcRenderer.removeListener('pen', h); }

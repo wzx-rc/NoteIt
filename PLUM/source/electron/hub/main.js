@@ -28,12 +28,15 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1440, height: 920, minWidth: 720, minHeight: 520, ...(saved || {}),
     backgroundColor: '#17181C', autoHideMenuBar: true, title: 'PLUM', show: false,
-    // the page draws the title bar in the skin's colours; Windows keeps the window buttons (recoloured through set-theme)
-    titleBarStyle: 'hidden', titleBarOverlay: { color: '#F5F3EE', symbolColor: '#1E1D1B', height: 32 },
+    // the page draws the whole title bar in the skin's colours, window buttons included (ipc 'win')
+    titleBarStyle: 'hidden',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   });
   Menu.setApplicationMenu(null);
   if (saved && saved.maximized) win.maximize();
+  const sendState = () => { if (!win.isDestroyed()) win.webContents.send('win-state', { max: win.isMaximized(), full: win.isFullScreen() }); };
+  for (const ev of ['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen']) win.on(ev, sendState);
+  win.webContents.on('did-finish-load', sendState);
   win.once('ready-to-show', () => win.show());
   win.loadFile(path.join(__dirname, 'app', 'index.html'));
   win.webContents.setVisualZoomLevelLimits(1, 1);
@@ -56,13 +59,16 @@ function createWindow() {
 }
 
 const MAX_BYTES = 200 * 1024 * 1024;
-const HEX = /^#[0-9a-f]{6}$/i;
-const toHex = c => { if (HEX.test(c)) return c; const m = String(c).match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/); return m ? '#' + m.slice(1, 4).map(n => (+n).toString(16).padStart(2, '0')).join('') : null; };
 ipcMain.on('set-theme', (e, t) => {
   const o = typeof t === 'string' ? { mode: t } : (t || {});
   if (o.mode === 'light' || o.mode === 'dark' || o.mode === 'system') nativeTheme.themeSource = o.mode;
-  const win = BrowserWindow.fromWebContents(e.sender), color = toHex(o.color), symbolColor = toHex(o.symbol);
-  if (win && color && symbolColor && win.setTitleBarOverlay) { try { win.setTitleBarOverlay({ color, symbolColor, height: 32 }); } catch (err) {} }
+});
+// the window buttons drawn by the page
+ipcMain.on('win', (e, a) => {
+  const win = BrowserWindow.fromWebContents(e.sender); if (!win) return;
+  if (a === 'min') win.minimize();
+  else if (a === 'max') { if (win.isFullScreen()) win.setFullScreen(false); else if (win.isMaximized()) win.unmaximize(); else win.maximize(); }
+  else if (a === 'close') win.close();
 });
 
 ipcMain.handle('save-file', async (e, req) => {
