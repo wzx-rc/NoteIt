@@ -1,8 +1,9 @@
 import UIKit
 import WebKit
 
-final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, WKScriptMessageHandlerWithReply {
     private let store = NativeStore()
+    private let speech = SpeechInput()
     private var webView: WKWebView!
 
     private static let dark = UIColor(red: 0x12 / 255, green: 0x12 / 255, blue: 0x12 / 255, alpha: 1)
@@ -15,6 +16,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true))
         content.add(WeakMessageHandler(self), name: "notely")
+        content.addScriptMessageHandler(WeakReplyHandler(self), contentWorld: .page, name: "noteitAsk")
 
         let config = WKWebViewConfiguration()
         config.userContentController = content
@@ -35,6 +37,11 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        speech.onEvent = { [weak self] event in
+            guard let data = try? JSONSerialization.data(withJSONObject: event),
+                  let json = String(data: data, encoding: .utf8) else { return }
+            self?.webView.evaluateJavaScript("window.__noteitSpeech && window.__noteitSpeech(\(json))")
+        }
         guard let page = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "Web") else { return }
         webView.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
     }
@@ -61,6 +68,36 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
               let value = body["v"] as? String else { return }
         store.set(key, value)
         if key == "notely-theme" { applyTheme() }
+    }
+
+    // MARK: - Assistant : clé dans le trousseau, requêtes à l'IA, dictée
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage,
+                               replyHandler: @escaping (Any?, String?) -> Void) {
+        guard let body = message.body as? [String: Any], let cmd = body["cmd"] as? String else {
+            replyHandler(nil, "Commande invalide"); return
+        }
+        let provider = AIProvider.all[body["provider"] as? String ?? ""]
+        switch cmd {
+        case "ai.hasKey":
+            replyHandler(provider?.hasKey ?? false, nil)
+        case "ai.saveKey":
+            guard let provider, let key = body["key"] as? String, !key.isEmpty else { replyHandler(false, nil); return }
+            replyHandler(Keychain.set(provider.account, key), nil)
+        case "ai.deleteKey":
+            if let provider { Keychain.delete(provider.account) }
+            replyHandler(true, nil)
+        case "ai.request":
+            guard let provider else { replyHandler(nil, "Fournisseur inconnu"); return }
+            provider.send(body, reply: replyHandler)
+        case "speech.start":
+            speech.start { error in replyHandler(error, nil) }
+        case "speech.stop":
+            speech.stop()
+            replyHandler(true, nil)
+        default:
+            replyHandler(nil, "Commande inconnue")
+        }
     }
 
     // MARK: - Liens externes : ouverts dans Safari
@@ -92,5 +129,15 @@ private final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
     init(_ target: WKScriptMessageHandler) { self.target = target }
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         target?.userContentController(controller, didReceive: message)
+    }
+}
+
+private final class WeakReplyHandler: NSObject, WKScriptMessageHandlerWithReply {
+    weak var target: WKScriptMessageHandlerWithReply?
+    init(_ target: WKScriptMessageHandlerWithReply) { self.target = target }
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage,
+                               replyHandler: @escaping (Any?, String?) -> Void) {
+        guard let target else { replyHandler(nil, "Indisponible"); return }
+        target.userContentController(controller, didReceive: message, replyHandler: replyHandler)
     }
 }

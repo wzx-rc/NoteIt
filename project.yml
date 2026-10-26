@@ -54,4 +54,6 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         NSPhotoLibraryUsageDescription: Ajouter des images à vos notes.
         NSCameraUsageDescription: Prendre une photo pour l'ajouter à une note.
+        NSMicrophoneUsageDescription: Dicter vos demandes à l'assistant.
+        NSSpeechRecognitionUsageDescription: Transformer votre voix en texte pour l'assistant.
         ITSAppUsesNonExemptEncryption: false
