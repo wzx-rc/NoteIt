@@ -137,7 +137,8 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 /* ---------- pages (home, lists, tasks) ---------- */
 .page { max-width: 1180px; margin: 0 auto; padding: 28px 28px 120px; padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
 .ph { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.ph h1 { margin: 0; font: 700 44px/1 var(--font-hand); letter-spacing: .2px; text-wrap: balance; }
+/* page titles use the Plum wordmark type (Figtree, as in the sidebar badge) */
+.ph h1 { margin: 0; font: 500 36px/1.1 "Figtree", system-ui, sans-serif; letter-spacing: -.3px; text-wrap: balance; }
 .ph .sub { color: var(--ink-3); margin-top: 6px; font-size: 13.5px; }
 .ph .acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; align-items: start; }
@@ -214,15 +215,11 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 .fchip .n { opacity: .6; margin-left: 4px; font-variant-numeric: tabular-nums; }
 .tgroup { display: grid; gap: 2px; }
 .tgroup > h3 { display: flex; align-items: center; gap: 8px; margin: 6px 4px 4px; font-size: 13px; font-weight: 700; }
-/* Tâches: one block per space, reordered with the grip */
+/* Tâches: one block per space, dragged by its title like the tasks */
 #tGroups .tgroup[data-sp] { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 6px 6px 6px; box-shadow: var(--shadow-1); transition: box-shadow .15s, transform .15s; }
 #tGroups .tgroup[data-sp] > h3 { margin: 4px 6px 6px 0; }
 #tGroups .tgroup[data-sp] .tlist { background: none; border: 0; padding: 0 2px; }
 #tGroups .tgroup.dragging { box-shadow: var(--shadow-2); transform: scale(1.01); position: relative; z-index: 2; }
-.tgrip { display: grid; place-items: center; width: 18px; height: 22px; border-radius: 6px; cursor: grab; touch-action: none; color: var(--ink-3); opacity: .55; }
-.tgrip svg { width: 10px; height: 16px; fill: currentColor; }
-.tgrip:hover { opacity: 1; background: var(--line); }
-.tgroup.dragging .tgrip { cursor: grabbing; opacity: 1; }
 .tempty { padding: 10px 8px; color: var(--ink-3); font-size: 13px; }
 .tgroup > h3 small { color: var(--ink-3); font-weight: 600; }
 .tlist { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 4px 6px; }
@@ -272,21 +269,22 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 .tthumb.add:hover { color: var(--ink); border-color: var(--accent-line); }
 .tedit.over { outline: 2px dashed var(--accent-line); outline-offset: -4px; border-radius: 10px; }
 /* reorder by dragging (rows, sub-tasks) and the motion around it */
-.rgrip, .sgrip { display: grid; place-items: center; flex: none; width: 14px; height: 22px; border-radius: 5px; color: var(--ink-3); cursor: grab; touch-action: none; opacity: 0; transition: opacity .15s; }
-.rgrip svg, .sgrip svg { width: 8px; height: 13px; fill: currentColor; }
-.rgrip { position: absolute; left: -13px; top: 10px; }
-.tw:hover .rgrip, .tchk-r:hover .sgrip, .rgrip:focus-visible { opacity: .7; }
-.rgrip:hover, .sgrip:hover { opacity: 1 !important; background: var(--line); }
-@media (hover: none) { .rgrip, .sgrip { opacity: .45; } }
 .tchk-r { position: relative; }
-.tchk-r .sgrip { margin-left: -18px; margin-right: -4px; }
 .sort-ph { opacity: .3; }
 .sort-ph > .trow, .tsub.sort-ph, .tchk-r.sort-ph { outline: 1.5px dashed var(--accent-line); outline-offset: -2px; border-radius: 9px; }
 .sort-ghost { position: fixed; z-index: 400; margin: 0; pointer-events: none; list-style: none; background: var(--card); border-radius: 10px; box-shadow: var(--shadow-1); transition: scale .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s; will-change: transform; }
 .sort-ghost.lift { scale: 1.025; box-shadow: var(--shadow-2); }
-.sort-ghost .rgrip, .sort-ghost .sgrip { opacity: 1; }
 body.sorting, body.sorting * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
 .tlist:has(.tw) .tempty { display: none; }
+.sort-ghost.blk.lift { scale: 1.012; }
+.sort-ghost.blk { display: grid; gap: 2px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 6px; }
+.sort-ghost.blk > h3 { margin: 4px 6px 6px 4px; }
+.sort-ghost.blk .tlist { background: none; border: 0; padding: 0 2px; box-shadow: none; }
+.tgroup[data-sp] > h3 { cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.tgroup.sort-ph { opacity: .35; outline: 1.5px dashed var(--accent-line); outline-offset: -2px; }
+#spaces .nv { -webkit-touch-callout: none; }
+#spaces .nv.sort-ph { outline: 1.5px dashed var(--accent-line); outline-offset: -2px; }
+#spaces .sort-ghost, .sort-ghost.nv { border-radius: 9px; }
 .tw.tw-in { animation: tIn .26s cubic-bezier(.2,.8,.2,1) both; }
 .tchk-r.in { animation: tIn .22s cubic-bezier(.2,.8,.2,1) both; }
 .tw.completing { animation: tDone .3s ease forwards; pointer-events: none; }
@@ -603,7 +601,7 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
   #top { padding-left: max(8px, env(safe-area-inset-left, 0px)); }
   .tb .lbl { display: none; }
   .page { padding: 20px 16px 110px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .ph h1 { font-size: 38px; }
+  .ph h1 { font-size: 30px; }
   #ai { position: fixed; inset: 0; width: auto; z-index: 260; }
   .nwrap { padding: 0 8px 140px; }
 }

@@ -116,6 +116,7 @@ function renderSide() {
   const ld = liveDocs(), open = S.tasks.filter(t => !t.done);
   const count = { notes: ld.filter(d => d.type === 'note').length, boards: ld.filter(d => d.type === 'board').length, tasks: open.filter(t => t.due && t.due <= today()).length || '', favs: ld.filter(d => d.fav).length || '', trash: S.docs.filter(d => d.trash).length || '' };
   $('#nav').innerHTML = NAV.map(([k, ic, l]) => `<button class="nv" data-go="${k}"${cur === k ? ' aria-current="page"' : ''}>${icon(ic)}<span>${l}</span><span class="ct">${count[k] ?? ''}</span></button>`).join('');
+  bindSpaceSort();
   $('#spaces').innerHTML = S.spaces.map(s => {
     const n = ld.filter(d => d.sp === s.id).length + open.filter(t => t.sp === s.id).length;
     const on = (R.name === 'space' && R.id === s.id) || (R.name === 'doc' && (docById(R.id) || {}).sp === s.id);
@@ -211,7 +212,6 @@ function taskRow(t, o = {}) {
   const di = dueInfo(t.due), sp = spaceById(t.sp), sc = subCount(t), subs = subsOf(t), nimg = resOf(t).filter(id => Assets.has(id)).length;
   const open = sc && t.open && !t.done ? `<div class="tsubs">${subs.map((x, k) => `<button class="tsub${x[1] ? ' on' : ''}" data-subck="${k}" role="checkbox" aria-checked="${x[1]}" style="--i:${k}"><span class="cb sm">${icon('check')}</span><span class="st">${esc(x[0])}</span></button>`).join('')}</div>` : '';
   return `<div class="tw" data-tw="${t.id}"${o.drag ? ' data-drag="1"' : ''}${o.space ? ' data-showsp="1"' : ''}><div class="trow${t.done ? ' done' : ''}" data-task="${t.id}">
-    ${o.drag ? `<span class="rgrip" title="Glisser pour réordonner" aria-hidden="true">${GRIP}</span>` : ''}
     <button class="cb" role="checkbox" aria-checked="${t.done}" aria-label="Terminer" data-done="${t.id}">${icon('check')}</button>
     <button class="tt" data-edit="${t.id}">${esc(t.t)}</button>
     ${sc ? `<button class="chip subc${t.open ? ' on' : ''}" data-subs="${t.id}" aria-expanded="${!!t.open}" title="Sous-tâches">${icon('chk')}${sc}</button>` : ''}
@@ -239,7 +239,7 @@ function bindTaskList(root, rerender) {
     const ed = e.target.closest('[data-edit]'); if (ed) toggleTaskEdit(ed.closest('.tw'), taskById(ed.dataset.edit), re);
   });
   // drag the rows to reorder them, or into another space's block; drag the open sub-tasks to reorder them
-  if (root.querySelector('.tw[data-drag]')) sortable(root, { item: '.tw[data-drag]', lists: '.tlist, [data-tlist]', skip: '.cb, .chip, .tb, .tsubs, .tedit, input, textarea, select, a', grip: '.rgrip', prune: '.tedit', listAt: el => { const g = el.closest('.tgroup'); return g && g.querySelector('.tlist'); }, onDrop: dropTask });
+  if (root.querySelector('.tw[data-drag]')) sortable(root, { item: '.tw[data-drag]', lists: '.tlist, [data-tlist]', skip: '.cb, .chip, .tb, .tsubs, .tedit, input, textarea, select, a', prune: '.tedit', listAt: el => { const g = el.closest('.tgroup'); return g && g.querySelector('.tlist'); }, onDrop: dropTask });
   sortable(root, { item: '.tsub', lists: '.tsubs', sameList: true, onDrop: (el, list) => reorderSubs(taskById(list.closest('.tw').dataset.tw), list, '.tsub', 'subck') });
 }
 function dropTask(el, list) {
@@ -278,7 +278,7 @@ function renderSubEditor(ed, t, pop) {
   const was = $('.pbar i', box), w0 = was ? was.style.width : '0%';
   box.innerHTML = `<div class="tchk-h">Sous-tâches${subs.length ? `<span>${done}/${subs.length}</span>` : ''}</div>
     ${subs.length ? `<div class="pbar"><i style="width:${w0}"></i></div>` : ''}
-    ${subs.map((x, k) => `<div class="tchk-r${x[1] ? ' on' : ''}" data-k="${k}"><span class="sgrip" title="Glisser pour réordonner" aria-hidden="true">${GRIP}</span><button class="cb sm${k === pop ? ' pop' : ''}" role="checkbox" aria-checked="${x[1]}" aria-label="Cocher" data-sk="${k}">${icon('check')}</button><input type="text" value="${esc(x[0])}" data-sn="${k}" aria-label="Sous-tâche"><button class="tb sm" data-sx="${k}" aria-label="Supprimer la sous-tâche" title="Supprimer">${icon('x', 'sm')}</button></div>`).join('')}
+    ${subs.map((x, k) => `<div class="tchk-r${x[1] ? ' on' : ''}" data-k="${k}"><button class="cb sm${k === pop ? ' pop' : ''}" role="checkbox" aria-checked="${x[1]}" aria-label="Cocher" data-sk="${k}">${icon('check')}</button><input type="text" value="${esc(x[0])}" data-sn="${k}" aria-label="Sous-tâche"><button class="tb sm" data-sx="${k}" aria-label="Supprimer la sous-tâche" title="Supprimer">${icon('x', 'sm')}</button></div>`).join('')}
     <label class="tchk-add">${icon('plus', 'sm')}<input type="text" data-sadd placeholder="Ajouter une sous-tâche" aria-label="Ajouter une sous-tâche" autocomplete="off"></label>`;
   // the bar grows from where it was
   const bar = $('.pbar i', box); if (bar) { void bar.offsetWidth; bar.style.width = pct + '%'; }
@@ -307,7 +307,7 @@ function toggleTaskEdit(tw, t, rerender) {
   tw.append(ed);
   const upd = () => { t.t = $('#te-t', ed).value.trim() || t.t; t.due = $('#te-d', ed).value; t.time = $('#te-h', ed).value; t.sp = $('#te-s', ed).value; t.note = $('#te-n', ed).value; save(); };
   ed.addEventListener('change', e => { if (e.target.closest('.tchk')) return; upd(); rerender(); });
-  // sub-tasks: tick, rename, remove, add (Enter keeps the field ready for the next one), drag by the grip
+  // sub-tasks: tick, rename, remove, add (Enter keeps the field ready for the next one), drag up or down to reorder
   const chk = $('.tchk', ed);
   chk.addEventListener('click', e => {
     const k = e.target.closest('[data-sk]'), x = e.target.closest('[data-sx]');
@@ -325,7 +325,7 @@ function toggleTaskEdit(tw, t, rerender) {
     const rows = $$('.tchk-r', box); if (rows.length) rows[rows.length - 1].classList.add('in');
     $('[data-sadd]', box).focus();
   });
-  sortable(chk, { item: '.tchk-r', lists: '.tchk', sameList: true, skip: 'input, button', grip: '.sgrip', onDrop: (el, list) => reorderSubs(t, list, '.tchk-r', 'k') });
+  sortable(chk, { item: '.tchk-r', lists: '.tchk', sameList: true, skip: 'button', soft: 'input', onDrop: (el, list) => reorderSubs(t, list, '.tchk-r', 'k') });
   // images: add with the button, by dropping files on the editor or by pasting
   const addImgs = async files => { const n = await addTaskImages(t, files); if (n) { refreshTask(t); toast(`${n} image${n > 1 ? 's' : ''} ajoutée${n > 1 ? 's' : ''}`); } return n; };
   $('.timgs', ed).addEventListener('click', e => {
@@ -366,27 +366,29 @@ function smoothTasks(fn) {
   glide(els, el => before.get(el.dataset.tw));
 }
 /* drag to reorder (from NoteIt): the mouse drags after a few pixels, a finger or the pen after a short hold (so the page
-   still scrolls), a grip starts at once. The others make room as you go and the item glides into its slot on release. */
+   still scrolls). The others make room as you go and the item glides into its slot on release. */
 function sortable(root, o) {
   let st = null, noClick = 0;
   root.addEventListener('click', e => { if (Date.now() < noClick) { e.stopPropagation(); e.preventDefault(); } }, true);
   root.addEventListener('touchmove', e => { if (st && st.active) e.preventDefault(); }, { passive: false });
-  root.addEventListener('contextmenu', e => { if (st) e.preventDefault(); });
+  root.addEventListener('contextmenu', e => { if (st) { e.preventDefault(); e.stopPropagation(); } }, true);
   root.addEventListener('pointerdown', e => {
     if (st || e.button > 0) return;
     const it = e.target.closest(o.item); if (!it || !root.contains(it) || !it.parentElement.matches(o.lists)) return;
-    const grip = o.grip && e.target.closest(o.grip);
+    const grip = o.grip && e.target.closest(o.grip), soft = !!(o.soft && e.target.closest(o.soft));
     if (!grip && o.skip && e.target.closest(o.skip)) return;
-    st = { it, home: it.parentElement, list: it.parentElement, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pid: e.pointerId, touch: e.pointerType !== 'mouse', active: false };
+    st = { it, home: it.parentElement, list: it.parentElement, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pid: e.pointerId, touch: e.pointerType !== 'mouse', soft, active: false };
     addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', end); addEventListener('pointercancel', end);
     if (grip) { e.preventDefault(); begin(); } else if (st.touch) st.timer = setTimeout(begin, 280);
   });
   function begin() {
     const s = st; if (!s || s.active) return;
     s.active = true; clearTimeout(s.timer);
+    if (s.soft && document.activeElement && s.it.contains(document.activeElement)) document.activeElement.blur();
+    try { getSelection().removeAllRanges(); } catch (e) {}
     if (o.prune) s.it.querySelectorAll(o.prune).forEach(x => x.remove());
     const r = s.it.getBoundingClientRect(); s.r0 = r;
-    const g = s.it.cloneNode(true); g.className += ' sort-ghost'; g.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+    const g = s.it.cloneNode(true); g.className += ' sort-ghost' + (o.ghost ? ' ' + o.ghost : ''); g.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
     Object.assign(g.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
     document.body.append(g); s.g = g; requestAnimationFrame(() => g.classList.add('lift'));
     s.it.classList.add('sort-ph'); document.body.classList.add('sorting');
@@ -396,7 +398,13 @@ function sortable(root, o) {
   function move(e) {
     const s = st; if (!s || e.pointerId !== s.pid) return;
     s.x = e.clientX; s.y = e.clientY;
-    if (!s.active) { const d = Math.hypot(s.x - s.sx, s.y - s.sy); if (s.touch) { if (d > 8) stop(); } else if (d > 5) begin(); return; }
+    if (!s.active) {
+      const dx = Math.abs(s.x - s.sx), dy = Math.abs(s.y - s.sy), d = Math.hypot(dx, dy);
+      if (s.touch) { if (d > 8) stop(); }
+      else if (s.soft) { if (dy > 7 && dy > dx * 1.5) begin(); else if (dx > 7) stop(); }   // sideways in a text field = selecting text
+      else if (d > 5) begin();
+      return;
+    }
     e.preventDefault(); place();
   }
   function place() {
@@ -414,7 +422,7 @@ function sortable(root, o) {
   }
   function loop() {
     const s = st; if (!s || !s.active) return;
-    const sc = $('#view');
+    const sc = o.scroll === false ? null : $('#view');
     if (sc) { const r = sc.getBoundingClientRect(), E = 56; const v = s.y < r.top + E ? -(r.top + E - s.y) / 4 : s.y > r.bottom - E ? (s.y - r.bottom + E) / 4 : 0; if (v) { sc.scrollTop += Math.max(-18, Math.min(18, v)); place(); } }
     s.raf = requestAnimationFrame(loop);
   }
@@ -423,7 +431,9 @@ function sortable(root, o) {
     if (!st || (e && e.pointerId !== st.pid)) return;
     const s = stop(); if (!s.active) return;
     noClick = Date.now() + 350;
-    const done = () => { s.g.remove(); s.it.classList.remove('sort-ph'); document.body.classList.remove('sorting'); o.onDrop(s.it, s.it.parentElement, s.home); };
+    // a finger held still then lifted is a long press, not a move
+    const still = s.touch && Math.hypot(s.x - s.sx, s.y - s.sy) < 8 && s.it.parentElement === s.home;
+    const done = () => { s.g.remove(); s.it.classList.remove('sort-ph'); document.body.classList.remove('sorting'); if (still && o.onHold) o.onHold(s.it); else o.onDrop(s.it, s.it.parentElement, s.home); };
     if (reduceMotion()) { done(); return; }
     const r = s.it.getBoundingClientRect();
     s.g.style.transition = `transform .2s ${EASE}, scale .2s ${EASE}, box-shadow .2s`; s.g.classList.remove('lift');
@@ -597,15 +607,15 @@ function renderTasks(v) {
   const open = S.tasks.filter(t => !t.done), done = S.tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
   if (!F[taskFilter]) taskFilter = 'all';
   const shown = open.filter(F[taskFilter][1]).sort(taskSort);
-  // one block per space, in the order chosen with the grips (S.prefs.taskOrder); every space shows under « Toutes »
-  const rank = id => { const i = (S.prefs.taskOrder || []).indexOf(id); return i < 0 ? 1e6 + S.spaces.findIndex(s => s.id === id) : i; };
-  const groups = S.spaces.slice().sort((a, b) => rank(a.id) - rank(b.id)).map(s => [s, shown.filter(t => t.sp === s.id)]).filter(g => g[1].length || taskFilter === 'all');
+  // one block per space, in the order of the spaces (drag a block or a space of the sidebar); every space shows under « Toutes »
+  adoptTaskOrder();
+  const groups = S.spaces.map(s => [s, shown.filter(t => t.sp === s.id)]).filter(g => g[1].length || taskFilter === 'all');
   const orphan = shown.filter(t => !spaceById(t.sp));
   v.innerHTML = `<div class="page" style="max-width:880px"><div class="ph"><div><h1>Tâches</h1><div class="sub">${open.length} à faire · ${done.length} terminée${done.length > 1 ? 's' : ''}</div></div></div>
     ${quickAddBox('tAdd', 'Ajouter une tâche…')}
     <div class="qhint">Astuce : <b>demain 14h</b>, <b>vendredi</b>, <b>#Perso</b> pour l'espace, <b>!</b> pour important.</div>
     <div class="chips" id="tFil">${Object.entries(F).map(([k, [l, fn]]) => { const n = open.filter(fn).length; return k === 'late' && !n ? '' : `<button class="fchip" data-f="${k}" aria-pressed="${taskFilter === k}">${l}<span class="n">${n}</span></button>`; }).join('')}</div>
-    <div id="tGroups" style="display:grid;gap:16px">${groups.map(([s, ts]) => `<div class="tgroup" data-sp="${s.id}"><h3><span class="tgrip" title="Glisser pour réordonner" aria-label="Réordonner">${GRIP}</span><span class="sdot" style="background:${s.color}"></span>${esc(s.name)} <small>${ts.length}</small></h3><div class="tlist">${ts.map(t => taskRow(t, { drag: true })).join('') || '<div class="tempty">Aucune tâche</div>'}</div></div>`).join('')}
+    <div id="tGroups" style="display:grid;gap:16px">${groups.map(([s, ts]) => `<div class="tgroup" data-sp="${s.id}"><h3 title="Glisser pour déplacer l'espace"><span class="sdot" style="background:${s.color}"></span>${esc(s.name)} <small>${ts.length}</small></h3><div class="tlist">${ts.map(t => taskRow(t, { drag: true })).join('') || '<div class="tempty">Aucune tâche</div>'}</div></div>`).join('')}
       ${orphan.length ? `<div class="tgroup"><h3>Sans espace</h3><div class="tlist">${orphan.map(t => taskRow(t, { drag: true })).join('')}</div></div>` : ''}
       ${!shown.length ? `<div class="empty">Rien dans ce filtre.${taskFilter === 'all' ? ' Ajoutez une tâche ci-dessus.' : ''}</div>` : ''}</div>
     ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div class="tlist">${done.slice(0, 60).map(t => taskRow(t, { space: true })).join('')}</div></details>` : ''}
@@ -613,35 +623,26 @@ function renderTasks(v) {
   bindTaskList(v, () => go('tasks'));
   bindQuickAdd($('#tAdd'), () => go('tasks'));
   $('#tFil').onclick = e => { const b = e.target.closest('[data-f]'); if (b) { taskFilter = b.dataset.f; go('tasks'); } };
-  bindGroupGrips($('#tGroups'));
+  sortable($('#tGroups'), { item: '.tgroup[data-sp]', lists: '#tGroups', sameList: true, skip: '.tlist, button, input, a', ghost: 'blk', onDrop: (el, list) => reorderSpaces([...list.querySelectorAll(':scope > .tgroup[data-sp]')].map(b => b.dataset.sp)) });
   setTimeout(() => { const i = $('#tAdd'); if (i && innerWidth > 760) i.focus({ preventScroll: true }); }, 0);
 }
 
-const GRIP = '<svg viewBox="0 0 10 16" aria-hidden="true"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg>';
-/* drag a block by its grip: the blocks move live, the new order is kept in S.prefs.taskOrder (pen, touch or mouse) */
-function bindGroupGrips(box) {
-  box.addEventListener('pointerdown', e => {
-    const g = e.target.closest('.tgrip'); if (!g || e.button > 0) return;
-    const blk = g.closest('.tgroup[data-sp]'); if (!blk) return;
-    // listen on window: moving the block in the DOM drops pointer capture
-    e.preventDefault(); blk.classList.add('dragging');
-    const move = ev => {
-      const sibs = [...box.querySelectorAll('.tgroup[data-sp]')].filter(b => b !== blk);
-      const after = sibs.find(b => { const r = b.getBoundingClientRect(); return ev.clientY < r.top + r.height / 2; });
-      const all = [blk, ...sibs], tops = new Map(all.map(b => [b, b.getBoundingClientRect().top]));
-      if (after) { if (blk.nextElementSibling !== after) box.insertBefore(blk, after); else return; }
-      else { const last = sibs[sibs.length - 1]; if (last && last.nextElementSibling !== blk) last.after(blk); else return; }
-      if (!reduceMotion()) glide(sibs, b => tops.get(b), 220);
-    };
-    const up = () => {
-      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
-      blk.classList.remove('dragging');
-      const shownIds = [...box.querySelectorAll('.tgroup[data-sp]')].map(b => b.dataset.sp);
-      const rest = (S.prefs.taskOrder || []).filter(id => !shownIds.includes(id) && spaceById(id));
-      S.prefs.taskOrder = shownIds.concat(rest); save();
-    };
-    addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up);
-  });
+/* the order of the spaces: one order for the sidebar, the home page and the blocks of Tâches */
+function reorderSpaces(ids) {
+  const shown = ids.map(spaceById).filter(Boolean), slots = S.spaces.map((s, k) => shown.includes(s) ? k : -1).filter(k => k >= 0);
+  const next = S.spaces.slice(); slots.forEach((k, n) => { next[k] = shown[n]; });   // spaces not shown (filter) keep their place
+  if (next.every((s, k) => s === S.spaces[k])) return;
+  S.spaces = next; save(); renderSide();
+}
+/* 0.0.5–0.0.9 kept the order of the blocks apart (S.prefs.taskOrder): it becomes the order of the spaces once */
+function adoptTaskOrder() {
+  const o = S.prefs.taskOrder; if (!o || !o.length) return;
+  const rank = id => { const i = o.indexOf(id); return i < 0 ? 1e6 + S.spaces.findIndex(s => s.id === id) : i; };
+  S.spaces = S.spaces.slice().sort((a, b) => rank(a.id) - rank(b.id)); S.prefs.taskOrder = []; save(); renderSide();
+}
+function bindSpaceSort() {
+  const box = $('#spaces'); if (!box || box.dataset.sort) return; box.dataset.sort = '1';
+  sortable(box, { item: '.nv[data-sp]', lists: '#spaces', sameList: true, scroll: false, onHold: el => spaceMenu(el, spaceById(el.dataset.sp)), onDrop: (el, list) => { reorderSpaces([...list.querySelectorAll('.nv[data-sp]')].map(b => b.dataset.sp)); if (R.name === 'tasks' || R.name === 'home') go(R, { keepFocus: true }); } });
 }
 
 /* ================= search ================= */
