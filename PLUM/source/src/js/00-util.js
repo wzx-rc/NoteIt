@@ -37,6 +37,8 @@ const THEME_BASE = {
   atlInk: '#E6DCC8',         // colour of the brush previews and brush / texture tiles in the atelier (light on the dark atelier)
   harmony: null,             // function ({ base, mode, modes, hues, cols, bh, bs, bv }) giving the harmony module's own HTML (colours keep data-c, modes data-hm)
   penTabs: null,             // quick tabs at the head of the brush panel: pen id, or [pen id, icon name or markup]
+  tasks: null,               // function ({ open, done, filters, filter, today }) giving parts of the task page: { head, tabs, before, after } (HTML; a missing part keeps the default)
+  taskIcon: null,            // function (task) giving markup shown before the task's title
   apply: null                // function (on) called when the theme is put on (true) or taken off (false)
 };
 function defineTheme(t) { THEMES[t.id] = Object.assign({}, THEME_BASE, t, { colors: Object.assign({}, t.colors) }); }

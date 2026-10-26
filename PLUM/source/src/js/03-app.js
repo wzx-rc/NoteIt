@@ -213,7 +213,7 @@ function taskRow(t, o = {}) {
   const open = sc && t.open && !t.done ? `<div class="tsubs">${subs.map((x, k) => `<button class="tsub${x[1] ? ' on' : ''}" data-subck="${k}" role="checkbox" aria-checked="${x[1]}" style="--i:${k}"><span class="cb sm">${icon('check')}</span><span class="st">${esc(x[0])}</span></button>`).join('')}</div>` : '';
   return `<div class="tw" data-tw="${t.id}"${o.drag ? ' data-drag="1"' : ''}${o.space ? ' data-showsp="1"' : ''}><div class="trow${t.done ? ' done' : ''}" data-task="${t.id}">
     <button class="cb" role="checkbox" aria-checked="${t.done}" aria-label="Terminer" data-done="${t.id}">${icon('check')}</button>
-    <button class="tt" data-edit="${t.id}">${esc(t.t)}</button>
+    ${theme().taskIcon ? theme().taskIcon(t) : ''}<button class="tt" data-edit="${t.id}">${esc(t.t)}</button>
     ${sc ? `<button class="chip subc${t.open ? ' on' : ''}" data-subs="${t.id}" aria-expanded="${!!t.open}" title="Sous-tâches">${icon('chk')}${sc}</button>` : ''}
     ${nimg ? `<button class="chip imgc" data-edit="${t.id}" title="Images">${icon('image')}${nimg}</button>` : ''}
     ${t.star ? `<span class="star">${icon('star', 'sm')}</span>` : ''}
@@ -574,7 +574,7 @@ function renderSpace(v) {
   v.innerHTML = `<div class="page"><div class="ph"><div><h1><span class="sdot" style="background:${sp.color};width:16px;height:16px;margin-right:10px;vertical-align:middle"></span>${esc(sp.name)}</h1><div class="sub">${docs.length} document${docs.length > 1 ? 's' : ''} · ${open.length} tâche${open.length > 1 ? 's' : ''} à faire</div></div>
     <div class="acts"><button class="btn" data-new="note">${icon('note')}Note</button><button class="btn pri" data-new="board">${icon('board')}Board</button></div></div>
     <section class="card"><h2>${icon('tasks')}Tâches</h2>${quickAddBox('sAdd', `Ajouter une tâche à ${sp.name}…`, sp.id)}<div id="sTasks" data-tlist data-sp="${sp.id}" style="margin-top:8px">${open.map(t => taskRow(t, { drag: true })).join('') || '<div class="empty">Rien à faire ici pour le moment.</div>'}</div>
-      ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div id="sDone">${done.map(t => taskRow(t)).join('')}</div></details>` : ''}</section>
+    ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div id="sDone">${done.map(t => taskRow(t)).join('')}</div></details>` : ''}</section>
     <div class="docs"><button class="newcard" data-new="note">${icon('plus', 'lg')}Nouvelle note</button>${docs.map(docCard).join('')}</div>
     <section class="card" id="spMood"><h2>${icon('image')}Moodboard <span class="ct">${spaceMedia(sp.id).filter(m => m.type !== 'doc').length || ''}</span><button class="more" id="mAdd">Ajouter des documents</button></h2>
       <div class="mdrop big" id="mDrop">${icon('upload')}<div>Déposez ici les images, PDF et fichiers du projet. Ils se retrouvent dans l’onglet Moodboard de chaque board de l’espace, prêts à glisser.</div></div>
@@ -624,13 +624,17 @@ function renderTasks(v) {
   adoptTaskOrder();
   const groups = S.spaces.map(s => [s, shown.filter(t => t.sp === s.id)]).filter(g => g[1].length || taskFilter === 'all');
   const orphan = shown.filter(t => !spaceById(t.sp));
-  v.innerHTML = `<div class="page" style="max-width:880px"><div class="ph"><div><h1>Tâches</h1><div class="sub">${open.length} à faire · ${done.length} terminée${done.length > 1 ? 's' : ''}</div></div></div>
+  // a theme may give its own head, filter tabs and panels around the blocks (theme().tasks)
+  const th = (theme().tasks && theme().tasks({ open, done, filters: Object.entries(F).map(([k, [l, fn]]) => ({ k, label: l, n: open.filter(fn).length, on: taskFilter === k })).filter(f => f.k !== 'late' || f.n), filter: taskFilter, today: T })) || {};
+  v.innerHTML = `<div class="page" style="max-width:880px">${th.head ?? `<div class="ph"><div><h1>Tâches</h1><div class="sub">${open.length} à faire · ${done.length} terminée${done.length > 1 ? 's' : ''}</div></div></div>`}
     ${quickAddBox('tAdd', 'Ajouter une tâche…')}
     <div class="qhint">Astuce : <b>demain 14h</b>, <b>vendredi</b>, <b>#Perso</b> pour l'espace, <b>!</b> pour important.</div>
-    <div class="chips" id="tFil">${Object.entries(F).map(([k, [l, fn]]) => { const n = open.filter(fn).length; return k === 'late' && !n ? '' : `<button class="fchip" data-f="${k}" aria-pressed="${taskFilter === k}">${l}<span class="n">${n}</span></button>`; }).join('')}</div>
+    ${th.tabs ?? `<div class="chips" id="tFil">${Object.entries(F).map(([k, [l, fn]]) => { const n = open.filter(fn).length; return k === 'late' && !n ? '' : `<button class="fchip" data-f="${k}" aria-pressed="${taskFilter === k}">${l}<span class="n">${n}</span></button>`; }).join('')}</div>`}
+    ${th.before || ''}
     <div id="tGroups" style="display:grid;gap:16px">${groups.map(([s, ts]) => `<div class="tgroup" data-sp="${s.id}"><h3 title="Glisser pour déplacer l'espace"><span class="sdot" style="background:${s.color}"></span>${esc(s.name)} <small>${ts.length}</small></h3><div class="tlist">${ts.map(t => taskRow(t, { drag: true })).join('') || '<div class="tempty">Aucune tâche</div>'}</div></div>`).join('')}
       ${orphan.length ? `<div class="tgroup"><h3>Sans espace</h3><div class="tlist">${orphan.map(t => taskRow(t, { drag: true })).join('')}</div></div>` : ''}
       ${!shown.length ? `<div class="empty">Rien dans ce filtre.${taskFilter === 'all' ? ' Ajoutez une tâche ci-dessus.' : ''}</div>` : ''}</div>
+    ${th.after || ''}
     ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div class="tlist">${done.slice(0, 60).map(t => taskRow(t, { space: true })).join('')}</div></details>` : ''}
   </div>`;
   bindTaskList(v, () => go('tasks'));

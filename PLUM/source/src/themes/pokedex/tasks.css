@@ -1,10 +1,8 @@
 /* ================= Pokédex : the task page =================
    Each space is a red casing of the kit (cadre.webp) with its name in felt pen beside the painted ball badge and a
    poké ball in the space colour; rows are separated by pencil dashes and ticked in blue like the todo post-it.
-   The quick-add field is a cream screen with a charcoal rim, the filters are pills (blue when chosen) and the mascot
-   waves beside the title. */
-[data-skin="pokedex"] .page:has(#tGroups) .ph { position: relative; }
-[data-skin="pokedex"] .page:has(#tGroups) .ph::after { content: ""; position: absolute; right: 6px; top: -14px; width: 104px; height: 100px; pointer-events: none; background: url("asset:mascotte-salut.webp") center / contain no-repeat; filter: drop-shadow(0 6px 6px rgba(59, 47, 39, .3)); }
+   The quick-add field is a cream screen with a charcoal rim. The head, the tabs, the day's gauge and the trainer card
+   come from tasks.js (theme().tasks), after the user's "Trainer Tasks" concept. */
 [data-skin="pokedex"] .qadd { height: 48px; border-radius: 18px; border: 2.5px solid #3A2E26; background: #FFFDF6 var(--pk-paper) 0 0 / 300px; box-shadow: inset 0 2px 4px rgba(80, 52, 30, .12), 0 3px 0 #CDBFA8; }
 [data-skin="pokedex"] .qadd:focus-within { border-color: #2C6BEA; box-shadow: inset 0 2px 4px rgba(80, 52, 30, .12), 0 3px 0 #CDBFA8, 0 0 0 4px rgba(44, 107, 234, .18); }
 [data-skin="pokedex"] .qadd > .i:first-child { width: 26px; height: 26px; padding: 5px; border-radius: 50%; color: #fff; background: #D7432F; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .2); }
@@ -19,13 +17,84 @@
 [data-skin="pokedex"] .sdot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #2B2724; box-sizing: border-box;
   background-image: radial-gradient(circle, #FFFDF6 0 2px, #2B2724 2.3px 3.6px, transparent 3.9px), linear-gradient(transparent 0 43%, #2B2724 43% 57%, #F6F0E4 57%) !important; }
 [data-skin="pokedex"] .tgroup .tlist { background: none; border: 0; border-radius: 0; padding: 0; box-shadow: none; }
-[data-skin="pokedex"] .tgroup .tw + .tw { border-top: 1.5px dashed rgba(59, 47, 39, .22); }
+/* each task is a little cream card with its painted object, like the concept's quest rows */
+[data-skin="pokedex"] .tgroup .tw { margin: 7px 0; border-radius: 14px; background: #FFFDF7; border: 1.5px solid #E1D6C3; box-shadow: 0 2px 0 #E8DECD; }
+[data-skin="pokedex"] .tgroup .trow { min-height: 52px; padding: 6px 10px 6px 12px; gap: 10px; }
+[data-skin="pokedex"] .tgroup .tw:hover { border-color: #CDBEA5; }
 [data-skin="pokedex"] .trow .tt { font-weight: 600; color: #2E2621; }
-[data-skin="pokedex"] .cb { width: 22px; height: 22px; border: 2px solid #2C6BEA; border-radius: 7px; background: #FFFDF6; }
-[data-skin="pokedex"] .cb:hover { background: #E8F0FD; border-color: #2C6BEA; }
-[data-skin="pokedex"] .cb[aria-checked="true"], [data-skin="pokedex"] .tw.completing .cb { background: #2C6BEA; border-color: #2C6BEA; color: #fff; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .18); }
+[data-skin="pokedex"] .cb { width: 26px; height: 26px; border: 2.5px solid #4A3F37; border-radius: 8px; background: #FFFDF6; }
+[data-skin="pokedex"] .cb:hover { background: #EAF6E4; border-color: #4A3F37; }
+[data-skin="pokedex"] .cb[aria-checked="true"], [data-skin="pokedex"] .tw.completing .cb { background: #4CB04F; border-color: #2F6B33; color: #fff; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .18), inset 0 2px 0 rgba(255, 255, 255, .35); }
 [data-skin="pokedex"] .cb.sm { width: 17px; height: 17px; border-radius: 5px; }
+[data-skin="pokedex"] .trow .chip { border-radius: 999px; padding: 3px 10px; font-weight: 600; }
 [data-skin="pokedex"] .chip.late { background: #FBE1DC; color: #C23A27; }
 [data-skin="pokedex"] .chip.today { background: #E3ECFC; color: #2259C4; }
 [data-skin="pokedex"] .chip.soon { background: #FDF0CC; color: #A9740F; }
 [data-skin="pokedex"] .donegrp > .tlist { background: #FFFDF6; border: 1.5px dashed #D9CDB8; border-radius: 16px; }
+
+/* ---- painted object before the title ---- */
+[data-skin="pokedex"] .pkt-obj { flex: none; width: 38px; height: 38px; display: grid; place-items: center; }
+[data-skin="pokedex"] .pkt-obj img { width: 38px; height: 38px; object-fit: contain; filter: drop-shadow(0 2px 1px rgba(59, 47, 39, .25)); }
+[data-skin="pokedex"] .trow.done .pkt-obj { opacity: .55; filter: grayscale(.4); }
+
+/* ---- the banner: cream plate on a red rim, poké ball, title, the mascot talking ---- */
+[data-skin="pokedex"] .pkt-head { position: relative; display: flex; align-items: center; gap: 16px; min-height: 104px; margin: 6px 0 22px; padding: 14px 250px 14px 20px;
+  border: 3px solid #3E332B; border-radius: 26px 26px 26px 60px; background: #FBF6EA var(--pk-paper) 0 0 / 300px;
+  box-shadow: 0 0 0 7px #D7432F, 0 0 0 10px #3E332B, 0 14px 18px rgba(40, 24, 12, .28); }
+[data-skin="pokedex"] .pkt-ball { flex: none; width: 70px; height: 70px; }
+[data-skin="pokedex"] .pkt-ball img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .25)); }
+[data-skin="pokedex"] .pkt-title h1 { margin: 0; font: 900 40px/1 var(--font-ui); letter-spacing: .02em; color: #2E2621; text-shadow: 0 2px 0 #fff; }
+[data-skin="pokedex"] .pkt-title .sub { margin-top: 6px; font-weight: 700; letter-spacing: .06em; color: #7D7266; }
+[data-skin="pokedex"] .pkt-mascot { position: absolute; right: 150px; bottom: -12px; width: 128px; height: 128px; pointer-events: none; }
+[data-skin="pokedex"] .pkt-mascot img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 6px 6px rgba(59, 47, 39, .3)); }
+[data-skin="pokedex"] .pkt-say { position: absolute; right: 14px; top: 12px; width: 138px; margin: 0; padding: 10px 12px; border: 2.5px solid #5A4A3E; border-radius: 16px; background: #fff;
+  font: 700 13px/1.35 var(--font-ui); color: #3A2E26; box-shadow: 0 3px 0 rgba(59, 47, 39, .18); }
+[data-skin="pokedex"] .pkt-say::before { content: ""; position: absolute; left: -11px; bottom: 18px; width: 16px; height: 16px; background: #fff; border: solid #5A4A3E; border-width: 0 0 2.5px 2.5px; transform: rotate(45deg); }
+
+/* ---- the tabs: painted icon over the label, yellow when chosen, on a yellow strip ---- */
+[data-skin="pokedex"] .pkt-tabs { display: flex; gap: 8px; margin: 20px 0 0; padding: 0 6px; border-bottom: 6px solid #F2C94C; }
+[data-skin="pokedex"] .pkt-tab { flex: 1; position: relative; display: grid; justify-items: center; gap: 2px; padding: 10px 6px 8px; margin-bottom: -1px; cursor: pointer;
+  border: 2.5px solid #4A3F37; border-bottom: 0; border-radius: 16px 16px 0 0; background: #F7F0E1; color: #2E2621; font: 800 14px var(--font-ui); transition: transform .15s, background .15s; }
+[data-skin="pokedex"] .pkt-tab:hover { background: #FFF8E6; transform: translateY(-2px); }
+[data-skin="pokedex"] .pkt-tab img { width: 46px; height: 46px; object-fit: contain; filter: drop-shadow(0 2px 1px rgba(59, 47, 39, .25)); }
+[data-skin="pokedex"] .pkt-tab .n { position: absolute; top: 6px; right: 8px; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: #3E332B; color: #FFF3D6; font-size: 11px; }
+[data-skin="pokedex"] .pkt-tab[aria-pressed="true"] { background: #F7D35A; box-shadow: inset 0 -5px 0 #E9B92F, inset 0 3px 0 rgba(255, 255, 255, .5); padding-top: 14px; margin-top: -4px; }
+[data-skin="pokedex"] .pkt-tab[aria-pressed="true"] .n { background: #D7432F; color: #fff; }
+[data-skin="pokedex"] .pkt-tab:focus-visible { outline: 3px solid #2C6BEA; outline-offset: 2px; }
+
+/* ---- the day's gauge ---- */
+[data-skin="pokedex"] .pkt-quest, [data-skin="pokedex"] .pkt-card { border: 2.5px solid #4A3F37; border-radius: 18px; background: #FBF6EA var(--pk-paper) 0 0 / 300px; box-shadow: 0 4px 0 #D9CDB8; }
+[data-skin="pokedex"] .pkt-quest { margin: 0 0 22px; padding: 12px 16px 14px; border-top: 0; border-radius: 0 0 18px 18px; }
+[data-skin="pokedex"] :is(.pkt-quest, .pkt-card) h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font: 900 20px var(--font-ui); color: #2E2621; }
+[data-skin="pokedex"] :is(.pkt-quest, .pkt-card) h2 img { width: 34px; height: 34px; object-fit: contain; }
+[data-skin="pokedex"] .pkt-date { margin-left: auto; display: flex; align-items: center; gap: 6px; font: 700 14px var(--font-ui); color: #6E6458; text-transform: capitalize; }
+[data-skin="pokedex"] .pkt-date img { width: 24px !important; height: 24px !important; }
+[data-skin="pokedex"] .pkt-gauge { display: flex; align-items: center; gap: 14px; padding: 8px 14px; border: 2px solid #D9CDB8; border-radius: 14px; background: #FFFDF7; }
+[data-skin="pokedex"] .pkt-gauge b { font: 800 17px var(--font-ui); color: #3A2E26; white-space: nowrap; }
+[data-skin="pokedex"] .pkt-bar { flex: 1; height: 20px; border: 2.5px solid #3E332B; border-radius: 999px; background: #5B5550; overflow: hidden; box-shadow: inset 0 3px 0 rgba(0, 0, 0, .25); }
+[data-skin="pokedex"] .pkt-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(#A9E09A, #79C46A); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12), inset 0 2px 0 rgba(255, 255, 255, .45); transition: width .5s cubic-bezier(.3, .8, .3, 1); }
+[data-skin="pokedex"] .pkt-bar.sm { height: 14px; border-width: 2px; }
+
+/* ---- the trainer card and the day's chest ---- */
+[data-skin="pokedex"] .pkt-foot { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; margin: 26px 0 18px; }
+[data-skin="pokedex"] .pkt-card { padding: 14px 16px 16px; display: flex; flex-direction: column; }
+[data-skin="pokedex"] .pkt-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; }
+[data-skin="pokedex"] .pkt-stat { display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; align-content: center; padding: 10px 12px; border: 2px solid #E1D6C3; border-radius: 14px; background: #FFFDF7; }
+[data-skin="pokedex"] .pkt-stat img { grid-row: 1 / 3; width: 44px; height: 44px; object-fit: contain; }
+[data-skin="pokedex"] .pkt-stat b { font: 900 24px/1.1 var(--font-ui); color: #2E2621; }
+[data-skin="pokedex"] .pkt-stat span { font-weight: 600; font-size: 13px; color: #6E6458; }
+[data-skin="pokedex"] .pkt-stat.wide { grid-column: 1 / -1; }
+[data-skin="pokedex"] .pkt-stat.wide .pkt-bar { grid-column: 2; margin-top: 6px; }
+[data-skin="pokedex"] .pkt-chest { position: relative; overflow: hidden; margin-bottom: 8px; border: 2.5px solid #4A3F37; border-radius: 14px; aspect-ratio: 242 / 138; }
+[data-skin="pokedex"] .pkt-chest img { width: 100%; height: 100%; object-fit: cover; display: block; }
+[data-skin="pokedex"] .pkt-chest-say { margin: 0 0 10px; text-align: center; font: 700 13px/1.35 var(--font-ui); color: #5E544A; }
+[data-skin="pokedex"] .pkt-chest.won img { animation: pkt-glow 2.4s ease-in-out infinite; }
+@keyframes pkt-glow { 50% { filter: brightness(1.12) saturate(1.1); } }
+[data-skin="pokedex"] .pkt-reward .pkt-gauge { padding: 4px 10px; }
+@media (max-width: 760px) {
+  [data-skin="pokedex"] .pkt-head { padding-right: 20px; }
+  [data-skin="pokedex"] .pkt-mascot, [data-skin="pokedex"] .pkt-say { display: none; }
+  [data-skin="pokedex"] .pkt-tab .l { font-size: 11px; }
+  [data-skin="pokedex"] .pkt-foot { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { [data-skin="pokedex"] .pkt-chest.won img { animation: none; } [data-skin="pokedex"] .pkt-tab { transition: none; } }
