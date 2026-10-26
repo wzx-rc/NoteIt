@@ -561,15 +561,27 @@ function setFocus(on) {
   if (typeof Board !== 'undefined') Board.layoutChanged();
 }
 
+/* Réglages in four tabs; the last one used opens again */
+const SET_TABS = [['account', 'Compte'], ['ui', 'UI'], ['board', 'Board'], ['other', 'Autres']];
+let settingsTab = 'account';
 function openSettings(section) {
   const p = S.prefs;
+  if (section === 'pen') settingsTab = 'board';
+  const tab = settingsTab;
   const seg = (id, val, opts) => `<div class="seg" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" aria-pressed="${val === v}">${l}</button>`).join('')}</div>`;
   openModal(`<div class="mhd"><h2>Réglages</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
+    <div class="stabs" role="tablist">${SET_TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>
+    <div class="spane" data-pane="account"${tab === 'account' ? '' : ' hidden'}>
     <div class="srow"><div class="l"><b>Prénom</b><small>Pour l'accueil.</small></div><input type="text" id="stName" value="${esc(p.name)}" aria-label="Prénom"></div>
+    <div class="srow"><div class="l"><b>ChatGPT (clé personnelle)</b><small>${AI.keyInfo()}</small></div><button class="btn sm" id="stKey">${icon('key', 'sm')}Configurer</button></div>
+    </div>
+    <div class="spane" data-pane="ui"${tab === 'ui' ? '' : ' hidden'}>
     <div class="srow skinrow"><div class="l"><b>Style de l’interface</b><small>Inkspace : tableau noir à la craie. Nature : anthracite, taches de pastel sec et feuillages.</small></div>
       <div class="skins" id="stSkin">${[['notely', 'Papier', 'Papier clair, esprit Excalidraw'], ['inkspace', 'Inkspace', 'Carnet sombre, tableau à la craie'], ['nature', 'Nature', 'Anthracite, pastel sec et feuilles']].map(([v, l, d]) => `<button class="skin-c sk-${v}" data-v="${v}" aria-pressed="${(p.skin || 'notely') === v}"><span class="skin-pv" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>${l}</b><small>${d}</small></button>`).join('')}</div></div>
     <div class="srow" id="stThemeRow"${p.skin === 'inkspace' || p.skin === 'nature' ? ' hidden' : ''}><div class="l"><b>Thème</b></div>${seg('stTheme', p.theme, [['auto', 'Système'], ['light', 'Clair'], ['dark', 'Sombre']])}</div>
-    <h5 id="stPenSec">Stylet et dessin</h5>
+    </div>
+    <div class="spane" data-pane="board"${tab === 'board' ? '' : ' hidden'}>
+    <h5 id="stPenSec" style="margin-top:4px">Stylet et dessin</h5>
     <div class="diag" id="stDiag"><span class="dot"></span><span id="stDiagTxt">${penDiagLine()}</span></div>
     ${DESKTOP ? `<div class="pp-hint" id="stWt">${penInfoLine()}</div>` : ''}
     <div class="padtest" id="stPad" aria-label="Zone de test du stylet"><svg viewBox="0 0 10 10" preserveAspectRatio="none"></svg><canvas></canvas><span class="padhint">Dessinez ici pour tester la pression : le trait doit grossir quand vous appuyez.</span></div>
@@ -578,14 +590,17 @@ function openSettings(section) {
     ${DESKTOP ? `<div class="srow"><div class="l"><b>Source de pression</b><small>Auto : Windows Ink pour le stylet, Wintab quand la tablette ne passe pas par Windows Ink.</small></div>${seg('stSrc', p.source, [['auto', 'Auto'], ['ink', 'Windows Ink'], ['wintab', 'Wintab']])}</div>` : ''}
     <div class="srow"><div class="l"><b>Le stylet écrit toujours</b><small>Dans une note, le stylet dessine sans passer en mode Dessin ; le doigt fait défiler.</small></div><label class="tg"><input type="checkbox" id="stPen"${p.autoPen ? ' checked' : ''}><span></span></label></div>
     <div class="srow"><div class="l"><b>Molette de la souris sur un board</b></div>${seg('stWheel', p.wheel, [['zoom', 'Zoomer'], ['pan', 'Défiler']])}</div>
-    <h5>Assistant IA</h5>
+    </div>
+    <div class="spane" data-pane="other"${tab === 'other' ? '' : ' hidden'}>
+    <h5 style="margin-top:4px">Assistant IA</h5>
     <div class="srow"><div class="l"><b>Afficher l'assistant</b><small>Bouton Assistant en haut à droite et raccourci Ctrl J.</small></div><label class="tg"><input type="checkbox" id="stAi"${p.aiOn ? ' checked' : ''}><span></span></label></div>
-    <div class="srow"><div class="l"><b>ChatGPT (clé personnelle)</b><small>${AI.keyInfo()}</small></div><button class="btn sm" id="stKey">${icon('key', 'sm')}Configurer</button></div>
     <h5>Données</h5>
     <div class="srow"><div class="l"><b>Sauvegarde</b><small>${DB.ok() ? 'Enregistré dans ce navigateur, sur cet appareil.' : "Ce navigateur refuse l'enregistrement : exportez avant de fermer."}</small></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="stExp">${icon('download', 'sm')}Exporter</button><button class="btn sm" id="stImp">${icon('upload', 'sm')}Importer</button></div></div>
     <div class="srow"><div class="l"><b>Contenu d'exemple</b><small>Les espaces, notes et boards du concept « Roots to Watts ».</small></div><button class="btn sm ghost danger" id="stReset">Tout effacer</button></div>
-    <div id="stConfirm"></div>`, m => {
+    <div id="stConfirm"></div>
+    </div>`, m => {
+    $('.stabs', m).onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; settingsTab = b.dataset.tab; $$('[data-tab]', m).forEach(x => x.setAttribute('aria-selected', x === b)); $$('.spane', m).forEach(x => x.hidden = x.dataset.pane !== settingsTab); };
     $('#stName', m).oninput = e => { p.name = e.target.value.trim(); save(); renderSide(); };
     const segBind = (id, key, after) => { const el = $('#' + id, m); if (!el) return; el.onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; p[key] = b.dataset.v; save(); $$('button', el).forEach(x => x.setAttribute('aria-pressed', x === b)); after && after(); }; };
     segBind('stTheme', 'theme', applyTheme);

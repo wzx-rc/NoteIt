@@ -32,6 +32,14 @@ with zipfile.ZipFile(src) as zi, zipfile.ZipFile(dst + '.tmp', 'w', zipfile.ZIP_
         name = info.filename
         if name == 'resources/app.asar': zo.writestr('resources/app.asar', asar); continue
         if name == 'Notely Sketch.exe': name = 'PLUM.exe'
+        if name == 'PLUM.exe' and os.path.exists(os.path.join(base, 'PLUM.exe')):  # branded by brand/brand-exe.js
+            zinfo = zipfile.ZipInfo(name, date_time=info.date_time); zinfo.compress_type = zipfile.ZIP_DEFLATED; zinfo.external_attr = info.external_attr
+            with open(os.path.join(base, 'PLUM.exe'), 'rb') as fi, zo.open(zinfo, 'w') as fo:
+                while True:
+                    c = fi.read(1 << 20)
+                    if not c: break
+                    fo.write(c)
+            continue
         if name.endswith('/'): zo.writestr(name, b''); continue
         zinfo = zipfile.ZipInfo(name, date_time=info.date_time); zinfo.compress_type = zipfile.ZIP_DEFLATED; zinfo.external_attr = info.external_attr
         with zi.open(info) as fi, zo.open(zinfo, 'w') as fo:
