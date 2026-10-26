@@ -137,8 +137,9 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 
 .trow { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 6px 8px; border-radius: 9px; }
 .trow:hover { background: var(--raise); }
-.trow + .trow { border-top: 1px solid var(--line); }
-.trow:hover + .trow, .trow:hover { border-top-color: transparent; }
+.tw { position: relative; }
+.tw + .tw { border-top: 1px solid var(--line); }
+.tw:has(> .trow:hover) + .tw, .tw:has(> .trow:hover) { border-top-color: transparent; }
 .cb { width: 20px; height: 20px; border-radius: 6px; border: 1.6px solid var(--line-2); display: grid; place-items: center; flex: none; background: var(--card); color: transparent; transition: background .12s, border-color .12s; }
 .cb:hover { border-color: var(--accent); }
 .cb[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -226,6 +227,8 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 .cb.sm { width: 16px; height: 16px; border-radius: 5px; }
 .cb.sm svg { width: 11px; height: 11px; }
 .tsubs { display: grid; gap: 1px; padding: 0 8px 6px 38px; }
+.tsubs.enter .tsub { animation: tIn .24s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 28ms); }
+.tsub { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .tsub { display: flex; align-items: center; gap: 9px; min-height: 28px; padding: 2px 6px; border-radius: 7px; text-align: left; font-size: 13px; color: var(--ink-2); }
 .tsub:hover { background: var(--raise); }
 .tsub .st { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -242,6 +245,46 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 .tedit .tchk-r.on input[type="text"] { color: var(--ink-3); text-decoration: line-through; }
 .tchk-r .tb.sm { height: 26px; min-width: 26px; padding: 0; opacity: .5; }
 .tchk-r:hover .tb.sm { opacity: 1; }
+/* images attached to a task */
+.chip.imgc { cursor: pointer; }
+.chip.imgc:hover { color: var(--ink); }
+.timgs { display: grid; gap: 6px; }
+.tthumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tthumb { position: relative; width: 92px; height: 70px; border-radius: 9px; overflow: hidden; border: 1px solid var(--line); background: var(--sunk); cursor: zoom-in; animation: tIn .22s ease both; }
+.tthumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s; }
+.tthumb:hover img { transform: scale(1.04); }
+.tthumb .x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.6); color: #fff; opacity: 0; transition: opacity .15s; }
+.tthumb:hover .x, .tthumb .x:focus-visible { opacity: 1; }
+@media (hover: none) { .tthumb .x { opacity: .9; } }
+.tthumb.add { border-style: dashed; border-color: var(--line-2); background: none; display: grid; place-items: center; color: var(--ink-3); cursor: pointer; animation: none; }
+.tthumb.add:hover { color: var(--ink); border-color: var(--accent-line); }
+.tedit.over { outline: 2px dashed var(--accent-line); outline-offset: -4px; border-radius: 10px; }
+/* reorder by dragging (rows, sub-tasks) and the motion around it */
+.rgrip, .sgrip { display: grid; place-items: center; flex: none; width: 14px; height: 22px; border-radius: 5px; color: var(--ink-3); cursor: grab; touch-action: none; opacity: 0; transition: opacity .15s; }
+.rgrip svg, .sgrip svg { width: 8px; height: 13px; fill: currentColor; }
+.rgrip { position: absolute; left: -13px; top: 10px; }
+.tw:hover .rgrip, .tchk-r:hover .sgrip, .rgrip:focus-visible { opacity: .7; }
+.rgrip:hover, .sgrip:hover { opacity: 1 !important; background: var(--line); }
+@media (hover: none) { .rgrip, .sgrip { opacity: .45; } }
+.tchk-r { position: relative; }
+.tchk-r .sgrip { margin-left: -18px; margin-right: -4px; }
+.sort-ph { opacity: .3; }
+.sort-ph > .trow, .tsub.sort-ph, .tchk-r.sort-ph { outline: 1.5px dashed var(--accent-line); outline-offset: -2px; border-radius: 9px; }
+.sort-ghost { position: fixed; z-index: 400; margin: 0; pointer-events: none; list-style: none; background: var(--card); border-radius: 10px; box-shadow: var(--shadow-1); transition: scale .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s; will-change: transform; }
+.sort-ghost.lift { scale: 1.025; box-shadow: var(--shadow-2); }
+.sort-ghost .rgrip, .sort-ghost .sgrip { opacity: 1; }
+body.sorting, body.sorting * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
+.tlist:has(.tw) .tempty { display: none; }
+.tw.tw-in { animation: tIn .26s cubic-bezier(.2,.8,.2,1) both; }
+.tchk-r.in { animation: tIn .22s cubic-bezier(.2,.8,.2,1) both; }
+.tw.completing { animation: tDone .3s ease forwards; pointer-events: none; }
+.tw.completing .tt { text-decoration: line-through; color: var(--ink-3); }
+.tw.completing .cb { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cb.pop, .tw.completing > .trow > .cb { animation: cbPop .28s cubic-bezier(.3,1.6,.5,1); }
+.tedit { animation: tIn .2s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes tIn { from { opacity: 0; transform: translateY(-5px); } }
+@keyframes tDone { 55% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(10px); } }
+@keyframes cbPop { 0% { scale: .7; } 100% { scale: 1; } }
 .tchk-add { display: flex; align-items: center; gap: 8px; color: var(--ink-3); padding-left: 2px; }
 .tedit .tchk-add input[type="text"] { flex: 1; height: 30px; font-weight: 400; }
 details.donegrp > summary { cursor: pointer; list-style: none; color: var(--ink-3); font-weight: 600; font-size: 13px; padding: 6px 4px; display: flex; align-items: center; gap: 6px; }
