@@ -28,6 +28,8 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1440, height: 920, minWidth: 720, minHeight: 520, ...(saved || {}),
     backgroundColor: '#17181C', autoHideMenuBar: true, title: 'PLUM', show: false,
+    // the page draws the title bar in the skin's colours; Windows keeps the window buttons (recoloured through set-theme)
+    titleBarStyle: 'hidden', titleBarOverlay: { color: '#F5F3EE', symbolColor: '#1E1D1B', height: 32 },
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   });
   Menu.setApplicationMenu(null);
@@ -54,7 +56,14 @@ function createWindow() {
 }
 
 const MAX_BYTES = 200 * 1024 * 1024;
-ipcMain.on('set-theme', (e, t) => { if (t === 'light' || t === 'dark' || t === 'system') nativeTheme.themeSource = t; });
+const HEX = /^#[0-9a-f]{6}$/i;
+const toHex = c => { if (HEX.test(c)) return c; const m = String(c).match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/); return m ? '#' + m.slice(1, 4).map(n => (+n).toString(16).padStart(2, '0')).join('') : null; };
+ipcMain.on('set-theme', (e, t) => {
+  const o = typeof t === 'string' ? { mode: t } : (t || {});
+  if (o.mode === 'light' || o.mode === 'dark' || o.mode === 'system') nativeTheme.themeSource = o.mode;
+  const win = BrowserWindow.fromWebContents(e.sender), color = toHex(o.color), symbolColor = toHex(o.symbol);
+  if (win && color && symbolColor && win.setTitleBarOverlay) { try { win.setTitleBarOverlay({ color, symbolColor, height: 32 }); } catch (err) {} }
+});
 
 ipcMain.handle('save-file', async (e, req) => {
   const { name, kind, data } = req || {};

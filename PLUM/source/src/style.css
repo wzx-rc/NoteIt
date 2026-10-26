@@ -49,6 +49,18 @@
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
+/* Windows app title bar (syncTitleBar); the window buttons on the right are drawn by Windows over --tb-r */
+:root { --tb-l: var(--side); --tb-r: var(--paper); --tb-sym: var(--ink); --tb-text: var(--side-mute); }
+:root[data-skin="inkspace"] { --tb-r: #111215; }
+#tbar { position: fixed; z-index: 900; top: 0; left: 0; right: 0; height: 32px; display: flex; align-items: center; -webkit-app-region: drag; user-select: none;
+  background: linear-gradient(90deg, var(--tb-l) var(--side-w), var(--tb-r) var(--side-w)); }
+#tbar .tb-l { display: inline-flex; align-items: center; gap: 7px; padding-left: 14px; font: 600 11.5px/1 var(--font-ui); letter-spacing: .4px; color: var(--tb-text); }
+#tbar .tb-l small { font-weight: 500; opacity: .8; }
+#tbar svg { width: 14px; height: 14px; fill: #E9B990; }
+html.tbar #app { height: calc(100% - 32px); margin-top: 32px; }
+html.tbar .scrim { top: 32px; }
+html[data-focus] #tbar { background: var(--tb-r); }
+@media (max-width: 760px) { #tbar { background: var(--tb-r); } #tbar .tb-l { color: var(--ink-3); } }
 body { margin: 0; background: var(--side); color: var(--ink); font: 14px/1.45 var(--font-ui); -webkit-font-smoothing: antialiased; overflow: hidden; -webkit-tap-highlight-color: transparent; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 button:disabled { cursor: default; opacity: .4; }

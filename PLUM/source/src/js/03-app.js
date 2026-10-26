@@ -694,12 +694,25 @@ function applyTheme() {
   r.dataset.skin = sk;
   if (t === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t);
   r.dataset.resolved = t === 'auto' ? (mqDark.matches ? 'dark' : 'light') : t;
-  // Windows title bar follows the skin: light for Papier clair, dark for Papier sombre, Inkspace and Nature
-  if (DESKTOP && window.notely.setTheme) window.notely.setTheme(t === 'auto' ? 'system' : t);
+  syncTitleBar(t);
   const tc = $('meta[name="theme-color"]'); if (tc) tc.content = sk === 'inkspace' ? '#111214' : sk === 'nature' ? '#1B1C1B' : '';
   if (S) { renderSide(); if (R.name === 'doc' && typeof Board !== 'undefined') { Board.retheme(); Note.retheme(); } }
 }
 mqDark.addEventListener && mqDark.addEventListener('change', applyTheme);
+/* Windows app: the title bar is drawn here in the skin's colours (sidebar colour on the left, page colour on the right),
+   and the window buttons drawn by Windows take the page colour (--tb-r) and the ink colour (--tb-sym) */
+function syncTitleBar(t) {
+  if (!DESKTOP || !window.notely.setTheme) return;
+  let bar = $('#tbar');
+  if (!bar) {
+    document.documentElement.classList.add('tbar');
+    bar = document.createElement('div'); bar.id = 'tbar';
+    bar.innerHTML = `<span class="tb-l"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.4 21.4C4.4 21 .8 15.8 1.2 7.6c7.4.6 11 5.6 10.2 13.8zM12.7 19c-.9-8.2 2.7-13.8 10.1-15.2.8 8-2.9 13.9-10.1 15.2z"/></svg>PLUM <small>${APP_VERSION}</small></span>`;
+    document.body.prepend(bar);
+  }
+  const cs = getComputedStyle(bar), v = k => cs.getPropertyValue(k).trim();
+  window.notely.setTheme({ mode: t === 'auto' ? 'system' : t, color: v('--tb-r'), symbol: v('--tb-sym') });
+}
 
 /* the assistant stays out of sight until it is switched on in Réglages */
 function applyAi() {

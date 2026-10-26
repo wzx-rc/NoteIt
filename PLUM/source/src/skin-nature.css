@@ -23,6 +23,7 @@
   color-scheme: dark;
 }
 [data-skin="nature"] body { background: var(--side); }
+:root[data-skin="nature"] { --tb-l: #1D1E1C; --tb-r: #1C1D1B; }
 [data-skin="nature"] ::selection { background: rgba(201, 180, 142, .35); }
 [data-skin="nature"] * { scrollbar-color: #3A3A36 transparent; }
 
