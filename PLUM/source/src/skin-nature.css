@@ -3,6 +3,7 @@
    Built from the "Nature Anthracite" design pack (design/nature-anthracite in the noteit repo): colours sampled in the
    concept image, leaves cut out of it (skin-nature-assets.css), dry-pastel dab masks for every colour dot. Always dark. */
 :root[data-skin="nature"] {
+  --br-a: #31322F; --br-b: #242523; --br-rim: rgba(233,223,201,.10); --br-l1: #F7DDBF; --br-l2: #E4AE84; --br-vein: #2A2A27; --br-text: #ECE3D0;
   --side: #1A1B1A; --side-2: #242523; --side-3: #2E2F2B; --side-line: rgba(233, 223, 201, .07);
   --side-text: #E9DECA; --side-mute: #8F897D;
   --paper: #1F201E; --card: #252623; --sunk: #1B1C1A; --raise: #2C2D29;
