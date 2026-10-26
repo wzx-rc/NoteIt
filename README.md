@@ -7,13 +7,13 @@ L'application Notely (notes et tâches) en version iPad, compilée sur un Mac de
 - `NoteIt/Web/index.html` : l'application elle-même (la même que le prototype), en plein écran sur 3 colonnes : listes, tâches, note. Polices incluses, fonctionne hors ligne.
 - `NoteIt/Sources/` : une petite coque iOS (Swift) qui affiche la page et enregistre les données dans un fichier de l'app (`Documents/notely-store.json`).
 - `project.yml` : la description du projet Xcode, générée sur le Mac de GitHub par XcodeGen.
-- `.github/workflows/ipad.yml` : compile un `NoteIt.ipa` non signé à chaque push sur `main`, ou à la demande.
+- `.github/workflows/ipad.yml` : compile un `NoteIt.ipa` non signé, uniquement à la demande (bouton **Run workflow**).
 
 iPadOS 16.4 ou plus récent.
 
 ## Installer sur l'iPad
 
-1. Sur GitHub, onglet **Actions**, ouvrir le dernier **Build iPad (.ipa non signé)** réussi (ou **Run workflow** pour en lancer un).
+1. Sur GitHub, onglet **Actions**, ouvrir **Build iPad (.ipa non signé)** et toucher **Run workflow** pour en lancer un, puis ouvrir ce build une fois réussi.
 2. En bas de la page, télécharger **NoteIt-ipa**, puis dézipper : on obtient `NoteIt.ipa`.
 3. Brancher l'iPad au PC en USB, le déverrouiller et accepter « Faire confiance à cet ordinateur ».
 4. Ouvrir **Sideloadly**, choisir l'iPad, glisser `NoteIt.ipa`, saisir son identifiant Apple, puis **Start**.
