@@ -4,7 +4,7 @@
    Items are DOM nodes under one transformed world; connectors and mind-map branches are one SVG. */
 const Board = (() => {
   let D = null, items = [], byId = new Map();
-  let host, world, framesL, edges, edgesTop, itemsL, labelsL, ovl, liveCv, ink, meas, wrap, toolsEl, trEl, propsEl, qbarEl, zoomEl, undoEl, brEl, hintEl;
+  let host, world, framesL, edges, edgesTop, itemsL, labelsL, ovl, liveCv, ink, meas, wrap, toolsEl, optsEl, dockEl, trEl, propsEl, qbarEl, zoomEl, undoEl, brEl, hintEl;
   const view = { x: 0, y: 0, k: 1 };
   let tool = 'select', shapeKind = 'rect', penKind = 'pen', noteColor = NOTE_COLORS[0];
   let sel = new Set(), editing = null, editSub = null, hist = [], fut = [], op = null, guides = null, marquee = null, attachHi = null, eraserAt = null;
@@ -1511,6 +1511,61 @@ const Board = (() => {
       const dot = id === 'pen' ? `<span class="cdot" style="background:${penPref(penKind).c}"></span>` : id === 'note' ? `<span class="cdot" style="background:${noteColor}"></span>` : '';
       return `<button class="tl" data-tool="${id}" title="${title}${k ? ` (${k})` : ''}" aria-label="${title}" aria-pressed="${on}">${icon(ico)}${dot}${k ? `<kbd>${k}</kbd>` : ''}</button>`;
     })()).join('');
+    renderOpts();
+  }
+  /* the second bar: the options of the tool chosen in the first one, for what it is about to draw
+     (themes that float the dock show it under the tools; the others keep it hidden) */
+  function renderOpts() {
+    if (!optsEl) return;
+    const bd = BD(), T = tool, L = (d, a) => `<span class="ol">${a}</span>${d}`;
+    const pline = (d, extra = '') => `<svg viewBox="0 0 40 16" class="pl"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"${extra}/></svg>`;
+    const sw = () => seg('sw', bd.sw || 2, [[1, pline('M4 8h32', ' stroke-width="1.4"'), 'Fin'], [2, pline('M4 8h32', ' stroke-width="2.6"'), 'Moyen'], [4, pline('M4 8h32', ' stroke-width="4.2"'), 'Épais']], 'ic');
+    const dash = () => seg('dash', bd.dash || '', [['', pline('M4 8h32'), 'Continu'], ['dash', pline('M4 8h32', ' stroke-dasharray="6 4"'), 'Tirets'], ['dot', pline('M4 8h32', ' stroke-dasharray="1 4"'), 'Pointillés']], 'ic');
+    const font = () => seg('font', bd.font || HAND, [[HAND, '<span style="font-family:var(--font-hand);font-size:16px">Aa</span>', 'Manuscrite'], [SANS, '<span>Aa</span>', 'Normale'], [MONO, '<span style="font-family:var(--font-mono);font-size:12px">Aa</span>', 'Code']], 'ic');
+    const sc = () => Colors.row(themeColors('stroke', STROKE_COLORS), bd.sc || '#1E1E1E', 'sc');
+    let h = '';
+    if (T === 'shape') h = [seg('sh', shapeKind, Object.entries(SHAPES).map(([k, l]) => [k, icon(k), l]), 'ic'), sc(), Colors.row(themeColors('fill', FILL_COLORS), bd.fc, 'fc', { none: true }), sw()].join('<span class="vs"></span>');
+    else if (T === 'conn') h = [sc(), seg('route', bd.route || 'curve', [['curve', icon('conn'), 'Courbe'], ['straight', icon('line'), 'Droit'], ['elbow', icon('elbow'), 'Coudé']], 'ic'), sw(), dash()].join('<span class="vs"></span>');
+    else if (T === 'line') h = [sc(), sw(), dash()].join('<span class="vs"></span>');
+    else if (T === 'text') h = [sc(), font()].join('<span class="vs"></span>');
+    else if (T === 'note') h = [Colors.row(themeColors('note', NOTE_COLORS).slice(0, 6), noteColor, 'fc'), font()].join('<span class="vs"></span>');
+    else if (T === 'todo') h = font();
+    else if (PENS[T] || T === 'eraser') {
+      const pr = penPref(penKind), cols = penKind === 'highlight' ? themeColors('hl', HL_COLORS) : themeColors('ink', INK_COLORS);
+      h = `<div class="seg sm ic">${PEN_ORDER.slice(0, 8).map(k => `<button data-tool="${k}" title="${PENS[k].name}" aria-pressed="${T === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme" aria-pressed="${T === 'eraser'}">${icon('eraser')}</button></div>`
+        + (T === 'eraser' ? '' : `<span class="vs"></span><button class="pchip" data-opp="1" title="${PENS[penKind].name} : taille, flux, forme, texture">${brushPreview(penKind, Object.assign({}, pr, { s: Math.min(pr.s, 14) }), 72, 22)}<span>${pr.s}</span></button>
+        <span class="vs"></span><div class="sws">${cols.slice(0, 6).map(c => `<button class="sw" data-pcol="${c}" style="background:${c}" aria-pressed="${pr.c.toUpperCase() === c.toUpperCase()}" aria-label="Couleur ${c}"></button>`).join('')}<button class="sw cur" data-pwheel="1" style="background:${pr.c}" title="Roue des couleurs" aria-label="Roue des couleurs">${icon('wheel', 'sm')}</button></div>`);
+    }
+    optsEl.innerHTML = h; optsEl.hidden = !h;
+  }
+  function optsClick(e) {
+    const t = e.target;
+    const tb = t.closest('[data-tool]'); if (tb) { setTool(tb.dataset.tool); return; }
+    const pc = t.closest('[data-pcol]'); if (pc) { S.prefs.pens[penKind].c = pc.dataset.pcol; save(); refreshTools(); Studio.sync(); return; }
+    const pw = t.closest('[data-pwheel]'); if (pw) { radialPop(pw, { get: () => penPref(penKind).c, set: (v, final) => { S.prefs.pens[penKind].c = v; save(); pw.style.background = v; if (final) { refreshTools(); Studio.sync(); } } }); return; }
+    const pp = t.closest('[data-opp]'); if (pp) { const pop = openPop(pp, `<div class="pp-wrap">${PenPanel.html(penKind)}</div>`, { cls: 'pppop', focus: false }); PenPanel.bind(pop, { pen: () => penKind, setPen: k => { closePop(); setTool(k); }, changed: partial => { if (!partial) { refreshTools(); propSig = ''; renderProps(); } } }); return; }
+    propsClick(e);
+  }
+  /* the dock floats where it was left (S.prefs.dock = { x, y } in px from the board's top left); double-click the grip to put it back */
+  function placeDock() {
+    if (!dockEl) return; const p = S.prefs.dock;
+    dockEl.classList.toggle('moved', !!p);
+    if (!p) { dockEl.style.left = dockEl.style.top = ''; return; }
+    const W = wrap.clientWidth, H = wrap.clientHeight, w = dockEl.offsetWidth || 300, hh = dockEl.offsetHeight || 60;
+    dockEl.style.left = clamp(p.x, 8, Math.max(8, W - w - 8)) + 'px'; dockEl.style.top = clamp(p.y, 8, Math.max(8, H - hh - 8)) + 'px';
+  }
+  function bindDock() {
+    const grip = $('.tgrip', dockEl);
+    grip.addEventListener('pointerdown', e => {
+      e.preventDefault(); grip.setPointerCapture(e.pointerId);
+      const r = dockEl.getBoundingClientRect(), wr = wrap.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+      const mv = ev => { S.prefs.dock = { x: Math.round(clamp(ev.clientX - wr.left - dx, 8, wr.width - r.width - 8)), y: Math.round(clamp(ev.clientY - wr.top - dy, 8, wr.height - r.height - 8)) }; placeDock(); };
+      const up = () => { grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up); dockEl.classList.remove('dragging'); save(); };
+      dockEl.classList.add('dragging'); grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
+    });
+    grip.addEventListener('dblclick', () => { delete S.prefs.dock; save(); placeDock(); });
+    optsEl.addEventListener('pointerdown', e => { if (!e.target.closest('input')) e.preventDefault(); });
+    optsEl.addEventListener('click', optsClick);
   }
   function pickFiles() { const i = $('#fileIn'); i.accept = ''; i.onchange = async () => { const files = [...i.files]; i.value = ''; if (files.length) await ingest({ files, getData: () => '' }, centerW()); }; i.click(); }
   function moreMenu(btn) {
@@ -1529,7 +1584,7 @@ const Board = (() => {
     const open = S.prefs.props == null ? innerWidth >= 1100 : !!S.prefs.props;
     container.innerHTML = `<div class="bwrap${open ? ' props-open' : ''}" style="position:absolute;inset:0">
       <div class="bhost bg-${doc.bg || 'dots'}" tabindex="-1" aria-label="Board ${esc(doc.title)}"><div class="world"><div class="layer"></div><svg class="edges"></svg><div class="layer"></div><svg class="edges"></svg><div class="layer"></div></div><canvas class="blive"></canvas><div class="ovl"></div><div class="measure it"></div></div>
-      <nav class="isl tools" aria-label="Outils"></nav>
+      <div class="tdock"><div class="trow"><button class="tgrip" title="Glisser pour déplacer les barres · double-clic pour les remettre en place" aria-label="Déplacer les barres d’outils"></button><nav class="isl tools" aria-label="Outils"></nav></div><div class="isl topts" role="toolbar" aria-label="Options de l’outil" hidden></div></div>
       <div class="isl tr"><button class="tl" data-a="props" title="Style, calques et moodboard" aria-label="Panneau" aria-pressed="${open}">${icon('sliders')}<span>Style</span></button></div>
       <div class="qbar" hidden></div>
       <aside class="props"${open ? '' : ' hidden'} aria-label="Propriétés"><div class="phead"><button class="ptab" data-tab="style">Style</button><button class="ptab" data-tab="layers">Calques</button><button class="ptab" data-tab="media">Moodboard</button><button class="pclose" data-a="close" aria-label="Fermer">${icon('x', 'sm')}</button></div><div class="pbody"></div></aside>
@@ -1538,7 +1593,7 @@ const Board = (() => {
       <div class="isl br"><button class="tl" data-a="fit" title="Tout voir (0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
     wrap = container.firstElementChild; host = $('.bhost', wrap); world = $('.world', host);
     [framesL, edges, itemsL, edgesTop, labelsL] = world.children; ovl = $('.ovl', host); liveCv = $('.blive', host); meas = $('.measure', host);
-    toolsEl = $('.tools', wrap); trEl = $('.tr', wrap); propsEl = $('.props', wrap); qbarEl = $('.qbar', wrap); zoomEl = $('.isl.zoom', wrap); undoEl = $('.isl.undo', wrap); brEl = $('.isl.br', wrap);
+    toolsEl = $('.tools', wrap); optsEl = $('.topts', wrap); dockEl = $('.tdock', wrap); trEl = $('.tr', wrap); propsEl = $('.props', wrap); qbarEl = $('.qbar', wrap); zoomEl = $('.isl.zoom', wrap); undoEl = $('.isl.undo', wrap); brEl = $('.isl.br', wrap);
     ink = new InkCapture(liveCv, { toLocal: (x, y) => toW(x, y), xf: () => ({ k: view.k, ox: view.x, oy: view.y }) });
     mounted = true;
     Studio.mount(wrap, { drawing: drawingTool, tool: () => tool, pen: () => penKind, setTool, space: () => D && D.sp,
@@ -1560,6 +1615,7 @@ const Board = (() => {
       setTool(id); };
     toolsEl.addEventListener('contextmenu', e => { const b = e.target.closest('[data-tool="shape"],[data-tool="note"],[data-tool="pen"]'); if (b) { e.preventDefault(); setTool(b.dataset.tool === 'pen' ? penKind : b.dataset.tool); b.click(); } });
     toolsEl.addEventListener('pointerdown', e => e.preventDefault());
+    bindDock();
     trEl.onclick = e => { if (!e.target.closest('[data-a="props"]')) return; if (drawingTool()) { Studio.toggleCard('brush'); return; } setProps(!propsOpen()); };
     propsEl.addEventListener('click', propsClick);
     propsEl.addEventListener('input', propsInput); propsEl.addEventListener('change', propsInput);
@@ -1572,7 +1628,7 @@ const Board = (() => {
     undoEl.onclick = e => { const b = e.target.closest('[data-a]'); if (b) (b.dataset.a === 'undo' ? undo : redo)(); };
     zoomEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a; if (a === 'zin') zoomCenter(1.25); if (a === 'zout') zoomCenter(.8); if (a === 'z100') zoomTo(1); };
     brEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; if (b.dataset.a === 'fit') fitAll(); if (b.dataset.a === 'help') helpModal(); };
-    ro = new ResizeObserver(() => { if (mounted) { ink.resize(); renderOverlay(); } }); ro.observe(host);
+    ro = new ResizeObserver(() => { if (mounted) { ink.resize(); renderOverlay(); placeDock(); } }); ro.observe(host);
     tool = 'select'; setTool('select');
     items = relayout(items); reindex(); D.items = items;
     render();

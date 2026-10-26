@@ -55,8 +55,8 @@
 [data-skin="pokedex"] .atl-stack { right: 92px; top: 66px; width: 360px; }
 
 /* ----- the colour wheel device (wheel.js) ----- */
-[data-skin="pokedex"] .atl-dock { left: 76px; bottom: 66px; transform: scale(.78); }
-[data-skin="pokedex"] .atl-dock.min { left: 80px; bottom: 70px; transform: none; }
+[data-skin="pokedex"] .atl-dock { left: 14px; bottom: 66px; transform: scale(.78); }
+[data-skin="pokedex"] .atl-dock.min { left: 18px; bottom: 70px; transform: none; }
 .pkw { position: relative; width: 530px; height: 404px; touch-action: none; user-select: none; -webkit-user-select: none; pointer-events: none; font-family: var(--font-ui); color: #2B2926; }
 .pkw > * { pointer-events: auto; }
 .pkw img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }

@@ -657,6 +657,9 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .tl .cdot { position: absolute; left: 5px; bottom: 5px; width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--card); }
 .isl.tools { top: 12px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 24px); overflow-x: auto; scrollbar-width: none; }
 .isl.tools::-webkit-scrollbar { display: none; }
+/* the tool dock wrapper: a theme can float the tools with their options bar under them (06-board renderOpts); by default only the tools show */
+.tdock, .tdock .trow { display: contents; }
+.tgrip, .topts { display: none; }
 .isl.tr { top: 12px; right: max(12px, env(safe-area-inset-right, 0px)); }
 .isl.tr .tl { width: auto; padding: 0 11px 0 9px; display: inline-flex; gap: 6px; font-size: 12.5px; font-weight: 600; }
 .isl.bl { bottom: max(12px, env(safe-area-inset-bottom, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); }
