@@ -9,7 +9,9 @@ const PK_IMG = s => ({ vb: '0 0 24 24', svg: s });
 const PK_LINE = s => `<g stroke-width="2.1">${s}</g>`;
 defineTheme({
   id: 'pokedex', order: 4, label: 'Pokédex', desc: 'PokeBoard : paysage peint, boîtiers rouges',
-  mode: 'light', meta: '#F6F0E4', atlInk: '#3A3631', wheel: (el, o) => pkWheel(el, o),
+  mode: 'light', meta: '#F6F0E4', atlInk: '#3A3631', wheel: (el, o) => pkWheel(el, o), harmony: o => pkHarmony(o),
+  /* the dark column of the brush device: four painted nibs */
+  penTabs: [['inkfine', '<img src="asset:ic-plume.webp" alt="">'], ['natural', '<img src="asset:ic-crayon.webp" alt="">'], ['gouache', '<img src="asset:ic-pinceau-rond.webp" alt="">'], ['charcoal', '<img src="asset:ic-fusain.webp" alt="">']],
   colors: {
     ink: ['#2D2B29', '#D7432F', '#F2A93B', '#4E9A5B', '#2C6BEA', '#7A5BC7', '#E07A9B', '#8A5A3C'],
     stroke: ['#2D2B29', '#D7432F', '#4E9A5B', '#2C6BEA', '#F2A93B'],
@@ -26,6 +28,12 @@ defineTheme({
     { id: 'pk-starters', tab: 'nature', name: 'Starters', scene: 'forest', cols: ['#E8763A', '#F2C230', '#5B9BD5', '#2C6BEA', '#7FB069', '#3E7D4F'] }
   ],
   icons: {
+    /* harmony modes: the node drawings of the concept */
+    'hm-comp': PK_IMG('<image href="asset:ic-complementaire.webp" width="24" height="24"/>'),
+    'hm-analog': PK_IMG('<image href="asset:ic-analogue.webp" width="24" height="24"/>'),
+    'hm-triad': PK_IMG('<image href="asset:ic-triade.webp" width="24" height="24"/>'),
+    'hm-tetra': PK_IMG('<image href="asset:ic-tetradique.webp" width="24" height="24"/>'),
+    'hm-mono': PK_IMG('<image href="asset:ic-monochrome.webp" width="24" height="24"/>'),
     /* sidebar: solid glyphs */
     home: PK_IMG('<image href="asset:ic-maison.webp" width="24" height="24"/>'),
     note: PK_IMG('<image href="asset:ic-note.webp" width="24" height="24"/>'),
@@ -68,5 +76,13 @@ defineTheme({
     wheel: '<circle cx="12" cy="12" r="9" fill="#FBF7EE" stroke-width="1.6"/><path d="M12 3a9 9 0 0 1 9 9h-9z" fill="#D7432F" stroke="none"/><path d="M21 12a9 9 0 0 1-9 9v-9z" fill="#2C6BEA" stroke="none"/><path d="M12 21a9 9 0 0 1-9-9h9z" fill="#4E9A5B" stroke="none"/><path d="M3 12a9 9 0 0 1 9-9v9z" fill="#F2C230" stroke="none"/><circle cx="12" cy="12" r="3.6" fill="#FBF7EE" stroke-width="1.6"/><circle cx="12" cy="12" r="9" fill="none" stroke-width="1.6"/>'
   },
   decor: [{ at: 'body', cls: 'pk-land' }],
+  /* the brush filter of the board items (board.css: filter: url(#pk-paint)) */
+  apply(on) {
+    const old = document.getElementById('pk-defs'); if (old) old.remove();
+    if (!on) return;
+    const d = document.createElement('div'); d.id = 'pk-defs'; d.setAttribute('aria-hidden', 'true'); d.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+    d.innerHTML = '<svg width="0" height="0"><filter id="pk-paint" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter><filter id="pk-line" filterUnits="userSpaceOnUse" x="-20000" y="-20000" width="60000" height="60000"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter></svg>';
+    document.body.appendChild(d);
+  },
   ring: 'patches'
 });

@@ -414,7 +414,8 @@ const PenPanel = {
     const def = PENS[pen] || PENS.pen, pr = penPref(pen), nat = pr.sh === 'native';
     const rng = (k, lab, ic) => { const isS = k === 's', min = isS ? 0 : .01, max = 1, step = isS ? .002 : .01, val = isS ? sizeT(pen, pr.s) : pr[k], off = nat && (k === 'fl' || k === 'sp');
       return `<label class="bp-row${off ? ' off' : ''}" title="${off ? 'Choisissez une forme de pinceau pour régler le flux et l’espacement' : lab + (isS ? ' (' + def.min + ' à ' + def.max + ')' : ' (1 à 100 %)')}"><span class="bp-ic">${icon(ic, 'sm')}</span><span class="bp-l">${lab}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}" aria-label="${lab}"${off ? ' disabled' : ''}><b data-v="${k}">${sliderText(k, pr[k])}</b></label>`; };
-    return `<div class="bp">
+    const tabs = (theme().penTabs || []).map(t => [].concat(t)).filter(([k]) => PENS[k]);
+    return `<div class="bp">${tabs.length ? `<div class="bp-tabs">${tabs.map(([k, ic]) => `<button class="bp-tab" data-pen="${k}" aria-pressed="${k === pen}" title="${PENS[k].name}" aria-label="${PENS[k].name}">${ic && ic[0] === '<' ? ic : icon(ic || PENS[k].icon)}</button>`).join('')}</div>` : ''}
       <div class="bp-pv">${PenPanel.preview(pen)}</div>
       <div class="bp-sel" data-bsel="1" role="button" tabindex="0" aria-label="Choisir un pinceau"><span>${def.name}</span>${icon('chevd', 'sm')}</div>${PenPanel.list(pen)}
       <div class="bp-rows">${SLIDERS.map(([k, l, ic]) => rng(k, l, ic)).join('')}</div>
@@ -616,6 +617,7 @@ const Studio = (() => {
   }
   function harmonyHTML(base) {
     const mode = P().harm || 'analog', { hues, cols } = harmony(base, mode), [bh, bs, bv] = hsv(base);
+    if (theme().harmony) return theme().harmony({ base, mode, modes: HARMS, hues, cols, bh, bs, bv });
     const C = 80, RD = 46, RO = 70, nodes = hues.map((hu, i) => { const a = -hu * Math.PI / 180, c = cols[i] || base, ix = (C + Math.cos(a) * RD * Math.max(.35, bs)).toFixed(1), iy = (C + Math.sin(a) * RD * Math.max(.35, bs)).toFixed(1); return `<line x1="${C}" y1="${C}" x2="${ix}" y2="${iy}" stroke="#F1E6CF" stroke-width="1.2"/><circle cx="${ix}" cy="${iy}" r="3.4" fill="#F1E6CF"/><circle class="hn" data-c="${c}" cx="${(C + Math.cos(a) * RO).toFixed(1)}" cy="${(C + Math.sin(a) * RO).toFixed(1)}" r="12" fill="${c}" stroke="#1A1B18" stroke-width="2.4"><title>${c}</title></circle>`; }).join('');
     const extra = [0, 1, 2, 3, 4, 5].filter(i => i >= hues.length).map(i => { const a = -(bh + 200 + i * 47) * Math.PI / 180, c = cols[(i + 2) % cols.length]; return `<circle class="hn ghost" data-c="${c}" cx="${(C + Math.cos(a) * RO).toFixed(1)}" cy="${(C + Math.sin(a) * RO).toFixed(1)}" r="10" fill="${c}" stroke="#1A1B18" stroke-width="2"><title>${c}</title></circle>`; }).join('');
     return `<div class="harm"><svg class="harm-w" viewBox="0 0 160 160"><circle cx="${C}" cy="${C}" r="${RO}" fill="none" stroke="#5A574C" stroke-width="1.2"/><foreignObject x="${C - RD}" y="${C - RD}" width="${RD * 2}" height="${RD * 2}"><div class="harm-disc" style="--v:${bv.toFixed(2)}"></div></foreignObject>${extra}${nodes}</svg>

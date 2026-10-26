@@ -35,6 +35,8 @@ const THEME_BASE = {
   mindTags: false,           // mindmap: level-2 ideas as tags on a centred curve, level-1 blocks with an icon
   wheel: null,               // function (el, o) building the theme's own colour wheel instead of Radial (same o, returns { update, el })
   atlInk: '#E6DCC8',         // colour of the brush previews and brush / texture tiles in the atelier (light on the dark atelier)
+  harmony: null,             // function ({ base, mode, modes, hues, cols, bh, bs, bv }) giving the harmony module's own HTML (colours keep data-c, modes data-hm)
+  penTabs: null,             // quick tabs at the head of the brush panel: pen id, or [pen id, icon name or markup]
   apply: null                // function (on) called when the theme is put on (true) or taken off (false)
 };
 function defineTheme(t) { THEMES[t.id] = Object.assign({}, THEME_BASE, t, { colors: Object.assign({}, t.colors) }); }

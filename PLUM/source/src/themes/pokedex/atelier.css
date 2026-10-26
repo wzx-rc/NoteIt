@@ -36,8 +36,7 @@
 /* an empty module shows the mascot asleep */
 [data-skin="pokedex"] .atl-empty::before { content: ""; display: block; width: 96px; height: 64px; margin: 2px auto 8px; background: url("asset:mascotte-dort.webp") center / contain no-repeat; }
 /* the brush module is the kit's lens box (cadre-lens.webp): the black lens in its corner, a cream screen */
-[data-skin="pokedex"] :is(.atl, .atl.planche) .atl-card.c-brush { border-image: url("asset:cadre-lens.webp") 140 40 50 140 fill / 70px 20px 25px 70px; padding: 22px 26px 28px 26px; }
-[data-skin="pokedex"] .atl-card.c-brush header { padding-left: 50px; }
+[data-skin="pokedex"] :is(.atl, .atl.planche) .atl-card.c-brush:not(.c-pipette) { border-image: url("asset:cadre-lens.webp") 140 40 50 140 fill / 70px 20px 25px 70px; padding: 22px 26px 28px 84px; }
 /* the pipette is the kit's red lens box */
 [data-skin="pokedex"] .atl-card.c-pipette { border-image: none; padding: 0; background: url("asset:pipette.webp") center top / 100% auto no-repeat; }
 
@@ -140,20 +139,50 @@
 [data-skin="pokedex"] .bp-more { border-top-color: var(--a-edge); }
 [data-skin="pokedex"] .bp .seg { background: var(--a-inset); }
 [data-skin="pokedex"] .bp .seg button { color: var(--a-ink2); }
-/* sliders: a thin dark track, a round grey knob */
-[data-skin="pokedex"] :is(.atl, .atl-pop, .bp) input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(#5C554B, #3A3631); }
-[data-skin="pokedex"] :is(.atl, .atl-pop, .bp) input[type="range"]::-webkit-slider-thumb { width: 18px; height: 18px; margin-top: -7px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff, #C9C2B6); border: 1.5px solid #6A6359; box-shadow: 0 2px 3px rgba(0, 0, 0, .3); }
+/* sliders: a dark groove, the glossy red knob of the concept (curseur.webp) */
+[data-skin="pokedex"] :is(.atl, .atl-pop, .bp) input[type="range"]::-webkit-slider-runnable-track { height: 5px; border-radius: 5px; background: linear-gradient(#2E2A26, #4A433C); box-shadow: 0 1px 0 rgba(255, 255, 255, .7); }
+[data-skin="pokedex"] :is(.atl, .atl-pop, .bp) input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; margin-top: -8.5px; border: 0; border-radius: 50%; background: url("asset:curseur.webp") center / contain no-repeat; box-shadow: 0 2px 3px rgba(40, 20, 10, .35); }
+[data-skin="pokedex"] .bp-row.off input[type="range"]::-webkit-slider-thumb { filter: grayscale(1) opacity(.5); }
 
-/* ----- harmony: a dark round well, the modes on a cream bar ----- */
-[data-skin="pokedex"] .harm { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 12px; }
-[data-skin="pokedex"] .harm-w { width: 190px; height: 190px; padding: 12px; box-sizing: border-box; border-radius: 50%; background: radial-gradient(circle at 50% 45%, #3A3A33, #1E1D19 72%); box-shadow: 0 0 0 7px #3B2A22, 0 0 0 9px var(--pk-seam), inset 0 4px 12px rgba(0, 0, 0, .6); }
-[data-skin="pokedex"] .harm-modes { display: flex; width: 100%; gap: 2px; padding: 5px; border-radius: 18px; background: #FFFDF8; box-shadow: 0 0 0 1px var(--a-edge), 0 2px 0 var(--a-edge); }
-[data-skin="pokedex"] .harm-modes button { flex: 1; min-width: 0; height: auto; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 2px; border-radius: 13px; font-size: 10.5px; font-weight: 700; color: var(--a-ink2); text-align: center; border: 0; }
-[data-skin="pokedex"] .harm-modes button span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-[data-skin="pokedex"] .harm-modes button .i { width: 24px; height: 24px; padding: 0; background: none; border: 0; color: var(--a-ink); }
-[data-skin="pokedex"] .harm-modes button:hover { background: var(--a-inset); }
-[data-skin="pokedex"] .harm-modes button[aria-pressed="true"] { background: var(--a-sel); color: #1C2F55; }
-[data-skin="pokedex"] .harm-row { width: 100%; box-sizing: border-box; margin-top: 10px; background: #FFFDF8; border-color: var(--a-edge); box-shadow: none; }
+/* ----- brush device: the dark column of nibs under the lens, cream keys, a big stroke preview ----- */
+[data-skin="pokedex"] .bp-tabs { display: flex; gap: 5px; padding: 5px; margin-bottom: 10px; border-radius: 14px; background: linear-gradient(90deg, #3A3633, #2A2724); box-shadow: inset 0 1px rgba(255, 255, 255, .1), 0 2px 4px rgba(0, 0, 0, .3); }
+[data-skin="pokedex"] .bp-tab { flex: 1; height: 44px; display: grid; place-items: center; border-radius: 10px; background: none; padding: 0; }
+[data-skin="pokedex"] .bp-tab img { width: 30px; height: 30px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5)); }
+[data-skin="pokedex"] .bp-tab:hover { background: rgba(255, 255, 255, .1); }
+[data-skin="pokedex"] .bp-tab[aria-pressed="true"] { background: radial-gradient(circle at 40% 30%, #FFFBF2, #E3D8C5 80%); box-shadow: inset 0 -2px 0 rgba(90, 70, 50, .3); }
+[data-skin="pokedex"] .atl:not(.planche) .atl-card.c-brush { position: relative; }
+[data-skin="pokedex"] .atl-card.c-brush header { padding-left: 0; }
+[data-skin="pokedex"] .atl-card.c-brush :is(.ac-body, .bp) { position: static; }
+[data-skin="pokedex"] .atl-card.c-brush .bp-tabs { position: absolute; left: 16px; top: 76px; width: 56px; box-sizing: border-box; flex-direction: column; gap: 6px; padding: 6px 5px 10px; margin: 0; border-radius: 0 0 16px 16px; }
+[data-skin="pokedex"] .atl-card.c-brush .bp-tab { flex: none; height: 50px; }
+[data-skin="pokedex"] .atl-card.c-brush .bp-tab img { width: 34px; height: 34px; }
+[data-skin="pokedex"] .atl-card.c-brush .bp-pv { height: 78px; background: #FFFDF7; border-radius: 16px; box-shadow: inset 0 0 0 1.5px #E3D8C5, inset 0 3px 6px rgba(80, 52, 30, .08); }
+[data-skin="pokedex"] .bp-t { background: radial-gradient(circle at 40% 30%, #FFFDF8, #EEE5D5 85%); border: 1.5px solid #D9CDB8; border-radius: 11px; box-shadow: 0 2px 0 #D9CDB8; }
+[data-skin="pokedex"] .bp-t[aria-pressed="true"] { background: #3A3631; border: 1.5px solid #2A2724; box-shadow: inset 0 2px 3px rgba(0, 0, 0, .4); }
+[data-skin="pokedex"] .bp-t[aria-pressed="true"] img { filter: invert(1) brightness(1.6); }
+[data-skin="pokedex"] .bp-t[aria-pressed="true"] .i { color: #FBF7EF; }
+
+[data-skin="pokedex"] :is(.atl, .atl.planche) .atl-card.c-harmony:not(.c-pipette) { border-image: none; padding: 0; filter: none; }
+[data-skin="pokedex"] .atl-card.c-harmony header { padding: 0 12px; margin-bottom: 2px; }
+/* ----- harmony: the painted device of the concept (harmony.js), the modes on a cream bar biting its foot ----- */
+[data-skin="pokedex"] .harm.pkh { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 0; }
+.pkh-dev { position: relative; width: 300px; height: 317px; filter: drop-shadow(0 10px 10px rgba(40, 24, 12, .35)); }
+.pkh-dev img, .pkh-dev svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pkh-dev img { pointer-events: none; }
+.pkh-bed { fill: none; stroke: #2B2724; stroke-width: 14; }
+.pkh-ring path { fill: none; stroke-width: 6.5; }
+.pkh-rod { stroke: #EFE4CF; stroke-width: 1.6; stroke-linecap: round; opacity: .8; }
+.pkh-pin { fill: #EFE4CF; }
+.pkh-stone { cursor: pointer; transform-box: fill-box; transform-origin: center; transition: transform .15s; outline: 0; }
+.pkh-stone circle:first-of-type { stroke: #1E1B18; stroke-width: 2.6; }
+.pkh-stone:hover, .pkh-stone:focus-visible { transform: scale(1.1); }
+[data-skin="pokedex"] .harm-modes.pkh-modes { position: relative; z-index: 1; display: flex; width: 100%; max-width: 330px; gap: 0; margin-top: -30px; padding: 5px 6px; border-radius: 24px; background: #F4ECDD var(--pk-paper) 0 0 / 300px; border: 2.5px solid #3A2E26; box-shadow: 0 4px 0 #CDBFA8, 0 10px 14px -8px rgba(40, 24, 12, .5); }
+[data-skin="pokedex"] .pkh-modes button { flex: 1; min-width: 0; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px 1px 5px; border-radius: 16px; font: 700 10.5px/1 var(--font-ui); color: #3A2E26; background: none; }
+[data-skin="pokedex"] .pkh-modes button span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+[data-skin="pokedex"] .pkh-modes button .i { width: 30px; height: 30px; padding: 0; background: none; border: 0; }
+[data-skin="pokedex"] .pkh-modes button:hover { background: rgba(60, 40, 20, .07); }
+[data-skin="pokedex"] .pkh-modes button[aria-pressed="true"] { background: #FFFDF7; box-shadow: 0 0 0 2px #E8C34A, 0 2px 4px rgba(60, 40, 20, .25); }
+[data-skin="pokedex"] .harm-row { width: 100%; box-sizing: border-box; margin-top: 12px; background: #FFFDF8; border-color: var(--a-edge); box-shadow: none; }
 
 /* ----- variations, history, pipette ----- */
 [data-skin="pokedex"] .var-tree path { stroke: #9A8E7C; stroke-opacity: 1; }

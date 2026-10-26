@@ -61,9 +61,54 @@
 /* in the panel, the brush settings are light: the previews are drawn in dark ink (atlInk) */
 [data-skin="pokedex"] .props .bp-pv { background: var(--pk-screen); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
 
-/* items */
-[data-skin="pokedex"] .it.note { border-radius: 4px; }
-[data-skin="pokedex"] .it.todo { border-radius: 16px; }
-[data-skin="pokedex"] .frame-it { border-radius: 18px; border-style: dashed; }
-[data-skin="pokedex"] .frame-it .ftitle { font: 700 26px/1 var(--font-hand); }
+/* ================= board items, painted like the PokeBoard sheet =================
+   The pk-paint filter (theme.js puts its <svg> in the page) roughens outlines like a brush; the default near-black
+   ink becomes the warm ink of the sheet; sticky notes and todo lists are taped post-its; frames are pencilled
+   zones with a hand title; mindmap blocks are pastel cards; pictures get a white print border. */
+[data-skin="pokedex"] { --pk-ink: #3B2F27; --pk-tape: rgba(236, 222, 190, .82); }
+[data-skin="pokedex"] .it.shape svg.sh { filter: url(#pk-paint); }
+[data-skin="pokedex"] .edges g[data-conn] { filter: url(#pk-line); }
+[data-skin="pokedex"] .it.shape svg.sh path[stroke="#1E1E1E"] { stroke: var(--pk-ink); }
+[data-skin="pokedex"] .edges g[data-conn][style*="#1E1E1E"] { color: var(--pk-ink) !important; }
+[data-skin="pokedex"] .it.text .txt[style*="color:#1E1E1E"], [data-skin="pokedex"] .it.shape .txt[style*="color:#1E1E1E"] { color: var(--pk-ink) !important; }
+[data-skin="pokedex"] .it.shape .txt { font-weight: 700; }
+/* a firmer brush line, as on the sheet */
+[data-skin="pokedex"] .it.shape svg.sh path[stroke]:not([stroke="none"]) { stroke-width: max(2.6px, 1px); }
+[data-skin="pokedex"] .edges g[data-conn] path:not(.hit):not(.sel):not(.hf) { stroke-width: 2.6px; }
+/* filled shapes sit on the paper like cut cards */
+[data-skin="pokedex"] .it.shape svg.sh path[stroke="none"] { filter: drop-shadow(0 3px 0 rgba(59, 47, 39, .14)); }
+[data-skin="pokedex"] .clabel { font: 700 15px var(--font-hand); color: var(--pk-ink); background: var(--paper); border-radius: 8px; }
+
+/* post-its: paper grain, a strip of tape, a lifted corner */
+[data-skin="pokedex"] .it.note, [data-skin="pokedex"] .it.todo { border-radius: 3px; overflow: visible; box-shadow: 0 1px 1px rgba(59, 47, 39, .18), 0 10px 14px -8px rgba(59, 47, 39, .45); }
+[data-skin="pokedex"] .it.note::before, [data-skin="pokedex"] .it.todo::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: var(--pk-paper) 0 0 / 260px; mix-blend-mode: multiply; opacity: .55; }
+[data-skin="pokedex"] .it.note::after, [data-skin="pokedex"] .it.todo::after { content: ""; position: absolute; left: 50%; top: -9px; width: min(46%, 92px); height: 20px; right: auto; bottom: auto; border-radius: 1px; transform: translateX(-50%) rotate(-3deg); background: var(--pk-tape);
+  box-shadow: 0 1px 2px rgba(59, 47, 39, .18); clip-path: polygon(0 8%, 4% 0, 9% 10%, 14% 0, 100% 0, 96% 50%, 100% 100%, 8% 100%, 3% 88%, 0 100%); }
+[data-skin="pokedex"] .it.note .txt, [data-skin="pokedex"] .it.todo .tin { position: relative; color: #2E2621; }
+/* todo: a yellow post-it with blue ticks, as "À faire" on the sheet */
+[data-skin="pokedex"] .it.todo[style*="background: rgb(255, 255, 255)"] { background: #FBE58D !important; --tc: #FBE58D !important; }
+[data-skin="pokedex"] .it.todo svg.sh { display: none; }
+[data-skin="pokedex"] .it.todo .tin { padding: 16px 16px 12px; }
+[data-skin="pokedex"] .it.todo .ttl { font-weight: 700; font-size: 1.1em; margin-bottom: .35em; }
+[data-skin="pokedex"] .it.todo .trows { gap: .28em; }
+[data-skin="pokedex"] .it.todo .trw { font-family: var(--font-ui); font-weight: 600; font-size: .78em; align-items: center; }
+[data-skin="pokedex"] .it.todo .tck { width: 1.25em; height: 1.25em; margin-top: 0; border: 2px solid #2C6BEA; border-radius: .3em; background: #FFFDF6; opacity: 1; color: #2C6BEA; }
+[data-skin="pokedex"] .it.todo .tck[aria-checked="true"] { background: #2C6BEA; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .18); }
+[data-skin="pokedex"] .it.todo .trw.done .tt, [data-skin="pokedex"] .it.todo .trw.done > :not(.tck) { opacity: .6; }
+[data-skin="pokedex"] .it.todo .tadd { font-family: var(--font-ui); font-size: .62em; color: #8A7A55; }
+
+/* frames: a pencilled zone on the sheet, its title in felt pen with a leaf */
+[data-skin="pokedex"] .frame-it { border-radius: 22px; border: 2px dashed rgba(59, 47, 39, .3); background: rgba(255, 251, 242, .42); box-shadow: none; }
+[data-skin="pokedex"] .frame-it .ftitle { display: flex; align-items: center; gap: 6px; font: 700 26px/1 var(--font-hand); color: var(--pk-ink); padding-bottom: 8px; }
+[data-skin="pokedex"] .frame-it .ftitle::before { content: ""; width: 22px; height: 22px; flex: none; background: url("asset:feuille-c.webp") center / contain no-repeat; transform: rotate(-20deg); }
+
+/* mindmap: the centre is a blue card, ideas are pastel cards with a coloured rim */
+[data-skin="pokedex"] .it.mind.l0 { border-radius: 16px; background: #DCE8FB; color: #1F3F7A; border: 2.5px solid #2C6BEA; box-shadow: 0 3px 0 rgba(44, 107, 234, .25), 0 10px 18px -10px rgba(40, 30, 20, .4); }
+[data-skin="pokedex"] .it.mind.l0 .txt { font: 800 22px/1.1 var(--font-ui); }
+[data-skin="pokedex"] .it.mind.l1 { border-radius: 12px; border-width: 2.5px; background: color-mix(in oklab, var(--mc) 20%, #FFFDF6); box-shadow: 0 3px 0 color-mix(in oklab, var(--mc) 35%, transparent); }
+[data-skin="pokedex"] .it.mind.l1 .txt { font: 800 15px var(--font-ui); color: #2E2621; }
+
+/* pictures: a white print border, like the inspiration cards */
+[data-skin="pokedex"] .it.image.shadow { border-radius: 10px; background: #fff; padding: 5px; box-shadow: 0 1px 2px rgba(59, 47, 39, .2), 0 10px 18px -8px rgba(59, 47, 39, .45); }
+[data-skin="pokedex"] .it.image.shadow img { border-radius: 6px; }
 [data-skin="pokedex"] .ntool { border-radius: 16px; box-shadow: var(--pk-float); }
