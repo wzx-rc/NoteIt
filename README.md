@@ -27,7 +27,7 @@ iPadOS 16.4 ou plus récent.
 
 ## Assistant IA (ChatGPT)
 
-Le bouton micro en bas à droite ouvre un petit chat, au clavier ou à la voix, qui agit sur l'app : créer une section, ajouter ou reporter une tâche, cocher, préparer un brouillon de mail. Chaque série d'actions peut être annulée depuis le chat.
+Désactivé par défaut : à activer dans Réglages, Assistant IA (il faut un compte API OpenAI). Le bouton micro en bas à droite ouvre alors un petit chat, au clavier ou à la voix, qui agit sur l'app : créer une section, ajouter ou reporter une tâche, cocher, préparer un brouillon de mail. Chaque série d'actions peut être annulée depuis le chat.
 
 - Il faut une clé personnelle OpenAI (`sk-…`), créée sur platform.openai.com. Un guide illustré s'affiche au premier appui sur le micro. L'API est facturée à l'usage, à part de ChatGPT Plus.
 - La clé est rangée dans le trousseau iOS (`Keychain.swift`). Les requêtes partent du code natif (`AIProvider.swift`), la page ne revoit jamais la clé.

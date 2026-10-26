@@ -20,7 +20,7 @@
   r.setAttribute("data-app", "ipad");
   r.setAttribute("data-theme", g("notely-theme") === "light" ? "light" : "dark");
   var a = g("notely-accent"); if (a && /^#[0-9A-Fa-f]{6}$/.test(a)) r.style.setProperty("--accent", a);
-  try { var s = JSON.parse(g("notely-settings") || "{}"); r.setAttribute("data-minimal", s.minimal ? "1" : ""); r.setAttribute("data-notefont", s.noteFont === "sans" ? "sans" : "hand"); } catch (e) {}
+  try { var s = JSON.parse(g("notely-settings") || "{}"); r.setAttribute("data-minimal", s.minimal ? "1" : ""); r.setAttribute("data-notefont", s.noteFont === "sans" ? "sans" : "hand"); r.setAttribute("data-ai", s.ai ? "1" : ""); } catch (e) {}
 })();
 </script>
 </head>
@@ -466,6 +466,8 @@ main { max-width: none; padding: 0; margin: 0; display: block; }
 .toast { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 
 /* ---------- Assistant IA : bouton micro, petit chat, configuration de la clé ---------- */
+/* Désactivé par défaut (réglage « Assistant IA ») : tout reste caché tant qu'il est éteint. */
+:root:not([data-ai="1"]) .ai-fab, :root:not([data-ai="1"]) .ai-panel, :root:not([data-ai="1"]) .ai-keyrow { display: none !important; }
 :root { --ok: #34C38F; --err: #E5594F; --kb: 0px; }
 .ai-fab { position: fixed; right: calc(22px + env(safe-area-inset-right, 0px)); bottom: calc(70px + env(safe-area-inset-bottom, 0px)); z-index: 70; width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; box-shadow: 0 0 0 4px var(--app), 0 12px 26px -8px rgba(0,0,0,.6); }
 .ai-fab svg { width: 22px; height: 22px; stroke-width: 1.8; }
@@ -806,7 +808,9 @@ main { max-width: none; padding: 0; margin: 0; display: block; }
       </section>
       <section>
         <h3>Assistant IA</h3>
-        <div class="set-row"><span class="set-l">Clé ChatGPT (OpenAI)<small id="aiKeyInfo">Aucune clé</small></span>
+        <div class="set-row"><span class="set-l">Assistant IA<small>Nécessite un compte API OpenAI</small></span>
+          <button class="switch" id="aiOnSet" role="switch" aria-checked="false" aria-label="Assistant IA"><i></i></button></div>
+        <div class="set-row ai-keyrow"><span class="set-l">Clé ChatGPT (OpenAI)<small id="aiKeyInfo">Aucune clé</small></span>
           <div class="ctrl"><button class="btn ghost" id="aiDelBtn" hidden>Retirer</button><button class="btn ghost" id="aiSetBtn">Configurer</button></div></div>
       </section>
       <section>
@@ -1165,10 +1169,12 @@ main { max-width: none; padding: 0; margin: 0; display: block; }
 
   /* ---------- Réglages ---------- */
   const SKEY = "notely-settings";
-  let settings = { minimal: false, noteFont: "hand" };
-  try { const raw = store.get(SKEY); if (raw) { const v = JSON.parse(raw); settings.minimal = !!v.minimal; settings.noteFont = v.noteFont === "sans" ? "sans" : "hand"; } } catch (e) {}
+  let settings = { minimal: false, noteFont: "hand", ai: false };
+  try { const raw = store.get(SKEY); if (raw) { const v = JSON.parse(raw); settings.minimal = !!v.minimal; settings.noteFont = v.noteFont === "sans" ? "sans" : "hand"; settings.ai = !!v.ai; } } catch (e) {}
   function applySettings() {
     root.setAttribute("data-minimal", settings.minimal ? "1" : "");
+    root.setAttribute("data-ai", settings.ai ? "1" : "");
+    $("#aiOnSet").setAttribute("aria-checked", String(settings.ai));
     root.setAttribute("data-notefont", settings.noteFont);
     $("#miniSet").setAttribute("aria-checked", String(settings.minimal));
     ["#miniDesk", "#miniMob"].forEach(s => $(s).setAttribute("aria-pressed", String(settings.minimal)));
@@ -1177,6 +1183,7 @@ main { max-width: none; padding: 0; margin: 0; display: block; }
   }
   const toggleMinimal = () => { settings.minimal = !settings.minimal; applySettings(); };
   $("#miniSet").addEventListener("click", toggleMinimal);
+  $("#aiOnSet").addEventListener("click", () => { settings.ai = !settings.ai; applySettings(); });
   ["#miniDesk", "#miniMob"].forEach(s => $(s).addEventListener("click", toggleMinimal));
   document.querySelectorAll("[data-notefont]").forEach(b => b.addEventListener("click", () => { settings.noteFont = b.dataset.notefont; applySettings(); }));
   let settingsOpener = null;
