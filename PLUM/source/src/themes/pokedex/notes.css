@@ -2,7 +2,7 @@
    The sheet is the ring binder of the "Notédex" concept (nd-classeur.webp, rings on the left, grey button rail on the
    right, nine-sliced so the buttons stay at the top and the rings repeat), a poké ball before the title;
    the toolbar is the charcoal rail of the kit with cream keys, the active key yellow like on the board dock;
-   checklists take the blue ticks of the todo post-it, quotes become taped post-its. The mascot paints at the foot. */
+   checklists get charcoal ticks, quotes become taped post-its. The mascot paints at the foot. */
 [data-skin="pokedex"] .sheet { background: none; padding: 58px 96px 120px 104px;
   border-image: url("asset:nd-classeur.webp") 760 124 160 86 / 380px 62px 80px 43px; border-image-repeat: stretch round; isolation: isolate;
   border-radius: 24px; box-shadow: 0 30px 40px -26px rgba(40, 24, 12, .5); }
@@ -18,8 +18,8 @@
 [data-skin="pokedex"] .nsub { color: #8D8477; }
 [data-skin="pokedex"] .nbody { color: #2E2621; caret-color: #D7432F; }
 [data-skin="pokedex"] .nbody h1, [data-skin="pokedex"] .nbody h2 { color: #2E2621; text-decoration: underline; text-decoration-color: rgba(215, 67, 47, .55); text-decoration-thickness: .12em; text-underline-offset: .18em; }
-[data-skin="pokedex"] .nbody ul.chk > li::before { border: 2px solid #2C6BEA; border-radius: 6px; background-color: #FFFDF6; }
-[data-skin="pokedex"] .nbody ul.chk > li[data-done]::before { background-color: #2C6BEA; border-color: #2C6BEA; }
+[data-skin="pokedex"] .nbody ul.chk > li::before { border: 2px solid #2E2A26; border-radius: 6px; background-color: #FFFDF6; }
+[data-skin="pokedex"] .nbody ul.chk > li[data-done]::before { background-color: #2E2A26; border-color: #2E2A26; }
 [data-skin="pokedex"] .nbody blockquote { background: #FBE58D var(--pk-paper) 0 0 / 260px; background-blend-mode: multiply; border-radius: 3px; position: relative; color: #2E2621;
   box-shadow: 0 1px 1px rgba(59, 47, 39, .18), 0 10px 14px -8px rgba(59, 47, 39, .45); }
 [data-skin="pokedex"] .nbody blockquote::before { content: ""; position: absolute; left: 50%; top: -9px; width: 80px; height: 20px; transform: translateX(-50%) rotate(-3deg); background: var(--pk-tape); clip-path: polygon(0 8%, 4% 0, 9% 10%, 14% 0, 100% 0, 96% 50%, 100% 100%, 8% 100%, 3% 88%, 0 100%); }
@@ -28,7 +28,6 @@
 [data-skin="pokedex"] .nbody img { border-radius: 8px; background: #fff; padding: 5px; box-shadow: 0 1px 2px rgba(59, 47, 39, .2), 0 10px 18px -8px rgba(59, 47, 39, .45); }
 /* the mascot paints at the foot of the notebook */
 [data-skin="pokedex"] .nwrap { position: relative; }
-[data-skin="pokedex"] .npad { position: relative; }
 [data-skin="pokedex"] .npad::after { content: ""; position: absolute; right: -46px; bottom: -90px; width: 118px; height: 118px; pointer-events: none; background: url("asset:mascotte-pinceau.webp") center / contain no-repeat; filter: drop-shadow(0 6px 6px rgba(59, 47, 39, .3)); }
 
 /* the toolbars live in the binder: the main tools are cream keys set into the painted holes of the grey rail
@@ -57,11 +56,41 @@
 [data-skin="pokedex"] .ntool .nt-opts .sw { width: 20px; height: 20px; }
 [data-skin="pokedex"] .ntool .nt-opts .pchip { height: 28px; }
 [data-skin="pokedex"] .ntool .nb:disabled { opacity: .45; }
-[data-skin="pokedex"] .sheet { grid-area: 1 / 1; margin-top: 18px; padding-top: 96px; }
+[data-skin="pokedex"] .sheet { margin-top: 18px; padding-top: 96px; }
+/* one page under the other: the toolbars run down beside every page, so they stay at hand on the last one */
+[data-skin="pokedex"] .nwrap > .sheet { grid-column: 1; grid-row: calc(var(--pg, 0) + 1); }
+[data-skin="pokedex"] .nwrap:not(.spread) .ntool :is(.nt-main, .nt-opts) { grid-row: 1 / span var(--np, 1); }
 [data-skin="pokedex"] [data-focus] .sheet { margin-top: 64px; }
 [data-skin="pokedex"] [data-focus] .ntool .nt-main { margin-top: 137.5px; }
 [data-skin="pokedex"] .sheet::after { top: 100px; }
 [data-skin="pokedex"] [data-focus] .ntool .nt-opts { margin-top: 98px; }
+
+/* the pages of a note: the first one shares its row with the toolbars, the others follow it. On a wide screen the
+   binder opens flat (noteSpread): two pages at full height, the left one mirrored so the rings meet in the middle,
+   the tool keys in the rail of the right page, the options across the head, a charcoal pager at the foot. */
+[data-skin="pokedex"] .sheet.npg-more::after { display: none; }
+[data-skin="pokedex"] .nfolio { bottom: 94px; color: #8D8477; font-weight: 700; }
+[data-skin="pokedex"] .naddpg { border-color: #CDBFA9; color: #8D8477; }
+[data-skin="pokedex"] .naddpg:hover { background: #F1E6D6; color: #2E2621; border-color: #8D8477; }
+[data-skin="pokedex"] .nwrap.spread > .sheet.on, [data-skin="pokedex"] .nwrap.spread > .naddpg.side-r { margin-top: 18px; }
+[data-skin="pokedex"] .nwrap.spread { grid-template-columns: auto auto; }
+[data-skin="pokedex"] .nwrap.spread > .side-l { grid-area: 1 / 1; }
+[data-skin="pokedex"] .nwrap.spread > .side-r { grid-area: 1 / 2; }
+[data-skin="pokedex"] .nwrap.spread > .sheet.side-l { border-image-source: url("asset:nd-classeur-g.webp"); border-image-slice: 760 86 160 124; border-image-width: 380px 43px 80px 62px; padding-left: 96px; padding-right: 104px; }
+[data-skin="pokedex"] .nwrap.spread > .sheet.side-l::before { left: 62px; right: 43px; border-radius: 6px 14px 0 0; }
+[data-skin="pokedex"] .nwrap.spread .ntool .nt-main { grid-area: 1 / 2; zoom: var(--nk, 1); }
+[data-skin="pokedex"] .nwrap.spread .ntool .nt-opts { grid-row: 1; grid-column: 1 / -1; margin: calc(52px * var(--nk, 1)) 0 0; }
+[data-skin="pokedex"] .nwrap.spread > .naddpg.side-r { border: 0; border-radius: 24px; background: none; color: #8D8477; opacity: .6; font-weight: 800;
+  border-image: url("asset:nd-classeur.webp") 760 124 160 86 / 380px 62px 80px 43px; border-image-repeat: stretch round; }
+[data-skin="pokedex"] .nwrap.spread > .naddpg.side-r:hover { opacity: 1; color: #2E2621; }
+[data-skin="pokedex"] .nwrap.spread > .naddpg.side-r { position: relative; isolation: isolate; }
+[data-skin="pokedex"] .nwrap.spread > .naddpg.side-r::before { content: ""; position: absolute; z-index: -1; left: 43px; right: 62px; top: 27px; bottom: 79px; border-radius: 14px 6px 0 0; background: #EFE2D4; }
+[data-skin="pokedex"] .npager { margin-top: -64px; padding: 4px 6px; background: linear-gradient(#3E3A36, #2A2724); border: 2px solid #1E1B18; box-shadow: inset 0 1px rgba(255, 255, 255, .12), 0 8px 14px -8px rgba(40, 24, 12, .55); }
+[data-skin="pokedex"] .npager .npg-at { color: #FFF8EA; }
+[data-skin="pokedex"] .npager .vs { background: rgba(255, 255, 255, .18); }
+[data-skin="pokedex"] .npager .nb { height: 28px; min-width: 28px; padding: 0 6px; border-radius: 14px; color: #3A3631; background: radial-gradient(circle at 40% 30%, #FFFBF2, #E6DCCB 80%); box-shadow: inset 0 -2px 0 rgba(90, 70, 50, .25), 0 2px 2px rgba(0, 0, 0, .35); }
+[data-skin="pokedex"] .npager .nb:hover { background: radial-gradient(circle at 40% 30%, #fff, #EFE6D6 80%); }
+[data-skin="pokedex"] .npager .nb .lbl { font-size: 12px; }
 
 /* ================= the note cards (Notes, Favoris, spaces): index cards of the "Notédex" concept =================
    A cream card whose tab is painted in the colour of its space (data-tint from notes.js), the title and date on top,
@@ -89,4 +118,3 @@
 [data-skin="pokedex"] .dcard .trashacts { padding: 0; }
 [data-skin="pokedex"] .newcard { aspect-ratio: auto; min-height: 210px; border-radius: 14px; border: 2.5px dashed #CDBFA8; background: rgba(255, 253, 247, .5); color: #8D8477; font-weight: 800; }
 [data-skin="pokedex"] .newcard:hover { border-color: #D7432F; color: #D7432F; background: rgba(255, 253, 247, .85); }
-[data-skin="pokedex"] .nbody ul.chk > li[data-done]::before { background-color: #2E2A26; border-color: #2E2A26; }

@@ -15,7 +15,7 @@ function migrateState(st) {
   const strokeT = t => t === 'marker' ? 'fine' : t;
   for (const d of st.docs || []) {
     if (d.type === 'board') d.items = (d.items || []).map(i => i.k === 'ink' ? Object.assign({}, i, { t: strokeT(i.t) }) : i.k === 'conn' ? Object.assign({}, i, { dash: typeof i.dash === 'boolean' ? (i.dash ? 'dash' : '') : (i.dash || ''), pts: i.pts || [] }) : i);
-    else if (d.type === 'note') d.ink = (d.ink || []).map(s => Object.assign({}, s, { t: strokeT(s.t) }));
+    else if (d.type === 'note') { d.ink = (d.ink || []).map(s => Object.assign({}, s, { t: strokeT(s.t) })); for (const p of d.pages || []) p.ink = (p.ink || []).map(s => Object.assign({}, s, { t: strokeT(s.t) })); }
   }
   const pens = st.prefs && st.prefs.pens;
   if (pens && pens.marker && !pens.fine) { pens.fine = { c: pens.marker.c, s: Math.min(pens.marker.s || 4, 8) }; delete pens.marker; }

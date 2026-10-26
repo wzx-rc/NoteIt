@@ -55,7 +55,7 @@ function spaceMedia(spId) {
       else if (it.k === 'file' && it.asset && Assets.has(it.asset)) push({ type: 'file', asset: it.asset, name: it.name, size: it.size, mime: it.mime, from: d.id });
       else if (it.k === 'link' && it.url) push({ type: 'link', url: it.url, title: it.title, from: d.id });
     } else {
-      for (const m of (d.html || '').matchAll(/data-asset="([^"]+)"/g)) { const b = Assets.blobs.get(m[1]); if (b) push(/^image\//.test(b.type) ? { type: 'image', asset: m[1], name: '', from: d.id } : { type: 'file', asset: m[1], name: 'Fichier', size: b.size, mime: b.type, from: d.id }); }
+      for (const m of noteHTML(d).matchAll(/data-asset="([^"]+)"/g)) { const b = Assets.blobs.get(m[1]); if (b) push(/^image\//.test(b.type) ? { type: 'image', asset: m[1], name: '', from: d.id } : { type: 'file', asset: m[1], name: 'Fichier', size: b.size, mime: b.type, from: d.id }); }
     }
   }
   for (const d of liveDocs().filter(d => d.sp === spId).sort((a, b) => b.updated - a.updated)) push({ type: 'doc', doc: d.id, title: d.title, kind: d.type });
@@ -664,7 +664,7 @@ function bindSpaceSort() {
 
 /* ================= search ================= */
 function docText(d) {
-  if (d.type === 'note') { const t = document.createElement('div'); t.innerHTML = d.html || ''; return (t.textContent || '').replace(/\s+/g, ' '); }
+  if (d.type === 'note') { const t = document.createElement('div'); t.innerHTML = noteHTML(d, '<p></p>'); return (t.textContent || '').replace(/\s+/g, ' '); }
   return (d.items || []).map(i => i.txt || i.title || i.name || '').filter(Boolean).join(' · ');
 }
 function searchAll(q) {
@@ -860,7 +860,9 @@ function bindPenTest(m) {
 
 /* ================= export / import ================= */
 async function blobToDataURL(b) { return new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.onerror = () => r(''); f.readAsDataURL(b); }); }
-function usedAssets(docs, spaces = S.spaces, tasks = S.tasks) { const ids = new Set(); for (const t of tasks || []) for (const id of t.res || []) ids.add(id); for (const d of docs) { if (d.type === 'board') for (const it of d.items || []) if (it.asset) ids.add(it.asset); if (d.type === 'note') for (const m of (d.html || '').matchAll(/data-asset="([^"]+)"/g)) ids.add(m[1]); } for (const sp of spaces || []) for (const m of sp.media || []) if (m.asset) ids.add(m.asset); return ids; }
+// every page of a note (the first one is d.html, the others d.pages)
+const noteHTML = (d, sep = '') => [d.html || ''].concat((d.pages || []).map(p => p.html || '')).join(sep);
+function usedAssets(docs, spaces = S.spaces, tasks = S.tasks) { const ids = new Set(); for (const t of tasks || []) for (const id of t.res || []) ids.add(id); for (const d of docs) { if (d.type === 'board') for (const it of d.items || []) if (it.asset) ids.add(it.asset); if (d.type === 'note') for (const m of noteHTML(d).matchAll(/data-asset="([^"]+)"/g)) ids.add(m[1]); } for (const sp of spaces || []) for (const m of sp.media || []) if (m.asset) ids.add(m.asset); return ids; }
 async function gcAssets() { const keep = usedAssets(S.docs); for (const id of [...Assets.blobs.keys()]) if (!keep.has(id)) await Assets.drop(id); }
 async function exportJSON(data, filename) {
   const docs = data.docs || [];

@@ -1190,3 +1190,33 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .ovl-arr { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; padding: 0; border-radius: 8px; display: grid; place-items: center; background: var(--card); color: var(--ink-2); border: 1px solid var(--line-2); box-shadow: 0 2px 6px rgba(0,0,0,.18); pointer-events: auto; cursor: pointer; }
 .ovl-arr:hover { color: var(--accent); border-color: var(--accent); }
 .ovl-arr svg { width: 15px; height: 15px; }
+
+/* ---------- the pages of a note ---------- */
+.i.flip { transform: scaleX(-1); }
+.nwrap > .sheet + .sheet { margin-top: 28px; }
+.nfolio { position: absolute; left: 0; right: 0; bottom: 22px; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-3); pointer-events: none; z-index: 4; }
+.sheet:only-of-type .nfolio { display: none; }
+.npg-del { pointer-events: auto; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--ink-3); opacity: 0; transition: opacity .15s; }
+.sheet:hover .npg-del, .npg-del:focus-visible { opacity: 1; }
+.npg-del:hover { background: var(--sunk); color: var(--danger, #C9412D); }
+.naddpg { margin-top: 18px; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; border: 1.5px dashed var(--line-2); color: var(--ink-3); font-size: 13px; font-weight: 600; }
+.naddpg:hover { color: var(--ink); border-color: var(--ink-3); background: var(--sunk); }
+.naddpg[hidden], .npager[hidden] { display: none; }
+/* two pages side by side (themes with noteSpread, wide screens): each page keeps its 820 width, zoomed to fit */
+.nwrap.spread { grid-template-columns: auto auto; justify-content: center; column-gap: 0; padding-bottom: 14px; }
+.nwrap.spread > .ntool { grid-column: 1 / -1; }
+.nwrap.spread > .sheet.off { display: none; }
+.nwrap.spread > .sheet.on, .nwrap.spread > .naddpg.side-r { zoom: var(--nk, 1); width: 820px; margin-top: 0; }
+.nwrap.spread > .side-l { grid-column: 1; grid-row: 2; }
+.nwrap.spread > .side-r { grid-column: 2; grid-row: 2; }
+.nwrap.spread > .naddpg.side-r { display: flex; flex-direction: column; justify-content: center; gap: 12px; border-radius: 6px; font-size: 18px; }
+.nwrap.spread > .naddpg.side-r .i { width: 34px; height: 34px; }
+.npager { grid-column: 1 / -1; grid-row: 3; position: sticky; bottom: 12px; z-index: 25; justify-self: center; margin-top: -60px; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; background: color-mix(in oklab, var(--card) 94%, transparent); border: 1px solid var(--line); box-shadow: var(--shadow-2); backdrop-filter: blur(10px); }
+.npager .npg-at { padding: 0 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.npager .vs { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+.npager .nb:disabled { opacity: .35; pointer-events: none; }
+.nwrap.turn-r > .sheet.on { animation: npTurnR .32s cubic-bezier(.2, .7, .3, 1); }
+.nwrap.turn-l > .sheet.on { animation: npTurnL .32s cubic-bezier(.2, .7, .3, 1); }
+@keyframes npTurnR { from { opacity: 0; transform: translateX(24px); } }
+@keyframes npTurnL { from { opacity: 0; transform: translateX(-24px); } }
+@media (prefers-reduced-motion: reduce) { .nwrap.turn-r > .sheet.on, .nwrap.turn-l > .sheet.on { animation: none; } }

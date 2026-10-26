@@ -13,6 +13,7 @@ defineTheme({
   tasks: o => pkTasks(o), taskIcon: t => pkTaskIcon(t), docAttrs: (d, sp) => pkDocAttrs(d, sp),
   /* the dark column of the brush device: four painted nibs */
   penTabs: [['inkfine', '<img src="asset:ic-plume.webp" alt="">'], ['natural', '<img src="asset:ic-crayon.webp" alt="">'], ['gouache', '<img src="asset:ic-pinceau-rond.webp" alt="">'], ['charcoal', '<img src="asset:ic-fusain.webp" alt="">']],
+  noteSpread: true,
   colors: {
     ink: ['#2D2B29', '#D7432F', '#F2A93B', '#4E9A5B', '#2C6BEA', '#7A5BC7', '#E07A9B', '#8A5A3C'],
     stroke: ['#2D2B29', '#D7432F', '#4E9A5B', '#2C6BEA', '#F2A93B'],
