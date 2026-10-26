@@ -531,8 +531,8 @@ const Board = (() => {
     ], { align: 'right' });
   }
   function helpModal() {
-    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O · D', 'Rectangle · Ellipse · Losange'], ['A', 'Flèche'], ['L', 'Ligne'], ['P', 'Stylo'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['M', 'Mindmap'], ['F', 'Cadre'], ['I', 'Image ou fichier']]],
-      ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Tab / Entrée', 'Mindmap : idée enfant / voisine'], ['Alt + glisser', 'Déplacer sans aimant']]],
+    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O · D', 'Rectangle · Ellipse · Losange'], ['A', 'Flèche'], ['L', 'Ligne'], ['P', 'Stylo'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['F', 'Cadre'], ['I', 'Image ou fichier']]],
+      ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant']]],
       ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]]];
     openModal(`<div class="mhd"><h2>Raccourcis du board</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div><div class="keys">${K.map(([t, rows]) => `<div><h5>${t}</h5>${rows.map(([k, l]) => `<div class="krow"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`);
   }

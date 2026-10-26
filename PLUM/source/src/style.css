@@ -56,7 +56,7 @@ html, body { height: 100%; }
   background: linear-gradient(90deg, var(--tb-l) var(--side-w), var(--tb-r) var(--side-w)); }
 #tbar .tb-l { display: inline-flex; align-items: center; gap: 7px; padding-left: 14px; font: 600 11.5px/1 var(--font-ui); letter-spacing: .4px; color: var(--tb-text); }
 #tbar .tb-l small { font-weight: 500; opacity: .8; }
-#tbar svg { width: 14px; height: 14px; fill: #E9B990; }
+#tbar svg { width: 14px; height: 14px; fill: var(--br-l2); }
 html.tbar #app { height: calc(100% - 32px); margin-top: 32px; }
 html.tbar .scrim { top: 32px; }
 html[data-focus] #tbar { background: var(--tb-r); }
@@ -78,13 +78,17 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 #app { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr) auto; height: 100%; }
 #side { background: var(--side); color: var(--side-text); display: flex; flex-direction: column; gap: 2px; padding: 14px 10px 10px; padding-left: max(10px, env(safe-area-inset-left, 0px)); min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 /* app badge: leaf mark and name in a soft dark pill (the sidebar is dark in every skin) */
+/* Plum logo colours follow the style: Papier = violet accent, Inkspace = blue accent, Nature = peach (skin-nature.css) */
+:root { --br-a: #2C2A3B; --br-b: #211F2D; --br-rim: rgba(176,160,255,.16); --br-l1: #D9D0FF; --br-l2: #8B76FF; --br-vein: #232030; --br-text: #ECE8FF; }
+:root[data-skin="inkspace"] { --br-a: #1D2532; --br-b: #161C26; --br-rim: rgba(111,168,255,.18); --br-l1: #CFE2FF; --br-l2: #6FA8FF; --br-vein: #171D28; --br-text: #E3EDFF; }
+.brand .mark stop:first-child { stop-color: var(--br-l1); } .brand .mark stop:last-child { stop-color: var(--br-l2); }
 .brand { display: flex; align-items: center; gap: 8px; padding: 2px 2px 12px; }
-.brand .pill { display: inline-flex; align-items: center; gap: 9px; height: 44px; padding: 0 18px 0 13px; border-radius: 999px; background: linear-gradient(180deg, #31322F, #242523); box-shadow: inset 0 0 0 1px rgba(233,223,201,.10), inset 0 1px rgba(255,255,255,.06), 0 4px 12px rgba(0,0,0,.35); }
+.brand .pill { display: inline-flex; align-items: center; gap: 9px; height: 44px; padding: 0 18px 0 13px; border-radius: 999px; background: linear-gradient(180deg, var(--br-a), var(--br-b)); box-shadow: inset 0 0 0 1px var(--br-rim), inset 0 1px rgba(255,255,255,.06), 0 4px 12px rgba(0,0,0,.35); }
 .brand .mark { width: 26px; height: 26px; display: grid; place-items: center; }
 .brand .mark svg { width: 26px; height: 26px; overflow: visible; }
 .brand .mark .lf { fill: url(#plumLeaf); }
-.brand .mark .vn { fill: none; stroke: #2A2A27; stroke-width: 1.3; stroke-linecap: round; opacity: .8; }
-.brand b { font: 500 21px/1 "Figtree", system-ui, sans-serif; letter-spacing: .1px; color: #ECE3D0; }
+.brand .mark .vn { fill: none; stroke: var(--br-vein); stroke-width: 1.3; stroke-linecap: round; opacity: .8; }
+.brand b { font: 500 21px/1 "Figtree", system-ui, sans-serif; letter-spacing: .1px; color: var(--br-text); }
 .sbox { display: flex; align-items: center; gap: 8px; margin: 0 2px 10px; padding: 0 10px; height: 34px; border-radius: 9px; background: var(--side-2); color: var(--side-mute); box-shadow: inset 0 0 0 1px var(--side-line); }
 .sbox input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--side-text); font-size: 13px; }
 .sbox input::placeholder { color: var(--side-mute); }
@@ -236,6 +240,8 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 .cb.sm { width: 16px; height: 16px; border-radius: 5px; }
 .cb.sm svg { width: 11px; height: 11px; }
 .tsubs { display: grid; gap: 1px; padding: 0 8px 6px 38px; }
+.tsubs:empty { display: none; }
+.tsubs.tmp { padding-top: 2px; }
 .tsubs.enter .tsub { animation: tIn .24s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 28ms); }
 .tsub { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .tsub { display: flex; align-items: center; gap: 9px; min-height: 28px; padding: 2px 6px; border-radius: 7px; text-align: left; font-size: 13px; color: var(--ink-2); }

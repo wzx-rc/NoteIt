@@ -240,7 +240,14 @@ function bindTaskList(root, rerender) {
   });
   // drag the rows to reorder them, or into another space's block; drag the open sub-tasks to reorder them
   if (root.querySelector('.tw[data-drag]')) sortable(root, { item: '.tw[data-drag]', lists: '.tlist, [data-tlist]', skip: '.cb, .chip, .tb, .tsubs, .tedit, input, textarea, select, a', prune: '.tedit', listAt: el => { const g = el.closest('.tgroup'); return g && g.querySelector('.tlist'); }, onDrop: dropTask });
-  sortable(root, { item: '.tsub', lists: '.tsubs', sameList: true, onDrop: (el, list) => reorderSubs(taskById(list.closest('.tw').dataset.tw), list, '.tsub', 'subck') });
+  // a sub-task can also go to another task: over its row, a list opens to receive it
+  const subsAt = el => { const tw = el.closest('.tw'); if (!tw || !root.contains(tw) || tw.querySelector(':scope > .trow.done')) return null; let l = tw.querySelector(':scope > .tsubs'); if (!l) { l = document.createElement('div'); l.className = 'tsubs tmp'; tw.querySelector(':scope > .trow').after(l); } return l; };
+  sortable(root, { item: '.tsub', lists: '.tsubs', listAt: subsAt, onDrop: (el, list, home) => {
+    $$('.tsubs.tmp', root).forEach(l => { if (!l.contains(el)) l.remove(); });
+    const from = taskById(home.closest('.tw').dataset.tw), to = taskById(list.closest('.tw').dataset.tw);
+    if (from && to && from !== to) moveSub(from, +el.dataset.subck, to, [...list.children].filter(c => c.matches('.tsub')).indexOf(el));
+    else reorderSubs(from, list, '.tsub', 'subck');
+  } });
 }
 function dropTask(el, list) {
   const t = taskById(el.dataset.tw); if (!t) return;
@@ -254,6 +261,12 @@ function dropTask(el, list) {
   all.forEach((x, k) => { x.ord = k; });
   save(); smoothTasks(refreshTaskViews);
   if (moved) toast(`Déplacée dans ${spaceById(sp).name}`);
+}
+function moveSub(from, k, to, at) {
+  const x = subsOf(from)[k]; if (!x) return;
+  subsOf(from).splice(k, 1); subsOf(to).splice(Math.max(0, at), 0, x); to.open = true; save();
+  smoothTasks(refreshTaskViews);
+  toast(`« ${x[0]} » déplacée dans « ${to.t} »`, { label: 'Annuler', run: () => { const i = subsOf(to).indexOf(x); if (i >= 0) subsOf(to).splice(i, 1); subsOf(from).splice(k, 0, x); save(); smoothTasks(refreshTaskViews); } });
 }
 function reorderSubs(t, list, sel, key) {
   if (!t) return;
