@@ -236,6 +236,8 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 .cb.sm { width: 16px; height: 16px; border-radius: 5px; }
 .cb.sm svg { width: 11px; height: 11px; }
 .tsubs { display: grid; gap: 1px; padding: 0 8px 6px 38px; }
+.tsubs:empty { display: none; }
+.tsubs.tmp { padding-top: 2px; }
 .tsubs.enter .tsub { animation: tIn .24s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 28ms); }
 .tsub { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .tsub { display: flex; align-items: center; gap: 9px; min-height: 28px; padding: 2px 6px; border-radius: 7px; text-align: left; font-size: 13px; color: var(--ink-2); }
