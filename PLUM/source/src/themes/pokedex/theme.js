@@ -10,7 +10,7 @@ const PK_LINE = s => `<g stroke-width="2.1">${s}</g>`;
 defineTheme({
   id: 'pokedex', order: 4, label: 'Pokédex', desc: 'PokeBoard : paysage peint, boîtiers rouges',
   mode: 'light', meta: '#F6F0E4', atlInk: '#3A3631', wheel: (el, o) => pkWheel(el, o), harmony: o => pkHarmony(o),
-  tasks: o => pkTasks(o), taskIcon: t => pkTaskIcon(t),
+  tasks: o => pkTasks(o), taskIcon: t => pkTaskIcon(t), docAttrs: (d, sp) => pkDocAttrs(d, sp),
   /* the dark column of the brush device: four painted nibs */
   penTabs: [['inkfine', '<img src="asset:ic-plume.webp" alt="">'], ['natural', '<img src="asset:ic-crayon.webp" alt="">'], ['gouache', '<img src="asset:ic-pinceau-rond.webp" alt="">'], ['charcoal', '<img src="asset:ic-fusain.webp" alt="">']],
   colors: {

@@ -536,7 +536,7 @@ function createFrom(kind) {
 /* ================= doc lists ================= */
 function docCard(d) {
   const sp = spaceById(d.sp);
-  return `<div class="dcard" data-doc="${d.id}"><button class="th" data-open="${d.id}" aria-label="Ouvrir ${esc(d.title)}">${Thumbs.svg(d)}<span class="kind">${icon(d.type === 'board' ? 'board' : 'note', 'sm')}${d.type === 'board' ? 'Board' : 'Note'}</span></button>
+  return `<div class="dcard" data-doc="${d.id}"${theme().docAttrs ? ' ' + theme().docAttrs(d, sp) : ''}><button class="th" data-open="${d.id}" aria-label="Ouvrir ${esc(d.title)}">${Thumbs.svg(d)}<span class="kind">${icon(d.type === 'board' ? 'board' : 'note', 'sm')}${d.type === 'board' ? 'Board' : 'Note'}</span></button>
     ${d.trash ? '' : `<button class="fav" data-fav="${d.id}" aria-pressed="${d.fav}" aria-label="Favori">${icon('star', 'sm')}</button>`}
     <div class="meta">${sp ? `<span class="sdot" style="background:${sp.color}"></span>` : ''}<b>${esc(d.title)}</b><small>${ago(d.updated)}</small></div>
     ${d.trash ? `<div class="trashacts"><button class="btn sm" data-restore="${d.id}">${icon('restore', 'sm')}Restaurer</button><button class="btn sm ghost danger" data-purge="${d.id}">Supprimer</button></div>` : ''}</div>`;

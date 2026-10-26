@@ -33,7 +33,9 @@
 [data-skin="pokedex"] .donegrp > .tlist { background: #FFFDF6; border: 1.5px dashed #D9CDB8; border-radius: 16px; }
 
 /* ---- painted object before the title ---- */
-[data-skin="pokedex"] .pkt-obj { flex: none; width: 38px; height: 38px; display: grid; place-items: center; }
+[data-skin="pokedex"] .pkt-obj { display: none; flex: none; width: 38px; height: 38px; place-items: center; }
+/* the objects belong to the task page; narrower lists (home, spaces) keep their rows compact */
+[data-skin="pokedex"] :is(#tGroups, .donegrp) .pkt-obj { display: grid; }
 [data-skin="pokedex"] .pkt-obj img { width: 38px; height: 38px; object-fit: contain; filter: drop-shadow(0 2px 1px rgba(59, 47, 39, .25)); }
 [data-skin="pokedex"] .trow.done .pkt-obj { opacity: .55; filter: grayscale(.4); }
 

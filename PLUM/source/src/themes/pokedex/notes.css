@@ -1,15 +1,17 @@
 /* ================= Pokédex : the note page, a field notebook =================
-   The sheet is grained cream paper bound on a red painted spine (rouge.webp) with a poké ball sticker and ring holes;
+   The sheet is the ring binder of the "Notédex" concept (nd-classeur.webp, rings on the left, grey button rail on the
+   right, nine-sliced so the buttons stay at the top and the rings repeat), a poké ball before the title;
    the toolbar is the charcoal rail of the kit with cream keys, the active key yellow like on the board dock;
    checklists take the blue ticks of the todo post-it, quotes become taped post-its. The mascot paints at the foot. */
-[data-skin="pokedex"] .sheet { background: #FBF6EC var(--pk-paper) 0 0 / 512px; border-radius: 6px 16px 16px 6px; padding-left: 104px;
-  box-shadow: 0 1px 2px rgba(59, 47, 39, .2), 0 26px 50px -30px rgba(59, 47, 39, .55); }
-[data-skin="pokedex"] .sheet::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 50px; border-radius: 6px 0 0 6px; pointer-events: none;
-  background: radial-gradient(circle at 34px 50%, #2B2724 0 5px, #F3E9D6 5.5px 8px, transparent 8.5px) 0 60px / 50px 44px repeat-y, linear-gradient(90deg, rgba(0, 0, 0, .18), transparent 30%, rgba(255, 255, 255, .12) 70%, rgba(0, 0, 0, .28)), url("asset:rouge.webp") 0 0 / 256px;
-  box-shadow: inset -3px 0 0 #8E2A1C, 2px 0 4px rgba(59, 47, 39, .25); }
-[data-skin="pokedex"] .sheet::after { content: ""; position: absolute; left: 3px; top: 10px; width: 44px; height: 44px; pointer-events: none; background: url("asset:st-ball.webp") center / contain no-repeat; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
-[data-skin="pokedex"] .sheet.paper-lines { background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgba(44, 107, 234, .16) 31px 32px), var(--pk-paper); background-size: auto, 512px; background-position: 0 150px, 0 0; }
-[data-skin="pokedex"] .sheet.paper-dots { background-image: radial-gradient(rgba(59, 47, 39, .22) 1px, transparent 1.4px), var(--pk-paper); background-size: 24px 24px, 512px; }
+[data-skin="pokedex"] .sheet { background: none; padding: 58px 96px 120px 104px;
+  border-image: url("asset:nd-classeur.webp") 760 124 160 86 fill / 380px 62px 80px 43px; border-image-repeat: stretch round;
+  border-radius: 24px; box-shadow: 0 30px 40px -26px rgba(40, 24, 12, .5); }
+/* the poké ball before the title, like the concept's note header */
+[data-skin="pokedex"] .sheet::after { content: ""; position: absolute; left: 100px; top: 62px; width: 42px; height: 42px; pointer-events: none; background: url("asset:ball.webp") center / contain no-repeat; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3)); }
+[data-skin="pokedex"] .ntitle { padding-left: 54px; font: 800 44px/1.15 var(--font-ui); letter-spacing: -.01em; }
+[data-skin="pokedex"] .nsub { padding-left: 54px; }
+[data-skin="pokedex"] .sheet.paper-lines { background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgba(44, 107, 234, .16) 31px 32px); background-position: 0 150px; background-clip: content-box; }
+[data-skin="pokedex"] .sheet.paper-dots { background-image: radial-gradient(rgba(59, 47, 39, .22) 1px, transparent 1.4px); background-size: 24px 24px; background-clip: content-box; }
 [data-skin="pokedex"] .ntitle { color: #2E2621; }
 [data-skin="pokedex"] .nsub { color: #8D8477; }
 [data-skin="pokedex"] .nbody { color: #2E2621; caret-color: #D7432F; }
@@ -35,3 +37,30 @@
 [data-skin="pokedex"] .ntool .nb[aria-pressed="true"] { color: #2B2926; background: radial-gradient(circle at 40% 30%, #FFF8DC, #F2D774 85%); box-shadow: 0 0 0 2.5px #E8C34A, 0 0 8px rgba(232, 195, 74, .55); }
 [data-skin="pokedex"] .ntool .nb .i { width: 20px; height: 20px; }
 [data-skin="pokedex"] .ntool .nb:disabled { opacity: .45; }
+
+/* ================= the note cards (Notes, Favoris, spaces): index cards of the "Notédex" concept =================
+   A cream card whose tab is painted in the colour of its space (data-tint from notes.js), the title and date on top,
+   the thumbnail as a print, the space as a #tag and a small poké ball at the foot. */
+[data-skin="pokedex"] .docs { grid-template-columns: repeat(auto-fill, minmax(214px, 1fr)); gap: 18px 16px; }
+[data-skin="pokedex"] .dcard { gap: 8px; padding: 14px 14px 32px 36px; border-image: url("asset:nd-carte-rouge.webp") 76 26 26 36 fill / 38px 13px 13px 18px;
+  filter: drop-shadow(0 6px 8px rgba(59, 47, 39, .22)); transition: transform .15s, filter .15s; }
+[data-skin="pokedex"] .dcard:hover { transform: translateY(-3px) rotate(-.4deg); filter: drop-shadow(0 12px 14px rgba(59, 47, 39, .28)); }
+[data-skin="pokedex"] .dcard[data-tint="bleue"] { border-image-source: url("asset:nd-carte-bleue.webp"); }
+[data-skin="pokedex"] .dcard[data-tint="verte"] { border-image-source: url("asset:nd-carte-verte.webp"); }
+[data-skin="pokedex"] .dcard[data-tint="jaune"] { border-image-source: url("asset:nd-carte-jaune.webp"); }
+[data-skin="pokedex"] .dcard[data-tint="violette"] { border-image-source: url("asset:nd-carte-violette.webp"); }
+[data-skin="pokedex"] .dcard[data-tint="grise"] { border-image-source: url("asset:nd-carte-grise.webp"); }
+[data-skin="pokedex"] .dcard .meta { order: -1; display: grid; grid-template-columns: 1fr; gap: 1px; padding: 0 30px 0 0; }
+[data-skin="pokedex"] .dcard .meta .sdot { display: none; }
+[data-skin="pokedex"] .dcard .meta b { font: 800 15px/1.25 var(--font-ui); color: #2E2621; }
+[data-skin="pokedex"] .dcard .meta small { margin: 0; font-size: 12px; color: #8D8477; }
+[data-skin="pokedex"] .dcard:hover .th { transform: none; box-shadow: none; }
+[data-skin="pokedex"] .dcard .th { border: 0; border-radius: 6px; background: #FFFDF7; box-shadow: inset 0 0 0 1px rgba(59, 47, 39, .12); }
+[data-skin="pokedex"] .dcard .kind { background: rgba(255, 253, 247, .9); color: #5E544A; border-radius: 999px; }
+[data-skin="pokedex"] .dcard .fav { opacity: 1; right: 10px; top: 12px; background: none; color: #8D8477; }
+[data-skin="pokedex"] .dcard .fav[aria-pressed="true"] { color: #E9A91E; }
+[data-skin="pokedex"] .dcard::before { content: attr(data-tag); position: absolute; left: 36px; right: 44px; bottom: 9px; font: 700 12px var(--font-ui); color: #2C6BEA; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+[data-skin="pokedex"] .dcard::after { content: ""; position: absolute; right: 12px; bottom: 7px; width: 20px; height: 20px; pointer-events: none; background: url("asset:ball.webp") center / contain no-repeat; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .3)); }
+[data-skin="pokedex"] .dcard .trashacts { padding: 0; }
+[data-skin="pokedex"] .newcard { aspect-ratio: auto; min-height: 210px; border-radius: 14px; border: 2.5px dashed #CDBFA8; background: rgba(255, 253, 247, .5); color: #8D8477; font-weight: 800; }
+[data-skin="pokedex"] .newcard:hover { border-color: #D7432F; color: #D7432F; background: rgba(255, 253, 247, .85); }
