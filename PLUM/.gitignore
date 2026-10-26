@@ -1,0 +1,4 @@
+PLUM/source/dist/
+PLUM/source/electron/app.asar
+PLUM/source/electron/hub/app/
+node_modules/
