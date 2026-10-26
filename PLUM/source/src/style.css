@@ -137,7 +137,8 @@ kbd { font: 600 10.5px/1 var(--font-ui); padding: 3px 5px; border-radius: 5px; b
 /* ---------- pages (home, lists, tasks) ---------- */
 .page { max-width: 1180px; margin: 0 auto; padding: 28px 28px 120px; padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
 .ph { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.ph h1 { margin: 0; font: 700 44px/1 var(--font-hand); letter-spacing: .2px; text-wrap: balance; }
+/* page titles use the Plum wordmark type (Figtree, as in the sidebar badge) */
+.ph h1 { margin: 0; font: 500 36px/1.1 "Figtree", system-ui, sans-serif; letter-spacing: -.3px; text-wrap: balance; }
 .ph .sub { color: var(--ink-3); margin-top: 6px; font-size: 13.5px; }
 .ph .acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; align-items: start; }
@@ -600,7 +601,7 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
   #top { padding-left: max(8px, env(safe-area-inset-left, 0px)); }
   .tb .lbl { display: none; }
   .page { padding: 20px 16px 110px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .ph h1 { font-size: 38px; }
+  .ph h1 { font-size: 30px; }
   #ai { position: fixed; inset: 0; width: auto; z-index: 260; }
   .nwrap { padding: 0 8px 140px; }
 }
