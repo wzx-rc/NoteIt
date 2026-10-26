@@ -16,14 +16,36 @@ function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h
 const hex2rgb = h => { h = String(h).replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const lum = hex => { const [r, g, b] = hex2rgb(hex).map(c => { c /= 255; return c <= .04045 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
 const isDarkTheme = () => document.documentElement.dataset.resolved === 'dark';
-/* interface style: 'notely' (paper, Excalidraw-like), 'inkspace' (dark chalkboard, worldbuilding look) or 'nature' (anthracite, dry pastel, leaves) */
+/* ================= themes =================
+   Every theme lives in src/themes/<id>/ (theme.js = this manifest, *.css = its look, assets/ = its pictures) and
+   build.mjs adds them all; see src/themes/LISEZMOI.md. The manifest says what CSS cannot: the light/dark mode, the
+   colour sets offered by the colour choosers, icons drawn differently, decoration layers and a few board behaviours.
+   Every key is optional except id and label; a missing key falls back to the base look (THEME_BASE). */
+const THEMES = {};
+const THEME_BASE = {
+  mode: 'user',              // 'user' = Système / Clair / Sombre in Réglages; 'dark' or 'light' = always that one
+  meta: '',                  // <meta name="theme-color">
+  chalk: '#ECEAE5',          // near-black ink drawn on a dark sheet
+  hand: '',                  // near-black handwritten text on a dark sheet ('' = chalk)
+  colors: {},                // swatch sets: ink, hl, stroke, fill, note, mind, space, picker (rows of the colour popup)
+  palettes: [],              // extra palettes in the atelier, { id, tab: 'nature' | 'saisons', name, scene, cols }
+  icons: {},                 // icon name -> SVG markup drawn in a 24×24 box, or { vb: '0 0 w h', svg }
+  decor: [],                 // decoration layers: { at: CSS selector of a lasting element, cls } -> <div class="th-decor cls">
+  ring: 'grain',             // atelier hue ring: 'grain' (fine pastel grain) or 'patches' (touches laid by hand)
+  mindTags: false,           // mindmap: level-2 ideas as tags on a centred curve, level-1 blocks with an icon
+  apply: null                // function (on) called when the theme is put on (true) or taken off (false)
+};
+function defineTheme(t) { THEMES[t.id] = Object.assign({}, THEME_BASE, t, { colors: Object.assign({}, t.colors) }); }
+const themeList = () => Object.values(THEMES).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+/* the skin id is kept in S.prefs.skin and on <html data-skin>; 'notely' (Papier) is the base theme */
 const skin = () => document.documentElement.dataset.skin || 'notely';
-const INKSPACE = () => skin() === 'inkspace';
-const NATURE = () => skin() === 'nature';
+const theme = () => THEMES[skin()] || THEMES.notely || THEME_BASE;
+/* a swatch set of the current theme, else the base one */
+const themeColors = (k, base) => theme().colors[k] || base;
 /* near-black ink reads as chalk on a dark sheet */
-const inkColor = c => isDarkTheme() && lum(c) < .03 ? (INKSPACE() ? '#EDE3D2' : NATURE() ? '#E9DECA' : '#ECEAE5') : c;
-/* handwritten annotations read as warm chalk on the Inkspace board */
-const textColor = (c, hand) => INKSPACE() && lum(c) < .03 ? (hand ? '#F2A46F' : '#EDE3D2') : inkColor(c);
+const inkColor = c => isDarkTheme() && lum(c) < .03 ? theme().chalk : c;
+/* handwritten annotations can take their own chalk colour */
+const textColor = (c, hand) => hand && theme().hand && isDarkTheme() && lum(c) < .03 ? theme().hand : inkColor(c);
 
 /* dates: everything is local YYYY-MM-DD */
 const pad2 = n => String(n).padStart(2, '0');

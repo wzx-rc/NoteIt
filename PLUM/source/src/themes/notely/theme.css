@@ -1,0 +1,10 @@
+/* ================= Papier (id "notely") =================
+   The base look: its colours are the defaults in style.css (:root, light and dark). This file only adds what is
+   specific to it. */
+
+/* preview card in Réglages > UI */
+.sk-notely .skin-pv { background: #F5F3EE radial-gradient(rgba(30,29,27,.18) 1px, transparent 1.4px) 0 0 / 10px 10px; box-shadow: inset 0 0 0 1px #E4E0D7; }
+.sk-notely .skin-pv i:nth-child(1) { left: 12%; top: 22%; width: 26%; height: 44%; background: #FFE58F; }
+.sk-notely .skin-pv i:nth-child(2) { left: 46%; top: 30%; width: 22%; height: 28%; border: 2px solid #1E1E1E; border-radius: 3px; }
+.sk-notely .skin-pv i:nth-child(3) { left: 74%; top: 18%; width: 16%; height: 22%; background: #BFDBF7; }
+.sk-notely .skin-pv i:nth-child(4) { left: 74%; top: 52%; width: 16%; height: 22%; background: #C3E8C1; }

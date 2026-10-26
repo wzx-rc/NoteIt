@@ -158,7 +158,6 @@
 [data-skin="nature"] .vb.ok { background: var(--nt-sel); color: #FBF5E9; }
 
 /* settings card for this style + three columns */
-.skins { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .sk-nature .skin-pv { background: radial-gradient(120% 100% at 45% 35%, #2A2B28, #1A1B19); }
 .sk-nature .skin-pv i:nth-child(1) { left: 8%; top: 18%; width: 52%; height: 64%; border-radius: 7px; background: linear-gradient(160deg, #2E2F2B, #222320); box-shadow: 0 0 0 1px rgba(233,223,201,.12); }
 .sk-nature .skin-pv i:nth-child(2) { left: 16%; top: 30%; width: 24%; height: 14%; border-radius: 4px; background: linear-gradient(#978A77, #827565); box-shadow: 0 0 0 1px rgba(233,223,201,.5); }
@@ -168,7 +167,6 @@
 @media (max-width: 760px) {
   [data-skin="nature"] #app::before, [data-skin="nature"] .card::after { display: none; }
 }
-@media (max-width: 900px) { .skins { grid-template-columns: minmax(0, 1fr); } }
 [data-skin="nature"] :is(.tsub.on, .tchk-r.on) .cb { background: var(--cream); border-color: var(--cream); color: #2A251C; }
 [data-skin="nature"] .tchk .pbar i { background: var(--cream); }
 [data-skin="nature"] .tedit .tchk-r input[type="text"] { background: none; border-color: transparent; }

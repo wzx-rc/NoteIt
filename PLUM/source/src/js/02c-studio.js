@@ -104,9 +104,11 @@ const PAL_SEED = [
   { id: 'p-mountain', tab: 'perso', name: 'Mountain', scene: 'mountain', cols: ['#C8C2BA', '#D9B4A2', '#7E3445', '#B66E6E', '#2F5560', '#3E302A'] },
   { id: 'p-earth', tab: 'perso', name: 'Earth', scene: 'earth', cols: ['#EDE4D3', '#C69C72', '#8E6A4E', '#6B3B2F', '#C7552F', '#4A3A2C', '#B8A07E', '#E2C9A4', '#7B5B3E', '#3B2A20'] }
 ];
+/* the current theme can bring its own palettes */
+const palBuiltin = () => PAL_BUILTIN.concat(theme().palettes || []);
 const PAL_TABS = [['perso', 'Perso'], ['nature', 'Nature'], ['saisons', 'Saisons'], ['projet', 'Projet']];
 function userPals() { const p = studioPrefs(); if (!Array.isArray(p.pals)) { p.pals = JSON.parse(JSON.stringify(PAL_SEED)); } return p.pals; }
-const palById = id => userPals().find(p => p.id === id) || PAL_BUILTIN.find(p => p.id === id) || projectPals().find(p => p.id === id);
+const palById = id => userPals().find(p => p.id === id) || palBuiltin().find(p => p.id === id) || projectPals().find(p => p.id === id);
 const palFaved = pal => pal.fav || (studioPrefs().palFav || []).includes(pal.id);
 /* palettes of the current space: saved ones, and one per moodboard image, read from the picture itself */
 let studioSpace = null;
@@ -216,7 +218,7 @@ function ringCanvas() {
   for (let a = 0; a < 360; a += 1) { x.beginPath(); x.arc(C, C, (R + RI) / 2, (a - .8) * Math.PI / 180, (a + .8) * Math.PI / 180); x.strokeStyle = col(a); x.lineWidth = R - RI - 2; x.stroke(); }
   /* Nature style: the ring of the design pack, 16 touches of pastel laid by hand in a shuffled order, each a little off
      in hue and value, with a ragged inner edge and strokes of the stick inside */
-  if (NATURE()) {
+  if (theme().ring === 'patches') {
     const n = 16, span = 360 / n, order = Array.from({ length: n }, (_, i) => i).sort(() => r() - .5);
     for (const k of order) {
       const mid = k * span + (r() - .5) * 5, w = span * (1.05 + r() * .25), a0 = mid - w / 2, a1 = mid + w / 2, ph = r() * 6, pts = [];
@@ -239,16 +241,16 @@ function ringCanvas() {
     }
   }
   /* short strokes of pastel across the ring */
-  for (let i = 0; i < (NATURE() ? 900 : 4200); i++) {
+  for (let i = 0; i < (theme().ring === 'patches' ? 900 : 4200); i++) {
     const a = r() * 360, rr = RI + 2 + r() * (R - RI - 4), ar = a * Math.PI / 180, L = 2 + r() * 6, t = ar + Math.PI / 2 + (r() - .5) * 1.2;
     const px = C + Math.cos(ar) * rr, py = C + Math.sin(ar) * rr;
     x.globalAlpha = .16 + r() * .3; x.strokeStyle = col(a + (r() - .5) * 10, (r() - .5) * .3, (r() - .55) * .2); x.lineWidth = 1 + r() * 2.2; x.lineCap = 'round';
     x.beginPath(); x.moveTo(px - Math.cos(t) * L / 2, py - Math.sin(t) * L / 2); x.lineTo(px + Math.cos(t) * L / 2, py + Math.sin(t) * L / 2); x.stroke();
   }
-  for (let i = 0, nf = NATURE() ? 500 : 1600; i < nf; i++) { const a = r() * Math.PI * 2, rr = RI + 1 + r() * (R - RI - 2); x.globalAlpha = .05 + r() * .16; x.fillStyle = r() < .65 ? '#FFF8EA' : '#1A1712'; x.fillRect(C + Math.cos(a) * rr, C + Math.sin(a) * rr, .6 + r() * 1.3, .6 + r() * 1.3); }
+  for (let i = 0, nf = theme().ring === 'patches' ? 500 : 1600; i < nf; i++) { const a = r() * Math.PI * 2, rr = RI + 1 + r() * (R - RI - 2); x.globalAlpha = .05 + r() * .16; x.fillStyle = r() < .65 ? '#FFF8EA' : '#1A1712'; x.fillRect(C + Math.cos(a) * rr, C + Math.sin(a) * rr, .6 + r() * 1.3, .6 + r() * 1.3); }
   x.globalAlpha = 1;
   x.globalCompositeOperation = 'destination-out';
-  for (let i = 0, nc = NATURE() ? 260 : 1100; i < nc; i++) { const a = r() * Math.PI * 2, out = r() < .5, rr = out ? R - 2 + r() * 4 : RI - 2 + r() * 4; x.globalAlpha = .5 + r() * .5; x.beginPath(); x.arc(C + Math.cos(a) * rr, C + Math.sin(a) * rr, .6 + r() * 1.8, 0, 7); x.fill(); }
+  for (let i = 0, nc = theme().ring === 'patches' ? 260 : 1100; i < nc; i++) { const a = r() * Math.PI * 2, out = r() < .5, rr = out ? R - 2 + r() * 4 : RI - 2 + r() * 4; x.globalAlpha = .5 + r() * .5; x.beginPath(); x.arc(C + Math.cos(a) * rr, C + Math.sin(a) * rr, .6 + r() * 1.8, 0, 7); x.fill(); }
   x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
   _ring = c; return c;
 }
@@ -596,7 +598,7 @@ const Studio = (() => {
 
   function palettesHTML() {
     const p = P(), tab = p.tab || 'perso';
-    let list = tab === 'perso' ? userPals().filter(x => x.tab === 'perso') : tab === 'projet' ? projectPals() : PAL_BUILTIN.filter(x => x.tab === tab);
+    let list = tab === 'perso' ? userPals().filter(x => x.tab === 'perso') : tab === 'projet' ? projectPals() : palBuiltin().filter(x => x.tab === tab);
     list = list.slice().sort((a, b) => (palFaved(b) ? 1 : 0) - (palFaved(a) ? 1 : 0));
     const cur = color();
     const card = pal => { const mine = userPals().includes(pal); return `<div class="pal${mine ? ' mine' : ''}" data-pal="${pal.id}"><div class="pal-img" style="background-image:url('${palThumb(pal)}')"></div><div class="pal-m"><div class="pal-h"><b>${esc(pal.name)}</b><small>${pal.cols.length}</small><button class="pal-fav" data-pfav="${pal.id}" aria-pressed="${palFaved(pal)}" title="Palette favorite" aria-label="Favorite">${icon('heart', 'sm')}</button></div>

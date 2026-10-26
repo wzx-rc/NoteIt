@@ -1,0 +1,51 @@
+/* ================= Modèle =================
+   Tout ce fichier ne s'applique qu'avec ce thème : chaque règle commence par [data-skin="modele"].
+   Remplacer "modele" par l'id du thème partout (rechercher/remplacer).
+   Une image du dossier assets/ s'écrit url("asset:feuille.svg") : elle est intégrée à l'app au build. */
+
+/* 1. Les couleurs : chaque variable reprend celle du style de base si elle n'est pas redéfinie ici */
+:root[data-skin="modele"] {
+  /* barre latérale */
+  --side: #15171B; --side-2: #1E2026; --side-3: #282A31; --side-line: #262830;
+  --side-text: #EAE4D8; --side-mute: #8A8578;
+  /* pages et cartes */
+  --paper: #1B1D22; --card: #23252B; --sunk: #17191D; --raise: #2A2C33;
+  --line: rgba(234, 228, 216, .09); --line-2: rgba(234, 228, 216, .17);
+  /* textes */
+  --ink: #EAE4D8; --ink-2: #BDB6A8; --ink-3: #868174;
+  /* couleur d'accent (boutons principaux, sélection) */
+  --accent: #7FA36B; --accent-2: #93B67F; --on-accent: #10160D;
+  --accent-soft: rgba(127, 163, 107, .16); --accent-line: rgba(127, 163, 107, .55);
+  /* états */
+  --ok: #7FA36B; --warn: #D9A04A; --err: #C9706A; --info: #6F98BA; --pink: #C97A8C;
+  /* points du board, ombres */
+  --dot: rgba(234, 228, 216, .07);
+  --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 18px 40px -14px rgba(0,0,0,.75);
+  --shadow-note: 0 2px 0 rgba(0,0,0,.25), 0 10px 18px -8px rgba(0,0,0,.7);
+  /* polices (Figtree et Caveat sont intégrées ; une autre police doit être installée sur le PC) */
+  /* --font-ui: ...; --font-hand: ...; */
+  /* barre de titre Windows : gauche = barre latérale, droite = page, symboles des boutons */
+  --tb-l: var(--side); --tb-r: #1B1D22; --tb-sym: var(--ink); --tb-text: var(--side-mute);
+  /* logo Plum : pastille (a, b, bord), feuilles (l1, l2), nervure, texte */
+  --br-a: #262A22; --br-b: #1C1F19; --br-rim: rgba(127,163,107,.18); --br-l1: #D6E6C8; --br-l2: #7FA36B; --br-vein: #1D2119; --br-text: #E6EEDC;
+  color-scheme: dark;
+}
+[data-skin="modele"] body { background: var(--side); }
+
+/* 2. Les composants : n'importe quelle partie de l'interface peut être restylée, par exemple */
+[data-skin="modele"] .card { border-radius: 16px; }
+[data-skin="modele"] .isl { border-radius: 14px; }            /* îlots d'outils du board */
+[data-skin="modele"] .it.note { border-radius: 6px; }         /* post-it */
+
+/* 3. L'habillage (decor dans theme.js) */
+[data-skin="modele"] #side { position: relative; }
+[data-skin="modele"] .th-decor.mod-feuille { left: -20px; bottom: 30px; width: 120px; height: 160px; transform: rotate(18deg);
+  background: url("asset:feuille.svg") center / contain no-repeat; opacity: .6; }
+
+/* 4. L'aperçu dans Réglages > UI (quatre petits blocs <i> sur un fond) */
+.sk-modele .skin-pv { background: radial-gradient(120% 100% at 50% 40%, #23252B, #15171B); }
+.sk-modele .skin-pv i:nth-child(1) { left: 10%; top: 22%; width: 34%; height: 50%; background: #23252B; box-shadow: 0 0 0 1px rgba(234,228,216,.15); }
+.sk-modele .skin-pv i:nth-child(2) { left: 54%; top: 26%; width: 20%; height: 22%; background: #7FA36B; }
+.sk-modele .skin-pv i:nth-child(3) { left: 54%; top: 56%; width: 30%; height: 14%; background: #EAE4D8; }
+.sk-modele .skin-pv i:nth-child(4) { right: -6%; top: -12%; width: 34%; height: 80%; border-radius: 0; background: url("asset:feuille.svg") center / contain no-repeat; }

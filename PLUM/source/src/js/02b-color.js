@@ -21,7 +21,7 @@ const Colors = (() => {
     const p = openPop(anchor, `<div class="cw">
       <div class="cw-top"><canvas class="cw-c" width="${SZ * 2}" height="${SZ * 2}" style="width:${SZ}px;height:${SZ}px" aria-label="Roue des couleurs"></canvas>
         <div class="cw-side"><span class="cw-cur" style="background:${cur}"></span><input class="cw-hex" value="${cur}" maxlength="7" spellcheck="false" aria-label="Code couleur">${o.none ? `<button class="btn sm cw-none">Aucune</button>` : ''}<div class="cw-rec">${recent().map(c => `<button class="sw" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('') || '<small>Vos couleurs récentes apparaîtront ici</small>'}</div></div></div>
-      <div class="cw-pal">${PALETTE.map(r => r.map(c => `<button class="sw" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')).join('')}</div></div>`, { cls: 'cwpop', above: o.above, align: o.align, focus: false });
+      <div class="cw-pal">${themeColors('picker', PALETTE).map(r => r.map(c => `<button class="sw" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')).join('')}</div></div>`, { cls: 'cwpop', above: o.above, align: o.align, focus: false });
     const cv = p.querySelector('.cw-c'), x = cv.getContext('2d'), hexIn = p.querySelector('.cw-hex'), curEl = p.querySelector('.cw-cur');
     const ring = document.createElement('canvas'); ring.width = ring.height = SZ * 2;
     { const rx = ring.getContext('2d'); rx.scale(2, 2); for (let a = 0; a < 360; a += 1.5) { rx.beginPath(); rx.arc(C, C, R, (a - 1.2) * Math.PI / 180, (a + 1.2) * Math.PI / 180); rx.strokeStyle = hsv2hex(a, 1, 1); rx.lineWidth = R - RI; rx.lineCap = 'butt'; rx.stroke(); } }

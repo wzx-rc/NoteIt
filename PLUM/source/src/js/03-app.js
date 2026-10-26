@@ -132,7 +132,7 @@ function spaceMenu(anchor, sp) {
   openPop(anchor, [
     { label: 'Ouvrir', icon: 'folder', run: () => go('space:' + sp.id) },
     { label: 'Renommer', icon: 'text', run: () => renameSpace(sp) },
-    { label: 'Couleur', icon: 'sun', run: () => openPop(anchor, SPACE_COLORS.map(c => ({ label: c === sp.color ? 'Couleur actuelle' : 'Choisir', dot: c, run: () => { sp.color = c; save(); renderSide(); if (R.name === 'space') go(R); } }))) },
+    { label: 'Couleur', icon: 'sun', run: () => openPop(anchor, themeColors('space', SPACE_COLORS).map(c => ({ label: c === sp.color ? 'Couleur actuelle' : 'Choisir', dot: c, run: () => { sp.color = c; save(); renderSide(); if (R.name === 'space') go(R); } }))) },
     '-',
     { label: "Supprimer l'espace", icon: 'trash', danger: true, run: () => deleteSpace(sp) }
   ]);
@@ -702,15 +702,42 @@ function renderSearch(v) {
 
 /* ================= theme, focus, settings ================= */
 const mqDark = matchMedia('(prefers-color-scheme: dark)');
-const SKINS = ['notely', 'inkspace', 'nature'];
+/* the theme (S.prefs.skin, see themes in 00-util.js) sets <html data-skin>; its manifest says whether light/dark is
+   the user's choice, swaps the icons it redraws and adds its decoration layers */
+let themeOn = null;
+const ICON_BASE = {};
+function swapIcons(th) {
+  const names = new Set(Object.values(THEMES).flatMap(t => Object.keys(t.icons || {})));
+  for (const n of names) {
+    const sym = document.getElementById('i-' + n); if (!sym) continue;
+    if (!(n in ICON_BASE)) ICON_BASE[n] = [sym.getAttribute('viewBox'), sym.innerHTML];
+    const o = th.icons[n], [vb, svg] = o ? typeof o === 'string' ? ['0 0 24 24', o] : [o.vb || '0 0 24 24', o.svg] : ICON_BASE[n];
+    if (sym.innerHTML !== svg) { sym.setAttribute('viewBox', vb); sym.innerHTML = svg; }
+  }
+}
+function placeDecor(th) {
+  $$('.th-decor').forEach(d => d.remove());
+  for (const d of th.decor || []) $$(d.at).forEach(host => { const el = document.createElement('div'); el.className = 'th-decor ' + (d.cls || ''); el.setAttribute('aria-hidden', 'true'); host.appendChild(el); });
+}
 function applyTheme() {
-  const sk = S && SKINS.includes(S.prefs.skin) ? S.prefs.skin : 'notely', t = sk !== 'notely' ? 'dark' : S ? S.prefs.theme : 'auto', r = document.documentElement;
+  const sk = S && THEMES[S.prefs.skin] ? S.prefs.skin : 'notely', th = THEMES[sk] || THEME_BASE, r = document.documentElement;
+  const t = th.mode === 'user' ? (S ? S.prefs.theme : 'auto') : th.mode;
+  const prev = themeOn; themeOn = th;
+  if (prev && prev !== th && prev.apply) prev.apply(false);
   r.dataset.skin = sk;
   if (t === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t);
   r.dataset.resolved = t === 'auto' ? (mqDark.matches ? 'dark' : 'light') : t;
+  if (prev !== th) { swapIcons(th); placeDecor(th); if (th.apply) th.apply(true); }
   syncTitleBar(t);
-  const tc = $('meta[name="theme-color"]'); if (tc) tc.content = sk === 'inkspace' ? '#111214' : sk === 'nature' ? '#1B1C1B' : '';
+  const tb = $('#themeBtn'); if (tb) tb.hidden = th.mode !== 'user';
+  const tc = $('meta[name="theme-color"]'); if (tc) tc.content = th.meta || '';
   if (S) { renderSide(); if (R.name === 'doc' && typeof Board !== 'undefined') { Board.retheme(); Note.retheme(); } }
+}
+/* changing theme from Réglages: the old look fades into the new one */
+function switchTheme(id) {
+  if (!THEMES[id] || S.prefs.skin === id) return;
+  const run = () => { S.prefs.skin = id; save(); applyTheme(); };
+  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(run); else run();
 }
 mqDark.addEventListener && mqDark.addEventListener('change', applyTheme);
 /* Windows app: the title bar is drawn here in the skin's colours (sidebar colour on the left, page colour on the right),
@@ -757,9 +784,9 @@ function openSettings(section) {
     <div class="srow"><div class="l"><b>ChatGPT (clé personnelle)</b><small>${AI.keyInfo()}</small></div><button class="btn sm" id="stKey">${icon('key', 'sm')}Configurer</button></div>
     </div>
     <div class="spane" data-pane="ui"${tab === 'ui' ? '' : ' hidden'}>
-    <div class="srow skinrow"><div class="l"><b>Style de l’interface</b><small>Inkspace : tableau noir à la craie. Nature : anthracite, taches de pastel sec et feuillages.</small></div>
-      <div class="skins" id="stSkin">${[['notely', 'Papier', 'Papier clair, esprit Excalidraw'], ['inkspace', 'Inkspace', 'Carnet sombre, tableau à la craie'], ['nature', 'Nature', 'Anthracite, pastel sec et feuilles']].map(([v, l, d]) => `<button class="skin-c sk-${v}" data-v="${v}" aria-pressed="${(p.skin || 'notely') === v}"><span class="skin-pv" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>${l}</b><small>${d}</small></button>`).join('')}</div></div>
-    <div class="srow" id="stThemeRow"${p.skin === 'inkspace' || p.skin === 'nature' ? ' hidden' : ''}><div class="l"><b>Thème</b></div>${seg('stTheme', p.theme, [['auto', 'Système'], ['light', 'Clair'], ['dark', 'Sombre']])}</div>
+    <div class="srow skinrow"><div class="l"><b>Thème</b><small>Couleurs, icônes et habillage de l’interface. Tes données ne changent pas.</small></div>
+      <div class="skins" id="stSkin">${themeList().map(t => `<button class="skin-c sk-${t.id}" data-v="${t.id}" aria-pressed="${theme().id === t.id}"><span class="skin-pv" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>${esc(t.label)}</b><small>${esc(t.desc || '')}</small></button>`).join('')}</div></div>
+    <div class="srow" id="stThemeRow"${theme().mode !== 'user' ? ' hidden' : ''}><div class="l"><b>Clair ou sombre</b></div>${seg('stTheme', p.theme, [['auto', 'Système'], ['light', 'Clair'], ['dark', 'Sombre']])}</div>
     </div>
     <div class="spane" data-pane="board"${tab === 'board' ? '' : ' hidden'}>
     <h5 id="stPenSec" style="margin-top:4px">Stylet et dessin</h5>
@@ -785,7 +812,7 @@ function openSettings(section) {
     $('#stName', m).oninput = e => { p.name = e.target.value.trim(); save(); renderSide(); };
     const segBind = (id, key, after) => { const el = $('#' + id, m); if (!el) return; el.onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; p[key] = b.dataset.v; save(); $$('button', el).forEach(x => x.setAttribute('aria-pressed', x === b)); after && after(); }; };
     segBind('stTheme', 'theme', applyTheme);
-    $('#stSkin', m).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; p.skin = b.dataset.v; save(); $$('[data-v]', $('#stSkin', m)).forEach(x => x.setAttribute('aria-pressed', x === b)); $('#stThemeRow', m).hidden = p.skin !== 'notely'; applyTheme(); }; segBind('stPress', 'pressure'); segBind('stSrc', 'source'); segBind('stWheel', 'wheel');
+    $('#stSkin', m).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; switchTheme(b.dataset.v); $$('[data-v]', $('#stSkin', m)).forEach(x => x.setAttribute('aria-pressed', x === b)); $('#stThemeRow', m).hidden = THEMES[b.dataset.v].mode !== 'user'; }; segBind('stPress', 'pressure'); segBind('stSrc', 'source'); segBind('stWheel', 'wheel');
     $('#stPen', m).onchange = e => { p.autoPen = e.target.checked; save(); };
     $('#stAi', m).onchange = e => { p.aiOn = e.target.checked; save(); applyAi(); };
     $('#stSens', m).oninput = e => { p.sens = +e.target.value; $('#stSensV', m).textContent = Math.round(p.sens * 100) + ' %'; save(); };
