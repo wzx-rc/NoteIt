@@ -4,14 +4,16 @@
    the toolbar is the charcoal rail of the kit with cream keys, the active key yellow like on the board dock;
    checklists take the blue ticks of the todo post-it, quotes become taped post-its. The mascot paints at the foot. */
 [data-skin="pokedex"] .sheet { background: none; padding: 58px 96px 120px 104px;
-  border-image: url("asset:nd-classeur.webp") 760 124 160 86 fill / 380px 62px 80px 43px; border-image-repeat: stretch round;
+  border-image: url("asset:nd-classeur.webp") 760 124 160 86 / 380px 62px 80px 43px; border-image-repeat: stretch round; isolation: isolate;
   border-radius: 24px; box-shadow: 0 30px 40px -26px rgba(40, 24, 12, .5); }
+/* the middle of the page is plain paper (the painted one has a slight top-to-bottom shade, which would step once tiled) */
+[data-skin="pokedex"] .sheet::before { content: ""; position: absolute; z-index: -1; left: 43px; right: 62px; top: 27px; border-radius: 14px 6px 0 0; bottom: 79px; pointer-events: none; background-color: #EFE2D4; }
 /* the poké ball before the title, like the concept's note header */
 [data-skin="pokedex"] .sheet::after { content: ""; position: absolute; left: 100px; top: 62px; width: 42px; height: 42px; pointer-events: none; background: url("asset:ball.webp") center / contain no-repeat; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3)); }
 [data-skin="pokedex"] .ntitle { padding-left: 54px; font: 800 44px/1.15 var(--font-ui); letter-spacing: -.01em; }
 [data-skin="pokedex"] .nsub { padding-left: 54px; }
-[data-skin="pokedex"] .sheet.paper-lines { background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgba(44, 107, 234, .16) 31px 32px); background-position: 0 150px; background-clip: content-box; }
-[data-skin="pokedex"] .sheet.paper-dots { background-image: radial-gradient(rgba(59, 47, 39, .22) 1px, transparent 1.4px); background-size: 24px 24px; background-clip: content-box; }
+[data-skin="pokedex"] .sheet.paper-lines::before { background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgba(44, 107, 234, .16) 31px 32px); background-position: 0 -5px; }
+[data-skin="pokedex"] .sheet.paper-dots::before { background-image: radial-gradient(rgba(59, 47, 39, .22) 1px, transparent 1.4px); background-size: 24px 24px; }
 [data-skin="pokedex"] .ntitle { color: #2E2621; }
 [data-skin="pokedex"] .nsub { color: #8D8477; }
 [data-skin="pokedex"] .nbody { color: #2E2621; caret-color: #D7432F; }
@@ -87,3 +89,4 @@
 [data-skin="pokedex"] .dcard .trashacts { padding: 0; }
 [data-skin="pokedex"] .newcard { aspect-ratio: auto; min-height: 210px; border-radius: 14px; border: 2.5px dashed #CDBFA8; background: rgba(255, 253, 247, .5); color: #8D8477; font-weight: 800; }
 [data-skin="pokedex"] .newcard:hover { border-color: #D7432F; color: #D7432F; background: rgba(255, 253, 247, .85); }
+[data-skin="pokedex"] .nbody ul.chk > li[data-done]::before { background-color: #2E2A26; border-color: #2E2A26; }

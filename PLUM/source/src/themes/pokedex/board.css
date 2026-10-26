@@ -20,23 +20,23 @@
 [data-skin="pokedex"] .tl { color: #3A3631; border-radius: 11px; }
 [data-skin="pokedex"] .tl .i { stroke-width: 2; }
 [data-skin="pokedex"] .tl:hover { background: var(--sunk); color: var(--ink); }
-[data-skin="pokedex"] .tl[aria-pressed="true"] { background: var(--pk-blue); color: #fff; box-shadow: 0 2px 0 #1F4FAE, 0 4px 10px rgba(47, 111, 228, .35); }
+[data-skin="pokedex"] .tl[aria-pressed="true"] { background: #2E2A26; color: #FFF8EA; box-shadow: 0 2px 0 #0E0C0B, 0 4px 10px rgba(47, 111, 228, .35); }
 [data-skin="pokedex"] .isl .zv { font-weight: 800; color: var(--ink-2); }
 [data-skin="pokedex"] .bhint { background: #fff; color: var(--ink); border-radius: 12px; font-weight: 700; box-shadow: var(--pk-float); }
 
 @media (min-width: 761px) {
   /* the tools float as one block: the main bar (charcoal rail with cream keys and the poké ball grip) and under it a
      smaller bar with the options of the chosen tool; drag the ball to move them anywhere on the board */
-  [data-skin="pokedex"] .tdock { display: flex; flex-direction: column; align-items: center; gap: 6px; position: absolute; z-index: 21; top: 14px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 28px); }
+  [data-skin="pokedex"] .tdock { display: block; position: absolute; z-index: 21; top: 14px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 28px); }
   [data-skin="pokedex"] .bwrap.props-open .tdock:not(.moved) { left: calc((100% - var(--props-w) - 12px) / 2); }
   [data-skin="pokedex"] .tdock.moved { transform: none; }
   [data-skin="pokedex"] .tdock.dragging { opacity: .92; }
-  [data-skin="pokedex"] .tdock .trow { display: flex; align-items: center; max-width: 100%; padding: 5px 10px 5px 6px; gap: 6px; border-radius: 30px;
+  [data-skin="pokedex"] .tdock .trow { display: flex; align-items: center; max-width: 100%; padding: 1px 8px 1px 6px; gap: 6px; border-radius: 30px;
     background: linear-gradient(#45403B, #2A2724); border: 2px solid #1E1B18; box-shadow: inset 0 1px rgba(255, 255, 255, .14), 0 12px 18px -8px rgba(40, 24, 12, .55); }
   [data-skin="pokedex"] .tgrip { display: block; flex: none; width: 40px; height: 40px; border-radius: 50%; cursor: grab; touch-action: none; background: url("asset:ball.webp") center / contain no-repeat; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); }
   [data-skin="pokedex"] .tdock.dragging .tgrip { cursor: grabbing; }
-  [data-skin="pokedex"] .bwrap:is(*, .props-open, .drawing) .tdock .isl { position: static; transform: none; left: auto; top: auto; }
-  [data-skin="pokedex"] .bwrap:is(*, .props-open, .drawing) .isl.tools { flex-direction: row; gap: 3px; padding: 0; max-width: none; overflow-x: auto; background: none; border: 0; box-shadow: none; }
+  [data-skin="pokedex"] .bwrap:is(*, .props-open, .drawing) .tdock .trow .isl { position: static; transform: none; left: auto; top: auto; }
+  [data-skin="pokedex"] .bwrap:is(*, .props-open, .drawing) .isl.tools { flex-direction: row; gap: 3px; padding: 5px 4px; max-width: none; overflow-x: auto; background: none; border: 0; box-shadow: none; }
   [data-skin="pokedex"] .isl.tools .tl { width: 38px; height: 38px; flex: none; margin: 0; border-radius: 50%; color: #3A3631; background: radial-gradient(circle at 40% 32%, #FFFBF2, #E6DCCB 75%); box-shadow: inset 0 -2px 0 rgba(90, 70, 50, .25), 0 2px 3px rgba(0, 0, 0, .4); }
   [data-skin="pokedex"] .isl.tools .tl .i { width: 24px; height: 24px; }
   [data-skin="pokedex"] .isl.tools .tl:hover { background: radial-gradient(circle at 40% 32%, #fff, #EFE6D6 75%); color: #2B2926; }
@@ -44,7 +44,7 @@
   [data-skin="pokedex"] .isl.tools .tl kbd, [data-skin="pokedex"] .isl.tools .tl .k { display: none; }
   [data-skin="pokedex"] .isl.tools .vs { width: 1px; height: 24px; margin: 0 4px; background: rgba(255, 255, 255, .18); }
   /* the options bar: smaller, cream, under the rail */
-  [data-skin="pokedex"] .topts:not([hidden]) { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 100%; padding: 4px 10px; border-radius: 20px;
+  [data-skin="pokedex"] .topts:not([hidden]) { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); width: max-content; max-width: min(1000px, calc(100vw - 80px)); display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 4px 10px; border-radius: 20px;
     background: #FFFDF6 var(--pk-paper) 0 0 / 300px; border: 2px solid #3E332B; box-shadow: 0 3px 0 #CDBFA8, 0 10px 16px -10px rgba(40, 24, 12, .45); }
   [data-skin="pokedex"] .topts .vs { width: 1px; height: 20px; margin: 0 3px; background: #D9CDB8; }
   [data-skin="pokedex"] .topts .seg { background: none; padding: 0; gap: 2px; border: 0; }
@@ -65,7 +65,7 @@
 }
 /* "Style" is the blue action button of the bar, like "Partager" on the concept */
 [data-skin="pokedex"] .isl.tr { padding: 0; border: 0; background: none; box-shadow: none; }
-[data-skin="pokedex"] .isl.tr .tl { height: 40px; padding: 0 16px 0 13px; border-radius: 13px; background: var(--pk-blue); color: #fff; font-weight: 800; font-size: 13.5px; box-shadow: 0 2px 0 #1F4FAE, 0 8px 18px -6px rgba(47, 111, 228, .6); }
+[data-skin="pokedex"] .isl.tr .tl { height: 40px; padding: 0 16px 0 13px; border-radius: 13px; background: var(--pk-red); color: #fff; font-weight: 800; font-size: 13.5px; box-shadow: 0 2px 0 #1F4FAE, 0 8px 18px -6px rgba(47, 111, 228, .6); }
 [data-skin="pokedex"] .isl.tr .tl:hover { background: var(--accent-2); }
 
 /* the panel on the right: white, pill tabs, the active one blue */
@@ -75,19 +75,17 @@
 [data-skin="pokedex"] .phead { gap: 6px; padding: 8px 8px 10px 56px; border-bottom: 0; gap: 3px; }
 [data-skin="pokedex"] .ptab { height: 32px; padding: 0 10px; border-radius: 10px; border: 0; margin: 0; color: var(--ink-2); font-weight: 700; }
 [data-skin="pokedex"] .ptab:hover { background: var(--sunk); }
-[data-skin="pokedex"] .ptab[aria-pressed="true"] { background: var(--pk-blue); color: #fff; box-shadow: 0 2px 0 #1F4FAE; }
+[data-skin="pokedex"] .ptab[aria-pressed="true"] { background: var(--pk-red); color: #fff; box-shadow: 0 2px 0 #9E2A1B; }
 [data-skin="pokedex"] .ps-l { font: 800 13px/1.2 var(--font-ui); letter-spacing: 0; text-transform: none; color: var(--ink); }
 [data-skin="pokedex"] .ps-l b { font: 700 12px var(--font-ui); }
 /* in the panel, the brush settings are light: the previews are drawn in dark ink (atlInk) */
 [data-skin="pokedex"] .props .bp-pv { background: var(--pk-screen); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
 
 /* ================= board items, painted like the PokeBoard sheet =================
-   The pk-paint filter (theme.js puts its <svg> in the page) roughens outlines like a brush; the default near-black
+   Outlines stay crisp vectors at every zoom (the user found the brush filter pixelated); the default near-black
    ink becomes the warm ink of the sheet; sticky notes and todo lists are taped post-its; frames are pencilled
    zones with a hand title; mindmap blocks are pastel cards; pictures get a white print border. */
 [data-skin="pokedex"] { --pk-ink: #3B2F27; --pk-tape: rgba(236, 222, 190, .82); }
-[data-skin="pokedex"] .it.shape svg.sh { filter: url(#pk-paint); }
-[data-skin="pokedex"] .edges g[data-conn] { filter: url(#pk-line); }
 [data-skin="pokedex"] .it.shape svg.sh path[stroke="#1E1E1E"] { stroke: var(--pk-ink); }
 [data-skin="pokedex"] .edges g[data-conn][style*="#1E1E1E"] { color: var(--pk-ink) !important; }
 [data-skin="pokedex"] .it.text .txt[style*="color:#1E1E1E"], [data-skin="pokedex"] .it.shape .txt[style*="color:#1E1E1E"] { color: var(--pk-ink) !important; }
@@ -134,3 +132,4 @@
 [data-skin="pokedex"] .it.image.shadow { border-radius: 10px; background: #fff; padding: 5px; box-shadow: 0 1px 2px rgba(59, 47, 39, .2), 0 10px 18px -8px rgba(59, 47, 39, .45); }
 [data-skin="pokedex"] .it.image.shadow img { border-radius: 6px; }
 [data-skin="pokedex"] .ntool { border-radius: 16px; box-shadow: var(--pk-float); }
+[data-skin="pokedex"] .sw[aria-pressed="true"] { box-shadow: 0 0 0 2px #FFF8EA, 0 0 0 3.5px #2E2A26; }

@@ -77,13 +77,7 @@ defineTheme({
     wheel: '<circle cx="12" cy="12" r="9" fill="#FBF7EE" stroke-width="1.6"/><path d="M12 3a9 9 0 0 1 9 9h-9z" fill="#D7432F" stroke="none"/><path d="M21 12a9 9 0 0 1-9 9v-9z" fill="#2C6BEA" stroke="none"/><path d="M12 21a9 9 0 0 1-9-9h9z" fill="#4E9A5B" stroke="none"/><path d="M3 12a9 9 0 0 1 9-9v9z" fill="#F2C230" stroke="none"/><circle cx="12" cy="12" r="3.6" fill="#FBF7EE" stroke-width="1.6"/><circle cx="12" cy="12" r="9" fill="none" stroke-width="1.6"/>'
   },
   decor: [{ at: 'body', cls: 'pk-land' }],
-  /* the brush filter of the board items (board.css: filter: url(#pk-paint)) */
-  apply(on) {
-    const old = document.getElementById('pk-defs'); if (old) old.remove();
-    if (!on) return;
-    const d = document.createElement('div'); d.id = 'pk-defs'; d.setAttribute('aria-hidden', 'true'); d.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
-    d.innerHTML = '<svg width="0" height="0"><filter id="pk-paint" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter><filter id="pk-line" filterUnits="userSpaceOnUse" x="-20000" y="-20000" width="60000" height="60000"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter></svg>';
-    document.body.appendChild(d);
-  },
+  /* the brush filter of earlier versions is gone: board items stay crisp vectors; drop its leftover defs */
+  apply() { const old = document.getElementById('pk-defs'); if (old) old.remove(); },
   ring: 'patches'
 });
