@@ -174,3 +174,5 @@
 [data-skin="nature"] .sort-ghost { background: var(--nt-panel); border: 1px solid rgba(233,223,201,.12); }
 [data-skin="nature"] .tw.completing .cb { background: var(--cream); border-color: var(--cream); color: #2A251C; }
 [data-skin="nature"] .tthumb { border-color: rgba(233,223,201,.1); }
+[data-skin="nature"] .sort-ghost.blk { border-radius: 20px; padding: 8px 10px; }
+[data-skin="nature"] .sort-ghost.blk .tlist { background: none; border: 0; box-shadow: none; }
