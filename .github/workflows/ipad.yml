@@ -1,9 +1,7 @@
 name: Build iPad (.ipa non signé)
 
+# Manuel uniquement : Actions > Build iPad > Run workflow.
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 jobs:
