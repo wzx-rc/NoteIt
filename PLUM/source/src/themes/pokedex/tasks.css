@@ -1,0 +1,31 @@
+/* ================= Pokédex : the task page =================
+   Each space is a red casing of the kit (cadre.webp) with its name in felt pen beside the painted ball badge and a
+   poké ball in the space colour; rows are separated by pencil dashes and ticked in blue like the todo post-it.
+   The quick-add field is a cream screen with a charcoal rim, the filters are pills (blue when chosen) and the mascot
+   waves beside the title. */
+[data-skin="pokedex"] .page:has(#tGroups) .ph { position: relative; }
+[data-skin="pokedex"] .page:has(#tGroups) .ph::after { content: ""; position: absolute; right: 6px; top: -14px; width: 104px; height: 100px; pointer-events: none; background: url("asset:mascotte-salut.webp") center / contain no-repeat; filter: drop-shadow(0 6px 6px rgba(59, 47, 39, .3)); }
+[data-skin="pokedex"] .qadd { height: 48px; border-radius: 18px; border: 2.5px solid #3A2E26; background: #FFFDF6 var(--pk-paper) 0 0 / 300px; box-shadow: inset 0 2px 4px rgba(80, 52, 30, .12), 0 3px 0 #CDBFA8; }
+[data-skin="pokedex"] .qadd:focus-within { border-color: #2C6BEA; box-shadow: inset 0 2px 4px rgba(80, 52, 30, .12), 0 3px 0 #CDBFA8, 0 0 0 4px rgba(44, 107, 234, .18); }
+[data-skin="pokedex"] .qadd > .i:first-child { width: 26px; height: 26px; padding: 5px; border-radius: 50%; color: #fff; background: #D7432F; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .2); }
+[data-skin="pokedex"] .fchip { border-radius: 999px; font-weight: 700; background: #FFFDF6; border: 1.5px solid #D9CDB8; box-shadow: 0 2px 0 #D9CDB8; color: #3A2E26; }
+[data-skin="pokedex"] .fchip[aria-pressed="true"] { background: #2F6FE4; border-color: #2F6FE4; color: #fff; box-shadow: 0 2px 0 #1F4FAE; }
+[data-skin="pokedex"] .fchip[aria-pressed="true"] .n { color: rgba(255, 255, 255, .75); }
+
+[data-skin="pokedex"] #tGroups .tgroup { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 18px 28px 28px 34px; border-image: url("asset:cadre.webp") 126 76 72 142 fill / 63px 38px 36px 71px; filter: drop-shadow(0 10px 12px rgba(40, 24, 12, .25)); }
+[data-skin="pokedex"] #tGroups .tgroup > h3 { display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 0 0 4px; padding-left: 44px; font: 700 22px/1.1 var(--font-hand); color: #2E2621; }
+[data-skin="pokedex"] .tgroup h3 small { font: 700 12px var(--font-ui); color: #8D8477; }
+/* the space dot becomes a poké ball in the space colour */
+[data-skin="pokedex"] .sdot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #2B2724; box-sizing: border-box;
+  background-image: radial-gradient(circle, #FFFDF6 0 2px, #2B2724 2.3px 3.6px, transparent 3.9px), linear-gradient(transparent 0 43%, #2B2724 43% 57%, #F6F0E4 57%) !important; }
+[data-skin="pokedex"] .tgroup .tlist { background: none; border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+[data-skin="pokedex"] .tgroup .tw + .tw { border-top: 1.5px dashed rgba(59, 47, 39, .22); }
+[data-skin="pokedex"] .trow .tt { font-weight: 600; color: #2E2621; }
+[data-skin="pokedex"] .cb { width: 22px; height: 22px; border: 2px solid #2C6BEA; border-radius: 7px; background: #FFFDF6; }
+[data-skin="pokedex"] .cb:hover { background: #E8F0FD; border-color: #2C6BEA; }
+[data-skin="pokedex"] .cb[aria-checked="true"], [data-skin="pokedex"] .tw.completing .cb { background: #2C6BEA; border-color: #2C6BEA; color: #fff; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .18); }
+[data-skin="pokedex"] .cb.sm { width: 17px; height: 17px; border-radius: 5px; }
+[data-skin="pokedex"] .chip.late { background: #FBE1DC; color: #C23A27; }
+[data-skin="pokedex"] .chip.today { background: #E3ECFC; color: #2259C4; }
+[data-skin="pokedex"] .chip.soon { background: #FDF0CC; color: #A9740F; }
+[data-skin="pokedex"] .donegrp > .tlist { background: #FFFDF6; border: 1.5px dashed #D9CDB8; border-radius: 16px; }

@@ -24,7 +24,7 @@ function pkWheel(el, o) {
     ${side.length ? `<div class="pkw-rail">${side.map(b => `<button class="pkw-b" data-rb="${b[0]}" title="${b[2]}" aria-label="${b[2]}">${icon(b[1])}</button>`).join('')}<span class="pkw-dots" aria-hidden="true"></span></div>` : ''}
     <button class="pkw-cur" title="Couleur actuelle : cliquez pour le code, glissez-la sur une palette" aria-label="Code couleur" draggable="true"><i></i></button>
     <button class="pkw-star" data-pkstar="1" title="Garder la couleur actuelle dans les favoris" aria-label="Favori">${PKW_IMG('asset:etoile.webp')}</button>
-    <div class="pkw-screen"><span class="pkw-lf a">${PKW_IMG('asset:feuille-a.webp')}</span><span class="pkw-lf b">${PKW_IMG('asset:feuille-b.webp')}</span>
+    <div class="pkw-screen"><span class="pkw-lf a">${PKW_IMG('asset:st-myrtille.webp')}</span><span class="pkw-lf b">${PKW_IMG('asset:st-framboise.webp')}</span>
       <div class="pkw-h">Récentes</div><div class="pkw-g pkw-rec"></div>
       <div class="pkw-h">Favoris</div><div class="pkw-g pkw-fav"></div></div>`;
   const cv = $('.pkw-c', el), x = cv.getContext('2d'), recEl = $('.pkw-rec', el), favEl = $('.pkw-fav', el), curEl = $('.pkw-cur', el), starEl = $('.pkw-star', el);

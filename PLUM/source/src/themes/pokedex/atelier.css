@@ -20,8 +20,10 @@
 [data-skin="pokedex"] .atl-card { background: none; border: 0; border-radius: 0; padding: 20px 26px 26px 30px; color: var(--a-ink); box-shadow: none;
   border-image: url("asset:cadre.webp") 126 76 72 142 fill / 63px 38px 36px 71px; filter: drop-shadow(0 14px 14px rgba(40, 24, 12, .35)); }
 [data-skin="pokedex"] .atl-card::before { display: none; }
-[data-skin="pokedex"] :is(.c-palettes, .c-brush, .c-variations)::after { content: ""; position: absolute; right: -10px; top: -16px; width: 44px; height: 44px; z-index: 5; pointer-events: none; background: url("asset:feuille-c.webp") center / contain no-repeat; transform: rotate(8deg); }
-[data-skin="pokedex"] .c-variations::after { background-image: url("asset:feuille-b.webp"); }
+/* painted stickers of the kit pinned on some devices (instead of the Nature leaves) */
+[data-skin="pokedex"] :is(.c-palettes, .c-brush, .c-variations)::after { content: ""; position: absolute; right: -14px; top: -18px; width: 46px; height: 46px; z-index: 5; pointer-events: none; background: url("asset:st-framboise.webp") center / contain no-repeat; transform: rotate(10deg); filter: drop-shadow(0 3px 3px rgba(40, 24, 12, .3)); }
+[data-skin="pokedex"] .c-brush::after { background-image: url("asset:etoile.webp"); transform: rotate(-8deg); }
+[data-skin="pokedex"] .c-variations::after { background-image: url("asset:st-myrtille.webp"); }
 [data-skin="pokedex"] .atl-card header { margin: 0 0 8px; height: 40px; padding: 0 0 0 44px; gap: 8px; }
 [data-skin="pokedex"] .ch-t { font: 700 20px/1 var(--font-hand); letter-spacing: 0; text-transform: none; color: #2B2926; text-shadow: none; }
 [data-skin="pokedex"] .ch-b { color: #8D8477; }
