@@ -252,6 +252,12 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .sheet-m { width: min(560px, 100%); max-height: min(88vh, 860px); overflow: auto; background: var(--card); border-radius: 18px; box-shadow: var(--shadow-2); padding: 20px 22px 22px; }
 .sheet-m h2 { margin: 0; font-size: 18px; }
 .sheet-m .mhd { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+/* Réglages tabs */
+.stabs { display: flex; gap: 4px; padding: 3px; margin: 0 0 14px; border-radius: 11px; background: var(--sunk, var(--raise)); border: 1px solid var(--line); }
+.stabs button { flex: 1; height: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; color: var(--ink-2); }
+.stabs button:hover { color: var(--ink); }
+.stabs button[aria-selected="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-1); }
+.spane { min-height: 340px; }
 .sheet-m h5 { margin: 18px 0 8px; font-size: 11.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-3); }
 .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--sunk); gap: 2px; flex-wrap: wrap; }
 .seg button { height: 30px; padding: 0 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
