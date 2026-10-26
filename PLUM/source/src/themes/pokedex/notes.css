@@ -29,14 +29,37 @@
 [data-skin="pokedex"] .npad { position: relative; }
 [data-skin="pokedex"] .npad::after { content: ""; position: absolute; right: -46px; bottom: -90px; width: 118px; height: 118px; pointer-events: none; background: url("asset:mascotte-pinceau.webp") center / contain no-repeat; filter: drop-shadow(0 6px 6px rgba(59, 47, 39, .3)); }
 
-/* the toolbar: charcoal rail, cream keys */
-[data-skin="pokedex"] .ntool { padding: 6px 8px; gap: 5px; border-radius: 22px; background: linear-gradient(#3E3A36, #2A2724); border: 2px solid #1E1B18; box-shadow: inset 0 1px rgba(255, 255, 255, .12), 0 10px 18px -8px rgba(40, 24, 12, .55); }
-[data-skin="pokedex"] .ntool .vs { background: rgba(255, 255, 255, .18); }
-[data-skin="pokedex"] .ntool .nb { height: 34px; min-width: 34px; border-radius: 17px; color: #3A3631; background: radial-gradient(circle at 40% 30%, #FFFBF2, #E6DCCB 80%); box-shadow: inset 0 -2px 0 rgba(90, 70, 50, .25), 0 2px 2px rgba(0, 0, 0, .35); }
-[data-skin="pokedex"] .ntool .nb:hover { color: #2B2926; background: radial-gradient(circle at 40% 30%, #fff, #EFE6D6 80%); }
-[data-skin="pokedex"] .ntool .nb[aria-pressed="true"] { color: #2B2926; background: radial-gradient(circle at 40% 30%, #FFF8DC, #F2D774 85%); box-shadow: 0 0 0 2.5px #E8C34A, 0 0 8px rgba(232, 195, 74, .55); }
-[data-skin="pokedex"] .ntool .nb .i { width: 20px; height: 20px; }
+/* the toolbars live in the binder: the main tools are cream keys set into the painted holes of the grey rail
+   (centres 40.5 px from the right edge, every 40.5 px from 90.5 px), the options of the chosen tool are a smaller
+   charcoal bar at the head of the page. Both follow the page while it scrolls. */
+[data-skin="pokedex"] .nwrap { grid-template-columns: min(820px, 100%); justify-content: center; }
+[data-skin="pokedex"] .ntool { display: contents; }
+[data-skin="pokedex"] .ntool .nt-main, [data-skin="pokedex"] .ntool .nt-opts { grid-area: 1 / 1; position: sticky; z-index: 25; align-self: start; }
+[data-skin="pokedex"] .ntool .nt-main { display: flex; flex-direction: column; gap: 6.5px; justify-self: end; top: 14px; margin: 91.5px 23.5px 0 0; }
+[data-skin="pokedex"] .ntool .nt-main .grp { flex-direction: column; gap: 6.5px; }
+[data-skin="pokedex"] .ntool .nt-main .vs { display: none; }
+[data-skin="pokedex"] .ntool .nt-main .nb { width: 34px; height: 34px; min-width: 0; padding: 0; border-radius: 50%; justify-content: center; color: #3A3631;
+  background: radial-gradient(circle at 40% 30%, #FFFBF2, #E3D9C8 80%); box-shadow: inset 0 -2px 0 rgba(90, 70, 50, .28), 0 0 0 2px #6E6862, 0 2px 3px rgba(0, 0, 0, .35); }
+[data-skin="pokedex"] .ntool .nt-main .nb .lbl { display: none; }
+[data-skin="pokedex"] .ntool .nt-main .nb:hover { background: radial-gradient(circle at 40% 30%, #fff, #EFE6D6 80%); }
+[data-skin="pokedex"] .ntool .nt-main .nb[aria-pressed="true"] { background: radial-gradient(circle at 40% 30%, #FFF8DC, #F2D774 85%); box-shadow: 0 0 0 2.5px #D9A92A, 0 0 10px rgba(232, 195, 74, .7); }
+[data-skin="pokedex"] .ntool .nt-main .nb .i { width: 18px; height: 18px; }
+[data-skin="pokedex"] .ntool .nt-opts { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 3px; justify-self: center; top: 10px; margin: 52px 70px 0 52px; max-width: 690px;
+  padding: 4px 8px; border-radius: 18px; background: linear-gradient(#3E3A36, #2A2724); border: 2px solid #1E1B18; box-shadow: inset 0 1px rgba(255, 255, 255, .12), 0 8px 14px -8px rgba(40, 24, 12, .55); }
+[data-skin="pokedex"] .ntool .nt-opts .vs { background: rgba(255, 255, 255, .18); height: 18px; margin: 0 3px; }
+[data-skin="pokedex"] .ntool .nt-opts .nb { height: 28px; min-width: 28px; padding: 0 4px; border-radius: 14px; color: #3A3631; background: radial-gradient(circle at 40% 30%, #FFFBF2, #E6DCCB 80%); box-shadow: inset 0 -2px 0 rgba(90, 70, 50, .25), 0 2px 2px rgba(0, 0, 0, .35); }
+[data-skin="pokedex"] .ntool .nt-opts .nb:hover { background: radial-gradient(circle at 40% 30%, #fff, #EFE6D6 80%); }
+[data-skin="pokedex"] .ntool .nt-opts .nb[aria-pressed="true"] { background: radial-gradient(circle at 40% 30%, #FFF8DC, #F2D774 85%); box-shadow: 0 0 0 2px #E8C34A, 0 0 6px rgba(232, 195, 74, .55); }
+[data-skin="pokedex"] .ntool .nt-opts .nb .i { width: 16px; height: 16px; }
+[data-skin="pokedex"] .ntool .nt-opts .nb .txt { font-size: 12px; }
+[data-skin="pokedex"] .ntool .nt-opts .sw { width: 20px; height: 20px; }
+[data-skin="pokedex"] .ntool .nt-opts .pchip { height: 28px; }
 [data-skin="pokedex"] .ntool .nb:disabled { opacity: .45; }
+[data-skin="pokedex"] .sheet { grid-area: 1 / 1; margin-top: 18px; padding-top: 96px; }
+[data-skin="pokedex"] [data-focus] .sheet { margin-top: 64px; }
+[data-skin="pokedex"] [data-focus] .ntool .nt-main { margin-top: 137.5px; }
+[data-skin="pokedex"] .sheet::after { top: 100px; }
+[data-skin="pokedex"] [data-focus] .ntool .nt-opts { margin-top: 98px; }
 
 /* ================= the note cards (Notes, Favoris, spaces): index cards of the "Notédex" concept =================
    A cream card whose tab is painted in the colour of its space (data-tint from notes.js), the title and date on top,
