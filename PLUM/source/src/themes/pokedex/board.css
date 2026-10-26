@@ -10,7 +10,7 @@
 [data-skin="pokedex"] .bwrap::before, [data-skin="pokedex"] .bwrap::after { content: ""; position: absolute; bottom: 0; width: min(34%, 460px); height: min(42%, 340px); z-index: 19; pointer-events: none;
   background: var(--pk-land) left bottom / 1100px auto no-repeat;
   -webkit-mask-image: radial-gradient(ellipse 100% 100% at 0 100%, #000 45%, transparent 72%); mask-image: radial-gradient(ellipse 100% 100% at 0 100%, #000 45%, transparent 72%); }
-[data-skin="pokedex"] .bwrap::before { left: 0; }
+[data-skin="pokedex"] .bwrap::before { left: 0; background: url("asset:mascotte-dos.webp") 84px calc(100% - 66px) / 104px auto no-repeat, var(--pk-land) left bottom / 1100px auto no-repeat; }
 [data-skin="pokedex"] .bwrap::after { right: 0; background-position: right bottom;
   -webkit-mask-image: radial-gradient(ellipse 100% 100% at 100% 100%, #000 45%, transparent 72%); mask-image: radial-gradient(ellipse 100% 100% at 100% 100%, #000 45%, transparent 72%); }
 [data-skin="pokedex"] .bwrap.props-open::after { right: calc(var(--props-w) + 14px); width: min(22%, 260px); }
@@ -25,12 +25,16 @@
 [data-skin="pokedex"] .bhint { background: #fff; color: var(--ink); border-radius: 12px; font-weight: 700; box-shadow: var(--pk-float); }
 
 @media (min-width: 761px) {
-  /* the tool dock runs down the left side */
-  [data-skin="pokedex"] .bwrap:is(*, .props-open, .drawing) .isl.tools { left: 14px; top: 14px; transform: none; flex-direction: column; gap: 4px; padding: 7px 6px 10px; max-width: none; max-height: calc(100% - 28px); overflow-x: hidden; overflow-y: auto; border-radius: 18px; }
-  [data-skin="pokedex"] .isl.tools .tl { width: 42px; height: 42px; flex: none; }
-  [data-skin="pokedex"] .isl.tools .tl .i { width: 21px; height: 21px; }
-  [data-skin="pokedex"] .isl.tools .vs { width: 26px; height: 1px; margin: 3px 0; }
-  [data-skin="pokedex"] .isl.tools::after { content: ""; flex: none; width: 34px; height: 34px; margin-top: 8px; border-radius: 50%; background: var(--pk-ball); box-shadow: 0 0 0 2px #2D2B29, 0 3px 5px rgba(40, 30, 20, .3); }
+  /* the tool dock is the kit's charcoal rail, its poké ball on top (rail.webp), down the left side */
+  [data-skin="pokedex"] .bwrap:is(*, .props-open, .drawing) .isl.tools { left: 14px; top: 14px; transform: none; flex-direction: column; gap: 3px; padding: 66px 9px 34px; max-width: none; max-height: calc(100% - 28px); overflow-x: hidden; overflow-y: auto;
+    width: 62px; box-sizing: border-box; background: none; border: 0; border-radius: 0; box-shadow: none; border-image: url("asset:rail.webp") 116 0 66 0 fill / 58px 0 33px 0; filter: drop-shadow(0 10px 12px rgba(40, 24, 12, .4)); }
+  /* each tool is a cream key on the rail, so the painted stickers read as on the kit */
+  [data-skin="pokedex"] .isl.tools .tl { width: 40px; height: 40px; flex: none; margin: 1px 0; border-radius: 50%; color: #3A3631; background: radial-gradient(circle at 40% 32%, #FFFBF2, #E6DCCB 75%); box-shadow: inset 0 -2px 0 rgba(90, 70, 50, .25), 0 2px 3px rgba(0, 0, 0, .4); }
+  [data-skin="pokedex"] .isl.tools .tl .i { width: 25px; height: 25px; }
+  [data-skin="pokedex"] .isl.tools .tl:hover { background: radial-gradient(circle at 40% 32%, #fff, #EFE6D6 75%); color: #2B2926; }
+  [data-skin="pokedex"] .isl.tools .tl[aria-pressed="true"] { background: radial-gradient(circle at 40% 32%, #FFF8DC, #F2D774 80%); color: #2B2926; box-shadow: 0 0 0 3px #E8C34A, 0 0 10px rgba(232, 195, 74, .6); }
+  [data-skin="pokedex"] .isl.tools .tl kbd, [data-skin="pokedex"] .isl.tools .tl .k { color: rgba(237, 230, 217, .55); }
+  [data-skin="pokedex"] .isl.tools .vs { width: 30px; height: 1px; margin: 4px 0; background: rgba(255, 255, 255, .16); }
   [data-skin="pokedex"][data-focus] .isl.tools { top: 14px; }
   /* zoom and undo beside the dock, at the bottom */
   [data-skin="pokedex"] .isl.bl { left: 80px; bottom: 14px; }
@@ -45,9 +49,11 @@
 [data-skin="pokedex"] .isl.tr .tl:hover { background: var(--accent-2); }
 
 /* the panel on the right: white, pill tabs, the active one blue */
-[data-skin="pokedex"] .props { top: 14px; right: 14px; bottom: 14px; background: var(--pk-panel); border: 1px solid var(--pk-panel-line); border-radius: 20px; box-shadow: var(--pk-float); }
-[data-skin="pokedex"] .phead { gap: 6px; padding: 12px 10px 10px 12px; border-bottom: 0; }
-[data-skin="pokedex"] .ptab { height: 32px; padding: 0 13px; border-radius: 10px; border: 0; margin: 0; color: var(--ink-2); font-weight: 700; }
+[data-skin="pokedex"] .props { top: 14px; right: 14px; bottom: 14px; background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; padding: 14px 18px 22px 14px;
+  border-image: url("asset:cadre-lens.webp") 140 40 50 140 fill / 70px 20px 25px 70px; filter: drop-shadow(0 12px 14px rgba(40, 24, 12, .35)); }
+[data-skin="pokedex"] .props > :not(.phead) { overflow: auto; }
+[data-skin="pokedex"] .phead { gap: 6px; padding: 8px 8px 10px 56px; border-bottom: 0; gap: 3px; }
+[data-skin="pokedex"] .ptab { height: 32px; padding: 0 10px; border-radius: 10px; border: 0; margin: 0; color: var(--ink-2); font-weight: 700; }
 [data-skin="pokedex"] .ptab:hover { background: var(--sunk); }
 [data-skin="pokedex"] .ptab[aria-pressed="true"] { background: var(--pk-blue); color: #fff; box-shadow: 0 2px 0 #1F4FAE; }
 [data-skin="pokedex"] .ps-l { font: 800 13px/1.2 var(--font-ui); letter-spacing: 0; text-transform: none; color: var(--ink); }

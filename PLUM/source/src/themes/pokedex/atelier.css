@@ -8,39 +8,47 @@
   --a-ink: #2B2926; --a-ink2: #5C554B; --a-ink3: #8D8477; --a-title: #2B2926; --a-accent: #2F6FE4; --a-accent-deep: #2259C4; --a-focus: #2F6FE4;
   --a-sel: #DCE6F7; --a-sel-edge: #2F6FE4; --a-tile: #FFFDF8; --a-tile-edge: #D9CDB8; --a-bronze: #C9412D;
   --a-font: var(--font-ui);
-  --a-shadow: 0 0 0 2px var(--pk-seam), 0 5px 0 var(--pk-red-deep), 0 20px 34px -12px rgba(40, 24, 12, .55);
+  --a-shadow: 0 0 transparent;
   --a-shadow-sm: 0 0 0 2px var(--pk-seam), 0 4px 0 var(--pk-red-deep), 0 12px 22px -10px rgba(40, 24, 12, .45);
   --a-ctl: inset 0 1px rgba(255, 255, 255, .7), 0 2px 0 #D9CDB8;
 }
 /* the Nature leaves are not part of this look: the wheel brings its own two */
 [data-skin="pokedex"] :is(.atl, .atl-pop) .lf { display: none; }
 
-/* ----- devices ----- */
-[data-skin="pokedex"] .atl-card { background: var(--pk-shell); border: 0; border-radius: 26px; padding: 8px 10px 10px; color: var(--a-ink); box-shadow: var(--a-shadow), inset 0 2px 0 rgba(255, 220, 200, .35), inset 0 -3px 0 rgba(60, 10, 4, .25); }
-[data-skin="pokedex"] .atl-card::before { opacity: .1; }
-/* a painted leaf on the corner of some devices, as on the concept sheet */
-[data-skin="pokedex"] :is(.c-palettes, .c-brush, .c-variations)::after { content: ""; position: absolute; right: -12px; top: -14px; width: 44px; height: 44px; z-index: 5; pointer-events: none; background: url("asset:feuille-c.webp") center / contain no-repeat; transform: rotate(18deg); filter: drop-shadow(1px 2px 1px rgba(40, 30, 20, .3)); }
+/* ----- devices: the painted casing of the kit (cadre.webp), its screen emptied so the live content sits in it.
+   Nine-slice: the poké ball badge and the star stay in their corners, the edges stretch. ----- */
+[data-skin="pokedex"] .atl-card { background: none; border: 0; border-radius: 0; padding: 20px 26px 26px 30px; color: var(--a-ink); box-shadow: none;
+  border-image: url("asset:cadre.webp") 126 76 72 142 fill / 63px 38px 36px 71px; filter: drop-shadow(0 14px 14px rgba(40, 24, 12, .35)); }
+[data-skin="pokedex"] .atl-card::before { display: none; }
+[data-skin="pokedex"] :is(.c-palettes, .c-brush, .c-variations)::after { content: ""; position: absolute; right: -10px; top: -16px; width: 44px; height: 44px; z-index: 5; pointer-events: none; background: url("asset:feuille-c.webp") center / contain no-repeat; transform: rotate(8deg); }
 [data-skin="pokedex"] .c-variations::after { background-image: url("asset:feuille-b.webp"); }
-[data-skin="pokedex"] .atl-card header { margin: 0 0 7px; height: 32px; padding: 0 2px 0 4px; gap: 8px; }
-[data-skin="pokedex"] .atl-card header::before { content: ""; width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--pk-ball); box-shadow: 0 0 0 2px #2D2B29, 0 2px 3px rgba(0, 0, 0, .3); }
-[data-skin="pokedex"] .ch-t { font: 800 13px/1 var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: #FFF3E8; text-shadow: 0 1px 0 rgba(80, 14, 6, .5); }
-[data-skin="pokedex"] .ch-b { color: #FFE3D6; }
-[data-skin="pokedex"] .ch-b:hover { color: #fff; background: rgba(255, 255, 255, .14); }
+[data-skin="pokedex"] .atl-card header { margin: 0 0 8px; height: 40px; padding: 0 0 0 44px; gap: 8px; }
+[data-skin="pokedex"] .ch-t { font: 700 20px/1 var(--font-hand); letter-spacing: 0; text-transform: none; color: #2B2926; text-shadow: none; }
+[data-skin="pokedex"] .ch-b { color: #8D8477; }
+[data-skin="pokedex"] .ch-b:hover { color: #2B2926; background: rgba(60, 40, 20, .08); }
+[data-skin="pokedex"] :is(.atl, .atl.planche) .atl-card:not(.c-pipette) { padding: 20px 28px 28px 36px; }
+[data-skin="pokedex"] .atl-card.shut { padding-bottom: 18px; }
 [data-skin="pokedex"] .atl-card.shut header { margin-bottom: 0; }
-[data-skin="pokedex"] .atl-card .ac-body { background: var(--pk-screen); border-radius: 17px; padding: 12px; box-shadow: 0 0 0 2px var(--pk-seam), inset 0 2px 5px rgba(80, 52, 30, .16); }
+[data-skin="pokedex"] .atl-card .ac-body { background: none; border-radius: 0; padding: 2px 0 0; box-shadow: none; }
 [data-skin="pokedex"] .atl-card.flash { animation: pkFlash .9s ease-out; }
-@keyframes pkFlash { 0% { box-shadow: 0 0 0 4px var(--pk-sun), var(--a-shadow); } 100% { box-shadow: var(--a-shadow); } }
+@keyframes pkFlash { 0% { filter: drop-shadow(0 0 6px var(--pk-sun)) drop-shadow(0 0 2px var(--pk-sun)); } 100% { filter: drop-shadow(0 14px 14px rgba(40, 24, 12, .35)); } }
 [data-skin="pokedex"] .atl-empty { color: var(--a-ink3); }
+/* an empty module shows the mascot asleep */
+[data-skin="pokedex"] .atl-empty::before { content: ""; display: block; width: 96px; height: 64px; margin: 2px auto 8px; background: url("asset:mascotte-dort.webp") center / contain no-repeat; }
+/* the brush module is the kit's lens box (cadre-lens.webp): the black lens in its corner, a cream screen */
+[data-skin="pokedex"] :is(.atl, .atl.planche) .atl-card.c-brush { border-image: url("asset:cadre-lens.webp") 140 40 50 140 fill / 70px 20px 25px 70px; padding: 22px 26px 28px 26px; }
+[data-skin="pokedex"] .atl-card.c-brush header { padding-left: 50px; }
+/* the pipette is the kit's red lens box */
+[data-skin="pokedex"] .atl-card.c-pipette { border-image: none; padding: 0; background: url("asset:pipette.webp") center top / 100% auto no-repeat; }
 
-/* ----- the tool rail: charcoal in a red casing, a poké ball on top ----- */
+/* ----- the tool rail: the kit's charcoal bar, a poké ball on top (rail.webp, emptied of its icons) ----- */
 [data-skin="pokedex"] .atl-favs { display: none; }
-[data-skin="pokedex"] .atl-bar { background: linear-gradient(var(--pk-rail-2), var(--pk-rail)); border: 7px solid var(--pk-red); border-radius: 30px; padding: 8px 5px 10px; gap: 6px;
-  box-shadow: 0 0 0 2px var(--pk-seam), 0 5px 0 var(--pk-red-deep), 0 18px 30px -12px rgba(40, 24, 12, .55); }
-[data-skin="pokedex"] .atl-bar::before { opacity: .06; }
-[data-skin="pokedex"] .atl-bar::after { content: ""; order: -1; flex: none; width: 38px; height: 38px; margin-bottom: 4px; border-radius: 50%; background: var(--pk-ball); box-shadow: 0 0 0 2px #1E1C1A, 0 3px 4px rgba(0, 0, 0, .4); }
-[data-skin="pokedex"] .atl-bar .tl { width: 40px; height: 40px; border-radius: 50%; color: #EDE6D9; }
-[data-skin="pokedex"] .atl-bar .tl:hover { color: #fff; background: rgba(255, 255, 255, .1); }
-[data-skin="pokedex"] .atl-bar .tl[aria-pressed="true"] { color: #fff; background: var(--pk-blue); box-shadow: 0 0 0 2px rgba(255, 255, 255, .18), 0 3px 8px rgba(0, 0, 0, .35); }
+[data-skin="pokedex"] .atl-bar { background: none; border: 0; border-radius: 0; width: 64px; box-sizing: border-box; padding: 64px 12px 34px; gap: 6px; box-shadow: none;
+  border-image: url("asset:rail.webp") 116 0 66 0 fill / 58px 0 33px 0; filter: drop-shadow(0 12px 12px rgba(40, 24, 12, .4)); }
+[data-skin="pokedex"] .atl-bar::before, [data-skin="pokedex"] .atl-bar::after { display: none; }
+[data-skin="pokedex"] :is(.atl-bar .tl, .pkw-b) { width: 40px; height: 40px; border-radius: 50%; color: #3A3631; background: radial-gradient(circle at 40% 32%, #FFFBF2, #E6DCCB 75%); box-shadow: inset 0 -2px 0 rgba(90, 70, 50, .25), 0 2px 3px rgba(0, 0, 0, .4); }
+[data-skin="pokedex"] :is(.atl-bar .tl, .pkw-b):hover { color: #2B2926; background: radial-gradient(circle at 40% 32%, #fff, #EFE6D6 75%); }
+[data-skin="pokedex"] .atl-bar .tl[aria-pressed="true"], [data-skin="pokedex"] .pkw-b[aria-pressed="true"] { color: #2B2926; background: radial-gradient(circle at 40% 32%, #FFF8DC, #F2D774 80%); box-shadow: 0 0 0 3px #E8C34A, 0 0 10px rgba(232, 195, 74, .6); }
 [data-skin="pokedex"] .atl-bar .hs { background: rgba(255, 255, 255, .16); }
 [data-skin="pokedex"] .atl-right { right: 12px; top: 14px; }
 [data-skin="pokedex"] .atl-stack { right: 92px; top: 66px; width: 360px; }
@@ -48,27 +56,27 @@
 /* ----- the colour wheel device (wheel.js) ----- */
 [data-skin="pokedex"] .atl-dock { left: 76px; bottom: 66px; transform: scale(.78); }
 [data-skin="pokedex"] .atl-dock.min { left: 80px; bottom: 70px; transform: none; }
-.pkw { position: relative; width: 548px; height: 356px; touch-action: none; user-select: none; -webkit-user-select: none; pointer-events: none; font-family: var(--font-ui); color: #2B2926; }
+.pkw { position: relative; width: 530px; height: 404px; touch-action: none; user-select: none; -webkit-user-select: none; pointer-events: none; font-family: var(--font-ui); color: #2B2926; }
 .pkw > * { pointer-events: auto; }
-.pkw-shell { position: absolute; left: 0; top: 0; width: 548px; height: 356px; overflow: visible; pointer-events: none; filter: drop-shadow(0 0 1.5px #4A1A12) drop-shadow(0 5px 0 #8F2A1C) drop-shadow(0 18px 18px rgba(40, 24, 12, .45)); }
-.pkw-case { pointer-events: visiblePainted; }
-.pkw-c { position: absolute; width: 312px; height: 312px; border-radius: 50%; cursor: crosshair; z-index: 1; }
-.pkw-c:focus-visible { outline: 3px solid #2F6FE4; outline-offset: 2px; }
-.pkw-rail { position: absolute; left: 14px; top: 14px; width: 58px; height: 330px; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 6px; border-radius: 29px;
-  background: linear-gradient(90deg, #403D39, #2E2C29 70%); box-shadow: 0 0 0 2px #1E1C1A, inset 0 1px rgba(255, 255, 255, .1), 4px 0 10px rgba(0, 0, 0, .35); }
-.pkw-ball { width: 46px; height: 46px; flex: none; margin-bottom: 4px; border-radius: 50%; background: radial-gradient(circle, #FBF7EF 0 15%, #2D2B29 15.5% 25%, transparent 25.5%), linear-gradient(#E1412F 0 44%, #2D2B29 44.5% 55.5%, #FBF7EF 56%); box-shadow: 0 0 0 2.5px #1E1C1A, inset 0 -3px 4px rgba(0, 0, 0, .2); }
-.pkw-b { width: 42px; height: 42px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #EDE6D9; background: linear-gradient(#4E4B46, #3A3834); box-shadow: inset 0 1px rgba(255, 255, 255, .12), 0 2px 3px rgba(0, 0, 0, .4); }
-.pkw-b .i { width: 21px; height: 21px; }
-.pkw-b:hover { color: #fff; background: #5A5650; }
-.pkw-cur { position: absolute; left: 290px; top: -9px; width: 34px; height: 34px; padding: 0; border-radius: 50%; z-index: 3; overflow: hidden; cursor: grab; border: 3px solid #2D2B29; box-shadow: 0 0 0 3px #6FA7A1, 0 0 0 5px #2D2B29, 0 4px 6px rgba(0, 0, 0, .35); }
+.pkw img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+/* the painted device; the live disc and the marks are drawn over its well */
+.pkw-body { position: absolute; left: 0; top: 0; width: 380px; height: 400px; filter: drop-shadow(0 16px 16px rgba(40, 24, 12, .45)); }
+.pkw-c { position: absolute; width: 304px; height: 304px; border-radius: 50%; cursor: crosshair; z-index: 1; }
+.pkw-c:focus-visible { outline: 3px solid #2F6FE4; outline-offset: -2px; }
+.pkw-rail { position: absolute; left: 7px; top: 100px; width: 54px; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 9px 0 6px; border-radius: 27px;
+  background: linear-gradient(90deg, #403D39, #2E2C29 70%); box-shadow: 0 0 0 2px #1E1C1A, inset 0 1px rgba(255, 255, 255, .1), 4px 4px 10px rgba(0, 0, 0, .35); }
+.pkw-b { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #EDE6D9; background: none; }
+.pkw-b .i { width: 24px; height: 24px; }
+.pkw-b:hover { color: #fff; background: rgba(255, 255, 255, .1); }
+.pkw-dots { width: 22px; height: 6px; background: radial-gradient(circle, #CFC6B6 0 2px, transparent 2.5px) 0 0 / 8px 6px repeat-x; opacity: .8; }
+.pkw-cur { position: absolute; left: 306px; top: 28px; width: 31px; height: 31px; padding: 0; border-radius: 50%; z-index: 3; overflow: hidden; cursor: grab; border: 3px solid #23302F; box-shadow: 0 0 0 3px #4F9A93, 0 3px 5px rgba(0, 0, 0, .35); }
 .pkw-cur i { position: absolute; inset: 0; }
-.pkw-cur i::after { content: ""; position: absolute; left: 5px; top: 4px; width: 9px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, .55); transform: rotate(-25deg); }
-.pkw-star { position: absolute; left: 340px; top: 298px; width: 42px; height: 42px; padding: 0; z-index: 3; display: grid; place-items: center; background: none; }
-.pkw-star svg { width: 40px; height: 40px; fill: #F8E7A8; stroke: #6B5310; stroke-width: 1.4; stroke-linejoin: round; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); transition: transform .15s; }
-.pkw-star[aria-pressed="true"] svg { fill: #F2C230; }
-.pkw-star:hover svg { transform: scale(1.08) rotate(-6deg); }
-.pkw-screen { position: absolute; left: 388px; top: 24px; width: 152px; height: 308px; z-index: 2; display: flex; flex-direction: column; gap: 6px; padding: 12px 11px; border-radius: 18px;
-  background: #F6EFE2; box-shadow: 0 0 0 2px #4A1A12, 0 4px 0 #CDBFA8, inset 0 2px 4px rgba(80, 52, 30, .12); }
+.pkw-cur i::after { content: ""; position: absolute; left: 5px; top: 4px; width: 8px; height: 5px; border-radius: 50%; background: rgba(255, 255, 255, .55); transform: rotate(-25deg); }
+.pkw-star { position: absolute; left: 330px; top: 344px; width: 48px; height: 48px; padding: 0; z-index: 3; background: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)) saturate(.35) brightness(1.1); transition: transform .15s, filter .15s; }
+.pkw-star[aria-pressed="true"] { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
+.pkw-star:hover { transform: scale(1.08) rotate(-6deg); }
+.pkw-screen { position: absolute; left: 372px; top: 44px; width: 152px; height: 316px; z-index: 2; display: flex; flex-direction: column; gap: 6px; padding: 12px 11px; border-radius: 18px;
+  background: #F6EFE2; box-shadow: 0 0 0 2px #4A1A12, 0 4px 0 #CDBFA8, 0 14px 20px -8px rgba(40, 24, 12, .4), inset 0 2px 4px rgba(80, 52, 30, .12); }
 .pkw-h { font: 700 15px/1 var(--font-hand, cursive); color: #2B2926; text-align: center; padding: 2px 0 4px; border-bottom: 1.5px dashed #D9CDB8; }
 .pkw-g { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px 3px; justify-items: center; align-items: center; min-height: 64px; align-content: start; padding-bottom: 6px; }
 .pkw-g .blb { width: 30px; height: 28px; }
@@ -76,14 +84,13 @@
 .pkw-add { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #5C554B; border: 1.6px dashed #A99C86; background: #FFFDF8; }
 .pkw-add:hover { color: #2F6FE4; border-color: #2F6FE4; }
 .pkw-lf { position: absolute; width: 44px; height: 44px; pointer-events: none; filter: drop-shadow(1px 2px 1px rgba(40, 30, 20, .3)); }
-.pkw-lf img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .pkw-lf.a { right: -12px; top: -14px; transform: rotate(10deg); }
 .pkw-lf.b { right: -10px; bottom: -12px; transform: rotate(80deg) scale(.85); }
-[data-skin="pokedex"] .dock-min { left: 360px; top: 4px; width: 26px; height: 26px; background: #FBF7EF; color: #5C554B; border: 0; box-shadow: 0 0 0 2px #4A1A12; }
-[data-skin="pokedex"] .dock-puck { width: 56px; height: 56px; color: transparent; background: var(--pk-ball); border: 0; box-shadow: 0 0 0 3px #2D2B29, 0 10px 22px rgba(40, 24, 12, .45); }
+[data-skin="pokedex"] .dock-min { left: 252px; top: 12px; width: 26px; height: 26px; background: #FBF7EF; color: #5C554B; border: 0; box-shadow: 0 0 0 2px #4A1A12; }
+[data-skin="pokedex"] .dock-puck { width: 56px; height: 56px; color: transparent; background: var(--pk-ball); border: 0; box-shadow: none; filter: drop-shadow(0 8px 10px rgba(40, 24, 12, .45)); }
 [data-skin="pokedex"] .dock-puck .i { display: none; }
 /* the wheel in a popover (notes) */
-[data-skin="pokedex"] .radpop .rad-host { transform: scale(.8); transform-origin: 0 0; width: 440px; height: 292px; }
+[data-skin="pokedex"] .radpop .rad-host { transform: scale(.78); transform-origin: 0 0; width: 414px; height: 316px; }
 [data-skin="pokedex"] .radpop { padding: 16px 12px 10px; }
 
 /* ----- popovers of the studio (notes): cream, with a red rim ----- */
@@ -163,18 +170,18 @@
 [data-skin="pokedex"] .atl.planche { background: #EDE6D8 var(--pk-paper) 0 0 / 512px; }
 [data-skin="pokedex"] .atl.planche::before { display: none; }
 [data-skin="pokedex"] .atl.planche .atl-dock { left: 10px; top: 40px; transform: scale(1.16); }
-[data-skin="pokedex"] .atl.planche .c-harmony { left: 666px; top: 44px; width: 392px; min-height: 0; padding: 8px 10px 10px; }
-[data-skin="pokedex"] .atl.planche .c-palettes { left: 1084px; top: 44px; width: 420px; min-height: 0; padding: 8px 10px 10px; }
+[data-skin="pokedex"] .atl.planche .c-harmony { left: 666px; top: 44px; width: 392px; min-height: 0; }
+[data-skin="pokedex"] .atl.planche .c-palettes { left: 1084px; top: 44px; width: 420px; min-height: 0; }
 [data-skin="pokedex"] .atl.planche .c-palettes .pal-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 [data-skin="pokedex"] .atl.planche .c-palettes .pal-list { max-height: 330px; overflow-y: auto; scrollbar-width: thin; }
-[data-skin="pokedex"] .atl.planche .c-brush { left: 24px; top: 556px; width: 600px; min-height: 0; padding: 8px 10px 10px; }
+[data-skin="pokedex"] .atl.planche .c-brush { left: 24px; top: 556px; width: 600px; min-height: 0; }
 [data-skin="pokedex"] .atl.planche .c-brush .bp { display: block; columns: 2; column-gap: 18px; }
 [data-skin="pokedex"] .atl.planche .c-brush .bp > * { break-inside: avoid; margin-bottom: 9px; }
 [data-skin="pokedex"] .atl.planche .c-brush .bp-rows { break-after: column; }
 [data-skin="pokedex"] .atl.planche .c-brush .bp-list:not([hidden]) { position: absolute; z-index: 5; width: 280px; }
-[data-skin="pokedex"] .atl.planche .c-history { left: 666px; top: 612px; width: 250px; min-height: 0; padding: 8px 10px 10px; }
+[data-skin="pokedex"] .atl.planche .c-history { left: 666px; top: 612px; width: 250px; min-height: 0; }
 [data-skin="pokedex"] .atl.planche .c-pipette { left: 938px; top: 600px; width: 200px; }
 [data-skin="pokedex"] .atl.planche .c-pipette .pip-loupe { width: 176px; height: 176px; }
-[data-skin="pokedex"] .atl.planche .c-variations { left: 1160px; top: 612px; width: 280px; min-height: 0; padding: 8px 10px 10px; }
+[data-skin="pokedex"] .atl.planche .c-variations { left: 1160px; top: 612px; width: 280px; min-height: 0; }
 [data-skin="pokedex"] .atl.planche .atl-bar { left: 1452px; top: 560px; width: auto; }
-[data-skin="pokedex"] .atl.planche .ch-t { font-size: 13px; }
+

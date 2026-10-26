@@ -9,7 +9,7 @@ src/themes/
   notely/      Papier (le style de base ; l'id "notely" est gardé pour les données existantes)
   inkspace/    Inkspace
   nature/      Nature
-  pokedex/     Pokédex (boîtier rouge, papier crème ; polices Nunito et Kalam intégrées)
+  pokedex/     Pokédex (éléments peints du kit : boîtiers en neuf-tranches, rail anthracite, icônes stickers, roue peinte, mascotte ; polices Nunito et Kalam intégrées)
   _modele/     modèle à copier (un dossier qui commence par _ n'est pas inclus dans l'app)
 ```
 

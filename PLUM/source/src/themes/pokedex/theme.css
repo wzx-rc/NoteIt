@@ -17,7 +17,7 @@
   --pk-cream: #FBF7EF; --pk-screen: #F5EEE1; --pk-rail: #34322F; --pk-rail-2: #46433F;
   --pk-blue: #2F6FE4; --pk-blue-soft: #DCE6F7; --pk-sun: #F2C230;
   --pk-shell: linear-gradient(165deg, var(--pk-red-hi), var(--pk-red) 45%, #AF3524);
-  --pk-ball: radial-gradient(circle, #FBF7EF 0 15%, #2D2B29 15.5% 25%, transparent 25.5%), linear-gradient(#E1412F 0 44%, #2D2B29 44.5% 55.5%, #FBF7EF 56%);
+  --pk-ball: url("asset:ball.webp") center / contain no-repeat;
   /* the floating cards */
   --pk-panel: #FCF9F3; --pk-panel-line: rgba(84, 62, 38, .13);
   --pk-float: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 2px 4px rgba(40, 30, 20, .12), 0 14px 30px -10px rgba(30, 24, 18, .45);
@@ -63,7 +63,7 @@
 /* ---------- sidebar ---------- */
 [data-skin="pokedex"] .brand { padding: 2px 4px 16px; }
 [data-skin="pokedex"] .brand .pill { height: auto; padding: 0; background: none; box-shadow: none; border-radius: 0; display: grid; grid-template-columns: 44px auto; grid-template-rows: auto auto; column-gap: 10px; align-items: center; }
-[data-skin="pokedex"] .brand .mark { grid-row: 1 / 3; width: 44px; height: 44px; border-radius: 50%; background: var(--pk-ball); box-shadow: 0 0 0 2.5px #2D2B29, 0 3px 6px rgba(40, 30, 20, .3); }
+[data-skin="pokedex"] .brand .mark { grid-row: 1 / 3; width: 44px; height: 44px; border-radius: 50%; background: var(--pk-ball); filter: drop-shadow(0 3px 3px rgba(40, 30, 20, .3)); }
 [data-skin="pokedex"] .brand .mark svg { display: none; }
 [data-skin="pokedex"] .brand b { font: 800 22px/1 var(--font-ui); color: var(--ink); align-self: end; }
 [data-skin="pokedex"] .brand .pill::after { content: "Dessine · Planifie · Crée"; font: 600 11px/1.3 var(--font-ui); color: var(--ink-2); align-self: start; margin-top: 3px; white-space: nowrap; }
@@ -99,7 +99,7 @@
 [data-skin="pokedex"] .btn { border-radius: 12px; font-weight: 700; background: #fff; border-color: var(--line-2); box-shadow: 0 2px 0 var(--line-2); }
 [data-skin="pokedex"] .btn.pri { background: var(--pk-blue); border-color: var(--pk-blue); color: #fff; box-shadow: 0 2px 0 #1F4FAE; }
 [data-skin="pokedex"] .btn.ghost { box-shadow: none; background: none; }
-[data-skin="pokedex"] .fab { background: var(--pk-ball); color: transparent; box-shadow: 0 0 0 3px #2D2B29, 0 10px 22px -6px rgba(40, 28, 16, .55); }
+[data-skin="pokedex"] .fab { background: var(--pk-ball); color: transparent; box-shadow: none; filter: drop-shadow(0 8px 10px rgba(40, 28, 16, .45)); }
 [data-skin="pokedex"] .fab .i { opacity: 0; }
 [data-skin="pokedex"] .fab::after { content: "+"; position: absolute; inset: 0; display: grid; place-items: center; font: 800 15px/1 var(--font-ui); color: #2D2B29; }
 [data-skin="pokedex"] .cb { border-radius: 6px; border-width: 1.8px; }
@@ -112,14 +112,13 @@
 /* ---------- pages ---------- */
 [data-skin="pokedex"] .ph h1 { font: 700 42px/1.05 var(--font-hand); letter-spacing: 0; color: var(--ink); }
 [data-skin="pokedex"] .ph .sub { font-weight: 600; color: var(--ink-2); }
-[data-skin="pokedex"] :is(.card, .tlist) { border-radius: 20px; border-color: var(--pk-panel-line); background: var(--card); box-shadow: var(--shadow-1); }
-[data-skin="pokedex"] .card > h2 { font-size: 17px; font-weight: 800; gap: 10px; }
-/* each card title wears a round badge, in the colours of the concept's section icons */
-[data-skin="pokedex"] .card > h2 > .i:first-child { width: 30px; height: 30px; padding: 6px; border-radius: 50%; color: #fff; background: #D7432F; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15); }
-[data-skin="pokedex"] .card:nth-of-type(4n + 2) > h2 > .i:first-child { background: var(--pk-blue); }
-[data-skin="pokedex"] .card:nth-of-type(4n + 3) > h2 > .i:first-child { background: #E9A920; }
-[data-skin="pokedex"] .card:nth-of-type(4n + 4) > h2 > .i:first-child { background: #3F9A8E; }
-[data-skin="pokedex"] .card > h2 .more { color: var(--pk-blue); font-weight: 700; }
+/* home cards are the kit's painted casing too (cadre.webp): the poké ball badge in the corner stands for the old round icon */
+[data-skin="pokedex"] .card { border: 0; border-radius: 0; background: none; box-shadow: none; padding: 20px 30px 30px 36px;
+  border-image: url("asset:cadre.webp") 126 76 72 142 fill / 63px 38px 36px 71px; filter: drop-shadow(0 12px 14px rgba(40, 24, 12, .28)); }
+[data-skin="pokedex"] .tlist { border-radius: 20px; border-color: var(--pk-panel-line); background: var(--card); box-shadow: var(--shadow-1); }
+[data-skin="pokedex"] .card > h2 { font: 700 22px/1.1 var(--font-hand); gap: 10px; padding: 0 22px 0 40px; min-height: 40px; align-items: center; }
+[data-skin="pokedex"] .card > h2 > .i:first-child { display: none; }
+[data-skin="pokedex"] .card > h2 .more { color: var(--pk-blue); font: 700 13px var(--font-ui); }
 [data-skin="pokedex"] .dcard .th, [data-skin="pokedex"] .tpl .pv { border-radius: 12px; }
 [data-skin="pokedex"] .sprow .bar { height: 8px; background: var(--sunk); border-radius: 8px; }
 [data-skin="pokedex"] .ntitle { font-family: var(--font-hand); font-weight: 700; }
@@ -127,6 +126,6 @@
 /* ---------- preview card in Réglages > UI ---------- */
 .sk-pokedex .skin-pv { background: #6F8494 var(--pk-land) center / cover; }
 .sk-pokedex .skin-pv i:nth-child(1) { left: 5%; top: 9%; width: 22%; height: 82%; border-radius: 7px; background: #F7F2E8; }
-.sk-pokedex .skin-pv i:nth-child(2) { left: 9%; top: 15%; width: 8%; height: 14%; border-radius: 50%; background: linear-gradient(#E1412F 0 44%, #2D2B29 44% 56%, #FBF7EF 56%); box-shadow: 0 0 0 1.5px #2D2B29; z-index: 1; }
+.sk-pokedex .skin-pv i:nth-child(2) { left: 8%; top: 13%; width: 10%; height: 18%; background: url("asset:ball.webp") center / contain no-repeat; z-index: 1; }
 .sk-pokedex .skin-pv i:nth-child(3) { left: 31%; top: 9%; width: 64%; height: 82%; border-radius: 7px; background: #F4ECDC; }
 .sk-pokedex .skin-pv i:nth-child(4) { left: 52%; top: 40%; width: 34%; height: 44%; border-radius: 9px; background: linear-gradient(#C9412D, #AF3524); box-shadow: inset 0 0 0 4px #C9412D, inset 0 0 0 9px #34322F; z-index: 1; }
