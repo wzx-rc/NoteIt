@@ -28,25 +28,29 @@ function bindShell() {
     if (g.closest('.pop')) return;
     go(g.dataset.go);
   });
-  $('#spaces').addEventListener('contextmenu', e => { const b = e.target.closest('[data-sp]'); if (!b) return; e.preventDefault(); spaceMenu(b, spaceById(b.dataset.sp)); });
-  $('#addSpace').onclick = addSpaceInline;
+  $('#spaceSw').onclick = e => { if (popEl && popEl.classList.contains('spm')) { closePop(); return; } openSpaceSwitcher(e.currentTarget); };
+  $('#spaceSw').addEventListener('contextmenu', e => { e.preventDefault(); spaceMenu(e.currentTarget, curSpace()); });
+  $('#addSpace').onclick = () => openSpaceSwitcher($('#spaceSw'), { create: true });
   $('#addPage').onclick = e => openPop(e.currentTarget, [{ head: 'Nouvelle page' }, { label: 'Note', icon: 'note', run: () => createFrom('note') }, { label: 'Board', icon: 'board', run: () => createFrom('board') }]);
   $('#themeBtn').onclick = () => { S.prefs.theme = isDarkTheme() ? 'light' : 'dark'; save(); applyTheme(); if (R.name !== 'doc') go(R, { keepFocus: true }); };
   $('#setBtn').onclick = openSettings; $('#meBtn').onclick = openSettings;
   bindSearch();
   $('#focusExit').onclick = () => setFocus(false);
   $('#focusAi').onclick = () => AI.toggle();
+  $('#focusMood').onclick = () => Mood.toggle();
   $('#importIn').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) importJSON(await f.text()); };
 
   addEventListener('keydown', e => {
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (mod && k === 'k') { e.preventDefault(); if (document.documentElement.hasAttribute('data-focus')) setFocus(false); $('#q').focus(); $('#q').select(); return; }
     if (mod && k === 'j') { e.preventDefault(); if (S.prefs.aiOn) AI.toggle(); return; }
+    if (mod && k === 'm' && !e.shiftKey && !e.altKey) { e.preventDefault(); if (R.name !== 'welcome' && R.name !== 'mood') Mood.toggle(); return; }
     if (mod && (e.key === '.' || e.code === 'Period')) { e.preventDefault(); if (R.name === 'doc') setFocus(!document.documentElement.hasAttribute('data-focus')); return; }
     if (e.key === 'Escape') {
       if (popEl) { closePop(); return; }
       if ($('#modal')) { closeModal(); return; }
       if ($('.lightbox')) { $('.lightbox').remove(); return; }
+      if (Mood.isOpen() && !editableTarget(e.target) && !(Board.mounted && Board.busy && Board.busy())) { Mood.toggle(false); return; }
       if (document.documentElement.hasAttribute('data-focus') && !editableTarget(e.target) && !(Board.mounted && Board.busy && Board.busy())) { e.preventDefault(); setFocus(false); return; }
     }
     if (R.name === 'doc') {
@@ -56,21 +60,23 @@ function bindShell() {
     if (e.key === 'Escape' && !editableTarget(e.target) && document.documentElement.hasAttribute('data-focus')) setFocus(false);
   });
   addEventListener('keyup', e => { if (Board.mounted) Board.keyUp(e); });
-  addEventListener('paste', e => { if (Board.mounted && !editableTarget(e.target) && !$('#modal')) Board.paste(e); });
-
-  /* files dropped anywhere outside a board or a note start a new board with them */
-  const view = $('#view');
-  view.addEventListener('dragover', e => { if (R.name === 'doc') return; if (![...(e.dataTransfer.types || [])].includes('Files')) return; e.preventDefault(); view.classList.add('dropping'); });
-  view.addEventListener('dragleave', e => { if (!view.contains(e.relatedTarget)) view.classList.remove('dropping'); });
-  view.addEventListener('drop', async e => {
-    if (R.name === 'doc') return; view.classList.remove('dropping');
-    const files = [...(e.dataTransfer.files || [])]; if (!files.length) return; e.preventDefault();
-    const d = newDoc('board', { title: `Dépôt du ${fmtShort(today())}`, sp: ctxSpace() || undefined }); go('doc:' + d.id);
-    await Board.ingestFiles(files);
-    Board.fitAll();
+  addEventListener('paste', e => {
+    if (editableTarget(e.target) || $('#modal')) return;
+    if (Mood.paste(e)) return;
+    if (Board.mounted) Board.paste(e);
   });
 
-  window.__nh = { S: () => S, go, save, applyTheme, openSettings, spaceMedia, Board, Ink, PENS, migrateState, importJSON, exportJSON, newDoc };
+  /* files, links or text dropped anywhere outside a board or a note go to the moodboard of the space */
+  const view = $('#view'), dropKind = e => [...(e.dataTransfer.types || [])].some(t => t === 'Files' || t === 'text/uri-list' || t === 'text/plain');
+  view.addEventListener('dragover', e => { if (R.name === 'doc' || R.name === 'welcome' || Mood.dragging() || !dropKind(e)) return; e.preventDefault(); view.classList.add('dropping'); });
+  view.addEventListener('dragleave', e => { if (!view.contains(e.relatedTarget)) view.classList.remove('dropping'); });
+  view.addEventListener('drop', async e => {
+    view.classList.remove('dropping');
+    if (R.name === 'doc' || R.name === 'welcome' || Mood.dragging()) return;
+    e.preventDefault(); Mood.drop(e.dataTransfer, curSpace());
+  });
+
+  window.__nh = { S: () => S, go, save, applyTheme, openSettings, spaceMedia, Board, Ink, PENS, migrateState, importJSON, exportJSON, newDoc, Mood, createSpace };
   const flush = () => { try { window.__flushSave(); } catch (e) {} };
   addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
@@ -80,15 +86,19 @@ async function boot() {
   applyTheme();
   const ok = await DB.open();
   await Assets.load();
-  let st = null; try { st = await DB.get('kv', 'state'); } catch (e) {}
-  if (!st || !Array.isArray(st.docs)) { S = { spaces: [], docs: [], tasks: [], prefs: mergePrefs() }; S = await seedWorkspace(); S.prefs = mergePrefs(S.prefs); await persist(); }
-  else { S = migrateState(st); S.prefs = mergePrefs(S.prefs); S.spaces = S.spaces || []; S.tasks = S.tasks || []; }
-  /* a new default theme is put on once in an existing workspace (S.prefs.defSkin remembers which); the user can go back in Réglages */
+  /* 0.2 has its own blank workspace (STATE_KEY); the one saved before stays in kv "state" (LEGACY), untouched */
+  let st = null, old = null;
+  try { st = await DB.get('kv', STATE_KEY); } catch (e) {}
+  try { old = await DB.get('kv', 'state'); } catch (e) {}
+  if (old && Array.isArray(old.docs) && (old.docs.length || (old.tasks || []).length)) LEGACY = old;
+  if (!st || !Array.isArray(st.docs)) { S = { v: 3, spaces: [], docs: [], tasks: [], prefs: mergePrefs({ defSkin: DEFAULT_PREFS.skin }) }; ensureDefaultSpace(S); await persist(); }
+  else { S = migrateState(st); S.prefs = mergePrefs(S.prefs); S.tasks = S.tasks || []; ensureDefaultSpace(S); }
   if (S.prefs.defSkin !== DEFAULT_PREFS.skin) { S.prefs.defSkin = DEFAULT_PREFS.skin; S.prefs.skin = DEFAULT_PREFS.skin; save(); }
   try { await Promise.race([Promise.all(['400 14px Figtree', '600 14px Figtree', '700 14px Figtree', '400 24px Caveat', '700 24px Caveat'].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 1500))]); } catch (e) {}
   applyTheme();
   bindShell();
   $('#focusAi').hidden = !S.prefs.aiOn;
+  Mood.mount();
   go(S.prefs.last || 'home');
   if (!ok) setTimeout(() => toast("Ce navigateur n'enregistre pas vos changements : exportez avant de fermer."), 600);
 }

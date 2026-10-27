@@ -139,11 +139,29 @@ const Note = (() => {
     document.execCommand('insertHTML', false, html);
     saveBody();
   }
+  /* an element of the space's moodboard, as note content */
+  function mediaHTML(m) {
+    if (m.type === 'image' && Assets.has(m.asset)) return `<figure contenteditable="false"><img data-asset="${m.asset}" src="${Assets.url(m.asset)}" alt=""></figure><p><br></p>`;
+    if (m.type === 'file' && Assets.has(m.asset)) return `<p><span class="nfile" contenteditable="false" data-asset="${m.asset}">${icon('file', 'sm')}<b>${esc(m.name || 'Fichier')}</b><small>${fmtSize(m.size || 0)}</small></span></p>`;
+    if (m.type === 'link' && m.url) return `<p><a href="${esc(m.url)}">${esc(m.title || m.url)}</a></p>`;
+    if (m.type === 'text' && m.txt) return m.txt.split(/\n{2,}/).map(p => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
+    return '';
+  }
+  function insertHTMLAt(html, at) {
+    if (!html) return;
+    body.focus();
+    const s = getSelection();
+    if (at) { s.removeAllRanges(); s.addRange(at); } else if (!selInBody()) ensureFocus();
+    document.execCommand('insertHTML', false, html);
+    saveBody();
+  }
   function onDrop(e) {
-    const files = [...(e.dataTransfer && e.dataTransfer.files || [])]; if (!files.length) return;
+    const nj = e.dataTransfer && e.dataTransfer.getData('application/x-notely');
+    const files = [...(e.dataTransfer && e.dataTransfer.files || [])]; if (!files.length && !nj) return;
     e.preventDefault(); sheet.classList.remove('dropping');
     let r = null; if (document.caretRangeFromPoint) r = document.caretRangeFromPoint(e.clientX, e.clientY); else if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(e.clientX, e.clientY); if (p) { r = document.createRange(); r.setStart(p.offsetNode, p.offset); } }
     if (r && !body.contains(r.startContainer)) r = null;
+    if (nj) { try { const j = JSON.parse(nj); insertHTMLAt((Array.isArray(j) ? j : [j]).map(mediaHTML).join(''), r); } catch (err) {} return; }
     addFiles(files, r);
   }
   function onPaste(e) {
@@ -270,7 +288,7 @@ const Note = (() => {
     g.pad.addEventListener('pointerdown', e => { if (e.button > 0 && e.pointerType === 'mouse') return; if (e.pointerType === 'touch' && penSeen) return; e.preventDefault(); use(g); startStroke(e); });
     /* a stylus writes even in text mode, unless the setting is off */
     el.addEventListener('pointerdown', e => { if (mode === 'text' && e.pointerType === 'pen' && S.prefs.autoPen && !e.target.closest('input')) { e.preventDefault(); use(g); if (PENS[pen] === undefined && pen !== 'eraser') pen = 'pen'; startStroke(e); } }, true);
-    el.addEventListener('dragover', e => { if ([...(e.dataTransfer.types || [])].includes('Files')) { e.preventDefault(); el.classList.add('dropping'); } });
+    el.addEventListener('dragover', e => { const ty = [...(e.dataTransfer.types || [])]; if (ty.includes('Files') || ty.includes('application/x-notely')) { e.preventDefault(); el.classList.add('dropping'); } });
     el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('dropping'); });
     el.addEventListener('drop', e => { use(g); onDrop(e); });
     hydrateInto(b, g.data.html);
@@ -406,6 +424,7 @@ const Note = (() => {
       return false;
     },
     text() { return mounted ? PG.map(g => g.body.innerText).join('\n\n') : '' },
+    insertMedia(list) { if (!mounted) return; insertHTMLAt((list || []).map(mediaHTML).join('')); toast(list.length > 1 ? `${list.length} éléments insérés` : 'Inséré dans la note'); },
     append(md) { if (!mounted) return; body.insertAdjacentHTML('beforeend', mdToHTML(md)); P.html = serialize(); touch(D); renderSub(); body.lastElementChild && body.lastElementChild.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); },
     mdToHTML
   };

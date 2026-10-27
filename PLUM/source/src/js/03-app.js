@@ -1,13 +1,17 @@
 /* ================= workspace state ================= */
 const SPACE_COLORS = ['#5B7CFA', '#F2B33D', '#EC6A9C', '#E5484D', '#F5A524', '#2E9E6A', '#8B76FF', '#22A6B3', '#8B5E3C', '#5E6B78'];
-const DEFAULT_PREFS = { theme: 'auto', skin: 'minimal', name: 'Romain', autoPen: true, wheel: 'zoom', pressure: 'pen', source: 'auto', sens: .5, last: 'home',
+const DEFAULT_PREFS = { theme: 'auto', skin: 'minimal', name: '', autoPen: true, wheel: 'zoom', pressure: 'pen', source: 'auto', sens: .5, last: 'home', cur: 'default', welcomed: false,
   pens: Object.fromEntries(PEN_ORDER.map(k => [k, { c: PEN_DEFAULT_COLORS[k], s: PENS[k].size }])),
   bd: { sc: '#1E1E1E', fc: null, sw: 2, sty: 'sketch', dash: '', fill: 'solid', font: 'hand', route: 'curve' }, recent: [], props: null,
   ai: { provider: 'auto', tier: 'quick', model: '' }, aiOn: false, taskOrder: [] };
 let S = null;
 let saveT = 0, saving = null;
+/* 0.2 starts from a blank workspace under its own key: what was saved before (kv "state") stays untouched,
+   and Réglages > Autres can bring it back (LEGACY) */
+const STATE_KEY = 'plum-0.2';
+let LEGACY = null;
 function save() { clearTimeout(saveT); saveT = setTimeout(persist, 450); }
-async function persist() { clearTimeout(saveT); try { saving = DB.put('kv', 'state', S); await saving; } catch (e) { console.warn(e); } }
+async function persist() { clearTimeout(saveT); try { saving = DB.put('kv', STATE_KEY, S); await saving; } catch (e) { console.warn(e); } }
 window.__flushSave = () => { if (typeof Note !== 'undefined') Note.flush(); return persist(); };
 
 const docById = id => S.docs.find(d => d.id === id);
@@ -15,15 +19,25 @@ const spaceById = id => S.spaces.find(s => s.id === id);
 const taskById = id => S.tasks.find(t => t.id === id);
 const spaceColor = id => (spaceById(id) || {}).color || '#8F8B83';
 const liveDocs = () => S.docs.filter(d => !d.trash);
+/* the spaces: « Par défaut » is always there (quick notes and to-dos), the current one is S.prefs.cur */
+const DEF_SPACE = 'default';
+function ensureDefaultSpace(st) {
+  st.spaces = st.spaces || [];
+  if (!st.spaces.some(s => s.id === DEF_SPACE)) st.spaces.unshift({ id: DEF_SPACE, name: 'Par défaut', color: '#8F8B83', def: true, media: [] });
+  return st;
+}
+const curSpace = () => spaceById(S.prefs.cur) || spaceById(DEF_SPACE) || S.spaces[0];
+const userSpaces = () => S.spaces.filter(s => s.id !== DEF_SPACE);
+function setCurSpace(id) { if (spaceById(id) && S.prefs.cur !== id) { S.prefs.cur = id; save(); } }
 function touch(doc) { if (doc) doc.updated = Date.now(); save(); }
 function newDoc(type, o = {}) {
-  const d = { id: uid('d'), type, title: o.title || (type === 'note' ? 'Sans titre' : 'Nouveau board'), sp: o.sp || ctxSpace() || (S.spaces[0] || {}).id || '', fav: false, trash: false, created: Date.now(), updated: Date.now() };
+  const d = { id: uid('d'), type, title: o.title || (type === 'note' ? 'Sans titre' : 'Nouveau board'), sp: o.sp || ctxSpace(), fav: false, trash: false, created: Date.now(), updated: Date.now() };
   if (type === 'note') { d.html = o.html || ''; d.ink = o.ink || []; d.paper = o.paper || 'plain'; }
   else { d.items = o.items || []; d.view = o.view || null; d.bg = o.bg || 'dots'; }
   S.docs.push(d); save(); return d;
 }
 function newTask(o) {
-  const t = { id: uid('t'), t: String(o.t || '').trim() || 'Nouvelle tâche', sp: o.sp || ctxSpace() || (S.spaces[0] || {}).id || '', due: o.due || '', time: o.time || '', done: false, star: !!o.star, note: o.note || '', sub: (o.sub || []).map(x => Array.isArray(x) ? [String(x[0]), !!x[1]] : [String(x), false]).filter(x => x[0].trim()), created: Date.now() };
+  const t = { id: uid('t'), t: String(o.t || '').trim() || 'Nouvelle tâche', sp: o.sp || ctxSpace(), due: o.due || '', time: o.time || '', done: false, star: !!o.star, note: o.note || '', sub: (o.sub || []).map(x => Array.isArray(x) ? [String(x[0]), !!x[1]] : [String(x), false]).filter(x => x[0].trim()), created: Date.now() };
   S.tasks.push(t); save(); return t;
 }
 /* sub-tasks, images and manual order (from NoteIt): t.sub = [[text, done], …], t.open = sub-tasks shown under the row,
@@ -43,11 +57,11 @@ async function addTaskImages(t, files) {
 }
 function showImage(id) { const u = Assets.url(id); if (!u) return; const l = document.createElement('div'); l.className = 'lightbox'; l.innerHTML = `<img src="${u}" alt="">`; l.onclick = () => l.remove(); document.body.append(l); }
 function setTaskDone(t, v) { t.done = v; t.doneAt = v ? Date.now() : 0; save(); refreshTaskViews(); }
-function ctxSpace() { if (R.name === 'space') return R.id; if (R.name === 'doc') { const d = docById(R.id); if (d) return d.sp; } return ''; }
+function ctxSpace() { if (R.name === 'doc') { const d = docById(R.id); if (d && spaceById(d.sp)) return d.sp; } return curSpace().id; }
 /* the moodboard of a space: what was dropped into it, plus every image, file and link of its notes and boards */
 function spaceMedia(spId) {
   const sp = spaceById(spId), out = [], seen = new Set();
-  const push = m => { const key = m.asset || m.url || m.doc; if (!key || seen.has(key)) return; seen.add(key); out.push(m); };
+  const push = m => { const key = m.asset || m.url || m.doc || m.id; if (!key || seen.has(key)) return; seen.add(key); out.push(m); };
   for (const m of (sp && sp.media) || []) push(m);
   for (const d of liveDocs().filter(d => d.sp === spId).sort((a, b) => b.updated - a.updated)) {
     if (d.type === 'board') for (const it of d.items || []) {
@@ -61,13 +75,32 @@ function spaceMedia(spId) {
   for (const d of liveDocs().filter(d => d.sp === spId).sort((a, b) => b.updated - a.updated)) push({ type: 'doc', doc: d.id, title: d.title, kind: d.type });
   return out;
 }
+/* links and bits of text dropped or pasted into a moodboard: { type: 'link', url, title } or { type: 'text', txt } */
+function addMediaItems(spId, list) {
+  const sp = spaceById(spId); if (!sp) return 0;
+  sp.media = sp.media || []; let n = 0;
+  for (const m of list) {
+    if (m.type === 'link' && m.url && !sp.media.some(x => x.url === m.url)) { sp.media.unshift({ id: uid('m'), type: 'link', url: m.url, title: m.title || '', added: Date.now() }); n++; }
+    else if (m.type === 'text' && String(m.txt || '').trim()) { sp.media.unshift({ id: uid('m'), type: 'text', txt: String(m.txt).trim().slice(0, 4000), added: Date.now() }); n++; }
+  }
+  if (n) save(); return n;
+}
+/* what a drop or a paste carries besides files: URLs become links, other text a text card */
+function mediaFromData(dt) {
+  const uri = (dt.getData('text/uri-list') || '').split(/\r?\n/).map(x => x.trim()).filter(x => x && !x.startsWith('#') && /^https?:/i.test(x));
+  if (uri.length) return uri.map(url => ({ type: 'link', url }));
+  const txt = (dt.getData('text/plain') || '').trim(); if (!txt) return [];
+  const urls = txt.split(/\s+/).filter(x => /^https?:\/\/\S+$/i.test(x));
+  if (urls.length && urls.join(' ').length >= txt.replace(/\s+/g, ' ').length - 2) return urls.map(url => ({ type: 'link', url }));
+  return [{ type: 'text', txt }];
+}
 async function addMedia(spId, files) {
   const sp = spaceById(spId); if (!sp) { toast('Ce board n’a pas d’espace'); return []; }
   sp.media = sp.media || []; const added = [];
   for (const f of files) {
     try {
-      if (/^image\//.test(f.type)) { const im = await importImage(f); sp.media.unshift({ type: 'image', asset: im.id, name: f.name.replace(/\.[a-z0-9]{2,4}$/i, ''), w: im.w, h: im.h, added: Date.now() }); }
-      else { if (f.size > 80e6) { toast(`« ${f.name} » dépasse 80 Mo`); continue; } const id = await Assets.put(f); sp.media.unshift({ type: 'file', asset: id, name: f.name, size: f.size, mime: f.type, added: Date.now() }); }
+      if (/^image\//.test(f.type)) { const im = await importImage(f); sp.media.unshift({ id: uid('m'), type: 'image', asset: im.id, name: f.name.replace(/\.[a-z0-9]{2,4}$/i, ''), w: im.w, h: im.h, added: Date.now() }); }
+      else { if (f.size > 80e6) { toast(`« ${f.name} » dépasse 80 Mo`); continue; } const id = await Assets.put(f); sp.media.unshift({ id: uid('m'), type: 'file', asset: id, name: f.name, size: f.size, mime: f.type, added: Date.now() }); }
       added.push(f.name);
     } catch (e) { toast(`« ${f.name} » n'a pas pu être lu`); }
   }
@@ -82,23 +115,29 @@ function go(route, opts = {}) {
   closePop();
   if (unmountView) { try { unmountView(); } catch (e) { console.error(e); } unmountView = null; }
   R = typeof route === 'string' ? parseRoute(route) : route;
-  if (R.name === 'doc') { const d = docById(R.id); if (!d) R = { name: 'home' }; else if (d.trash) R = { name: 'trash' }; }
-  if (R.name === 'space' && !spaceById(R.id)) R = { name: 'home' };
+  /* everything lives in a space: the space's home replaces the old home page, opening a page of another space switches to it */
+  if (R.name === 'doc') { const d = docById(R.id); if (!d) R = { name: 'space' }; else if (d.trash) R = { name: 'trash' }; else setCurSpace(d.sp); }
+  if (R.name === 'home') R = { name: 'space' };
+  if (R.name === 'space') { if (spaceById(R.id)) setCurSpace(R.id); R = { name: 'space', id: curSpace().id }; }
+  if (!S.prefs.welcomed) R = { name: 'welcome' };
+  else if (R.name === 'welcome') R = { name: 'space', id: curSpace().id };
   S.prefs.last = routeStr(R); save();
   document.documentElement.removeAttribute('data-nav');
+  document.documentElement.toggleAttribute('data-welcome', R.name === 'welcome');
   /* each page gets a fresh root so its delegated listeners go away with it */
   const view = $('#view'); view.className = ''; view.innerHTML = ''; view.scrollTop = 0;
   const v = document.createElement('div'); v.className = 'vroot'; view.append(v);
   renderSide(); renderTop();
   switch (R.name) {
-    case 'home': renderHome(v); break;
+    case 'welcome': renderWelcome(v); break;
     case 'notes': case 'boards': case 'favs': case 'trash': renderDocList(v, R.name); break;
     case 'tasks': renderTasks(v); break;
-    case 'space': renderSpace(v); break;
+    case 'mood': renderMood(v); break;
     case 'search': renderSearch(v); break;
     case 'doc': openDoc(v, docById(R.id)); break;
-    default: renderHome(v);
+    default: renderSpace(v);
   }
+  Mood.sync();
   if (!opts.keepFocus) { if (R.name !== 'doc' && document.documentElement.hasAttribute('data-focus')) setFocus(false); }
   AI.context();
 }
@@ -109,56 +148,76 @@ function openDoc(v, d) {
   $('#focusTtl').textContent = d.title;
 }
 
-/* ================= sidebar ================= */
-const NAV = [['home', 'home', 'Accueil'], ['notes', 'note', 'Notes'], ['tasks', 'tasks', 'Tâches'], ['boards', 'board', 'Boards'], ['favs', 'star', 'Favoris'], ['trash', 'trash', 'Corbeille']];
+/* ================= sidebar =================
+   On top the space switcher (dropdown, + for a new one), then the sections of the current space and its pages;
+   Favoris and Corbeille cover every space. */
+const NAV = [['space', 'home', 'Accueil'], ['tasks', 'tasks', 'Tâches'], ['notes', 'note', 'Notes'], ['boards', 'board', 'Boards'], ['mood', 'image', 'Moodboard']];
+const NAV2 = [['favs', 'star', 'Favoris'], ['trash', 'trash', 'Corbeille']];
 function renderSide() {
-  const cur = R.name === 'doc' ? ((docById(R.id) || {}).type === 'board' ? 'boards' : 'notes') : R.name;
-  const ld = liveDocs(), open = S.tasks.filter(t => !t.done);
-  const count = { notes: ld.filter(d => d.type === 'note').length, boards: ld.filter(d => d.type === 'board').length, tasks: open.filter(t => t.due && t.due <= today()).length || '', favs: ld.filter(d => d.fav).length || '', trash: S.docs.filter(d => d.trash).length || '' };
-  $('#nav').innerHTML = NAV.map(([k, ic, l]) => `<button class="nv" data-go="${k}"${cur === k ? ' aria-current="page"' : ''}>${icon(ic)}<span>${l}</span><span class="ct">${count[k] ?? ''}</span></button>`).join('');
-  bindSpaceSort();
-  $('#spaces').innerHTML = S.spaces.map(s => {
-    const n = ld.filter(d => d.sp === s.id).length + open.filter(t => t.sp === s.id).length;
-    const on = (R.name === 'space' && R.id === s.id) || (R.name === 'doc' && (docById(R.id) || {}).sp === s.id);
-    return `<button class="nv" data-go="space:${s.id}" data-sp="${s.id}"${on ? ' aria-current="page"' : ''}><span class="dot" style="background:${s.color}"></span><span>${esc(s.name)}</span><span class="ct">${n || ''}</span></button>`;
-  }).join('');
-  const csp = ctxSpace(), pages = csp ? ld.filter(d => d.sp === csp).sort((a, b) => a.created - b.created) : [];
-  $('#pagesSec').hidden = !csp; $('#pages').hidden = !csp;
-  if (csp) $('#pages').innerHTML = pages.map((d, i) => `<button class="nv pg" data-go="doc:${d.id}"${R.name === 'doc' && R.id === d.id ? ' aria-current="page"' : ''}><span class="pn">${i + 1}</span>${icon(d.type === 'board' ? 'board' : 'note', 'sm')}<span class="pt">${esc(d.title)}</span></button>`).join('') || '<div class="pempty">Aucune page dans cet espace.</div>';
+  const sp = curSpace(), ld = liveDocs(), mine = ld.filter(d => d.sp === sp.id);
+  const cd = R.name === 'doc' ? docById(R.id) : null, cur = cd ? '' : R.name;
+  const count = { tasks: S.tasks.filter(t => t.sp === sp.id && !t.done).length, notes: mine.filter(d => d.type === 'note').length, boards: mine.filter(d => d.type === 'board').length, mood: (sp.media || []).length, favs: ld.filter(d => d.fav).length, trash: S.docs.filter(d => d.trash).length };
+  const row = ([k, ic, l]) => `<button class="nv" data-go="${k === 'space' ? 'space:' + sp.id : k}"${cur === k ? ' aria-current="page"' : ''}>${icon(ic)}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>`;
+  $('#nav').innerHTML = NAV.map(row).join('');
+  $('#nav2').innerHTML = NAV2.map(row).join('');
+  const sw = $('#spaceSw');
+  sw.innerHTML = `<span class="dot" style="background:${sp.color}"></span><span class="spn"><small>Espace</small><b>${esc(sp.name)}</b></span>${icon('chevd', 'sm')}`;
+  sw.dataset.sp = sp.id; sw.classList.toggle('def', sp.id === DEF_SPACE);
+  const pages = mine.slice().sort((a, b) => a.created - b.created);
+  $('#pages').innerHTML = pages.map(d => `<button class="nv pg" data-go="doc:${d.id}"${cd && cd.id === d.id ? ' aria-current="page"' : ''}>${icon(d.type === 'board' ? 'board' : 'note', 'sm')}<span class="pt">${esc(d.title)}</span></button>`).join('') || '<div class="pempty">Pas encore de page ici.</div>';
   $('#meName').textContent = S.prefs.name || 'Moi'; $('#meAv').textContent = (S.prefs.name || 'M')[0].toUpperCase();
   $('#themeBtn').innerHTML = icon(isDarkTheme() ? 'sun' : 'moon');
 }
+/* the dropdown of the spaces: pick one, ⋯ for its options, a field at the bottom to create one */
+function openSpaceSwitcher(anchor, o = {}) {
+  const cur = curSpace(), ld = liveDocs();
+  const n = s => ld.filter(d => d.sp === s.id).length + S.tasks.filter(t => t.sp === s.id && !t.done).length;
+  const item = s => `<div class="spm-row"><button class="mi spm-it" data-sw="${s.id}"${s.id === cur.id ? ' aria-current="true"' : ''}><span class="sdot" style="background:${s.color}"></span><span class="t">${esc(s.name)}</span><small>${n(s) || ''}</small>${s.id === cur.id ? icon('check', 'sm') : ''}</button>${s.id === DEF_SPACE ? '' : `<button class="spm-more" data-spmore="${s.id}" aria-label="Options de ${esc(s.name)}" title="Options">${icon('dots', 'sm')}</button>`}</div>`;
+  const mine = userSpaces(), def = spaceById(DEF_SPACE);
+  const p = openPop(anchor, `<div class="mh">Vos espaces</div>
+    ${mine.map(item).join('') || '<div class="spm-empty">Aucun espace pour l’instant.</div>'}
+    <div class="msep"></div>${def ? item(def) : ''}
+    <div class="msep"></div>
+    <label class="spm-new">${icon('plus', 'sm')}<input id="spNew" placeholder="Nouvel espace…" aria-label="Nom du nouvel espace" autocomplete="off"></label>`, { cls: 'spm', focus: false });
+  const w = anchor.getBoundingClientRect ? anchor.getBoundingClientRect().width : 0; if (w > 200) p.style.minWidth = w + 'px';
+  const inp = $('#spNew', p);
+  p.addEventListener('click', e => {
+    const m = e.target.closest('[data-spmore]'); if (m) { e.stopPropagation(); spaceMenu(m, spaceById(m.dataset.spmore)); return; }
+    const b = e.target.closest('[data-sw]'); if (b) { closePop(); go('space:' + b.dataset.sw); }
+  });
+  inp.onkeydown = e => { if (e.key === 'Enter' && inp.value.trim()) { closePop(); createSpace(inp.value); } if (e.key === 'Escape') closePop(); };
+  if (o.create) inp.focus(); else { const c = $('[aria-current="true"]', p); if (c) c.focus({ preventScroll: true }); }
+}
+function createSpace(name) {
+  const cols = themeColors('space', SPACE_COLORS);
+  const sp = { id: uid('s'), name: String(name).trim().slice(0, 60) || 'Nouvel espace', color: cols[userSpaces().length % cols.length], media: [], created: Date.now() };
+  S.spaces.push(sp); S.prefs.cur = sp.id; S.prefs.welcomed = true; save();
+  go('space:' + sp.id); toast(`Espace « ${sp.name} » créé`);
+  return sp;
+}
 function spaceMenu(anchor, sp) {
+  if (!sp) return;
   openPop(anchor, [
     { label: 'Ouvrir', icon: 'folder', run: () => go('space:' + sp.id) },
-    { label: 'Renommer', icon: 'text', run: () => renameSpace(sp) },
-    { label: 'Couleur', icon: 'sun', run: () => openPop(anchor, themeColors('space', SPACE_COLORS).map(c => ({ label: c === sp.color ? 'Couleur actuelle' : 'Choisir', dot: c, run: () => { sp.color = c; save(); renderSide(); if (R.name === 'space') go(R); } }))) },
-    '-',
-    { label: "Supprimer l'espace", icon: 'trash', danger: true, run: () => deleteSpace(sp) }
+    ...(sp.id === DEF_SPACE ? [] : [
+      { label: 'Renommer', icon: 'text', run: () => renameSpace(sp) },
+      { label: 'Couleur', icon: 'sun', run: () => openPop(anchor, themeColors('space', SPACE_COLORS).map(c => ({ label: c === sp.color ? 'Couleur actuelle' : 'Choisir', dot: c, run: () => { sp.color = c; save(); renderSide(); if (R.name === 'space') go(R); } }))) },
+      '-',
+      { label: "Supprimer l'espace", icon: 'trash', danger: true, run: () => deleteSpace(sp) }])
   ]);
 }
+/* the name is edited in the title of the space's home */
 function renameSpace(sp) {
-  const b = $(`#spaces [data-sp="${sp.id}"]`); if (!b) return;
-  b.outerHTML = `<div class="newsp"><input id="spRename" value="${esc(sp.name)}" aria-label="Nom de l'espace"></div>`;
-  const i = $('#spRename'); i.focus(); i.select();
-  const done = ok => { if (ok && i.value.trim()) { sp.name = i.value.trim(); save(); } renderSide(); if (R.name === 'space' || R.name === 'doc') renderTop(); };
-  i.onkeydown = e => { if (e.key === 'Enter') done(true); if (e.key === 'Escape') done(false); };
-  i.onblur = () => done(true);
+  if (R.name !== 'space' || R.id !== sp.id) go('space:' + sp.id);
+  const i = $('#spTitle'); if (i) { i.focus(); i.select(); }
 }
 function deleteSpace(sp) {
+  if (!sp || sp.id === DEF_SPACE) return;
   const n = S.docs.filter(d => d.sp === sp.id && !d.trash).length, nt = S.tasks.filter(t => t.sp === sp.id).length;
   openModal(`<div class="mhd"><h2>Supprimer « ${esc(sp.name)} » ?</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
     <p style="margin:0 0 14px;color:var(--ink-2)">${n ? `Ses ${n} note(s) et board(s) iront dans la corbeille. ` : ''}${nt ? `Ses ${nt} tâche(s) seront supprimées.` : ''}${!n && !nt ? "L'espace est vide." : ''}</p>
     <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost" data-close>Annuler</button><button class="btn pri" id="spDel" style="background:var(--err);border-color:var(--err)">Supprimer</button></div>`,
-    m => { $('#spDel', m).onclick = () => { S.docs.forEach(d => { if (d.sp === sp.id) d.trash = true; }); S.tasks = S.tasks.filter(t => t.sp !== sp.id); S.spaces = S.spaces.filter(s => s !== sp); save(); closeModal(); go('home'); toast('Espace supprimé'); }; });
-}
-function addSpaceInline() {
-  const box = document.createElement('div'); box.className = 'newsp'; box.innerHTML = `<input id="spNew" placeholder="Nom de l'espace" aria-label="Nom du nouvel espace">`;
-  $('#spaces').append(box); const i = $('#spNew'); i.focus();
-  let closed = false;
-  const done = ok => { if (closed) return; closed = true; const v = i.value.trim(); if (ok && v) { const sp = { id: uid('s'), name: v, color: SPACE_COLORS[S.spaces.length % SPACE_COLORS.length] }; S.spaces.push(sp); save(); go('space:' + sp.id); } else renderSide(); };
-  i.onkeydown = e => { if (e.key === 'Enter') done(true); if (e.key === 'Escape') done(false); };
-  i.onblur = () => done(true);
+    m => { $('#spDel', m).onclick = () => { S.docs.forEach(d => { if (d.sp === sp.id) { d.trash = true; d.sp = DEF_SPACE; } }); S.tasks = S.tasks.filter(t => t.sp !== sp.id); S.spaces = S.spaces.filter(s => s !== sp); if (S.prefs.cur === sp.id) S.prefs.cur = DEF_SPACE; save(); closeModal(); go('space:' + DEF_SPACE); toast('Espace supprimé'); }; });
 }
 
 /* ================= top bar ================= */
@@ -167,20 +226,26 @@ function renderTop() {
   const menu = `<button class="tb menu-btn" id="navBtn" aria-label="Menu">${icon('menu')}</button>`;
   const aiBtn = !S.prefs.aiOn ? '' : `<button class="tb ai" id="aiBtn" aria-pressed="${!$('#ai').hidden}" title="Assistant IA (Ctrl J)">${icon('spark')}<span class="lbl">Assistant</span></button>`;
   let crumbs = '', acts = '';
-  const titles = { home: 'Accueil', notes: 'Notes', boards: 'Boards', tasks: 'Tâches', favs: 'Favoris', trash: 'Corbeille', search: 'Recherche' };
+  const titles = { notes: 'Notes', boards: 'Boards', tasks: 'Tâches', mood: 'Moodboard', favs: 'Favoris', trash: 'Corbeille', search: 'Recherche' };
+  // the moodboard of the space opens as a drawer from every page (Ctrl M)
+  const moodBtn = R.name === 'mood' || R.name === 'welcome' ? '' : `<button class="tb" id="moodBtn" aria-pressed="${Mood.isOpen()}" title="Moodboard de l’espace (Ctrl M)">${icon('image')}<span class="lbl">Moodboard</span></button>`;
+  const spCrumb = sp => `<button class="sp" data-go="space:${sp.id}"><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</button><span>/</span>`;
   if (d) {
     const sp = spaceById(d.sp);
-    crumbs = `${sp ? `<button class="sp" data-go="space:${sp.id}"><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</button><span>/</span>` : ''}<input class="cur" id="docTitle" value="${esc(d.title)}" aria-label="Titre">`;
-    acts = `<button class="tb" id="favBtn" aria-pressed="${d.fav}" title="Favori">${icon('star')}</button>
+    crumbs = `${sp ? spCrumb(sp) : ''}<input class="cur" id="docTitle" value="${esc(d.title)}" aria-label="Titre">`;
+    acts = `<button class="tb" id="favBtn" aria-pressed="${d.fav}" title="Favori">${icon('star')}</button>${moodBtn}
       <button class="tb" id="focusBtn" title="Mode focus (Ctrl .)">${icon('focus')}<span class="lbl">Focus</span></button>${aiBtn}
       <button class="tb" id="docMore" aria-label="Plus d'actions">${icon('dots')}</button>`;
   } else if (R.name === 'space') {
     const sp = spaceById(R.id);
     crumbs = `<span class="sp"><span class="sdot" style="background:${sp.color}"></span></span><span class="cur">${esc(sp.name)}</span>`;
-    acts = `<button class="tb" id="spMore" aria-label="Options de l'espace">${icon('dots')}</button>${aiBtn}`;
+    acts = `${moodBtn}${sp.id === DEF_SPACE ? '' : `<button class="tb" id="spMore" aria-label="Options de l'espace">${icon('dots')}</button>`}${aiBtn}`;
+  } else if (R.name === 'welcome') {
+    crumbs = ''; acts = '';
   } else {
-    crumbs = `<span class="cur">${titles[R.name] || ''}</span>`;
-    acts = aiBtn;
+    const scoped = ['notes', 'boards', 'tasks', 'mood'].includes(R.name);
+    crumbs = `${scoped ? spCrumb(curSpace()) : ''}<span class="cur">${titles[R.name] || ''}</span>`;
+    acts = moodBtn + aiBtn;
   }
   t.innerHTML = `${menu}<div class="crumbs">${crumbs}</div>${acts}`;
   if (d) {
@@ -192,7 +257,8 @@ function renderTop() {
     $('#focusBtn').onclick = () => setFocus(true);
     $('#docMore').onclick = e => docMenu(e.currentTarget, d);
   }
-  if (R.name === 'space') $('#spMore').onclick = e => spaceMenu(e.currentTarget, spaceById(R.id));
+  const sm = $('#spMore'); if (sm) sm.onclick = e => spaceMenu(e.currentTarget, spaceById(R.id));
+  const mb = $('#moodBtn'); if (mb) mb.onclick = () => Mood.toggle();
   const ab = $('#aiBtn'); if (ab) ab.onclick = () => AI.toggle();
   $('#navBtn').onclick = () => document.documentElement.toggleAttribute('data-nav');
 }
@@ -207,19 +273,18 @@ function docMenu(anchor, d) {
   ], { align: 'right' });
 }
 
-/* ================= shared bits ================= */
+/* ================= shared bits =================
+   0.2: tasks are kept simple, a title in its space with sub-tasks, images and a note; dates, times, stars and
+   colours stay in the data but are not shown */
 function taskRow(t, o = {}) {
-  const di = dueInfo(t.due), sp = spaceById(t.sp), sc = subCount(t), subs = subsOf(t), nimg = resOf(t).filter(id => Assets.has(id)).length;
+  const sc = subCount(t), subs = subsOf(t), nimg = resOf(t).filter(id => Assets.has(id)).length;
   const open = sc && t.open && !t.done ? `<div class="tsubs">${subs.map((x, k) => `<button class="tsub${x[1] ? ' on' : ''}" data-subck="${k}" role="checkbox" aria-checked="${x[1]}" style="--i:${k}"><span class="cb sm">${icon('check')}</span><span class="st">${esc(x[0])}</span></button>`).join('')}</div>` : '';
   return `<div class="tw" data-tw="${t.id}"${o.drag ? ' data-drag="1"' : ''}${o.space ? ' data-showsp="1"' : ''}><div class="trow${t.done ? ' done' : ''}" data-task="${t.id}">
     <button class="cb" role="checkbox" aria-checked="${t.done}" aria-label="Terminer" data-done="${t.id}">${icon('check')}</button>
-    ${theme().taskIcon ? theme().taskIcon(t) : ''}<button class="tt" data-edit="${t.id}">${esc(t.t)}</button>
+    <button class="tt" data-edit="${t.id}">${esc(t.t)}</button>
     ${sc ? `<button class="chip subc${t.open ? ' on' : ''}" data-subs="${t.id}" aria-expanded="${!!t.open}" title="Sous-tâches">${icon('chk')}${sc}</button>` : ''}
     ${nimg ? `<button class="chip imgc" data-edit="${t.id}" title="Images">${icon('image')}${nimg}</button>` : ''}
-    ${t.star ? `<span class="star">${icon('star', 'sm')}</span>` : ''}
-    ${o.space && sp ? `<span class="chip"><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</span>` : ''}
-    ${t.time && o.time !== false ? `<span class="chip time">${icon('clock')}${t.time}</span>` : ''}
-    ${di && !t.done ? `<span class="chip ${di.cls}">${di.label}</span>` : ''}
+    ${t.note && t.note.trim() ? `<span class="tnote" title="${esc(t.note.slice(0, 200))}">${icon('note', 'sm')}</span>` : ''}
     <button class="tb" data-edit="${t.id}" aria-label="Modifier" style="height:28px;min-width:28px;padding:0">${icon('chev', 'sm')}</button>
   </div>${open}</div>`;
 }
@@ -308,18 +373,21 @@ function toggleTaskEdit(tw, t, rerender) {
   $$('.tedit').forEach(x => x.remove());
   const ed = document.createElement('div'); ed.className = 'tedit'; ed.dataset.for = t.id;
   ed.innerHTML = `<div class="row"><input type="text" id="te-t" value="${esc(t.t)}" aria-label="Titre"></div>
-    <div class="row"><input type="date" id="te-d" value="${t.due}" aria-label="Échéance"><input type="time" id="te-h" value="${t.time}" aria-label="Heure">
-      <select id="te-s" aria-label="Espace">${S.spaces.map(s => `<option value="${s.id}"${s.id === t.sp ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
-      <button class="btn sm ghost" id="te-star" aria-pressed="${t.star}">${icon('star', 'sm')}${t.star ? 'Important' : 'Marquer important'}</button>
-      <button class="btn sm ghost del" id="te-dup" title="Dupliquer la tâche">${icon('dup', 'sm')}Dupliquer</button>
-      <button class="btn sm ghost danger" id="te-del">${icon('trash', 'sm')}Supprimer</button></div>
     <div class="tchk"></div>
     <div class="timgs"></div>
-    <textarea id="te-n" placeholder="Note…" aria-label="Note">${esc(t.note)}</textarea>`;
+    <textarea id="te-n" placeholder="Note…" aria-label="Note">${esc(t.note)}</textarea>
+    <div class="row tacts"><label class="tsp">${icon('folder', 'sm')}<select id="te-s" aria-label="Espace">${S.spaces.map(s => `<option value="${s.id}"${s.id === t.sp ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>
+      <span class="sp-gap"></span>
+      <button class="btn sm ghost del" id="te-dup" title="Dupliquer la tâche">${icon('dup', 'sm')}Dupliquer</button>
+      <button class="btn sm ghost danger" id="te-del">${icon('trash', 'sm')}Supprimer</button></div>`;
   renderSubEditor(ed, t); renderTaskImages(ed, t);
   tw.append(ed);
-  const upd = () => { t.t = $('#te-t', ed).value.trim() || t.t; t.due = $('#te-d', ed).value; t.time = $('#te-h', ed).value; t.sp = $('#te-s', ed).value; t.note = $('#te-n', ed).value; save(); };
-  ed.addEventListener('change', e => { if (e.target.closest('.tchk')) return; upd(); rerender(); });
+  const upd = () => { t.t = $('#te-t', ed).value.trim() || t.t; t.note = $('#te-n', ed).value; save(); };
+  ed.addEventListener('change', e => {
+    if (e.target.closest('.tchk')) return;
+    if (e.target.id === 'te-s') { const to = spaceById(e.target.value); if (to && to.id !== t.sp) { t.sp = to.id; delete t.ord; save(); smoothTasks(refreshTaskViews); toast(`Déplacée dans ${to.name}`); } return; }
+    upd(); rerender();
+  });
   // sub-tasks: tick, rename, remove, add (Enter keeps the field ready for the next one), drag up or down to reorder
   const chk = $('.tchk', ed);
   chk.addEventListener('click', e => {
@@ -352,7 +420,6 @@ function toggleTaskEdit(tw, t, rerender) {
   ed.addEventListener('paste', e => { const f = [...((e.clipboardData && e.clipboardData.files) || [])].filter(x => x.type.startsWith('image/')); if (f.length) { e.preventDefault(); addImgs(f); } });
   $('#te-t', ed).onkeydown = e => { if (e.key === 'Enter') { upd(); rerender(); } };
   $('#te-n', ed).oninput = () => { t.note = $('#te-n', ed).value; save(); };
-  $('#te-star', ed).onclick = () => { t.star = !t.star; save(); rerender(); };
   $('#te-dup', ed).onclick = () => { const c = dupTask(t); rerender(); toast('Tâche dupliquée', { label: 'Annuler', run: () => { S.tasks = S.tasks.filter(x => x !== c); save(); smoothTasks(refreshTaskViews); } }); };
   $('#te-del', ed).onclick = () => { const i = S.tasks.indexOf(t); S.tasks.splice(i, 1); save(); rerender(); toast('Tâche supprimée', { label: 'Annuler', run: () => { S.tasks.splice(i, 0, t); save(); smoothTasks(refreshTaskViews); } }); };
   $('#te-t', ed).focus();
@@ -456,67 +523,23 @@ function sortable(root, o) {
 }
 function refreshTaskViews() {
   renderSide();
-  if (R.name === 'tasks' || R.name === 'home' || R.name === 'space') { const v = $('#view'), st = v.scrollTop; go(R, { keepFocus: true }); v.scrollTop = st; }
+  if (R.name === 'tasks' || R.name === 'space') { const v = $('#view'), st = v.scrollTop; go(R, { keepFocus: true }); v.scrollTop = st; }
   else if (R.name === 'doc' && typeof Board !== 'undefined') Board.refreshRefs();
 }
 
-/* quick add: « Appeler Paul demain 14h #Perso ! » */
-function parseQuick(s) {
-  let t = ' ' + s + ' ', due = '', time = '', sp = '', star = false;
-  const T = today(), n = norm(t);
-  const take = re => { const m = t.match(re); if (m) t = t.replace(m[0], ' '); return m; };
-  let m;
-  if ((m = take(/\s#([\p{L}\p{N}_-]+)/u))) { const q = norm(m[1]); const f = S.spaces.find(x => norm(x.name).replace(/\s+/g, '').startsWith(q)); if (f) sp = f.id; }
-  if (take(/\s!(?=\s)/)) star = true;
-  if ((m = take(/\s(?:à\s)?(\d{1,2})\s?(?:h|:)\s?(\d{2})?(?=\s)/i))) { const hh = +m[1], mm = +(m[2] || 0); if (hh < 24 && mm < 60) time = pad2(hh) + ':' + pad2(mm); }
-  if (take(/\s(?:aujourd'hui|aujourdhui|auj)(?=\s)/i) || take(/\sce soir(?=\s)/i)) due = T;
-  else if (take(/\saprès-demain(?=\s)/i) || take(/\sapres-demain(?=\s)/i)) due = addDays(T, 2);
-  else if (take(/\sdemain(?=\s)/i)) due = addDays(T, 1);
-  else if (take(/\s(?:la\s)?semaine prochaine(?=\s)/i)) { const wd = new Date(T + 'T12:00').getDay(); due = addDays(T, ((8 - wd) % 7) || 7); }
-  else if ((m = take(/\s(?:le\s)?(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?=\s)/))) { const y = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : new Date().getFullYear(); const d = `${y}-${pad2(+m[2])}-${pad2(+m[1])}`; if (!isNaN(new Date(d + 'T12:00'))) due = d; }
-  else { for (let i = 0; i < 7; i++) { const re = new RegExp('\\s(?:' + WD[i] + '|' + norm(WD[i]) + ')(?=\\s)', 'i'); if (re.test(t)) { t = t.replace(re, ' '); const wd = new Date(T + 'T12:00').getDay(); due = addDays(T, ((i - wd + 7) % 7) || 7); break; } } }
-  void n;
-  return { t: t.replace(/\s+/g, ' ').trim(), due, time, sp, star };
-}
+/* quick add: the text as it is, in the space of the page */
 function quickAddBox(id, ph, spDefault) {
   return `<label class="qadd">${icon('plus')}<input id="${id}" placeholder="${esc(ph)}" autocomplete="off" data-sp="${spDefault || ''}"></label>`;
 }
 function bindQuickAdd(input, after) {
   input.onkeydown = e => {
     if (e.key !== 'Enter' || !input.value.trim()) return;
-    const q = parseQuick(input.value); if (!q.t) return;
-    const t = newTask({ t: q.t, due: q.due, time: q.time, sp: q.sp || input.dataset.sp, star: q.star });
+    const t = newTask({ t: input.value, sp: input.dataset.sp || undefined });
     input.value = ''; after && after(t);
-    toast(`Ajoutée${t.due ? ' · ' + dueInfo(t.due).label : ''}${t.time ? ' à ' + t.time : ''}`);
+    setTimeout(() => { const i = input.id && $('#' + input.id); if (i) i.focus({ preventScroll: true }); }, 0);
   };
 }
 
-/* ================= home ================= */
-function renderHome(v) {
-  const T = today(), name = S.prefs.name;
-  const h = new Date().getHours(), hello = h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
-  const todays = S.tasks.filter(t => !t.done && t.due && t.due <= T).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
-  const doneToday = S.tasks.filter(t => t.done && t.doneAt && isoOf(new Date(t.doneAt)) === T);
-  const recent = liveDocs().sort((a, b) => b.updated - a.updated).slice(0, 8);
-  v.innerHTML = `<div class="page">
-    <div class="ph"><div><h1>${hello}${name ? ', ' + esc(name) : ''}</h1><div class="sub">${fmtLong(T)} · ${todays.length ? `${todays.length} tâche${todays.length > 1 ? 's' : ''} pour aujourd'hui` : "Rien d'urgent aujourd'hui"}</div></div>
-      <div class="acts"><button class="btn" data-new="note">${icon('note')}Note</button><button class="btn pri" data-new="board">${icon('board')}Board</button></div></div>
-    <div class="grid2">
-      <section class="card"><h2>${icon('cal')}Aujourd'hui <span class="ct">${doneToday.length ? doneToday.length + ' faite' + (doneToday.length > 1 ? 's' : '') : ''}</span><button class="more" data-go="tasks">Toutes les tâches</button></h2>
-        <div id="hTasks">${todays.length ? todays.map(t => taskRow(t, { space: true })).join('') : `<div class="empty">Aucune tâche prévue. Ajoutez-en une ci-dessous, par exemple « Appeler Paul demain 14h ».</div>`}</div>
-        <div style="margin-top:10px">${quickAddBox('hAdd', "Ajouter pour aujourd'hui…")}</div></section>
-      <section class="card"><h2>${icon('folder')}Espaces<button class="more" id="hAddSp">Nouvel espace</button></h2><div class="spaces-list">${S.spaces.map(s => {
-        const ts = S.tasks.filter(t => t.sp === s.id), dn = ts.filter(t => t.done).length, nd = liveDocs().filter(d => d.sp === s.id).length;
-        return `<button class="sprow" data-go="space:${s.id}"><span class="sdot" style="background:${s.color}"></span><b>${esc(s.name)}</b><small>${nd} doc${nd > 1 ? 's' : ''} · ${ts.length - dn} à faire</small><span class="bar"><i style="width:${ts.length ? Math.round(dn / ts.length * 100) : 0}%;background:${s.color}"></i></span></button>`;
-      }).join('')}</div></section>
-    </div>
-    <section class="card"><h2>${icon('note')}Récents<button class="more" data-go="notes">Voir tout</button></h2><div class="docs row">${recent.map(docCard).join('')}</div></section>
-  </div><button class="fab" id="fab" aria-label="Créer">${icon('plus')}</button>`;
-  bindDocCards(v); bindTaskList($('#hTasks'), () => go('home'));
-  bindQuickAdd($('#hAdd'), t => { if (!t.due) { t.due = T; save(); } go('home'); });
-  $('#hAddSp').onclick = addSpaceInline;
-  bindCreate(v);
-}
 function bindCreate(v) {
   v.addEventListener('click', e => {
     const n = e.target.closest('[data-new]'); if (n) { createFrom(n.dataset.new); return; }
@@ -558,7 +581,8 @@ function purgeDocs(list) {
   $('#pgYes').onclick = () => { const ids = new Set(list.map(d => d.id)); S.docs = S.docs.filter(d => !ids.has(d.id)); save(); gcAssets(); go('trash'); toast('Supprimé'); };
 }
 function renderDocList(v, kind) {
-  const conf = { notes: ['Notes', d => d.type === 'note' && !d.trash, 'Vos pages : texte, croquis et images.'], boards: ['Boards', d => d.type === 'board' && !d.trash, 'Moodboards et plans sur une toile infinie.'], favs: ['Favoris', d => d.fav && !d.trash, 'Ce que vous avez marqué d’une étoile.'], trash: ['Corbeille', d => d.trash, 'Restaurez ou supprimez pour de bon.'] }[kind];
+  const sp = curSpace(), inSp = d => d.sp === sp.id && !d.trash;
+  const conf = { notes: ['Notes', d => d.type === 'note' && inSp(d), `Les notes de ${sp.name} : texte, croquis et images.`], boards: ['Boards', d => d.type === 'board' && inSp(d), `Les boards de ${sp.name}, sur une toile infinie.`], favs: ['Favoris', d => d.fav && !d.trash, 'Ce que vous avez marqué d’une étoile, dans tous les espaces.'], trash: ['Corbeille', d => d.trash, 'Restaurez ou supprimez pour de bon.'] }[kind];
   const list = S.docs.filter(conf[1]).sort((a, b) => b.updated - a.updated);
   v.innerHTML = `<div class="page"><div class="ph"><div><h1>${conf[0]}</h1><div class="sub">${conf[2]}</div></div><div class="acts">
       ${kind === 'trash' ? (list.length ? `<button class="btn ghost danger" id="emptyTrash">${icon('trash')}Vider la corbeille</button>` : '') : `<button class="btn" data-new="note">${icon('note')}Nouvelle note</button><button class="btn pri" data-new="board">${icon('board')}Nouveau board</button>`}</div></div>
@@ -568,98 +592,51 @@ function renderDocList(v, kind) {
   bindDocCards(v); bindCreate(v);
   const et = $('#emptyTrash'); if (et) et.onclick = () => purgeDocs(list);
 }
+/* the home of a space: its tasks, its moodboard, its boards and notes */
 function renderSpace(v) {
   const sp = spaceById(R.id), docs = liveDocs().filter(d => d.sp === sp.id).sort((a, b) => b.updated - a.updated);
   const open = S.tasks.filter(t => t.sp === sp.id && !t.done).sort(taskSort), done = S.tasks.filter(t => t.sp === sp.id && t.done);
-  v.innerHTML = `<div class="page"><div class="ph"><div><h1><span class="sdot" style="background:${sp.color};width:16px;height:16px;margin-right:10px;vertical-align:middle"></span>${esc(sp.name)}</h1><div class="sub">${docs.length} document${docs.length > 1 ? 's' : ''} · ${open.length} tâche${open.length > 1 ? 's' : ''} à faire</div></div>
-    <div class="acts"><button class="btn" data-new="note">${icon('note')}Note</button><button class="btn pri" data-new="board">${icon('board')}Board</button></div></div>
-    <section class="card"><h2>${icon('tasks')}Tâches</h2>${quickAddBox('sAdd', `Ajouter une tâche à ${sp.name}…`, sp.id)}<div id="sTasks" data-tlist data-sp="${sp.id}" style="margin-top:8px">${open.map(t => taskRow(t, { drag: true })).join('') || '<div class="empty">Rien à faire ici pour le moment.</div>'}</div>
-    ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div id="sDone">${done.map(t => taskRow(t)).join('')}</div></details>` : ''}</section>
-    <div class="docs"><button class="newcard" data-new="note">${icon('plus', 'lg')}Nouvelle note</button>${docs.map(docCard).join('')}</div>
-    <section class="card" id="spMood"><h2>${icon('image')}Moodboard <span class="ct">${spaceMedia(sp.id).filter(m => m.type !== 'doc').length || ''}</span><button class="more" id="mAdd">Ajouter des documents</button></h2>
-      <div class="mdrop big" id="mDrop">${icon('upload')}<div>Déposez ici les images, PDF et fichiers du projet. Ils se retrouvent dans l’onglet Moodboard de chaque board de l’espace, prêts à glisser.</div></div>
-      <div class="mgrid big" id="mGrid">${mediaTiles(sp.id)}</div></section></div><button class="fab" id="fab" aria-label="Créer">${icon('plus')}</button>`;
-  bindDocCards(v); bindCreate(v); bindTaskList(v.querySelector('.card'), () => go(R));
+  const nb = docs.filter(d => d.type === 'board').length, nn = docs.length - nb, nm = (sp.media || []).length;
+  const pl = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
+  const isDef = sp.id === DEF_SPACE;
+  v.innerHTML = `<div class="page sphome">
+    <div class="ph sp-ph"><div class="sp-hd"><div class="sp-kick"><span class="sdot" style="background:${sp.color}"></span>${isDef ? 'Espace par défaut' : 'Espace'}</div>
+      ${isDef ? `<h1>${esc(sp.name)}</h1>` : `<input class="sp-title" id="spTitle" value="${esc(sp.name)}" aria-label="Nom de l'espace" spellcheck="false">`}
+      <div class="sub">${isDef ? 'Pour les notes et les tâches rapides, sans créer d’espace. ' : ''}${[pl(open.length, 'tâche') + ' à faire', nb ? pl(nb, 'board') : '', nn ? pl(nn, 'note') : '', nm ? pl(nm, 'élément') + ' au moodboard' : ''].filter(Boolean).join(' · ')}</div></div>
+      <div class="acts"><button class="btn" data-new="note">${icon('note')}Note</button><button class="btn pri" data-new="board">${icon('board')}Board</button></div></div>
+    <div class="sp-grid">
+      <section class="card sp-tasks"><h2>${icon('tasks')}Tâches <span class="ct">${open.length || ''}</span><button class="more" data-go="tasks">Tout voir</button></h2>${quickAddBox('sAdd', 'Ajouter une tâche…', sp.id)}
+        <div id="sTasks" class="tl-light" data-tlist data-sp="${sp.id}">${open.map(t => taskRow(t, { drag: true })).join('') || '<div class="empty sm">Rien à faire ici pour le moment.</div>'}</div>
+        ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div id="sDone">${done.map(t => taskRow(t)).join('')}</div></details>` : ''}</section>
+      <section class="card sp-mood" id="spMood"><h2>${icon('image')}Moodboard <span class="ct">${nm || ''}</span><button class="more" data-go="mood">Ouvrir</button></h2>${Mood.preview(sp)}</section>
+    </div>
+    <section class="sp-docs"><h2 class="sp-h">Boards et notes</h2>
+      <div class="docs"><button class="newcard" data-new="board">${icon('plus', 'lg')}Nouveau board</button><button class="newcard" data-new="note">${icon('plus', 'lg')}Nouvelle note</button>${docs.map(docCard).join('')}</div></section>
+  </div><button class="fab" id="fab" aria-label="Créer">${icon('plus')}</button>`;
+  bindDocCards(v); bindCreate(v); bindTaskList($('.sp-tasks', v), () => go(R));
   bindQuickAdd($('#sAdd'), () => go(R));
-  bindMood(v, sp);
-}
-function mediaTiles(spId) {
-  const media = spaceMedia(spId).filter(m => m.type !== 'doc');
-  return media.map((m, i) => {
-    let inner = '';
-    if (m.type === 'image') inner = `<img src="${Assets.url(m.asset)}" alt="${esc(m.name || '')}" loading="lazy" draggable="false">`;
-    else if (m.type === 'file') { const ext = ((m.name || '').split('.').pop() || 'fichier').slice(0, 4).toUpperCase(); inner = `<div class="mft">${esc(ext)}</div><span class="mn">${esc(m.name || 'Fichier')}</span>`; }
-    else { let dom = m.url; try { dom = new URL(m.url).hostname.replace(/^www\./, ''); } catch (e) {} inner = `<div class="mft">${esc((dom[0] || '?').toUpperCase())}</div><span class="mn">${esc(m.title || dom)}</span>`; }
-    return `<button class="mtile" data-mi="${i}" title="${esc(m.name || m.title || '')}">${inner}</button>`;
-  }).join('') || '<div class="empty">Rien pour l’instant. Déposez des images ou des fichiers ci-dessus.</div>';
-}
-function bindMood(v, sp) {
-  const add = async files => { const n = await addMedia(sp.id, files); if (n.length) { toast(`${n.length} document${n.length > 1 ? 's' : ''} ajouté${n.length > 1 ? 's' : ''}`); go(R); } };
-  $('#mAdd', v).onclick = () => { const i = $('#fileIn'); i.accept = ''; i.onchange = async () => { const f = [...i.files]; i.value = ''; if (f.length) add(f); }; i.click(); };
-  const z = $('#mDrop', v);
-  z.addEventListener('dragover', e => { if ([...(e.dataTransfer.types || [])].includes('Files')) { e.preventDefault(); e.stopPropagation(); z.classList.add('over'); } });
-  z.addEventListener('dragleave', () => z.classList.remove('over'));
-  z.addEventListener('drop', e => { const f = [...(e.dataTransfer.files || [])]; if (!f.length) return; e.preventDefault(); e.stopPropagation(); z.classList.remove('over'); add(f); });
-  $('#mGrid', v).onclick = e => {
-    const t = e.target.closest('[data-mi]'); if (!t) return;
-    const media = spaceMedia(sp.id).filter(m => m.type !== 'doc'), m = media[+t.dataset.mi]; if (!m) return;
-    const boards = liveDocs().filter(d => d.sp === sp.id && d.type === 'board').sort((a, b) => b.updated - a.updated);
-    openPop(t, [{ head: 'Placer sur un board' }, ...boards.map(b => ({ label: b.title, icon: 'board', run: () => { go('doc:' + b.id); setTimeout(() => Board.placeMedia([m]), 60); } })), { label: 'Nouveau board', icon: 'plus', run: () => { const d = newDoc('board', { title: 'Moodboard', sp: sp.id }); go('doc:' + d.id); setTimeout(() => Board.placeMedia([m]), 60); } },
-      ...(m.type === 'image' ? ['-', { label: 'Voir en grand', icon: 'focus', run: () => { const l = document.createElement('div'); l.className = 'lightbox'; l.innerHTML = `<img src="${Assets.url(m.asset)}" alt="">`; l.onclick = () => l.remove(); document.body.append(l); } }] : []),
-      ...((sp.media || []).includes(m) ? ['-', { label: 'Retirer du moodboard', icon: 'trash', danger: true, run: () => { sp.media = sp.media.filter(x => x !== m); save(); go(R); } }] : [])]);
-  };
+  Mood.bindPreview($('#spMood', v), sp);
+  const ti = $('#spTitle', v);
+  if (ti) {
+    ti.onkeydown = e => { if (e.key === 'Enter') ti.blur(); if (e.key === 'Escape') { ti.value = sp.name; ti.blur(); } };
+    ti.oninput = () => { const n = ti.value.trim(); if (n) { sp.name = n.slice(0, 60); save(); renderSide(); const c = $('#top .crumbs .cur'); if (c) c.textContent = sp.name; } };
+    ti.onblur = () => { if (!ti.value.trim()) ti.value = sp.name; };
+  }
 }
 
 /* ================= tasks ================= */
-let taskFilter = 'all';
 const ordOf = t => typeof t.ord === 'number' ? t.ord : 1e9;
-const taskSort = (a, b) => ordOf(a) - ordOf(b) || (a.due || '9999').localeCompare(b.due || '9999') || (a.time || '99').localeCompare(b.time || '99') || a.created - b.created;
+const taskSort = (a, b) => ordOf(a) - ordOf(b) || a.created - b.created;
 function renderTasks(v) {
-  const T = today(), wEnd = addDays(T, 7 - (new Date(T + 'T12:00').getDay() || 7));
-  const F = { all: ['Toutes', () => true], today: ["Aujourd'hui", t => t.due && t.due <= T], week: ['Cette semaine', t => t.due && t.due <= wEnd], late: ['En retard', t => t.due && t.due < T], nodate: ['Sans date', t => !t.due], star: ['Importantes', t => t.star] };
-  const open = S.tasks.filter(t => !t.done), done = S.tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
-  if (!F[taskFilter]) taskFilter = 'all';
-  const shown = open.filter(F[taskFilter][1]).sort(taskSort);
-  // one block per space, in the order of the spaces (drag a block or a space of the sidebar); every space shows under « Toutes »
-  adoptTaskOrder();
-  const groups = S.spaces.map(s => [s, shown.filter(t => t.sp === s.id)]).filter(g => g[1].length || taskFilter === 'all');
-  const orphan = shown.filter(t => !spaceById(t.sp));
-  // a theme may give its own head, filter tabs and panels around the blocks (theme().tasks)
-  const th = (theme().tasks && theme().tasks({ open, done, filters: Object.entries(F).map(([k, [l, fn]]) => ({ k, label: l, n: open.filter(fn).length, on: taskFilter === k })).filter(f => f.k !== 'late' || f.n), filter: taskFilter, today: T })) || {};
-  v.innerHTML = `<div class="page" style="max-width:880px">${th.head ?? `<div class="ph"><div><h1>Tâches</h1><div class="sub">${open.length} à faire · ${done.length} terminée${done.length > 1 ? 's' : ''}</div></div></div>`}
-    ${quickAddBox('tAdd', 'Ajouter une tâche…')}
-    <div class="qhint">Astuce : <b>demain 14h</b>, <b>vendredi</b>, <b>#Perso</b> pour l'espace, <b>!</b> pour important.</div>
-    ${th.tabs ?? `<div class="chips" id="tFil">${Object.entries(F).map(([k, [l, fn]]) => { const n = open.filter(fn).length; return k === 'late' && !n ? '' : `<button class="fchip" data-f="${k}" aria-pressed="${taskFilter === k}">${l}<span class="n">${n}</span></button>`; }).join('')}</div>`}
-    ${th.before || ''}
-    <div id="tGroups" style="display:grid;gap:16px">${groups.map(([s, ts]) => `<div class="tgroup" data-sp="${s.id}"><h3 title="Glisser pour déplacer l'espace"><span class="sdot" style="background:${s.color}"></span>${esc(s.name)} <small>${ts.length}</small></h3><div class="tlist">${ts.map(t => taskRow(t, { drag: true })).join('') || '<div class="tempty">Aucune tâche</div>'}</div></div>`).join('')}
-      ${orphan.length ? `<div class="tgroup"><h3>Sans espace</h3><div class="tlist">${orphan.map(t => taskRow(t, { drag: true })).join('')}</div></div>` : ''}
-      ${!shown.length ? `<div class="empty">Rien dans ce filtre.${taskFilter === 'all' ? ' Ajoutez une tâche ci-dessus.' : ''}</div>` : ''}</div>
-    ${th.after || ''}
-    ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div class="tlist">${done.slice(0, 60).map(t => taskRow(t, { space: true })).join('')}</div></details>` : ''}
+  const sp = curSpace(), open = S.tasks.filter(t => t.sp === sp.id && !t.done).sort(taskSort), done = S.tasks.filter(t => t.sp === sp.id && t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+  v.innerHTML = `<div class="page tpage" style="max-width:760px"><div class="ph"><div><h1>Tâches</h1><div class="sub">${esc(sp.name)} · ${open.length} à faire${done.length ? ` · ${done.length} terminée${done.length > 1 ? 's' : ''}` : ''}</div></div></div>
+    ${quickAddBox('tAdd', 'Ajouter une tâche…', sp.id)}
+    <div class="tlist tl-light" data-tlist data-sp="${sp.id}">${open.map(t => taskRow(t, { drag: true })).join('') || '<div class="tempty">Aucune tâche. Écrivez-en une ci-dessus puis Entrée.</div>'}</div>
+    ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div class="tlist">${done.slice(0, 80).map(t => taskRow(t)).join('')}</div></details>` : ''}
   </div>`;
   bindTaskList(v, () => go('tasks'));
   bindQuickAdd($('#tAdd'), () => go('tasks'));
-  $('#tFil').onclick = e => { const b = e.target.closest('[data-f]'); if (b) { taskFilter = b.dataset.f; go('tasks'); } };
-  sortable($('#tGroups'), { item: '.tgroup[data-sp]', lists: '#tGroups', sameList: true, skip: '.tlist, button, input, a', ghost: 'blk', onDrop: (el, list) => reorderSpaces([...list.querySelectorAll(':scope > .tgroup[data-sp]')].map(b => b.dataset.sp)) });
   setTimeout(() => { const i = $('#tAdd'); if (i && innerWidth > 760) i.focus({ preventScroll: true }); }, 0);
-}
-
-/* the order of the spaces: one order for the sidebar, the home page and the blocks of Tâches */
-function reorderSpaces(ids) {
-  const shown = ids.map(spaceById).filter(Boolean), slots = S.spaces.map((s, k) => shown.includes(s) ? k : -1).filter(k => k >= 0);
-  const next = S.spaces.slice(); slots.forEach((k, n) => { next[k] = shown[n]; });   // spaces not shown (filter) keep their place
-  if (next.every((s, k) => s === S.spaces[k])) return;
-  S.spaces = next; save(); renderSide();
-}
-/* 0.0.5–0.0.9 kept the order of the blocks apart (S.prefs.taskOrder): it becomes the order of the spaces once */
-function adoptTaskOrder() {
-  const o = S.prefs.taskOrder; if (!o || !o.length) return;
-  const rank = id => { const i = o.indexOf(id); return i < 0 ? 1e6 + S.spaces.findIndex(s => s.id === id) : i; };
-  S.spaces = S.spaces.slice().sort((a, b) => rank(a.id) - rank(b.id)); S.prefs.taskOrder = []; save(); renderSide();
-}
-function bindSpaceSort() {
-  const box = $('#spaces'); if (!box || box.dataset.sort) return; box.dataset.sort = '1';
-  sortable(box, { item: '.nv[data-sp]', lists: '#spaces', sameList: true, scroll: false, onHold: el => spaceMenu(el, spaceById(el.dataset.sp)), onDrop: (el, list) => { reorderSpaces([...list.querySelectorAll('.nv[data-sp]')].map(b => b.dataset.sp)); if (R.name === 'tasks' || R.name === 'home') go(R, { keepFocus: true }); } });
 }
 
 /* ================= search ================= */
@@ -677,7 +654,7 @@ function searchAll(q) {
 }
 const KIND_FR = { note: 'Note', board: 'Board', task: 'Tâche', space: 'Espace' };
 function openResult(r) {
-  if (r.kind === 'task') { taskFilter = 'all'; go('tasks'); setTimeout(() => { const row = $(`[data-task="${r.id}"]`); if (row) { row.scrollIntoView({ block: 'center' }); toggleTaskEdit(row, taskById(r.id), () => go('tasks')); } }, 30); }
+  if (r.kind === 'task') { const t = taskById(r.id); if (t) setCurSpace(t.sp); go('tasks'); setTimeout(() => { const row = $(`[data-task="${r.id}"]`); if (row) { row.scrollIntoView({ block: 'center' }); toggleTaskEdit(row, taskById(r.id), () => go('tasks')); } }, 30); }
   else if (r.kind === 'space') go('space:' + r.id);
   else go('doc:' + r.id);
 }
@@ -776,6 +753,7 @@ function syncTitleBar(t) {
     // focus mode: a small exit button (and the assistant) next to the window buttons, instead of the floating pill
     bar.insertAdjacentHTML('beforeend', `<span class="tb-f"><button data-f="exit" title="Quitter le focus (Échap)" aria-label="Quitter le focus"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 1.5v3h-3M7.5 1.5v3h3M4.5 10.5v-3h-3M7.5 10.5v-3h3"/></svg><span>Quitter le focus</span></button></span>`);
     const ai = $('#focusAi'); if (ai) $('.tb-f', bar).prepend(ai);
+    const mo = $('#focusMood'); if (mo) $('.tb-f', bar).prepend(mo);
     bar.addEventListener('click', e => { if (e.target.closest('[data-f="exit"]')) setFocus(false); });
     if (window.notely.win) {
       const g = { min: '<path d="M2 6h8"/>', max: '<rect x="2" y="2" width="8" height="8" rx="1"/>', restore: '<rect x="2" y="4" width="6" height="6" rx="1"/><path d="M4 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H8"/>', close: '<path d="m2.5 2.5 7 7m0-7-7 7"/>' };
@@ -807,6 +785,7 @@ function setFocus(on) {
   if (on && R.name !== 'doc') return;
   r.toggleAttribute('data-focus', on);
   if (typeof Board !== 'undefined') Board.layoutChanged();
+  Mood.layout();
 }
 
 /* Réglages > UI: the theme's colour (tint of the neutrals) and accent colour, for themes that offer them */
@@ -862,7 +841,8 @@ function openSettings(section) {
     <h5>Données</h5>
     <div class="srow"><div class="l"><b>Sauvegarde</b><small>${DB.ok() ? 'Enregistré dans ce navigateur, sur cet appareil.' : "Ce navigateur refuse l'enregistrement : exportez avant de fermer."}</small></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="stExp">${icon('download', 'sm')}Exporter</button><button class="btn sm" id="stImp">${icon('upload', 'sm')}Importer</button></div></div>
-    <div class="srow"><div class="l"><b>Contenu d'exemple</b><small>Les espaces, notes et boards du concept « Roots to Watts ».</small></div><button class="btn sm ghost danger" id="stReset">Tout effacer</button></div>
+    ${LEGACY ? `<div class="srow"><div class="l"><b>Données d’avant la 0.2</b><small>${esc(legacyInfo())}. Mises de côté au passage à la 0.2, rien n’a été effacé.</small></div><button class="btn sm" id="stLegacy">${icon('restore', 'sm')}Récupérer</button></div>` : ''}
+    <div class="srow"><div class="l"><b>Repartir de zéro</b><small>Efface les espaces, notes, boards et tâches de la 0.2 sur cet appareil, puis rouvre l’accueil.</small></div><button class="btn sm ghost danger" id="stReset">Tout effacer</button></div>
     <div id="stConfirm"></div>
     </div>`, m => {
     $('.stabs', m).onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; settingsTab = b.dataset.tab; $$('[data-tab]', m).forEach(x => x.setAttribute('aria-selected', x === b)); $$('.spane', m).forEach(x => x.hidden = x.dataset.pane !== settingsTab); };
@@ -887,8 +867,9 @@ function openSettings(section) {
     $('#stReset', m).onclick = () => {
       $('#stConfirm', m).innerHTML = `<div class="confirm" style="margin-top:12px"><span>Effacer toutes les notes, boards et tâches de cet appareil ?</span><button class="btn sm" id="rsNo">Annuler</button><button class="btn sm pri" id="rsYes" style="background:var(--err);border-color:var(--err)">Tout effacer</button></div>`;
       $('#rsNo', m).onclick = () => $('#stConfirm', m).innerHTML = '';
-      $('#rsYes', m).onclick = async () => { S.docs = []; S.tasks = []; S.spaces = [{ id: uid('s'), name: 'Perso', color: SPACE_COLORS[2] }]; save(); await gcAssets(); closeModal(); go('home'); toast('Espace de travail vidé'); };
+      $('#rsYes', m).onclick = async () => { S.docs = []; S.tasks = []; S.spaces = []; ensureDefaultSpace(S); S.prefs.cur = DEF_SPACE; S.prefs.welcomed = false; save(); await gcAssets(); closeModal(); go('welcome'); toast('Espace de travail vidé'); };
     };
+    const lg = $('#stLegacy', m); if (lg) lg.onclick = () => { closeModal(); restoreLegacy(); };
   });
 }
 
@@ -922,7 +903,22 @@ async function blobToDataURL(b) { return new Promise(r => { const f = new FileRe
 // every page of a note (the first one is d.html, the others d.pages)
 const noteHTML = (d, sep = '') => [d.html || ''].concat((d.pages || []).map(p => p.html || '')).join(sep);
 function usedAssets(docs, spaces = S.spaces, tasks = S.tasks) { const ids = new Set(); for (const t of tasks || []) for (const id of t.res || []) ids.add(id); for (const d of docs) { if (d.type === 'board') for (const it of d.items || []) if (it.asset) ids.add(it.asset); if (d.type === 'note') for (const m of noteHTML(d).matchAll(/data-asset="([^"]+)"/g)) ids.add(m[1]); } for (const sp of spaces || []) for (const m of sp.media || []) if (m.asset) ids.add(m.asset); return ids; }
-async function gcAssets() { const keep = usedAssets(S.docs); for (const id of [...Assets.blobs.keys()]) if (!keep.has(id)) await Assets.drop(id); }
+/* the workspace saved before 0.2 (kv "state"): kept as it was, its files are never collected, and it can be merged back */
+function legacyInfo() {
+  const L = LEGACY, n = (a, w) => `${a} ${w}${a > 1 ? 's' : ''}`;
+  return [n((L.spaces || []).length, 'espace'), n((L.docs || []).filter(d => !d.trash).length, 'note ou board'), n((L.tasks || []).length, 'tâche')].join(', ');
+}
+function restoreLegacy() {
+  if (!LEGACY) return;
+  const L = migrateState(JSON.parse(JSON.stringify(LEGACY)));
+  let n = 0;
+  for (const sp of L.spaces || []) if (!spaceById(sp.id)) { S.spaces.push(sp); n++; }
+  for (const d of L.docs || []) if (!docById(d.id)) { if (!spaceById(d.sp)) d.sp = DEF_SPACE; S.docs.push(d); }
+  for (const t of L.tasks || []) if (!taskById(t.id)) { if (!spaceById(t.sp)) t.sp = DEF_SPACE; S.tasks.push(t); }
+  S.prefs.welcomed = true; save(); go('space:' + ((L.spaces || [])[0] || curSpace()).id);
+  toast(`${n} espace${n > 1 ? 's' : ''} récupéré${n > 1 ? 's' : ''}`);
+}
+async function gcAssets() { const keep = usedAssets(S.docs); if (LEGACY) for (const id of usedAssets(LEGACY.docs || [], LEGACY.spaces || [], LEGACY.tasks || [])) keep.add(id); for (const id of [...Assets.blobs.keys()]) if (!keep.has(id)) await Assets.drop(id); }
 async function exportJSON(data, filename) {
   const docs = data.docs || [];
   const assets = {};
@@ -952,5 +948,5 @@ async function importJSON(text) {
   if ((j.v || 1) < 2) migrateState(j);
   let n = 0; for (const d of j.docs) { if (docById(d.id)) d.id = uid('d'); S.docs.push(d); n++; }
   for (const t of j.tasks || []) if (!taskById(t.id)) S.tasks.push(t);
-  save(); closeModal(); go(n === 1 ? 'doc:' + j.docs[0].id : 'home'); toast(`${n} document${n > 1 ? 's' : ''} importé${n > 1 ? 's' : ''}`);
+  S.prefs.welcomed = true; save(); closeModal(); go(n === 1 ? 'doc:' + j.docs[0].id : 'home'); toast(`${n} document${n > 1 ? 's' : ''} importé${n > 1 ? 's' : ''}`);
 }

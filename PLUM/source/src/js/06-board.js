@@ -171,8 +171,7 @@ const Board = (() => {
         const t = taskById(it.task);
         n.className = 'it card-it task' + (t && t.done ? ' done' : '');
         if (!t) { n.innerHTML = `<div class="fi"><small>Tâche supprimée</small></div>`; break; }
-        const di = dueInfo(t.due), sp = spaceById(t.sp);
-        n.innerHTML = `<button class="cb" role="checkbox" aria-checked="${t.done}" data-tdone="1" aria-label="Terminer">${icon('check')}</button><span class="tt">${esc(t.t)}</span>${t.time ? `<span class="chip time">${t.time}</span>` : ''}${di && !t.done ? `<span class="chip ${di.cls}">${di.label}</span>` : ''}${sp ? `<span class="sdot" style="background:${sp.color}"></span>` : ''}`;
+        n.innerHTML = `<button class="cb" role="checkbox" aria-checked="${t.done}" data-tdone="1" aria-label="Terminer">${icon('check')}</button><span class="tt">${esc(t.t)}</span>`;
         break;
       }
       case 'doc': {
@@ -439,6 +438,7 @@ const Board = (() => {
       if (m.type === 'image') inner = `<img src="${Assets.url(m.asset)}" alt="${esc(m.name || '')}" loading="lazy" draggable="false">`;
       else if (m.type === 'file') { const ext = ((m.name || '').split('.').pop() || 'fichier').slice(0, 4).toUpperCase(); inner = `<div class="mft" style="background:${FILE_COLORS[ext] || '#5E6B78'}">${esc(ext)}</div><span class="mn">${esc(m.name || 'Fichier')}</span>`; }
       else if (m.type === 'link') { let dom = m.url; try { dom = new URL(m.url).hostname.replace(/^www\./, ''); } catch (e) {} inner = `<div class="mft" style="background:${SPACE_COLORS[Math.floor(hashStr(dom) * SPACE_COLORS.length)]}">${esc((dom[0] || '?').toUpperCase())}</div><span class="mn">${esc(m.title || dom)}</span>`; }
+      else if (m.type === 'text') inner = `<div class="mtx">${esc((m.txt || '').slice(0, 90))}</div>`;
       else if (m.type === 'doc') { const d = docById(m.doc); if (!d || d.id === D.id) return ''; inner = `<div class="mth">${Thumbs.svg(d)}</div><span class="mn">${icon(d.type === 'board' ? 'board' : 'note', 'sm')}${esc(d.title)}</span>`; }
       return `<div class="mtile${used ? ' used' : ''}" draggable="true" data-media="${i}" title="${esc(m.name || m.title || '')} · glissez sur le board">${inner}${used ? `<span class="mused">${icon('check', 'sm')}</span>` : ''}</div>`;
     };
@@ -540,7 +540,7 @@ const Board = (() => {
       case 'arrange': case 'arrangeIn': arrangeMenu(btn, a === 'arrangeIn'); return;
       case 'fitFrame': if (list[0]) fitFrame(list[0]); return;
       case 'frameSel': frameAround(list.filter(i => i.k !== 'conn')); return;
-      case 'tasks': taskFilter = 'all'; go('tasks'); return;
+      case 'tasks': go('tasks'); return;
     }
   }
   function arrangeMenu(btn, inFrame) {
@@ -644,7 +644,7 @@ const Board = (() => {
   function openItem(it) {
     if (it.k === 'link') { const a = document.createElement('a'); a.href = it.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.append(a); a.click(); a.remove(); }
     if (it.k === 'doc' && docById(it.doc)) go('doc:' + it.doc);
-    if (it.k === 'task') { taskFilter = 'all'; go('tasks'); }
+    if (it.k === 'task') { const t = taskById(it.task); if (t) setCurSpace(t.sp); go('tasks'); }
     if (it.k === 'image' && Assets.has(it.asset)) lightbox(it);
   }
   function lightbox(it) { const u = Assets.url(it.asset); if (!u) return; const l = document.createElement('div'); l.className = 'lightbox'; l.innerHTML = `<img src="${u}" alt="${esc(it.cap || 'Image')}">`; l.onclick = () => l.remove(); document.body.append(l); }
@@ -1610,6 +1610,7 @@ const Board = (() => {
         const media = /^video\//.test(m.mime || ''), audio = /^audio\//.test(m.mime || ''), W = (media ? 360 : 280) * s, H = (media ? 202 : audio ? 86 : 78) * s, c = hs.indexOf(Math.min(...hs));
         it = { id: uid('f'), k: 'file', x: single ? at.x - W / 2 : x0 + c * (colW + gap), y: single ? at.y - H / 2 : y0 + hs[c], w: W, h: H, asset: m.asset, name: m.name || 'Fichier', size: m.size || 0, mime: m.mime || '' }; hs[c] += H + gap;
       } else if (m.type === 'link' && m.url) { const W = 300 * s, H = 80 * s, c = hs.indexOf(Math.min(...hs)); it = { id: uid('l'), k: 'link', x: single ? at.x - W / 2 : x0 + c * (colW + gap), y: single ? at.y - H / 2 : y0 + hs[c], w: W, h: H, url: m.url, title: m.title || '' }; hs[c] += H + gap; }
+      else if (m.type === 'text' && m.txt) { const W = 220 * s, H = 220 * s, c = hs.indexOf(Math.min(...hs)); it = mkNote(single ? at.x - W / 2 : x0 + c * (colW + gap), single ? at.y - H / 2 : y0 + hs[c], m.txt, NOTE_COLORS[0], { w: W, h: H, fs: m.txt.length > 120 ? 18 : 24 }); hs[c] += H + gap; }
       else if (m.type === 'doc' && docById(m.doc) && m.doc !== D.id) { const W = 220 * s, H = 180 * s, c = hs.indexOf(Math.min(...hs)); it = { id: uid('d'), k: 'doc', x: single ? at.x - W / 2 : x0 + c * (colW + gap), y: single ? at.y - H / 2 : y0 + hs[c], w: W, h: H, doc: m.doc }; hs[c] += H + gap; }
       if (it) added.push(it);
     }

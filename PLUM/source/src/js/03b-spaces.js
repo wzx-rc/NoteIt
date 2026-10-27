@@ -1,0 +1,234 @@
+/* ================= spaces: first launch and moodboard =================
+   0.2 puts everything in spaces. The first launch shows a welcome page (choose a theme, create the first space);
+   each space has its moodboard, a sandbox of images, links, files and bits of text, as a page (route "mood") and as
+   a drawer that opens over any page, notes, boards and drawing included (Ctrl M). Its elements drag into a board or
+   a note, or go there with a click from the drawer. */
+
+/* ---------- welcome ---------- */
+const WELCOME_THEMES = ['minimal', 'adjust'];
+function renderWelcome(v) {
+  const ths = WELCOME_THEMES.map(id => THEMES[id]).filter(Boolean), cur = theme().id, p = S.prefs;
+  const mark = `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="lf" d="M11.4 21.4C4.4 21 .8 15.8 1.2 7.6c7.4.6 11 5.6 10.2 13.8z"/><path class="lf" d="M12.7 19c-.9-8.2 2.7-13.8 10.1-15.2.8 8-2.9 13.9-10.1 15.2z"/><path class="vn" d="M10.7 20.2C8.4 16.6 6 13.6 3.2 10.6M13.5 17.8c1.8-4 4.2-7.6 7.6-11"/></svg>`;
+  v.innerHTML = `<div class="welcome"><div class="wl-in">
+    <div class="wl-mark">${mark}</div>
+    <h1 class="wl-h">Bienvenue dans PLUM</h1>
+    <p class="wl-sub">Notes, tâches, boards et dessin, rangés par espaces.</p>
+    <section class="wl-step"><div class="wl-k"><span class="wl-n">1</span>Choisissez un thème</div>
+      <div class="wl-themes">${ths.map(t => `<button class="skin-c wl-th sk-${t.id}" data-th="${t.id}" aria-pressed="${t.id === cur}"><span class="skin-pv" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>${esc(t.label)}</b><small>${esc(t.desc || '')}</small></button>`).join('')}</div>
+      <div class="wl-mode"${theme().mode === 'user' ? '' : ' hidden'}><div class="seg" id="wlMode">${[['auto', 'Système'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => `<button data-v="${k}" aria-pressed="${p.theme === k}">${l}</button>`).join('')}</div></div>
+      <small class="wl-more">D’autres thèmes vous attendent dans Réglages.</small></section>
+    <section class="wl-step"><div class="wl-k"><span class="wl-n">2</span>Créez votre premier espace</div>
+      <div class="wl-create" id="wlCreate">
+        <button class="wl-plus" id="wlPlus" aria-label="Créer votre premier espace"><span class="wl-ring"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 12v24M12 24h24"/></svg></span></button>
+        <div class="wl-txt"><b>Créer votre premier espace</b><small>Un projet, un client, une idée : par exemple « Brassart ». Ses tâches, notes, boards et son moodboard y seront réunis.</small>
+          <form class="wl-form" id="wlForm" hidden><input id="wlName" placeholder="Nom de l’espace" autocomplete="off" maxlength="60" aria-label="Nom de l’espace"><button class="btn pri" type="submit">Créer</button></form></div>
+      </div></section>
+    <button class="wl-skip" id="wlSkip">Commencer sans espace, tout ira dans « Par défaut »</button>
+  </div></div>`;
+  const box = $('#wlCreate', v), form = $('#wlForm', v), name = $('#wlName', v);
+  const ask = () => { box.classList.add('on'); form.hidden = false; name.focus(); };
+  $('#wlPlus', v).onclick = ask;
+  $('.wl-txt b', v).onclick = ask;
+  form.onsubmit = e => { e.preventDefault(); if (name.value.trim()) createSpace(name.value); else name.focus(); };
+  name.onkeydown = e => { if (e.key === 'Escape') { form.hidden = true; box.classList.remove('on'); } };
+  $('#wlSkip', v).onclick = () => { S.prefs.welcomed = true; S.prefs.cur = DEF_SPACE; save(); go('space:' + DEF_SPACE); };
+  $('.wl-themes', v).onclick = e => {
+    const b = e.target.closest('[data-th]'); if (!b) return;
+    switchTheme(b.dataset.th);
+    $$('[data-th]', v).forEach(x => x.setAttribute('aria-pressed', x === b));
+    $('.wl-mode', v).hidden = THEMES[b.dataset.th].mode !== 'user';
+  };
+  $('#wlMode', v).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; p.theme = b.dataset.v; save(); applyTheme(); $$('#wlMode button', v).forEach(x => x.setAttribute('aria-pressed', x === b)); };
+}
+
+/* ---------- moodboard ---------- */
+const Mood = (() => {
+  let drawer = null, open = false, dragging = 0;
+  const FILE_C = { PDF: '#E5484D', DOC: '#3D7BD9', DOCX: '#3D7BD9', XLS: '#2E9E6A', XLSX: '#2E9E6A', CSV: '#2E9E6A', PPT: '#F2A33A', PPTX: '#F2A33A', ZIP: '#8B5E3C', PSD: '#22A6B3', AI: '#F2A33A', BLEN: '#F5A524', FBX: '#6E56F0', OBJ: '#6E56F0', GLB: '#6E56F0', MP3: '#22A6B3', WAV: '#22A6B3', MP4: '#8B76FF', MOV: '#8B76FF' };
+  const domain = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u || ''; } };
+  const extOf = n => (/\.([a-z0-9]{1,5})$/i.exec(n || '') || [, 'fichier'])[1].slice(0, 4).toUpperCase();
+  const alive = m => m.type === 'image' || m.type === 'file' ? Assets.has(m.asset) : true;
+  const own = sp => ((sp && sp.media) || []).filter(alive);
+  /* what the notes and boards of the space hold, shown apart */
+  const found = sp => sp ? spaceMedia(sp.id).filter(m => m.type !== 'doc' && m.type !== 'text' && !(sp.media || []).includes(m)) : [];
+  const docOpen = () => R.name === 'doc' && docById(R.id);
+
+  function tile(m, i) {
+    const a = `data-mi="${i}" draggable="true" tabindex="0"`;
+    if (m.type === 'image') return `<figure class="mw mw-img" ${a}><img src="${Assets.url(m.asset)}" alt="${esc(m.name || '')}" loading="lazy" draggable="false"${m.w && m.h ? ` width="${m.w}" height="${m.h}"` : ''}>${m.name ? `<figcaption>${esc(m.name)}</figcaption>` : ''}<button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></figure>`;
+    if (m.type === 'link') { const d = domain(m.url); return `<div class="mw mw-link" ${a} title="${esc(m.url)}"><span class="mw-fav" style="--c:${SPACE_COLORS[Math.floor(hashStr(d) * SPACE_COLORS.length)]}">${esc((d[0] || '?').toUpperCase())}</span><span class="mw-t"><b>${esc(m.title || d)}</b><small>${esc(m.title ? d : m.url.replace(/^https?:\/\//, '').slice(0, 60))}</small></span><button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></div>`; }
+    if (m.type === 'file') { const e = extOf(m.name); return `<div class="mw mw-file" ${a}><span class="mw-ext" style="--c:${FILE_C[e] || '#5E6B78'}">${esc(e)}</span><span class="mw-t"><b>${esc(m.name || 'Fichier')}</b><small>${m.size ? fmtSize(m.size) : 'Fichier'}</small></span><button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></div>`; }
+    if (m.type === 'text') return `<div class="mw mw-text" ${a}><p>${esc(m.txt).replace(/\n/g, '<br>')}</p><button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></div>`;
+    return '';
+  }
+  const addBar = (id, ph = 'Coller un lien ou noter une idée, puis Entrée') => `<div class="mw-bar"><label class="mw-in">${icon('link', 'sm')}<input id="${id}" placeholder="${ph}" autocomplete="off" aria-label="Ajouter un lien ou un texte"></label><button class="btn" data-madd>${icon('upload', 'sm')}Fichiers</button></div>`;
+
+  /* ---- actions ---- */
+  function refresh() {
+    renderSide();
+    if (R.name === 'mood' || R.name === 'space') { const vw = $('#view'), st = vw.scrollTop; go(R, { keepFocus: true }); vw.scrollTop = st; }
+    if (open) renderDrawer();
+    if (R.name === 'doc' && Board.mounted && Board.refreshProps) Board.refreshProps();
+  }
+  async function drop(dt, sp) {
+    if (!sp || dragging) return 0;
+    let files = [...(dt.files || [])];
+    if (!files.length && dt.items) files = [...dt.items].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+    let n = 0;
+    if (files.length) n = (await addMedia(sp.id, files)).length;
+    else if (!dt.getData('application/x-notely')) n = addMediaItems(sp.id, mediaFromData(dt));
+    if (n) { toast(`${n} élément${n > 1 ? 's' : ''} ajouté${n > 1 ? 's' : ''} au moodboard de ${sp.name}`); refresh(); }
+    return n;
+  }
+  function addFromField(inp, sp) {
+    const v = inp.value.trim(); if (!v) return;
+    const list = /^(https?:\/\/|www\.)\S+$/i.test(v) ? [{ type: 'link', url: /^www\./i.test(v) ? 'https://' + v : v }] : [{ type: 'text', txt: v }];
+    const n = addMediaItems(sp.id, list); inp.value = '';
+    if (n) { refresh(); const again = $('#' + inp.id); if (again) again.focus(); } else toast('Ce lien est déjà dans le moodboard');
+  }
+  function pickFiles(sp) { const i = $('#fileIn'); i.accept = ''; i.onchange = async () => { const f = [...i.files]; i.value = ''; if (!f.length) return; const n = await addMedia(sp.id, f); if (n.length) { toast(`${n.length} élément${n.length > 1 ? 's' : ''} ajouté${n.length > 1 ? 's' : ''}`); refresh(); } }; i.click(); }
+  function view(m) {
+    if (m.type === 'image') { showImage(m.asset); return; }
+    if (m.type === 'link') { const a = document.createElement('a'); a.href = m.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.append(a); a.click(); a.remove(); return; }
+    if (m.type === 'file') { const u = Assets.url(m.asset); if (!u) return; const a = document.createElement('a'); a.href = u; a.download = m.name || 'fichier'; document.body.append(a); a.click(); a.remove(); return; }
+    if (m.type === 'text') editText(m);
+  }
+  function editText(m) {
+    openModal(`<div class="mhd"><h2>Texte du moodboard</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
+      <textarea id="mwTxt" class="mw-edit" rows="7" aria-label="Texte">${esc(m.txt)}</textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn ghost" data-close>Annuler</button><button class="btn pri" id="mwOk">Enregistrer</button></div>`,
+      md => { const t = $('#mwTxt', md); t.focus(); $('#mwOk', md).onclick = () => { if (t.value.trim()) { m.txt = t.value.trim(); save(); } closeModal(); refresh(); }; });
+  }
+  /* into the open page: a board places it in view, a note at the caret */
+  function place(m) {
+    const d = docOpen(); if (!d) return false;
+    if (d.type === 'board' && Board.mounted) { Board.placeMedia([m]); return true; }
+    if (d.type === 'note' && Note.mounted) { Note.insertMedia([m]); return true; }
+    return false;
+  }
+  function toBoard(m, sp, b) {
+    const d = b || newDoc('board', { title: 'Moodboard', sp: sp.id });
+    go('doc:' + d.id); setTimeout(() => Board.placeMedia([m]), 80);
+  }
+  function menu(anchor, m, sp) {
+    const d = docOpen(), mine = (sp.media || []).includes(m);
+    const boards = liveDocs().filter(x => x.sp === sp.id && x.type === 'board' && (!d || x.id !== d.id)).sort((a, b) => b.updated - a.updated).slice(0, 8);
+    const label = { image: 'Voir en grand', link: 'Ouvrir le lien', file: 'Ouvrir le fichier', text: 'Modifier le texte' }[m.type];
+    openPop(anchor, [
+      ...(d ? [{ label: `Placer dans « ${d.title} »`, icon: d.type === 'board' ? 'board' : 'note', run: () => place(m) }, '-'] : []),
+      { label, icon: m.type === 'text' ? 'text' : m.type === 'link' ? 'ext' : m.type === 'file' ? 'download' : 'focus', run: () => view(m) },
+      ...(m.type === 'link' ? [{ label: 'Copier le lien', icon: 'link', run: () => { try { navigator.clipboard.writeText(m.url); toast('Lien copié'); } catch (e) {} } }] : []),
+      { head: 'Placer sur un board' },
+      ...boards.map(b => ({ label: b.title, icon: 'board', run: () => toBoard(m, sp, b) })),
+      { label: 'Nouveau board', icon: 'plus', run: () => toBoard(m, sp) },
+      ...(mine ? ['-', { label: 'Retirer du moodboard', icon: 'trash', danger: true, run: () => { const k = sp.media.indexOf(m); sp.media.splice(k, 1); save(); refresh(); toast('Retiré du moodboard', { label: 'Annuler', run: () => { sp.media.splice(k, 0, m); save(); refresh(); } }); } }] : [])
+    ], { align: 'right' });
+  }
+  /* clicks, the ⋯ menu, dragging out and dropping in, all delegated on root; list and sp can be functions
+     (the drawer is bound once and redrawn) */
+  function bindList(root, list0, sp0, o = {}) {
+    const L = () => typeof list0 === 'function' ? list0() : list0;
+    let list = L(), sp = typeof sp0 === 'function' ? sp0() : sp0;
+    const fresh = () => { list = L(); sp = typeof sp0 === 'function' ? sp0() : sp0; };
+    root.addEventListener('pointerdown', fresh, true);
+    root.addEventListener('dragenter', fresh, true);
+    root.addEventListener('click', e => {
+      if (e.target.closest('[data-madd]')) { pickFiles(sp); return; }
+      const mm = e.target.closest('[data-mm]'); if (mm) { e.stopPropagation(); const m = list[+mm.dataset.mm]; if (m) menu(mm, m, sp); return; }
+      const t = e.target.closest('[data-mi]'); if (!t) return;
+      const m = list[+t.dataset.mi]; if (!m) return;
+      if (o.drawer && place(m)) return;
+      view(m);
+    });
+    root.addEventListener('keydown', e => {
+      if (e.target.matches && e.target.matches('.mw-in input')) { if (e.key === 'Enter') { e.preventDefault(); fresh(); addFromField(e.target, sp); } return; }
+      const t = e.target.closest && e.target.closest('[data-mi]'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); t.click(); }
+    });
+    root.addEventListener('contextmenu', e => { fresh(); const t = e.target.closest('[data-mi]'); if (!t) return; const m = list[+t.dataset.mi]; if (!m) return; e.preventDefault(); menu({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }, m, sp); });
+    root.addEventListener('dragstart', e => {
+      const t = e.target.closest('[data-mi]'); if (!t) return; const m = list[+t.dataset.mi]; if (!m) return;
+      dragging = Date.now();
+      e.dataTransfer.setData('application/x-notely', JSON.stringify(m));
+      if (m.type === 'link') e.dataTransfer.setData('text/uri-list', m.url);
+      e.dataTransfer.setData('text/plain', m.type === 'text' ? m.txt : m.url || m.name || '');
+      e.dataTransfer.effectAllowed = 'copy';
+      t.classList.add('dragging');
+    });
+    root.addEventListener('dragend', e => { dragging = 0; const t = e.target.closest && e.target.closest('[data-mi]'); if (t) t.classList.remove('dragging'); });
+    const zone = o.zone || root, types = e => [...(e.dataTransfer.types || [])];
+    const can = e => !dragging && types(e).some(t => t === 'Files' || t === 'text/uri-list' || t === 'text/plain');
+    zone.addEventListener('dragover', e => { if (!can(e)) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; zone.classList.add('over'); });
+    zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('over'); });
+    zone.addEventListener('drop', e => { zone.classList.remove('over'); if (!can(e)) return; e.preventDefault(); e.stopPropagation(); fresh(); drop(e.dataTransfer, sp); });
+  }
+
+  /* ---- the page ---- */
+  function renderPage(v) {
+    const sp = curSpace(), mine = own(sp), other = found(sp), list = mine.concat(other);
+    const counts = ['image', 'link', 'file', 'text'].map(k => [k, mine.filter(m => m.type === k).length]).filter(x => x[1]);
+    const names = { image: ['image', 'images'], link: ['lien', 'liens'], file: ['fichier', 'fichiers'], text: ['texte', 'textes'] };
+    v.innerHTML = `<div class="page moodpage"><div class="ph"><div><h1>Moodboard</h1><div class="sub">${esc(sp.name)}${counts.length ? ' · ' + counts.map(([k, n]) => `${n} ${names[k][n > 1 ? 1 : 0]}`).join(' · ') : ''}</div></div></div>
+      ${addBar('mwAdd')}
+      ${mine.length ? `<div class="mwall">${mine.map((m, i) => tile(m, i)).join('')}</div>` : `<button class="mw-empty" data-madd><span class="mw-empty-i">${icon('image')}</span><b>Le bac à sable de ${esc(sp.name)}</b><small>Glissez ici des images, des liens, des fichiers ou du texte, ou collez-les (Ctrl V).<br>Ils vous suivent dans les boards, les notes et le dessin de cet espace.</small></button>`}
+      ${other.length ? `<details class="mw-found" open><summary>${icon('chev', 'sm')}Dans vos pages <span>${other.length}</span></summary><div class="mwall sm">${other.map((m, i) => tile(m, mine.length + i)).join('')}</div></details>` : ''}
+      <div class="mw-over" aria-hidden="true"><div>${icon('upload')}Déposez pour ajouter au moodboard de ${esc(sp.name)}</div></div>
+    </div>`;
+    const pg = $('.moodpage', v);
+    bindList(pg, list, sp, { zone: pg });
+    setTimeout(() => { const i = $('#mwAdd'); if (i && innerWidth > 760 && !mine.length) i.focus({ preventScroll: true }); }, 0);
+  }
+  /* the card on the space's home: the latest elements and a drop zone */
+  function preview(sp) {
+    const mine = own(sp), shown = mine.slice(0, 9);
+    if (!mine.length) return `<div class="mdrop big mw-pdrop" data-madd>${icon('upload')}<div>Déposez ici images, liens et fichiers de ${esc(sp.name)}, ou <u>choisissez des fichiers</u>.</div></div>`;
+    return `<div class="mwall pv">${shown.map((m, i) => tile(m, i)).join('')}</div>${mine.length > shown.length ? `<button class="more mw-all" data-go="mood">Voir les ${mine.length} éléments</button>` : ''}`;
+  }
+  function bindPreview(card, sp) { if (card) bindList(card, own(sp).slice(0, 9), sp, { zone: card }); }
+
+  /* ---- the drawer ---- */
+  function mount() {
+    if (drawer) return;
+    drawer = document.createElement('aside'); drawer.id = 'moodDrawer'; drawer.className = 'mdr'; drawer.hidden = true; drawer.setAttribute('aria-label', 'Moodboard');
+    $('#main').append(drawer);
+    bindList(drawer, () => own(curSpace()), curSpace, { drawer: true, zone: drawer });
+  }
+  function renderDrawer() {
+    if (!drawer) return;
+    const sp = curSpace(), mine = own(sp), d = docOpen();
+    drawer.innerHTML = `<div class="mdr-hd"><div class="mdr-t">${icon('image')}<span><b>Moodboard</b><small><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</small></span></div>
+        <button class="tb" data-go="mood" title="Ouvrir en grand" aria-label="Ouvrir en grand">${icon('ext')}</button><button class="tb" data-mclose title="Fermer (Échap)" aria-label="Fermer">${icon('x')}</button></div>
+      ${addBar('mdrAdd', 'Lien ou idée, puis Entrée')}
+      <div class="mdr-body">${mine.length ? `<div class="mwall dr">${mine.map((m, i) => tile(m, i)).join('')}</div>` : `<div class="mdr-empty">${icon('upload')}<div>Glissez ici des images, des liens ou des fichiers. Ils restent dans le moodboard de ${esc(sp.name)}.</div></div>`}</div>
+      <div class="mdr-ft">${d ? `Cliquez pour placer dans « ${esc(d.title)} », ou glissez où vous voulez.` : 'Glissez un élément sur un board ou dans une note.'}</div>`;
+  }
+  function toggle(on = !open) {
+    if (!drawer) mount();
+    open = !!on;
+    if (open) renderDrawer();
+    drawer.hidden = !open; document.documentElement.toggleAttribute('data-mood', open); layout();
+    const b = $('#moodBtn'); if (b) b.setAttribute('aria-pressed', open);
+    const f = $('#focusMood'); if (f) f.setAttribute('aria-pressed', open);
+    if (Board.mounted) Board.layoutChanged();
+  }
+  /* under the top bar, or from the top in focus mode */
+  function layout() { if (!drawer || !open) return; const t = $('#top'); drawer.style.top = ((t && t.offsetParent ? t.offsetHeight : 0) + 10) + 'px'; }
+  drawerClicks();
+  function drawerClicks() { document.addEventListener('click', e => { if (drawer && e.target.closest && e.target.closest('#moodDrawer [data-mclose]')) toggle(false); }); }
+  return {
+    mount, toggle, preview, bindPreview, drop, renderPage, layout,
+    isOpen: () => open,
+    dragging: () => !!dragging && Date.now() - dragging < 60000,
+    /* after a page change: the drawer follows the space, and has no place on the moodboard page or the welcome */
+    sync() { if (!open) return; if (R.name === 'mood' || R.name === 'welcome') toggle(false); else renderDrawer(); },
+    /* Ctrl V on the moodboard page adds what the clipboard holds */
+    paste(e) {
+      if (R.name !== 'mood' || !e.clipboardData) return false;
+      e.preventDefault(); const cd = e.clipboardData, sp = curSpace();
+      const files = [...(cd.files || [])];
+      if (files.length) { addMedia(sp.id, files).then(n => { if (n.length) { toast(`${n.length} élément${n.length > 1 ? 's' : ''} collé${n.length > 1 ? 's' : ''}`); refresh(); } }); return true; }
+      const n = addMediaItems(sp.id, mediaFromData(cd)); if (n) { toast('Ajouté au moodboard'); refresh(); }
+      return true;
+    }
+  };
+})();
+function renderMood(v) { Mood.renderPage(v); }
