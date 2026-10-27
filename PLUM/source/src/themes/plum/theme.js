@@ -6,6 +6,14 @@ const PL_D = o => `stroke="none" style="fill:var(--i-d,currentColor);opacity:cal
 defineTheme({
   id: 'plum', order: .7, label: 'PLUM', desc: 'Gris bleuté et pêche, comme le logo',
   mode: 'user', meta: '#121722', chalk: '#EDE6DD',
+  tints: [
+    { id: 'ardoise', name: 'Ardoise', h: 266, c: .03 },
+    { id: 'graphite', name: 'Graphite', h: 80, c: .004 },
+    { id: 'pierre', name: 'Pierre', h: 70, c: .016 },
+    { id: 'sauge', name: 'Sauge', h: 150, c: .022 },
+    { id: 'ocean', name: 'Océan', h: 225, c: .03 },
+    { id: 'prune', name: 'Prune', h: 330, c: .026 }
+  ],
   accents: [
     { name: 'Pêche', value: '#E8955C' }, { name: 'Ardoise', value: '#6F87A6' }, { name: 'Abricot', value: '#F2A65A' },
     { name: 'Corail', value: '#E9735B' }, { name: 'Lilas', value: '#9A86D8' }, { name: 'Sauge', value: '#6FA88A' }
