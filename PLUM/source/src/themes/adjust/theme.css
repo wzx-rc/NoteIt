@@ -9,17 +9,17 @@
   --th-h: 110; --th-c: .004;
   --ad-w: calc(var(--th-h) - 34); --ad-k: calc(var(--th-c) / .007);
   /* surfaces (tint hue) */
-  --ad-bg: oklch(.222 calc(var(--th-c) * .7) var(--th-h));
-  --ad-top: oklch(.312 var(--th-c) var(--th-h)); --ad-bot: oklch(.24 calc(var(--th-c) * .8) var(--th-h));
-  --ad-c1: oklch(.262 var(--th-c) var(--th-h)); --ad-c2: oklch(.226 calc(var(--th-c) * .7) var(--th-h));
-  --ad-inset: oklch(.2 calc(var(--th-c) * .6) var(--th-h)); --ad-ctl: oklch(.284 calc(var(--th-c) * 1.2) var(--th-h));
-  --ad-ctl-h: oklch(.335 calc(var(--th-c) * 1.4) var(--th-h)); --ad-tile: oklch(.3 calc(var(--th-c) * 1.5) var(--th-h));
+  --ad-bg: oklch(calc(.222 + var(--th-ld, 0)) calc(var(--th-c) * .7) var(--th-h));
+  --ad-top: oklch(calc(.312 + var(--th-ld, 0)) var(--th-c) var(--th-h)); --ad-bot: oklch(calc(.24 + var(--th-ld, 0)) calc(var(--th-c) * .8) var(--th-h));
+  --ad-c1: oklch(calc(.262 + var(--th-ld, 0)) var(--th-c) var(--th-h)); --ad-c2: oklch(calc(.226 + var(--th-ld, 0)) calc(var(--th-c) * .7) var(--th-h));
+  --ad-inset: oklch(calc(.2 + var(--th-ld, 0)) calc(var(--th-c) * .6) var(--th-h)); --ad-ctl: oklch(calc(.284 + var(--th-ld, 0)) calc(var(--th-c) * 1.2) var(--th-h));
+  --ad-ctl-h: oklch(calc(.335 + var(--th-ld, 0)) calc(var(--th-c) * 1.4) var(--th-h)); --ad-tile: oklch(calc(.3 + var(--th-ld, 0)) calc(var(--th-c) * 1.5) var(--th-h));
   /* edges and text (warm hue) */
-  --ad-edge: oklch(.43 calc(var(--th-c) * 2.3) calc(var(--th-h) - 25)); --ad-edge2: oklch(.362 calc(var(--th-c) * 2.3) calc(var(--th-h) - 7));
-  --ad-hair: oklch(.315 calc(var(--th-c) * 1.6) var(--th-h)); --ad-bronze: oklch(.517 calc(var(--th-c) * 4.2) var(--ad-w));
-  --ad-sel: oklch(.44 calc(var(--th-c) * 2.4) var(--ad-w)); --ad-sel-edge: oklch(.696 calc(var(--th-c) * 6.2) var(--ad-w));
-  --ad-tool: oklch(.798 calc(var(--th-c) * 4.2) var(--ad-w)); --ad-tool-hi: oklch(.916 calc(var(--th-c) * 4.7) var(--ad-w));
-  --ad-title: oklch(.88 calc(var(--th-c) * 5) var(--ad-w));
+  --ad-edge: oklch(calc(.43 + var(--th-ld, 0)) calc(var(--th-c) * 2.3) calc(var(--th-h) - 25)); --ad-edge2: oklch(calc(.362 + var(--th-ld, 0)) calc(var(--th-c) * 2.3) calc(var(--th-h) - 7));
+  --ad-hair: oklch(calc(.315 + var(--th-ld, 0)) calc(var(--th-c) * 1.6) var(--th-h)); --ad-bronze: oklch(.517 calc(var(--th-c) * 4.2) var(--ad-w));
+  --ad-sel: oklch(calc(.44 + var(--th-ld, 0)) calc(var(--th-c) * 2.4) var(--ad-w)); --ad-sel-edge: oklch(.696 calc(var(--th-c) * 6.2) var(--ad-w));
+  --ad-tool: oklch(.798 calc(var(--th-c) * 4.2) var(--ad-w)); --ad-tool-hi: oklch(calc(.916 + var(--th-ll, 0)) calc(var(--th-c) * 4.7) var(--ad-w));
+  --ad-title: oklch(calc(.88 + var(--th-ll, 0)) calc(var(--th-c) * 5) var(--ad-w));
   --ad-grain: url("asset:grain.png");
   --ad-lit: inset 0 1px rgb(255 255 255 / .05);
   --ad-panel: linear-gradient(var(--ad-top), var(--ad-bot));
@@ -34,9 +34,9 @@
   --font-title: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
   --r-sm: 6px; --r-md: 8px; --r-lg: 14px; --r-xl: 17px;
 
-  --side: oklch(.272 var(--th-c) var(--th-h)); --side-2: var(--ad-ctl); --side-3: var(--ad-sel); --side-line: var(--ad-edge);
+  --side: oklch(calc(.272 + var(--th-ld, 0)) var(--th-c) var(--th-h)); --side-2: var(--ad-ctl); --side-3: var(--ad-sel); --side-line: var(--ad-edge);
   --side-text: oklch(.904 calc(var(--th-c) * 4.2) var(--ad-w)); --side-mute: oklch(.664 calc(var(--th-c) * 2.6) var(--ad-w));
-  --paper: var(--ad-bg); --card: var(--ad-c1); --sunk: var(--ad-inset); --raise: var(--ad-ctl); --menu: oklch(.265 var(--th-c) var(--th-h)); --canvas: var(--ad-bg);
+  --paper: var(--ad-bg); --card: var(--ad-c1); --sunk: var(--ad-inset); --raise: var(--ad-ctl); --menu: oklch(calc(.265 + var(--th-ld, 0)) var(--th-c) var(--th-h)); --canvas: var(--ad-bg);
   --line: var(--ad-hair); --line-2: var(--ad-edge);
   --ink: oklch(.904 calc(var(--th-c) * 4.2) var(--ad-w)); --ink-2: oklch(.808 calc(var(--th-c) * 4) var(--ad-w)); --ink-3: oklch(.664 calc(var(--th-c) * 2.6) var(--ad-w));
   --strong: oklch(.924 calc(var(--th-c) * 4.9) var(--ad-w));

@@ -16,12 +16,12 @@
 }
 /* ---- dark: rail #12171D, top bar #161C22, panels #141A1F, tiles #1C2228, canvas #2F363E ---- */
 :root[data-skin="notely"][data-resolved="dark"] {
-  --side: oklch(.202 var(--nt) var(--th-h)); --side-2: oklch(.249 var(--nt) var(--th-h)); --side-3: oklch(.297 var(--nt-hi) var(--th-h)); --side-line: oklch(.262 var(--nt) var(--th-h));
+  --side: oklch(calc(.202 + var(--th-ld, 0)) var(--nt) var(--th-h)); --side-2: oklch(calc(.249 + var(--th-ld, 0)) var(--nt) var(--th-h)); --side-3: oklch(calc(.297 + var(--th-ld, 0)) var(--nt-hi) var(--th-h)); --side-line: oklch(calc(.262 + var(--th-ld, 0)) var(--nt) var(--th-h));
   --side-text: oklch(.941 var(--nt-lo) var(--th-h)); --side-mute: oklch(.66 var(--nt-hi) var(--th-h));
-  --top: oklch(.223 var(--nt) var(--th-h));
-  --paper: oklch(.229 var(--nt) var(--th-h)); --card: oklch(.252 var(--nt) var(--th-h)); --sunk: oklch(.214 var(--nt) var(--th-h)); --raise: oklch(.281 var(--nt) var(--th-h));
-  --menu: oklch(.245 var(--nt) var(--th-h)); --canvas: oklch(.3 var(--nt) var(--th-h));
-  --line: oklch(.3 var(--nt) var(--th-h)); --line-2: oklch(.36 var(--nt-hi) var(--th-h));
+  --top: oklch(calc(.223 + var(--th-ld, 0)) var(--nt) var(--th-h));
+  --paper: oklch(calc(.229 + var(--th-ld, 0)) var(--nt) var(--th-h)); --card: oklch(calc(.252 + var(--th-ld, 0)) var(--nt) var(--th-h)); --sunk: oklch(calc(.214 + var(--th-ld, 0)) var(--nt) var(--th-h)); --raise: oklch(calc(.281 + var(--th-ld, 0)) var(--nt) var(--th-h));
+  --menu: oklch(calc(.245 + var(--th-ld, 0)) var(--nt) var(--th-h)); --canvas: oklch(calc(.3 + var(--th-ld, 0)) var(--nt) var(--th-h));
+  --line: oklch(calc(.3 + var(--th-ld, 0)) var(--nt) var(--th-h)); --line-2: oklch(calc(.36 + var(--th-ld, 0)) var(--nt-hi) var(--th-h));
   --ink: oklch(.941 var(--nt-lo) var(--th-h)); --ink-2: oklch(.744 var(--nt) var(--th-h)); --ink-3: oklch(.58 var(--nt-hi) var(--th-h));
   --strong: #FFFFFF; --contrast: #F5F7FA; --on-contrast: #0E1217;
   --dot: rgb(255 255 255 / .05);
@@ -29,17 +29,17 @@
   --shadow-1: none;
   --shadow-2: 0 18px 50px rgb(0 0 0 / .45), 0 2px 8px rgb(0 0 0 / .3);
   --shadow-note: 0 1px 1px rgb(0 0 0 / .3), 0 8px 16px -8px rgb(0 0 0 / .6);
-  --br-a: oklch(.3 var(--nt-hi) var(--th-h)); --br-b: oklch(.25 var(--nt) var(--th-h)); --br-rim: rgb(255 255 255 / .08); --br-l1: #FFFFFF; --br-l2: var(--accent); --br-vein: oklch(.25 var(--nt) var(--th-h)); --br-text: #FFFFFF;
+  --br-a: oklch(calc(.3 + var(--th-ld, 0)) var(--nt-hi) var(--th-h)); --br-b: oklch(calc(.25 + var(--th-ld, 0)) var(--nt) var(--th-h)); --br-rim: rgb(255 255 255 / .08); --br-l1: #FFFFFF; --br-l2: var(--accent); --br-vein: oklch(calc(.25 + var(--th-ld, 0)) var(--nt) var(--th-h)); --br-text: #FFFFFF;
   color-scheme: dark;
 }
 /* ---- light: white panels, rail #F5F6F8, canvas #E6E9ED, ink #1A1F26 ---- */
 :root[data-skin="notely"][data-resolved="light"] {
-  --side: oklch(.968 calc(var(--th-c) * .3) var(--th-h)); --side-2: oklch(.94 calc(var(--th-c) * .45) var(--th-h)); --side-3: oklch(.915 calc(var(--th-c) * .6) var(--th-h)); --side-line: oklch(.915 calc(var(--th-c) * .45) var(--th-h));
+  --side: oklch(calc(.968 + var(--th-ll, 0)) calc(var(--th-c) * .3) var(--th-h)); --side-2: oklch(calc(.94 + var(--th-ll, 0)) calc(var(--th-c) * .45) var(--th-h)); --side-3: oklch(calc(.915 + var(--th-ll, 0)) calc(var(--th-c) * .6) var(--th-h)); --side-line: oklch(calc(.915 + var(--th-ll, 0)) calc(var(--th-c) * .45) var(--th-h));
   --side-text: oklch(.237 var(--nt) var(--th-h)); --side-mute: oklch(.53 var(--nt-hi) var(--th-h));
   --top: #FFFFFF;
-  --paper: oklch(.976 calc(var(--th-c) * .25) var(--th-h)); --card: #FFFFFF; --sunk: oklch(.953 calc(var(--th-c) * .35) var(--th-h)); --raise: oklch(.962 calc(var(--th-c) * .3) var(--th-h));
-  --menu: #FFFFFF; --canvas: oklch(.933 calc(var(--th-c) * .42) var(--th-h));
-  --line: oklch(.924 calc(var(--th-c) * .42) var(--th-h)); --line-2: oklch(.87 calc(var(--th-c) * .6) var(--th-h));
+  --paper: oklch(calc(.976 + var(--th-ll, 0)) calc(var(--th-c) * .25) var(--th-h)); --card: #FFFFFF; --sunk: oklch(calc(.953 + var(--th-ll, 0)) calc(var(--th-c) * .35) var(--th-h)); --raise: oklch(calc(.962 + var(--th-ll, 0)) calc(var(--th-c) * .3) var(--th-h));
+  --menu: #FFFFFF; --canvas: oklch(calc(.933 + var(--th-ll, 0)) calc(var(--th-c) * .42) var(--th-h));
+  --line: oklch(calc(.924 + var(--th-ll, 0)) calc(var(--th-c) * .42) var(--th-h)); --line-2: oklch(calc(.87 + var(--th-ll, 0)) calc(var(--th-c) * .6) var(--th-h));
   --ink: oklch(.237 var(--nt) var(--th-h)); --ink-2: oklch(.5 var(--nt-hi) var(--th-h)); --ink-3: oklch(.657 var(--nt-hi) var(--th-h));
   --strong: #0F1318; --contrast: #16191E; --on-contrast: #FFFFFF;
   --dot: oklch(.3 var(--nt-hi) var(--th-h) / .13);

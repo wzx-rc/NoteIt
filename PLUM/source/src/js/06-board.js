@@ -551,7 +551,7 @@ const Board = (() => {
     ], { align: 'right' });
   }
   function helpModal() {
-    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O · D', 'Rectangle · Ellipse · Losange'], ['A', 'Flèche'], ['L', 'Ligne'], ['P', 'Stylo'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Cadre'], ['I', 'Image ou fichier']]],
+    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O · D', 'Rectangle · Ellipse · Losange'], ['A', 'Flèche'], ['L', 'Ligne'], ['P', 'Stylo'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
       ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Maj + glisser', 'Dupliquer et déplacer la copie'], ['Page ↑ / ↓', 'Avancer / reculer d’un plan'], ['Ctrl + Page ↑ / ↓', 'Tout devant / tout au fond'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
       ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]]];
     openModal(`<div class="mhd"><h2>Raccourcis du board</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div><div class="keys">${K.map(([t, rows]) => `<div><h5>${t}</h5>${rows.map(([k, l]) => `<div class="krow"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`);
@@ -1550,7 +1550,7 @@ const Board = (() => {
   }
 
   /* ---------- keyboard ---------- */
-  const TOOL_KEYS = { v: 'select', h: 'hand', p: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', d: 'shape', a: 'conn', l: 'line', f: 'frame', c: 'todo', g: 'sheet', k: 'pick', b: 'pen' };
+  const TOOL_KEYS = { v: 'select', h: 'hand', p: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', d: 'shape', a: 'conn', l: 'line', c: 'todo', g: 'sheet', k: 'pick', b: 'pen' };
   function key(e) {
     if (!mounted || editing) return false;
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
@@ -1580,6 +1580,7 @@ const Board = (() => {
     if (k === '?' || (e.shiftKey && k === '/')) { helpModal(); return true; }
     if ((k === 'Enter' || k === 'F2') && one) { e.preventDefault(); startEdit(one.id); return true; }
     if (k.startsWith('Arrow') && sel.size) { e.preventDefault(); const d = e.shiftKey ? 10 : 1, dx = k === 'ArrowLeft' ? -d : k === 'ArrowRight' ? d : 0, dy = k === 'ArrowUp' ? -d : k === 'ArrowDown' ? d : 0; const ids = moveSet(); commit(items.map(i => ids.has(i.id) && i.k !== 'conn' ? Object.assign({}, i, { x: i.x + dx, y: i.y + dy }) : i)); return true; }
+    if ((k === 'f' || k === 'F') && !mod && !e.altKey) { if (sel.size) fitTo(unionBox(selItems())); else fitAll(); return true; }   // F: frame the selection, or the whole board
     if (one && k.length === 1 && !e.altKey && ['note', 'shape', 'mind', 'text', 'sheet'].includes(one.k)) { e.preventDefault(); startEdit(one.id, k); return true; }
     if (k === '0' || (e.shiftKey && k === '!')) { fitAll(); return true; }
     if (k === '+' || k === '=') { zoomCenter(1.25); return true; }
@@ -1607,7 +1608,7 @@ const Board = (() => {
     if (was !== drawingTool()) layoutChanged();
   }
   const drawingTool = () => !!(PENS[tool] || tool === 'eraser' || tool === 'pick');
-  const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Stylo', 'P'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['sheet', 'sheet', 'Tableur', 'G'], ['frame', 'frame', 'Cadre', 'F'], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
+  const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Stylo', 'P'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['sheet', 'sheet', 'Tableur', 'G'], ['frame', 'frame', 'Cadre', ''], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
   function refreshTools() {
     toolsEl.innerHTML = TOOLS.map(d => d === '|' ? '<span class="vs"></span>' : (() => {
       const [id, ic, title, k] = d, on = id === 'pen' ? !!PENS[tool] : tool === id;
@@ -1694,7 +1695,7 @@ const Board = (() => {
       <aside class="props"${open ? '' : ' hidden'} aria-label="Propriétés"><div class="phead"><button class="ptab" data-tab="style">Style</button><button class="ptab" data-tab="layers">Calques</button><button class="ptab" data-tab="media">Moodboard</button><button class="pclose" data-a="close" aria-label="Fermer">${icon('x', 'sm')}</button></div><div class="pbody"></div></aside>
       <div class="isl bl zoom"><button class="tl" data-a="zout" title="Dézoomer (−)" aria-label="Dézoomer">${icon('zout')}</button><button class="zv" data-a="z100" title="Revenir à 100 %">100 %</button><button class="tl" data-a="zin" title="Zoomer (+)" aria-label="Zoomer">${icon('zin')}</button></div>
       <div class="isl bl undo"><button class="tl" data-a="undo" title="Annuler (Ctrl Z)" aria-label="Annuler">${icon('undo')}</button><button class="tl" data-a="redo" title="Rétablir (Ctrl Y)" aria-label="Rétablir">${icon('redo')}</button></div>
-      <div class="isl br"><button class="tl" data-a="fit" title="Tout voir (0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
+      <div class="isl br"><button class="tl" data-a="fit" title="Tout voir (F ou 0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
     wrap = container.firstElementChild; host = $('.bhost', wrap); world = $('.world', host);
     [framesL, edges, itemsL, edgesTop, labelsL] = world.children; ovl = $('.ovl', host); liveCv = $('.blive', host); meas = $('.measure', host);
     toolsEl = $('.tools', wrap); optsEl = $('.topts', wrap); dockEl = $('.tdock', wrap); trEl = $('.tr', wrap); propsEl = $('.props', wrap); qbarEl = $('.qbar', wrap); zoomEl = $('.isl.zoom', wrap); undoEl = $('.isl.undo', wrap); brEl = $('.isl.br', wrap);

@@ -25,16 +25,16 @@
 }
 /* ---- dark: void #07080B, glass rgba(14,15,20,.74), hairlines of white ---- */
 :root[data-skin="inkspace"][data-resolved="dark"] {
-  --void: oklch(.135 calc(var(--th-c) * .72) var(--th-h));
-  --glass: oklch(.18 calc(var(--th-c) * 1.05) var(--th-h) / .74);
+  --void: oklch(calc(.135 + var(--th-ld, 0)) calc(var(--th-c) * .72) var(--th-h));
+  --glass: oklch(calc(.18 + var(--th-ld, 0)) calc(var(--th-c) * 1.05) var(--th-h) / .74);
   --glass-hi: linear-gradient(180deg, rgb(255 255 255 / .05), rgb(255 255 255 / 0) 56%);
-  --solid: oklch(.174 calc(var(--th-c) * 1.05) var(--th-h)); --dialog: oklch(.155 calc(var(--th-c) * .9) var(--th-h));
+  --solid: oklch(calc(.174 + var(--th-ld, 0)) calc(var(--th-c) * 1.05) var(--th-h)); --dialog: oklch(calc(.155 + var(--th-ld, 0)) calc(var(--th-c) * .9) var(--th-h));
   --hair: rgb(255 255 255 / .075); --hair-2: rgb(255 255 255 / .12); --hair-3: rgb(255 255 255 / .2);
   --inner: inset 0 1px 0 rgb(255 255 255 / .06);
   --lift: 0 24px 60px -18px rgb(0 0 0 / .8), 0 2px 6px rgb(0 0 0 / .35);
   --lift-sm: 0 12px 30px -12px rgb(0 0 0 / .75);
   --title-grad: linear-gradient(180deg, #FFFFFF 35%, oklch(.66 calc(var(--th-c) * 2.5) var(--th-h)));
-  --contrast: #F2F3F7; --on-contrast: #08090C; --on-grad: #07080B; --ai-pill: oklch(.16 calc(var(--th-c) * 1) var(--th-h)); --strong: #FFFFFF;
+  --contrast: #F2F3F7; --on-contrast: #08090C; --on-grad: #07080B; --ai-pill: oklch(calc(.16 + var(--th-ld, 0)) calc(var(--th-c) * 1) var(--th-h)); --strong: #FFFFFF;
   --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1.6 0 0 0 -.55'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.07'/%3E%3C/svg%3E");
   --side: var(--void); --side-2: rgb(255 255 255 / .045); --side-3: rgb(255 255 255 / .08); --side-line: var(--hair);
   --side-text: oklch(.938 calc(var(--th-c) * .8) var(--th-h)); --side-mute: oklch(.724 calc(var(--th-c) * 2.2) var(--th-h));
@@ -52,20 +52,20 @@
 }
 /* ---- light: pearl #ECEEF3, white glass, ink ---- */
 :root[data-skin="inkspace"][data-resolved="light"] {
-  --void: oklch(.949 calc(var(--th-c) * .7) var(--th-h));
+  --void: oklch(calc(.949 + var(--th-ll, 0)) calc(var(--th-c) * .7) var(--th-h));
   --glass: rgb(255 255 255 / .66);
   --glass-hi: linear-gradient(180deg, rgb(255 255 255 / .7), rgb(255 255 255 / 0) 60%);
-  --solid: #FFFFFF; --dialog: oklch(.988 calc(var(--th-c) * .3) var(--th-h));
-  --hair: oklch(.2 calc(var(--th-c) * 2) var(--th-h) / .08); --hair-2: oklch(.2 calc(var(--th-c) * 2) var(--th-h) / .12); --hair-3: oklch(.2 calc(var(--th-c) * 2) var(--th-h) / .2);
+  --solid: #FFFFFF; --dialog: oklch(calc(.988 + var(--th-ll, 0)) calc(var(--th-c) * .3) var(--th-h));
+  --hair: oklch(calc(.2 + var(--th-ld, 0)) calc(var(--th-c) * 2) var(--th-h) / .08); --hair-2: oklch(calc(.2 + var(--th-ld, 0)) calc(var(--th-c) * 2) var(--th-h) / .12); --hair-3: oklch(calc(.2 + var(--th-ld, 0)) calc(var(--th-c) * 2) var(--th-h) / .2);
   --inner: inset 0 1px 0 rgb(255 255 255 / .9);
   --lift: 0 24px 60px -24px rgb(30 34 60 / .3), 0 2px 6px rgb(30 34 60 / .08);
   --lift-sm: 0 12px 30px -14px rgb(30 34 60 / .24);
   --title-grad: linear-gradient(180deg, #0B0C10 40%, oklch(.47 calc(var(--th-c) * 2.5) var(--th-h)));
   --contrast: #0B0C10; --on-contrast: #FFFFFF; --on-grad: #07080B; --ai-pill: #FFFFFF; --strong: #0B0C10;
   --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.6 0 0 0 -.55'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
-  --side: var(--void); --side-2: oklch(.2 calc(var(--th-c) * 2) var(--th-h) / .04); --side-3: oklch(.2 calc(var(--th-c) * 2) var(--th-h) / .07); --side-line: var(--hair);
+  --side: var(--void); --side-2: oklch(calc(.2 + var(--th-ld, 0)) calc(var(--th-c) * 2) var(--th-h) / .04); --side-3: oklch(calc(.2 + var(--th-ld, 0)) calc(var(--th-c) * 2) var(--th-h) / .07); --side-line: var(--hair);
   --side-text: oklch(.215 calc(var(--th-c) * 1.4) var(--th-h)); --side-mute: oklch(.48 calc(var(--th-c) * 2.2) var(--th-h));
-  --paper: var(--void); --card: #FFFFFF; --sunk: oklch(.2 calc(var(--th-c) * 2) var(--th-h) / .035); --raise: oklch(.2 calc(var(--th-c) * 2) var(--th-h) / .05);
+  --paper: var(--void); --card: #FFFFFF; --sunk: oklch(calc(.2 + var(--th-ld, 0)) calc(var(--th-c) * 2) var(--th-h) / .035); --raise: oklch(calc(.2 + var(--th-ld, 0)) calc(var(--th-c) * 2) var(--th-h) / .05);
   --line: var(--hair); --line-2: var(--hair-2);
   --ink: oklch(.215 calc(var(--th-c) * 1.4) var(--th-h)); --ink-2: oklch(.48 calc(var(--th-c) * 2.2) var(--th-h)); --ink-3: oklch(.66 calc(var(--th-c) * 2.2) var(--th-h));
   --dot: oklch(.2 calc(var(--th-c) * 2) var(--th-h) / .11);
