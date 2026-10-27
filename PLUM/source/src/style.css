@@ -1279,3 +1279,27 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .mmenu .mmg line.lv { stroke: rgba(255,226,102,.45); stroke-dasharray: 3 3; }
 .mmenu .mmt.sub { color: #FFE266; font-weight: 600; }
 :root:not([data-resolved="dark"]) .mmenu .mmt.sub { color: #9A7B00; }
+
+/* Tableur on the board: a card of the theme (card, lines, ink, accent), its UI type, numbers in tabular figures on the right */
+.it.tsheet { display: flex; flex-direction: column; background: var(--card); border-radius: 10px; box-shadow: 0 0 0 1px var(--line), 0 6px 18px rgba(0,0,0,.06); overflow: hidden; font: 400 var(--sfs)/1 var(--font-ui); color: var(--ink); }
+.it.tsheet .sht { height: var(--sth); flex: none; display: flex; align-items: center; gap: .8em; padding: 0 .85em; border-bottom: 1px solid var(--line); }
+.it.tsheet .sht b { font-weight: 600; font-size: 1.07em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 2em; outline: 0; }
+.it.tsheet .shfx { flex: 1; min-width: 0; font: 400 .86em/1 var(--font-mono, ui-monospace, monospace); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.it.tsheet .shfx em { font-style: normal; color: var(--accent); font-weight: 600; margin-right: .6em; }
+.it.tsheet .shg { display: grid; grid-auto-rows: var(--srh); flex: none; }
+.it.tsheet .shg > * { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; }
+.it.tsheet .shg > :nth-child(n) { box-sizing: border-box; }
+.it.tsheet .shc, .it.tsheet .shh, .it.tsheet .shr { display: grid; place-items: center; font-style: normal; font-size: .78em; font-weight: 600; letter-spacing: .02em; color: var(--ink-3); background: var(--sunk); }
+.it.tsheet .cell { display: flex; align-items: center; padding: 0 .55em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; outline: 0; }
+.it.tsheet .cell.num { justify-content: flex-end; font-variant-numeric: tabular-nums; }
+.it.tsheet .cell.fx { color: var(--ink); font-weight: 500; }
+.it.tsheet .cell.er { color: #E5484D; font-size: .85em; font-weight: 600; }
+.it.tsheet .cell[contenteditable], .it.tsheet .sht b[contenteditable] { cursor: text; }
+.it.tsheet .cell[contenteditable] { position: relative; z-index: 2; overflow: visible; justify-content: flex-start; background: var(--card); box-shadow: inset 0 0 0 2px var(--accent); color: var(--ink); font-weight: 400; }
+.it.tsheet .shadd { height: var(--sadd); flex: none; display: flex; align-items: center; gap: .3em; padding: 0 .45em; opacity: 0; transition: opacity .12s; }
+.it.tsheet:hover .shadd, .it.tsheet.editing .shadd { opacity: 1; }
+.it.tsheet .shadd button { display: inline-flex; align-items: center; gap: .3em; height: 1.75em; padding: 0 .6em; border: 0; border-radius: 6px; background: none; color: var(--ink-3); font: 500 .82em/1 var(--font-ui); cursor: pointer; }
+.it.tsheet .shadd button:hover { background: var(--sunk); color: var(--ink); }
+.it.tsheet .shadd .i { width: 1.1em; height: 1.1em; }
+.tdrag.k-sheet .tdp > i { background: var(--card); border: 1px solid var(--line-2); border-radius: 10px; color: var(--ink-2); place-items: start; padding: 10px 12px;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 25% 28px; background-position: 0 38px; }

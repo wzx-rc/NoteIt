@@ -2,7 +2,7 @@
    A board is a list of plain items, drawn in list order (frames always under the rest).
    note {txt,c,fs,font,al} · text {txt,fs,font,color,bold,fw} · shape {sh,sc,fc,sw,sty,dash,fill,txt,fs}
    image {asset,frm,cap} · file {asset,name,size,mime} · link {url,title} · ink {p,t,c,s,o,w0,h0}
-   mind {txt,root,parent,side,c,ord} · frame {title} · task {task} · doc {doc} · todo {title,tasks[],c,font}
+   mind {txt,root,parent,side,c,ord} · frame {title} · task {task} · doc {doc} · todo {title,tasks[],c,font} · sheet {title,cols,rows,cells{A1:raw},fs}
    conn {a:{id|x,y}, b:{id|x,y}, pts:[[x,y]], route, sc, sw, sty, dash, h0, h1, txt}
    Every item may carry op (opacity 0..1) and hid (hidden from the Layers tab).
    Items are never mutated: an edit makes a new object, which keeps undo cheap. */
@@ -23,6 +23,84 @@ const mkImage = (x, y, w, h, asset, o = {}) => ({ id: uid('i'), k: 'image', x, y
 const mkFrame = (x, y, w, h, title) => ({ id: uid('f'), k: 'frame', x, y, w, h, title: title || 'Cadre' });
 const mkConn = (a, b, o = {}) => ({ id: uid('c'), k: 'conn', a, b, pts: o.pts || [], route: o.route || BD().route || 'curve', sc: o.sc || BD().sc || '#1E1E1E', sw: o.sw || BD().sw || 2, sty: o.sty || BD().sty || 'sketch', h0: o.h0 || 'none', h1: o.h1 === undefined ? 'arrow' : o.h1, txt: o.txt || '', dash: o.dash === true ? 'dash' : (o.dash || ''), sd: Math.random() });
 const mkTodo = (x, y, title, tasks = [], o = {}) => ({ id: uid('o'), k: 'todo', x, y, w: o.w || 290, h: o.h || 160, title: title || 'À faire', tasks: tasks.slice(), c: o.c || '#FFFFFF', font: o.font || HAND, fs: o.fs || 24 });
+/* ---------- tableur (sheet): cells A1, B2…, a value or a formula starting with "=" (the essentials of a spreadsheet) ---------- */
+const colName = i => { let s = ''; for (i++; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
+const colIndex = s => { let n = 0; for (const ch of s.toUpperCase()) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+/* sizes follow the text size: row height, the width of the row numbers, the title band and the add buttons */
+function sheetGeom(it) { const fs = it.fs || 14, rh = Math.round(fs * 2.1), hw = Math.round(fs * 2.6), th = Math.round(fs * 2.7), add = Math.round(fs * 2.3); return { fs, rh, hw, th, add, cw: (it.w - hw) / it.cols, h: th + rh * (it.rows + 1) + add }; }
+const mkSheet = (x, y, o = {}) => { const it = { id: uid('g'), k: 'sheet', x, y, w: 0, h: 0, title: o.title || 'Tableau', cols: o.cols || 4, rows: o.rows || 6, cells: Object.assign({}, o.cells), fs: o.fs || 14 }; const g = sheetGeom(it); it.w = o.w || g.hw + it.cols * Math.round(it.fs * 7); it.h = sheetGeom(it).h; return it; };
+/* a number typed in a cell: "12", "3,5", "1 200", "15 %" */
+const sheetLit = raw => { const t = String(raw).trim().replace(/[\s  ]/g, ''), m = /^(-?\d+(?:[.,]\d+)?)(%?)$/.exec(t); if (!m) return String(raw); const n = parseFloat(m[1].replace(',', '.')); return m[2] ? n / 100 : n; };
+const sheetErr = m => { const e = new Error(m); e.sheet = m; return e; };
+const SHEET_FN = (() => {
+  const nums = a => a.flat(Infinity).filter(v => typeof v === 'number');
+  const num = v => { if (Array.isArray(v)) v = v.flat(Infinity)[0]; if (v == null || v === '') return 0; if (typeof v === 'boolean') return +v; if (typeof v === 'number') return v; const n = sheetLit(v); if (typeof n === 'number') return n; throw sheetErr('#VALEUR!'); };
+  const f = {
+    SUM: a => nums(a).reduce((s, v) => s + v, 0),
+    AVERAGE: a => { const n = nums(a); if (!n.length) throw sheetErr('#DIV/0!'); return n.reduce((s, v) => s + v, 0) / n.length; },
+    MIN: a => { const n = nums(a); return n.length ? Math.min(...n) : 0; },
+    MAX: a => { const n = nums(a); return n.length ? Math.max(...n) : 0; },
+    COUNT: a => nums(a).length,
+    COUNTA: a => a.flat(Infinity).filter(v => v != null && v !== '').length,
+    PRODUCT: a => nums(a).reduce((s, v) => s * v, 1),
+    ROUND: a => { const k = Math.pow(10, a.length > 1 ? num(a[1]) : 0); return Math.round(num(a[0]) * k) / k; },
+    ABS: a => Math.abs(num(a[0])),
+    IF: a => (Array.isArray(a[0]) ? a[0].flat(Infinity)[0] : a[0]) ? (a.length > 1 ? a[1] : true) : (a.length > 2 ? a[2] : false)
+  };
+  Object.assign(f, { SOMME: f.SUM, MOYENNE: f.AVERAGE, NB: f.COUNT, NBVAL: f.COUNTA, PRODUIT: f.PRODUCT, ARRONDI: f.ROUND, SI: f.IF });
+  f._num = num;
+  return f;
+})();
+/* every cell's value: numbers, text, VRAI/FAUX, or { err } (#CYCLE when a formula points back to itself) */
+function sheetEval(cells) {
+  const memo = new Map(), busy = new Set(), num = SHEET_FN._num;
+  const val = ref => {
+    if (memo.has(ref)) return memo.get(ref);
+    if (busy.has(ref)) return { err: '#CYCLE' };
+    const raw = cells[ref]; let v;
+    if (raw == null || raw === '') v = null;
+    else if (raw[0] === '=') { busy.add(ref); try { v = formula(raw.slice(1)); if (Array.isArray(v)) v = v.flat(Infinity)[0] ?? null; } catch (e) { v = { err: e.sheet || '#ERREUR' }; } busy.delete(ref); }
+    else v = sheetLit(raw);
+    memo.set(ref, v); return v;
+  };
+  const get = ref => { const v = val(ref); if (v && v.err) throw sheetErr(v.err); return v; };
+  function formula(src) {
+    const dec = src.includes(';') || !/[A-Za-zÀ-ÿ]\s*\(/.test(src);   // "3,5" is a decimal when ";" separates the arguments
+    const T = []; let i = 0;
+    while (i < src.length) {
+      const r = src.slice(i); let m;
+      if (/^\s/.test(r)) { i++; continue; }
+      if ((m = (dec ? /^\d+(?:[.,]\d+)?/ : /^\d+(?:\.\d+)?/).exec(r))) { T.push({ t: 'v', v: parseFloat(m[0].replace(',', '.')) }); i += m[0].length; continue; }
+      if ((m = /^"([^"]*)"/.exec(r))) { T.push({ t: 'v', v: m[1] }); i += m[0].length; continue; }
+      if ((m = /^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9.]*)\s*\(/.exec(r))) { T.push({ t: 'f', v: m[1].toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '') }); i += m[0].length; continue; }
+      if ((m = /^\$?([A-Za-z]{1,2})\$?(\d+)(?::\$?([A-Za-z]{1,2})\$?(\d+))?/.exec(r))) { T.push(m[3] ? { t: 'g', a: [colIndex(m[1]), +m[2] - 1], b: [colIndex(m[3]), +m[4] - 1] } : { t: 'r', v: m[1].toUpperCase() + m[2] }); i += m[0].length; continue; }
+      if ((m = /^(VRAI|TRUE|FAUX|FALSE)\b/i.exec(r))) { T.push({ t: 'v', v: /^(VRAI|TRUE)$/i.test(m[1]) }); i += m[0].length; continue; }
+      if ((m = /^(<=|>=|<>|[-+*/^&=<>(),;%])/.exec(r))) { T.push({ t: 'o', v: m[1] }); i += m[1].length; continue; }
+      throw sheetErr('#NOM?');
+    }
+    let p = 0;
+    const peek = v => T[p] && T[p].t === 'o' && T[p].v === v, eat = v => { if (!peek(v)) throw sheetErr('#ERREUR'); p++; };
+    const cmp = () => { let a = cat(); while (T[p] && T[p].t === 'o' && ['=', '<>', '<', '>', '<=', '>='].includes(T[p].v)) { const o = T[p++].v, b = cat(); const x = typeof a === 'string' || typeof b === 'string' ? [String(a ?? ''), String(b ?? '')] : [num(a), num(b)]; a = o === '=' ? x[0] === x[1] : o === '<>' ? x[0] !== x[1] : o === '<' ? x[0] < x[1] : o === '>' ? x[0] > x[1] : o === '<=' ? x[0] <= x[1] : x[0] >= x[1]; } return a; };
+    const cat = () => { let a = add(); while (peek('&')) { p++; const b = add(); a = String(a ?? '') + String(b ?? ''); } return a; };
+    const add = () => { let a = mul(); while (peek('+') || peek('-')) { const o = T[p++].v, b = mul(); a = o === '+' ? num(a) + num(b) : num(a) - num(b); } return a; };
+    const mul = () => { let a = pow(); while (peek('*') || peek('/')) { const o = T[p++].v, b = pow(); if (o === '/' && num(b) === 0) throw sheetErr('#DIV/0!'); a = o === '*' ? num(a) * num(b) : num(a) / num(b); } return a; };
+    const pow = () => { let a = una(); while (peek('^')) { p++; a = Math.pow(num(a), num(una())); } return a; };
+    const una = () => { if (peek('-')) { p++; return -num(una()); } if (peek('+')) { p++; return num(una()); } let a = prim(); while (peek('%')) { p++; a = num(a) / 100; } return a; };
+    const prim = () => {
+      const t = T[p++]; if (!t) throw sheetErr('#ERREUR');
+      if (t.t === 'v') return t.v;
+      if (t.t === 'r') return get(t.v);
+      if (t.t === 'g') { const out = []; for (let r = Math.min(t.a[1], t.b[1]); r <= Math.max(t.a[1], t.b[1]); r++) { const row = []; for (let c = Math.min(t.a[0], t.b[0]); c <= Math.max(t.a[0], t.b[0]); c++) row.push(get(colName(c) + (r + 1))); out.push(row); } return out; }
+      if (t.t === 'f') { const fn = SHEET_FN[t.v]; if (!fn || t.v[0] === '_') throw sheetErr('#NOM?'); const args = []; if (!peek(')')) { args.push(cmp()); while (peek(';') || peek(',')) { p++; args.push(cmp()); } } eat(')'); return fn(args); }
+      if (t.t === 'o' && t.v === '(') { const v = cmp(); eat(')'); return v; }
+      throw sheetErr('#ERREUR');
+    };
+    const v = cmp(); if (p < T.length) throw sheetErr('#ERREUR');
+    return v;
+  }
+  return val;
+}
+const sheetShow = v => v == null ? '' : v.err ? v.err : typeof v === 'number' ? (isFinite(v) ? v.toLocaleString('fr-FR', { maximumFractionDigits: 4 }) : '#NUM!') : typeof v === 'boolean' ? (v ? 'VRAI' : 'FAUX') : String(v);
 function mkInk(stroke) {
   /* stamped brushes scatter past the line, so their box is wider; b.ox/oy keep the paper texture where it was drawn */
   const [x0, y0, x1, y1] = inkBounds(stroke.p, stroke.b ? stroke.s * 1.9 : stroke.s);
@@ -253,8 +331,8 @@ function fmtText(txt) {
   }).join('');
 }
 function toggleLine(txt, i) { const L = String(txt).split('\n'); if (L[i] == null) return txt; L[i] = L[i].replace(/^(\s*)\[( |x|X)\]/, (m, s, v) => `${s}[${v === ' ' ? 'x' : ' '}]`); return L.join('\n'); }
-const itemText = it => it.k === 'frame' ? it.title : it.k === 'link' ? (it.title || it.url) : it.k === 'file' ? it.name : it.k === 'task' ? ((taskById(it.task) || {}).t || '') : it.k === 'doc' ? ((docById(it.doc) || {}).title || '') : it.k === 'image' ? it.cap : it.k === 'todo' ? [it.title, ...it.tasks.map(id => { const t = taskById(id); return t ? `[${t.done ? 'x' : ' '}] ${t.t}` : ''; })].filter(Boolean).join('\n') : (it.txt || '');
-const KIND_NAMES = { note: 'Post-it', text: 'Texte', shape: 'Forme', image: 'Image', file: 'Fichier', link: 'Lien', ink: 'Trait', mind: 'Idée', frame: 'Cadre', task: 'Tâche', doc: 'Document', todo: 'Liste', conn: 'Flèche' };
+const itemText = it => it.k === 'frame' ? it.title : it.k === 'link' ? (it.title || it.url) : it.k === 'file' ? it.name : it.k === 'task' ? ((taskById(it.task) || {}).t || '') : it.k === 'doc' ? ((docById(it.doc) || {}).title || '') : it.k === 'image' ? it.cap : it.k === 'sheet' ? (() => { const v = sheetEval(it.cells); return [it.title, ...Array.from({ length: it.rows }, (_, r) => Array.from({ length: it.cols }, (_, c) => sheetShow(v(colName(c) + (r + 1)))).join('\t').replace(/\t+$/, '')).filter(Boolean)].join('\n'); })() : it.k === 'todo' ? [it.title, ...it.tasks.map(id => { const t = taskById(id); return t ? `[${t.done ? 'x' : ' '}] ${t.t}` : ''; })].filter(Boolean).join('\n') : (it.txt || '');
+const KIND_NAMES = { note: 'Post-it', text: 'Texte', shape: 'Forme', image: 'Image', file: 'Fichier', link: 'Lien', ink: 'Trait', mind: 'Idée', frame: 'Cadre', task: 'Tâche', doc: 'Document', todo: 'Liste', sheet: 'Tableur', conn: 'Flèche' };
 
 /* web links on the board */
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return String(u || ''); } };
