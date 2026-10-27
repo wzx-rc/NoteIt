@@ -65,32 +65,34 @@ const Board = (() => {
     for (const r0 of minds) {
       const r = get(r0); if (r.parent) continue;
       const lv = new Map(), sz = new Map(), sub = new Map();
-      const walk = (n, l) => { lv.set(n.id, l); sz.set(n.id, measureMind(editing === n.id ? liveText(n) : n.txt, l)); for (const c of kids.get(n.id) || []) walk(c, l + 1); };
+      // the whole map can be scaled from its centre idea (msc, Réglages of the map box); every node keeps it as ms
+      const K = clamp(+r.msc || 1, .25, 4), szK = m => ({ w: Math.ceil(m.w * K), h: Math.ceil(m.h * K) });
+      const walk = (n, l) => { lv.set(n.id, l); sz.set(n.id, szK(measureMind(editing === n.id ? liveText(n) : n.txt, l))); for (const c of kids.get(n.id) || []) walk(c, l + 1); };
       walk(r, 0);
       const LIST = !!MT().mindList, listed = n => LIST && lv.get(n.id) >= 1;
-      const VG = l => l <= 1 ? (LIST ? 34 : 18) : 8, HG = l => l === 0 ? (LIST ? 96 : 70) : 46;
+      const VG = l => K * (l <= 1 ? (LIST ? 34 : 18) : 8), HG = l => K * (l === 0 ? (LIST ? 96 : 70) : 46), ART_ = ART * K, IND_ = IND * K, LG_ = LG * K;
       const subH = n => {
         const ch = kids.get(n.id) || [], own = sz.get(n.id).h; let s = 0, v;
-        if (listed(n)) { v = own; for (const c of ch) v += LG + subH(c); if (lv.get(n.id) === 1 && mindArt(n.txt)) v = Math.max(v, ART); }
+        if (listed(n)) { v = own; for (const c of ch) v += LG_ + subH(c); if (lv.get(n.id) === 1 && mindArt(n.txt)) v = Math.max(v, ART_); }
         else { ch.forEach((c, i) => { s += subH(c) + (i ? VG(lv.get(c.id)) : 0); }); v = Math.max(own, s); }
         sub.set(n.id, v); return v;
       };
-      const subW = n => { let w = sz.get(n.id).w; if (listed(n)) for (const c of kids.get(n.id) || []) w = Math.max(w, IND + subW(c)); return w; };
+      const subW = n => { let w = sz.get(n.id).w; if (listed(n)) for (const c of kids.get(n.id) || []) w = Math.max(w, IND_ + subW(c)); return w; };
       subH(r);
       const rs = sz.get(r.id), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
-      out.set(r.id, { x: Math.round(cx - rs.w / 2), y: Math.round(cy - rs.h / 2), w: rs.w, h: rs.h, lv: 0, parent: null, root: r.id });
+      out.set(r.id, { x: Math.round(cx - rs.w / 2), y: Math.round(cy - rs.h / 2), w: rs.w, h: rs.h, lv: 0, parent: null, root: r.id, ms: K });
       const place = (n, list, side) => {
         const np = out.get(n.id); let total = 0;
         if (listed(n)) {   // sub-ideas one under the other below their branch, a little indented
-          let y = np.y + np.h + LG;
-          for (const c of list) { const cs = sz.get(c.id); out.set(c.id, { x: np.x + IND, y: Math.round(y), w: cs.w, h: cs.h, lv: lv.get(c.id), side, root: r.id }); place(c, kids.get(c.id) || [], side); y += sub.get(c.id) + LG; }
+          let y = np.y + np.h + LG_;
+          for (const c of list) { const cs = sz.get(c.id); out.set(c.id, { x: Math.round(np.x + IND_), y: Math.round(y), w: cs.w, h: cs.h, lv: lv.get(c.id), side, root: r.id, ms: K }); place(c, kids.get(c.id) || [], side); y += sub.get(c.id) + LG_; }
           return;
         }
         list.forEach((c, i) => { total += sub.get(c.id) + (i ? VG(lv.get(c.id)) : 0); });
         let y = np.y + np.h / 2 - total / 2;
         for (const c of list) {
           const cs = sz.get(c.id), hh = sub.get(c.id), ccy = y + hh / 2, gap = HG(lv.get(n.id)), top = listed(c);
-          out.set(c.id, { x: Math.round(side > 0 ? np.x + np.w + gap : np.x - gap - (top ? subW(c) : cs.w)), y: Math.round(top ? y : ccy - cs.h / 2), w: cs.w, h: cs.h, lv: lv.get(c.id), side, root: r.id });
+          out.set(c.id, { x: Math.round(side > 0 ? np.x + np.w + gap : np.x - gap - (top ? subW(c) : cs.w)), y: Math.round(top ? y : ccy - cs.h / 2), w: cs.w, h: cs.h, lv: lv.get(c.id), side, root: r.id, ms: K });
           place(c, kids.get(c.id) || [], side);
           y += hh + VG(lv.get(c.id));
         }
@@ -121,7 +123,7 @@ const Board = (() => {
       case 'file': return `f${it.asset}|${it.name}|${it.mime}`;
       case 'link': return `l${Math.round(it.w)}|${Math.round(it.h)}|${it.url}|${it.title}|${it.asset || it.pic || ''}|${Assets.has(it.asset)}`;
       case 'ink': return `k${pv(it.p)}|${it.c}|${it.o}|${it.t}|${it.w0}|${it.h0}|${theme()}|${it.b ? JSON.stringify(it.b) : ''}`;
-      case 'mind': return `m${it.lv}|${it.c}|${it.txt}|${skin()}|${it.side}|${it.lv === 1 && MT().mindArt ? artOff(it) : ''}`;
+      case 'mind': return `m${it.lv}|${it.c}|${it.txt}|${skin()}|${it.side}|${it.ms || 1}|${it.lv === 1 && MT().mindArt ? artOff(it) : ''}`;
       case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}`;
       case 'task': { const t = taskById(it.task) || {}; return `T${t.t}|${t.done}|${t.due}|${t.time}|${t.sp}`; }
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
@@ -130,12 +132,15 @@ const Board = (() => {
     }
     return it.k;
   }
+  /* the button on a block that points to another element (note, board, task): opens it in one click */
+  const OPEN_BTN = `<button class="open iopen" data-iopen="1" title="Ouvrir" aria-label="Ouvrir">${icon('ext', 'sm')}</button>`;
   function paint(n, it) {
     n._it = it;
     const s = n.style; s.left = it.x + 'px'; s.top = it.y + 'px';
     if (it.k === 'text' && !it.fw) { s.width = ''; s.height = ''; } else { s.width = it.w + 'px'; s.height = it.h + 'px'; }
+    if (it.k === 'mind') { const ms = it.ms || 1; if (ms !== 1) { s.width = it.w / ms + 'px'; s.height = it.h / ms + 'px'; } s.transform = ms !== 1 ? `scale(${ms})` : ''; s.transformOrigin = ms !== 1 ? '0 0' : ''; }
     s.opacity = it.op != null && it.op < 1 ? it.op : '';
-    if (editing === it.id && n._sig) { if (it.k === 'mind') { n.className = 'it mind editing l' + Math.min(it.lv || 0, 2); n.style.setProperty('--mc', it.c); } return; }
+    if (editing === it.id && n._sig) { if (it.k === 'mind') { n.className = 'it mind editing l' + Math.min(it.lv || 0, 2) + (it.side < 0 ? ' s-l' : ' s-r'); n.style.setProperty('--mc', it.c); } return; }
     const sig = sigOf(it); if (sig === n._sig) return; n._sig = sig;
     switch (it.k) {
       case 'note':
@@ -184,7 +189,7 @@ const Board = (() => {
       case 'mind': {
         n.className = 'it mind l' + Math.min(it.lv || 0, 2) + (it.side < 0 ? ' s-l' : ' s-r'); n.style.setProperty('--mc', it.c);
         const art = it.lv === 1 ? mindArt(it.txt) : '';
-        if (art) n.style.setProperty('--ao', artOff(it) + 'px');
+        if (art) n.style.setProperty('--ao', artOff(it) / (it.ms || 1) + 'px');
         n.innerHTML = mindIcon(it.txt, it.lv || 0) + `<div class="txt">${fmtText(it.txt) || '<div><br></div>'}</div>` + (art ? `<img class="mart" src="${art}" alt="" draggable="false">` : ''); break;
       }
       case 'frame':
@@ -193,13 +198,13 @@ const Board = (() => {
         const t = taskById(it.task);
         n.className = 'it card-it task' + (t && t.done ? ' done' : '');
         if (!t) { n.innerHTML = `<div class="fi"><small>Tâche supprimée</small></div>`; break; }
-        n.innerHTML = `<button class="cb" role="checkbox" aria-checked="${t.done}" data-tdone="1" aria-label="Terminer">${icon('check')}</button><span class="tt">${esc(t.t)}</span>`;
+        n.innerHTML = `<button class="cb" role="checkbox" aria-checked="${t.done}" data-tdone="1" aria-label="Terminer">${icon('check')}</button><span class="tt">${esc(t.t)}</span>${OPEN_BTN}`;
         break;
       }
       case 'doc': {
         const d = docById(it.doc);
         n.className = 'it card-it docref';
-        n.innerHTML = d && !d.trash ? `<div class="th">${Thumbs.svg(d)}</div><div class="fi">${icon(d.type === 'board' ? 'board' : 'note', 'sm')}<b>${esc(d.title)}</b></div>` : `<div class="fi"><small>Document introuvable</small></div>`;
+        n.innerHTML = d && !d.trash ? `<div class="th">${Thumbs.svg(d)}</div><div class="fi">${icon(d.type === 'board' ? 'board' : 'note', 'sm')}<b>${esc(d.title)}</b>${OPEN_BTN}</div>` : `<div class="fi"><small>Document introuvable</small></div>`;
         break;
       }
       case 'sheet': {
@@ -291,13 +296,13 @@ const Board = (() => {
     for (const it of items) if (it.k === 'mind' && it.parent && !it.hid) {
       const p = byId.get(it.parent); if (!p || p.hid) continue;
       if (LIST) {
-        const f = v => v.toFixed(1);
+        const f = v => v.toFixed(1), K = it.ms || 1;
         if (p.parent) {   // a sub-idea: a bracket line down from its branch, a tick and a dot before the words
-          const bx = p.x + 12, y0 = p.y + p.h - 2, cy = it.y + it.h / 2, ex = it.x - 5;
-          s += `<path d="M${f(bx)} ${f(y0)}V${f(cy - 7)}Q${f(bx)} ${f(cy)} ${f(bx + 7)} ${f(cy)}H${f(ex)}" fill="none" stroke="${it.c}" stroke-width="1.7" stroke-linecap="round" opacity=".85"/><circle cx="${f(ex)}" cy="${f(cy)}" r="3" fill="${it.c}"/>`;
+          const bx = p.x + 12 * K, y0 = p.y + p.h - 2 * K, cy = it.y + it.h / 2, ex = it.x - 5 * K;
+          s += `<path d="M${f(bx)} ${f(y0)}V${f(cy - 7 * K)}Q${f(bx)} ${f(cy)} ${f(bx + 7 * K)} ${f(cy)}H${f(ex)}" fill="none" stroke="${it.c}" stroke-width="${f(1.7 * K)}" stroke-linecap="round" opacity=".85"/><circle cx="${f(ex)}" cy="${f(cy)}" r="${f(3 * K)}" fill="${it.c}"/>`;
         } else {          // a branch: a curve from the centre with a dot at the start and a little arrow into the pill
-          const x1 = it.side > 0 ? p.x + p.w - 6 : p.x + 6, y1 = p.y + p.h / 2, x2 = it.side > 0 ? it.x - 3 : it.x + it.w + 3, y2 = it.y + it.h / 2, mx = x1 + (x2 - x1) * .55;
-          s += `<g style="color:${it.c}"><path d="M${f(x1)} ${f(y1)}C${f(mx)} ${f(y1)} ${f(mx)} ${f(y2)} ${f(x2 - it.side * 4)} ${f(y2)}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="${f(x1)}" cy="${f(y1)}" r="4" class="hf"/>${headD([x2, y2], [it.side, 0], 'tri', 1.2)}</g>`;
+          const x1 = it.side > 0 ? p.x + p.w - 6 * K : p.x + 6 * K, y1 = p.y + p.h / 2, x2 = it.side > 0 ? it.x - 3 * K : it.x + it.w + 3 * K, y2 = it.y + it.h / 2, mx = x1 + (x2 - x1) * .55;
+          s += `<g style="color:${it.c}"><path d="M${f(x1)} ${f(y1)}C${f(mx)} ${f(y1)} ${f(mx)} ${f(y2)} ${f(x2 - it.side * 4 * K)} ${f(y2)}" fill="none" stroke="currentColor" stroke-width="${f(2.4 * K)}" stroke-linecap="round"/><circle cx="${f(x1)}" cy="${f(y1)}" r="${f(4 * K)}" class="hf"/>${headD([x2, y2], [it.side, 0], 'tri', 1.2 * K)}</g>`;
         }
         continue;
       }
@@ -305,7 +310,7 @@ const Board = (() => {
       const tag = THEMES[skin()] && THEMES[skin()].mindTags;
       const x2 = it.side > 0 ? it.x : it.x + it.w, y2 = lv >= 2 && !tag ? it.y + it.h - 1 : it.y + it.h / 2, mx = x1 + (x2 - x1) * .5;
       const ext = lv >= 2 && !tag ? `L${(it.side > 0 ? it.x + 4 : it.x + it.w - 4).toFixed(1)} ${y2.toFixed(1)}` : '';
-      s += `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}C${mx.toFixed(1)} ${y1.toFixed(1)} ${mx.toFixed(1)} ${y2.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}${ext}" fill="none" stroke="${it.c}" stroke-width="${lv === 1 ? 3.2 : 2.2}" stroke-linecap="round"/>`;
+      s += `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}C${mx.toFixed(1)} ${y1.toFixed(1)} ${mx.toFixed(1)} ${y2.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}${ext}" fill="none" stroke="${it.c}" stroke-width="${((lv === 1 ? 3.2 : 2.2) * (it.ms || 1)).toFixed(2)}" stroke-linecap="round"/>`;
     }
     for (const c of items) if (c.k === 'conn' && !c.hid) {
       const A = c.a.id && byId.get(c.a.id), B = c.b.id && byId.get(c.b.id);
@@ -348,6 +353,7 @@ const Board = (() => {
         const gs = new Set(list.map(i => i.g).filter(Boolean));
         if (list.length > 1) for (const g of gs) { const gb = unionBox(items.filter(i => i.g === g && i.k !== 'conn' && !i.hid)); if (!gb) continue; const ga = toS(gb[0], gb[1]), gz = toS(gb[2], gb[3]); h += `<div class="grpbox" style="left:${ga.x - 7}px;top:${ga.y - 7}px;width:${gz.x - ga.x + 14}px;height:${gz.y - ga.y + 14}px"></div>`; }
         const one = list.length === 1 ? list[0] : null;
+        if (one && one.k === 'mind' && !dragging && !editing) h += mindHandles(one, a, b);
         if (!dragging && !editing && !(one && one.k === 'mind')) {
           const sides = one && (one.k === 'image' || one.k === 'ink' || one.k === 'doc') ? ['nw', 'ne', 'se', 'sw'] : one && one.k === 'text' ? ['nw', 'ne', 'se', 'sw', 'e', 'w'] : one && (one.k === 'todo' || one.k === 'sheet') ? ['e', 'w'] : ['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'];
           const P = { nw: [a.x, a.y], ne: [b.x, a.y], se: [b.x, b.y], sw: [a.x, b.y], n: [(a.x + b.x) / 2, a.y], s: [(a.x + b.x) / 2, b.y], e: [b.x, (a.y + b.y) / 2], w: [a.x, (a.y + b.y) / 2] };
@@ -364,6 +370,34 @@ const Board = (() => {
     renderQuick(list, dragging);
     renderProps();
     $('.zv', zoomEl).textContent = Math.round(view.k * 100) + ' %';
+  }
+
+  /* a selected mind map idea: "+" buttons to add an idea under it (on its outer side; both sides for the centre) and
+     one beside it (below); the centre idea also gets the box of the whole map, its corners scale the map */
+  function mindHandles(one, a, b) {
+    let h = '';
+    const plus = (mode, x, y, tip) => `<button class="mplus" data-madd="${mode}" title="${tip}" style="left:${x}px;top:${y}px">${icon('plus')}</button>`;
+    const my = (a.y + b.y) / 2;
+    if (!one.parent) {
+      const ids = mindDesc(one.id); ids.add(one.id);
+      const bb = unionBox(items.filter(i => ids.has(i.id) && !i.hid)), A = toS(bb[0], bb[1]), B = toS(bb[2], bb[3]);
+      h += `<div class="mbox" style="left:${A.x - 8}px;top:${A.y - 8}px;width:${B.x - A.x + 16}px;height:${B.y - A.y + 16}px"></div>`;
+      for (const [k, x, y] of [['nw', A.x - 8, A.y - 8], ['ne', B.x + 8, A.y - 8], ['se', B.x + 8, B.y + 8], ['sw', A.x - 8, B.y + 8]]) h += `<div class="hdl ${k}" data-msc="${k}" title="Agrandir ou réduire toute la mind map" style="left:${x}px;top:${y}px"></div>`;
+      h += plus('left', a.x - 22, my, 'Ajouter une idée à gauche (Tab)') + plus('right', b.x + 22, my, 'Ajouter une idée à droite (Tab)');
+    } else {
+      h += plus('child', one.side > 0 ? b.x + 20 : a.x - 20, my, 'Ajouter une idée dessous (Tab)');
+      h += plus('sibling', (a.x + b.x) / 2, b.y + 16, 'Ajouter une idée voisine (Entrée)');
+    }
+    return h;
+  }
+  function startMindScale(e) {
+    const r = byId.get([...sel][0]); if (!r || r.k !== 'mind' || r.parent) return;
+    const before = items, cx = r.x + r.w / 2, cy = r.y + r.h / 2, w0 = toW(e.clientX, e.clientY), d0 = Math.max(8, Math.hypot(w0.x - cx, w0.y - cy)), k0 = +r.msc || 1;
+    let moved = false;
+    op = { id: e.pointerId, kind: 'mscale', moved: false,
+      move(ev) { if (ev.pointerId !== this.id) return; moved = this.moved = true; const p = toW(ev.clientX, ev.clientY), k = clamp(Math.round(k0 * Math.hypot(p.x - cx, p.y - cy) / d0 * 100) / 100, .25, 4); setLive(relayout(before.map(i => i.id === r.id ? Object.assign({}, i, { msc: k }) : i))); },
+      up() { op = null; if (moved) commit(items, { before }); else schedule(); },
+      cancel() { setLive(before); } };
   }
 
   /* ---------- quick bar: a few buttons over the selection when the panel is closed ---------- */
@@ -706,12 +740,12 @@ const Board = (() => {
     const n = byId.get([...sel][0]); if (!n || n.k !== 'mind') return;
     let parent, side;
     if (mode === 'sibling' && n.parent) { parent = byId.get(n.parent); side = n.side; }
-    else { parent = n; side = parent.parent ? parent.side : (mindKids(parent.id).filter(c => c.side > 0).length <= mindKids(parent.id).filter(c => c.side < 0).length ? 1 : -1); }
+    else { parent = n; side = parent.parent ? parent.side : mode === 'left' ? -1 : mode === 'right' ? 1 : (mindKids(parent.id).filter(c => c.side > 0).length <= mindKids(parent.id).filter(c => c.side < 0).length ? 1 : -1); }
     if (!parent) return;
     const sibs = mindKids(parent.id), cols = themeColors('mind', MIND_COLORS);
     const ord = mode === 'sibling' ? n.ord + .5 : (sibs.length ? Math.max(...sibs.map(s => s.ord)) + 1 : 0);
     const c = parent.parent ? parent.c : cols[sibs.length % cols.length];
-    const node = { id: uid('m'), k: 'mind', x: parent.x, y: parent.y, w: 80, h: 32, txt: '', root: parent.root || parent.id, parent: parent.id, side, c, ord, lv: (parent.lv || 0) + 1 };
+    const node = { id: uid('m'), k: 'mind', x: parent.x, y: parent.y, w: 80, h: 32, txt: '', root: parent.root || parent.id, parent: parent.id, side, c, ord, lv: (parent.lv || 0) + 1, ms: parent.ms || 1 };
     commit(renumber(items.concat(node), parent.id));
     sel = new Set([node.id]); render(); startEdit(node.id);
   }
@@ -1222,7 +1256,9 @@ const Board = (() => {
     if (e.button === 1 || (e.button === 0 && (spaceDown || tool === 'hand'))) { e.preventDefault(); startPan(e); return; }
     if (e.pointerType === 'pen' && (e.button === 5 || (e.buttons & 32)) && (PENS[tool] || tool === 'eraser')) { e.preventDefault(); startErase(e); return; }
     if (e.button !== 0) return;
+    const ma = t.closest('[data-madd]'); if (ma) { e.preventDefault(); e.stopPropagation(); mindAdd(ma.dataset.madd); return; }
     const hd = t.closest('.hdl');
+    if (hd && hd.dataset.msc) { e.preventDefault(); startMindScale(e); return; }
     if (hd) { e.preventDefault(); if (hd.dataset.ep) startEndpoint(e, hd.dataset.ep); else if ((hd.dataset.pt != null || hd.dataset.add != null) && (e.ctrlKey || e.metaKey)) startBranch(e); else if (hd.dataset.pt != null) { if (e.altKey) removePoint(+hd.dataset.pt); else startPoint(e, +hd.dataset.pt); } else if (hd.dataset.add != null) startPoint(e, +hd.dataset.add, true); else if (hd.dataset.tidy) startTidy(e); else if (hd.dataset.cd) startConn(e, toW(e.clientX, e.clientY), [...sel][0], hd.dataset.cd); else startResize(e, hd.dataset.h); return; }
     const ab = t.closest('[data-arr]'); if (ab) { e.preventDefault(); e.stopPropagation(); setTimeout(() => arrangeMenu(ab, false)); return; }
     if (e.pointerType === 'touch' && penSeen && (PENS[tool] || tool === 'eraser')) { startPan(e); return; }
@@ -1232,6 +1268,7 @@ const Board = (() => {
     const w = toW(e.clientX, e.clientY), hit = hitAt(e);
     if (tool === 'select') {
       if (t.closest('a[href]') || t.closest('video,audio')) return;
+      if (t.closest('[data-iopen]') && hit) { e.preventDefault(); openItem(byId.get(hit)); return; }
       const ck = t.closest('.ck > i'); if (ck && hit) { e.preventDefault(); toggleCheck(hit, +ck.parentElement.dataset.line); return; }
       const td = t.closest('[data-tdone]'); if (td && hit) { e.preventDefault(); const tk = taskById(byId.get(hit).task); if (tk) { setTaskDone(tk, !tk.done); } return; }
       const tck = t.closest('[data-tck]'); if (tck && hit) { e.preventDefault(); const tk = taskById(tck.dataset.tck); if (tk) setTaskDone(tk, !tk.done); return; }
