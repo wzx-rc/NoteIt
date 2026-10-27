@@ -492,6 +492,7 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .ovl { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .selbox { position: absolute; border: 1.5px solid var(--accent); border-radius: 3px; pointer-events: none; }
 .selbox.multi { border-style: dashed; }
+.grpbox { position: absolute; border: 1px dashed color-mix(in oklab, var(--accent) 60%, transparent); border-radius: 6px; pointer-events: none; }
 .hdl { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 3px; background: var(--card); border: 1.6px solid var(--accent); pointer-events: auto; touch-action: none; }
 .hdl.e, .hdl.w { cursor: ew-resize; height: 18px; margin-top: -9px; width: 8px; margin-left: -4px; border-radius: 4px; }
 .hdl.n, .hdl.s { cursor: ns-resize; width: 18px; margin-left: -9px; height: 8px; margin-top: -4px; border-radius: 4px; }

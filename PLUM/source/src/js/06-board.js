@@ -345,6 +345,8 @@ const Board = (() => {
       if (bb) {
         const a = toS(bb[0], bb[1]), b = toS(bb[2], bb[3]);
         h += `<div class="selbox${list.length > 1 ? ' multi' : ''}" style="left:${a.x - 3}px;top:${a.y - 3}px;width:${b.x - a.x + 6}px;height:${b.y - a.y + 6}px"></div>`;
+        const gs = new Set(list.map(i => i.g).filter(Boolean));
+        if (list.length > 1) for (const g of gs) { const gb = unionBox(items.filter(i => i.g === g && i.k !== 'conn' && !i.hid)); if (!gb) continue; const ga = toS(gb[0], gb[1]), gz = toS(gb[2], gb[3]); h += `<div class="grpbox" style="left:${ga.x - 7}px;top:${ga.y - 7}px;width:${gz.x - ga.x + 14}px;height:${gz.y - ga.y + 14}px"></div>`; }
         const one = list.length === 1 ? list[0] : null;
         if (!dragging && !editing && !(one && one.k === 'mind')) {
           const sides = one && (one.k === 'image' || one.k === 'ink' || one.k === 'doc') ? ['nw', 'ne', 'se', 'sw'] : one && one.k === 'text' ? ['nw', 'ne', 'se', 'sw', 'e', 'w'] : one && (one.k === 'todo' || one.k === 'sheet') ? ['e', 'w'] : ['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'];
@@ -445,6 +447,8 @@ const Board = (() => {
     if (list.length) {
       out.push(sec('Calques', btnRow([['back', 'back', '', 'Tout en arrière'], ['bwd', 'down', '', 'Reculer'], ['fwd', 'up', '', 'Avancer'], ['front', 'front', '', 'Tout devant']])));
       const acts = [['dup', 'dup', 'Dupliquer', 'Dupliquer (Ctrl D)'], ['del', 'trash', 'Supprimer', 'Supprimer (Suppr)']];
+      if (list.some(i => i.g)) acts.unshift(['ungroup', 'ungroup', 'Dégrouper', 'Dégrouper (Ctrl Alt G)']);
+      else if (list.filter(i => !(i.k === 'mind' && i.parent)).length > 1) acts.unshift(['group', 'group', 'Grouper', 'Grouper (Ctrl G)']);
       if (one && ['link', 'doc', 'task', 'image'].includes(one.k)) acts.unshift(['open', 'ext', 'Ouvrir', 'Ouvrir']);
       if (one && one.k === 'conn') acts.unshift(['label', 'text', 'Texte', 'Ajouter un texte sur la flèche']);
       if (one && one.k === 'frame') acts.unshift(['arrangeIn', 'arrange', 'Ranger', 'Ranger le contenu du cadre'], ['fitFrame', 'fit', 'Ajuster', 'Ajuster au contenu']);
@@ -572,6 +576,8 @@ const Board = (() => {
       case 'help': helpModal(); return;
       case 'front': case 'back': case 'fwd': case 'bwd': zMove(a); return;
       case 'dup': duplicate(); return;
+      case 'group': groupSel(); return;
+      case 'ungroup': ungroupSel(); return;
       case 'mchild': mindAdd('child'); return;
       case 'msib': mindAdd('sibling'); return;
       case 'mtidy': { const r = list[0]; if (!r) return; const ks = mindKids(r.id), half = Math.ceil(ks.length / 2); commit(renumber(items.map(i => { const k = ks.indexOf(i); if (k < 0) return i; const side = k < half ? 1 : -1; return Object.assign({}, i, { side }); }).map(i => { const top = ks.find(k => mindDesc(k.id).has(i.id)); return top ? Object.assign({}, i, { side: ks.indexOf(top) < half ? 1 : -1 }) : i; }), r.id)); return; }
@@ -597,7 +603,7 @@ const Board = (() => {
   }
   function helpModal() {
     const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O · D', 'Rectangle · Ellipse · Losange'], ['A', 'Flèche'], ['L', 'Ligne'], ['P', 'Stylo'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
-      ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Maj + glisser', 'Dupliquer et déplacer la copie'], ['Page ↑ / ↓', 'Avancer / reculer d’un plan'], ['Ctrl + Page ↑ / ↓', 'Tout devant / tout au fond'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
+      ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl G', 'Grouper (Alt + clic : un seul élément du groupe)'], ['Ctrl Alt G', 'Dégrouper'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Maj + glisser', 'Dupliquer et déplacer la copie'], ['Page ↑ / ↓', 'Avancer / reculer d’un plan'], ['Ctrl + Page ↑ / ↓', 'Tout devant / tout au fond'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
       ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]],
       ['Tableur', [['Clic · glisser', 'Choisir des cellules'], ['Maj + clic', 'Étendre la sélection'], ['En-tête', 'Ligne ou colonne entière'], ['Entrée · F2', 'Modifier la cellule'], ['Suppr', 'Vider les cellules'], ['Ctrl − / Ctrl +', 'Supprimer / insérer des lignes'], ['Ctrl C / V', 'Copier / coller des cellules'], ['Bord d’en-tête', 'Glisser pour redimensionner']]]];
     openModal(`<div class="mhd"><h2>Raccourcis du board</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div><div class="keys">${K.map(([t, rows]) => `<div><h5>${t}</h5>${rows.map(([k, l]) => `<div class="krow"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`);
@@ -664,9 +670,10 @@ const Board = (() => {
     const ids = new Set(list.map(i => i.id));
     for (const i of list) if (i.k === 'mind') { const r = i.parent ? null : i; if (r) mindDesc(r.id, ids); }
     const src = items.filter(i => ids.has(i.id) || (i.k === 'conn' && ids.has(i.a.id) && ids.has(i.b.id)));
-    const map = new Map(src.map(i => [i.id, uid(i.id[0])]));
+    const map = new Map(src.map(i => [i.id, uid(i.id[0])])), gmap = new Map();
     return src.map(i => {
       const o = JSON.parse(JSON.stringify(i)); o.id = map.get(i.id);
+      if (o.g) { if (!gmap.has(o.g)) gmap.set(o.g, uid('g')); o.g = gmap.get(o.g); }
       if (o.k === 'conn') { for (const e of ['a', 'b']) { if (o[e].id) { o[e].id = map.get(o[e].id) || null; if (!o[e].id) delete o[e].fx, delete o[e].fy; } else { if (o[e].on) { o[e].on = map.get(o[e].on); if (!o[e].on) delete o[e].on; } o[e].x += dx; o[e].y += dy; } } o.pts = (o.pts || []).map(p => [p[0] + dx, p[1] + dy]); o.sd = Math.random(); }
       else { o.x += dx; o.y += dy; }
       if (o.k === 'mind') { if (o.parent && map.has(o.parent)) o.parent = map.get(o.parent); else if (o.parent) o.parent = null; o.root = map.get(o.root) || o.id; if (!o.parent) o.root = o.id; }
@@ -1241,8 +1248,9 @@ const Board = (() => {
       if (hit) {
         const was = sel.has(hit) && sel.size === 1;
         if (e.shiftKey && !e.ctrlKey && !e.metaKey) { startDupMove(e, w, hit); return; }
-        if (e.ctrlKey || e.metaKey) { sel.has(hit) ? sel.delete(hit) : sel.add(hit); schedule(); return; }
-        if (!sel.has(hit)) sel = new Set([hit]);
+        if (e.ctrlKey || e.metaKey) { const gm = grpOf(hit); if (sel.has(hit)) gm.forEach(id => sel.delete(id)); else gm.forEach(id => sel.add(id)); schedule(); return; }
+        if (e.altKey) sel = new Set([hit]);
+        else if (!sel.has(hit)) sel = new Set(grpOf(hit));
         startMove(e, w, was, t); return;
       }
       if (!e.shiftKey) sel.clear();
@@ -1269,6 +1277,20 @@ const Board = (() => {
       view.k = k; view.x = (cx - r.left) - ((s.cx - r.left) - s.v.x) * (k / s.v.k); view.y = (cy - r.top) - ((s.cy - r.top) - s.v.y) * (k / s.v.k); viewChanged(); },
       up() { if (touches.size < 2) op = null; } };
   }
+  /* groups (Ctrl G / Ctrl Alt G): items sharing a group id g are picked, moved, copied and deleted together;
+     Alt + click picks one item inside its group */
+  const grpOf = id => { const it = byId.get(id); return it && it.g ? items.filter(i => i.g === it.g && !i.hid).map(i => i.id) : [id]; };
+  const growGroups = set => { for (const id of [...set]) for (const m of grpOf(id)) set.add(m); return set; };
+  const groupable = () => selItems().filter(i => !(i.k === 'mind' && i.parent));
+  function groupSel() {
+    const list = groupable(); if (list.length < 2) { toast('Sélectionne au moins deux éléments à grouper'); return; }
+    const ids = new Set(list.map(i => i.id)), g = uid('g');
+    commit(items.map(i => ids.has(i.id) ? Object.assign({}, i, { g }) : i)); toast(`${list.length} éléments groupés`);
+  }
+  function ungroupSel() {
+    const gs = new Set(groupable().map(i => i.g).filter(Boolean)); if (!gs.size) return;
+    commit(items.map(i => gs.has(i.g) ? (({ g, ...rest }) => rest)(i) : i)); toast(gs.size > 1 ? 'Groupes défaits' : 'Groupe défait');
+  }
   function moveSet() {
     const ids = new Set();
     for (const id of sel) {
@@ -1285,7 +1307,7 @@ const Board = (() => {
     op = { id: e.pointerId, kind: 'dupwait', moved: false,
       move(ev) {
         if (ev.pointerId !== this.id || Math.hypot(ev.clientX - x0, ev.clientY - y0) < 5) return;
-        if (!sel.has(hit)) sel = new Set([hit]);
+        if (!sel.has(hit)) sel = new Set(grpOf(hit));
         duplicate(0, 0); render();
         startMove(e, w, true, null); op.move(ev);
       },
@@ -1577,7 +1599,7 @@ const Board = (() => {
     op = { id: e.pointerId, kind: 'marquee', moved: false,
       move(ev) { const p = toW(ev.clientX, ev.clientY); this.moved = true; marquee = [w.x, w.y, p.x, p.y]; const b = [Math.min(w.x, p.x), Math.min(w.y, p.y), Math.max(w.x, p.x), Math.max(w.y, p.y)]; sel = new Set(base);
         for (const i of items) { if (i.hid) continue; if (i.k === 'conn') { const g = connGeom(i, byId); if (inBox(g.mid[0], g.mid[1], b)) sel.add(i.id); continue; } const q = boxOf(i); if (i.k === 'frame' ? (q[0] >= b[0] && q[1] >= b[1] && q[2] <= b[2] && q[3] <= b[3]) : boxHit(q, b)) { if (i.k === 'mind' && i.parent) continue; sel.add(i.id); } }
-        schedule(); },
+        growGroups(sel); schedule(); },
       up() { marquee = null; op = null; schedule(); } };
   }
   function startInk(e) {
@@ -1915,6 +1937,7 @@ const Board = (() => {
     if (k === ' ' && !e.repeat) { spaceDown = true; host.classList.add('t-hand'); e.preventDefault(); return true; }
     if (mod) {
       const lk = k.toLowerCase();
+      if (e.code === 'KeyG' || lk === 'g') { e.preventDefault(); e.altKey ? ungroupSel() : groupSel(); return true; }
       if (lk === 'z') { e.shiftKey ? redo() : undo(); e.preventDefault(); return true; }
       if (lk === 'y') { redo(); e.preventDefault(); return true; }
       if (lk === 'a') { sel = new Set(items.filter(i => !(i.k === 'mind' && i.parent) && !i.hid).map(i => i.id)); schedule(); e.preventDefault(); return true; }
