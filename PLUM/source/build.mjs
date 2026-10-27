@@ -30,8 +30,11 @@ const themeCss = themes.flatMap(id => readdirSync(join(themesDir, id)).filter(f 
 const jsFiles = readdirSync(join(src, 'js')).filter(f => f.endsWith('.js')).sort();
 const js = `const APP_VERSION = ${JSON.stringify(VERSION)};\n` + jsFiles.map(f => `/* ---- ${f} ---- */\n` + rd('js/' + f) + (f.startsWith('00-') ? '\n' + themeJs : '')).join('\n');
 const css = [rd('style.css'), ...themeCss].join('\n');
-const head = `<title>PLUM ${VERSION}</title>\n<style>\n${fonts}\n${css}\n</style>`;
+/* the PLUM logo: src/brand/plum-mark.png (the feather alone) and plum-icon.jpg (the app icon), used in css as var(--plum-mark) / var(--plum-icon) */
+const brandUrl = f => `data:${MIME[f.split('.').pop()]};base64,${readFileSync(join(src, 'brand', f)).toString('base64')}`;
+const brandCss = `:root{--plum-mark:url(${brandUrl('plum-mark.png')});--plum-icon:url(${brandUrl('plum-icon.jpg')})}`;
+const head = `<title>PLUM ${VERSION}</title>\n<style>\n${fonts}\n${brandCss}\n${css}\n</style>`;
 const body = `${rd('body.html').replace('{{VERSION}}', VERSION)}\n<script>\n(() => {\n${js}\n})();\n</script>`;
 writeFileSync(join(out, 'plum.html'), `${head}\n${body}\n`);
-writeFileSync(join(out, 'plum-standalone.html'), `<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n${head}\n</head>\n<body>\n${body}\n</body>\n</html>\n`);
+writeFileSync(join(out, 'plum-standalone.html'), `<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n<link rel="icon" href="${brandUrl('plum-mark.png')}">\n${head}\n</head>\n<body>\n${body}\n</body>\n</html>\n`);
 console.log('built', themes.join(', '), (readFileSync(join(out, 'plum.html')).length / 1024).toFixed(0) + ' KB');

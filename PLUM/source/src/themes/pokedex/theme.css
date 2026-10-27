@@ -63,7 +63,7 @@
 [data-skin="pokedex"] .brand { padding: 2px 4px 16px; }
 [data-skin="pokedex"] .brand .pill { height: auto; padding: 0; background: none; box-shadow: none; border-radius: 0; display: grid; grid-template-columns: 44px auto; grid-template-rows: auto auto; column-gap: 10px; align-items: center; }
 [data-skin="pokedex"] .brand .mark { grid-row: 1 / 3; width: 44px; height: 44px; border-radius: 50%; background: var(--pk-ball); filter: drop-shadow(0 3px 3px rgba(40, 30, 20, .3)); }
-[data-skin="pokedex"] .brand .mark svg { display: none; }
+[data-skin="pokedex"] .brand .mark :is(svg, .pm) { display: none; }
 [data-skin="pokedex"] .brand b { font: 800 22px/1 var(--font-ui); color: var(--ink); align-self: end; }
 [data-skin="pokedex"] .brand .pill::after { content: "Dessine · Planifie · Crée"; font: 600 11px/1.3 var(--font-ui); color: var(--ink-2); align-self: start; margin-top: 3px; white-space: nowrap; }
 [data-skin="pokedex"] .brand { position: relative; }

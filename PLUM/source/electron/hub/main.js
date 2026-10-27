@@ -28,6 +28,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1440, height: 920, minWidth: 720, minHeight: 520, ...(saved || {}),
     backgroundColor: '#17181C', autoHideMenuBar: true, title: 'PLUM', show: false,
+    icon: path.join(__dirname, 'icon.png'), // the feather logo in the taskbar (the exe carries the same one)
     // the page draws the whole title bar in the skin's colours, window buttons included (ipc 'win')
     titleBarStyle: 'hidden',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }

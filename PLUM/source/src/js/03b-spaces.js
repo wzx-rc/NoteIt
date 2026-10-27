@@ -8,7 +8,7 @@
 const WELCOME_THEMES = ['minimal', 'adjust'];
 function renderWelcome(v) {
   const ths = WELCOME_THEMES.map(id => THEMES[id]).filter(Boolean), cur = theme().id, p = S.prefs;
-  const mark = `<svg viewBox="0 0 24 24" aria-hidden="true"><path class="lf" d="M11.4 21.4C4.4 21 .8 15.8 1.2 7.6c7.4.6 11 5.6 10.2 13.8z"/><path class="lf" d="M12.7 19c-.9-8.2 2.7-13.8 10.1-15.2.8 8-2.9 13.9-10.1 15.2z"/><path class="vn" d="M10.7 20.2C8.4 16.6 6 13.6 3.2 10.6M13.5 17.8c1.8-4 4.2-7.6 7.6-11"/></svg>`;
+  const mark = '';
   v.innerHTML = `<div class="welcome"><div class="wl-in">
     <div class="wl-mark">${mark}</div>
     <h1 class="wl-h">Bienvenue dans PLUM</h1>

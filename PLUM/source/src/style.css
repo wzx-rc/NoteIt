@@ -1583,3 +1583,9 @@ details.mw-found[open] > summary .i { transform: rotate(90deg); }
 .mdr-fc.over { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); transform: scale(1.05); }
 .mw-name { width: 100%; height: 40px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--sunk); color: var(--ink); font-size: 15px; outline: 0; }
 .mw-name:focus { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ---- PLUM logo (the feather) ---- */
+.pm { display: block; flex: none; background: var(--plum-mark) center / contain no-repeat; }
+.brand .mark .pm { width: 26px; height: 26px; }
+#tbar .tb-l .pm { width: 14px; height: 14px; }
+.wl-mark, [data-skin] .wl-mark { background: var(--plum-icon) center / cover; }

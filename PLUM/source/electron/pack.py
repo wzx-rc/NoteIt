@@ -3,7 +3,9 @@ base = os.path.dirname(os.path.abspath(__file__))
 orig = open(os.path.join(base, 'app.asar'), 'rb').read()
 hs = struct.unpack('<I', orig[4:8])[0]; jl = struct.unpack('<I', orig[12:16])[0]
 H = json.loads(orig[16:16 + jl]); data0 = 8 + hs
-repl = {p: open(os.path.join(base, 'hub', p), 'rb').read() for p in ['app/index.html', 'main.js', 'preload.js', 'package.json', 'wintab.js']}
+repl = {p: open(os.path.join(base, 'hub', p), 'rb').read() for p in ['app/index.html', 'main.js', 'preload.js', 'package.json', 'wintab.js', 'icon.png']}
+# files that the Notely Sketch asar does not have yet (icon.png: the PLUM window icon)
+for p in ['icon.png']: H['files'].setdefault(p, {'size': 0, 'offset': '0'})
 def integ(b):
     bs = 4 * 1024 * 1024
     return {'algorithm': 'SHA256', 'hash': hashlib.sha256(b).hexdigest(), 'blockSize': bs, 'blocks': [hashlib.sha256(b[i:i + bs]).hexdigest() for i in range(0, max(len(b), 1), bs)]}

@@ -767,7 +767,7 @@ function syncTitleBar(t) {
   if (!bar) {
     document.documentElement.classList.add('tbar');
     bar = document.createElement('div'); bar.id = 'tbar';
-    bar.innerHTML = `<span class="tb-l"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.4 21.4C4.4 21 .8 15.8 1.2 7.6c7.4.6 11 5.6 10.2 13.8zM12.7 19c-.9-8.2 2.7-13.8 10.1-15.2.8 8-2.9 13.9-10.1 15.2z"/></svg>PLUM <small>${APP_VERSION}</small></span>`;
+    bar.innerHTML = `<span class="tb-l"><i class="pm" aria-hidden="true"></i>PLUM <small>${APP_VERSION}</small></span>`;
     // focus mode: a small exit button (and the assistant) next to the window buttons, instead of the floating pill
     bar.insertAdjacentHTML('beforeend', `<span class="tb-f"><button data-f="exit" title="Quitter le focus (Échap)" aria-label="Quitter le focus"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 1.5v3h-3M7.5 1.5v3h3M4.5 10.5v-3h-3M7.5 10.5v-3h3"/></svg><span>Quitter le focus</span></button></span>`);
     const ai = $('#focusAi'); if (ai) $('.tb-f', bar).prepend(ai);
