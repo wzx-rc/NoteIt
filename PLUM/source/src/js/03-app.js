@@ -741,7 +741,7 @@ function applyTheme() {
 /* the theme's colour and accent chosen in Réglages (themes with tints / accents): the theme's CSS reads them */
 function applyLook(th, r) {
   const lk = themeLook(th.id, S && S.prefs), st = r.style;
-  const tint = th.tints && (th.tints.find(x => x.id === lk.tint) || th.tints[0]);
+  const tint = th.tints && (lk.tint === 'custom' && /^#[0-9a-f]{6}$/i.test(lk.tintHex || '') ? tintOf(lk.tintHex) : th.tints.find(x => x.id === lk.tint) || th.tints[0]);
   if (tint) { st.setProperty('--th-h', tint.h); st.setProperty('--th-c', tint.c); r.dataset.tint = tint.id; }
   else { st.removeProperty('--th-h'); st.removeProperty('--th-c'); delete r.dataset.tint; }
   const a = th.accents && /^#[0-9a-f]{6}$/i.test(lk.accent || '') && lk.accent.toLowerCase() !== th.accents[0].value.toLowerCase() ? lk.accent : null;
@@ -806,8 +806,8 @@ function setFocus(on) {
 function lookRows(th) {
   const lk = themeLook(th.id, S.prefs), out = [];
   if (th.tints) {
-    const cur = (th.tints.find(x => x.id === lk.tint) || th.tints[0]).id;
-    out.push(`<div class="srow"><div class="l"><b>Couleur du thème</b><small>La teinte des fonds et des panneaux.</small></div><div class="looks">${th.tints.map((x, i) => `<button class="lk-tint" data-tint="${x.id}" style="--h:${x.h};--cc:${x.c}" aria-pressed="${x.id === cur}" title="${esc(x.name)}${i ? '' : ' (par défaut)'}" aria-label="${esc(x.name)}"></button>`).join('')}</div></div>`);
+    const own = lk.tint === 'custom' && /^#[0-9a-f]{6}$/i.test(lk.tintHex || '') ? tintOf(lk.tintHex) : null, cur = own ? 'custom' : (th.tints.find(x => x.id === lk.tint) || th.tints[0]).id;
+    out.push(`<div class="srow"><div class="l"><b>Couleur du thème</b><small>La teinte des fonds et des panneaux${own ? ', couleur choisie' : ''}.</small></div><div class="looks">${th.tints.map((x, i) => `<button class="lk-tint" data-tint="${x.id}" style="--h:${x.h};--cc:${x.c}" aria-pressed="${x.id === cur}" title="${esc(x.name)}${i ? '' : ' (par défaut)'}" aria-label="${esc(x.name)}"></button>`).join('')}<label class="lk-tint any" style="${own ? `--h:${own.h};--cc:${own.c}` : ''}" aria-pressed="${!!own}" title="Autre couleur…"><input type="color" data-k="tint" value="${own ? lk.tintHex : '#808080'}" aria-label="Autre couleur du thème"></label></div></div>`);
   }
   if (th.accents) {
     const own = th.accents[0].value.toLowerCase(), cur = (lk.accent || own).toLowerCase(), named = th.accents.find(a => a.value.toLowerCase() === cur);
@@ -863,8 +863,9 @@ function openSettings(section) {
     $('#stSkin', m).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; switchTheme(b.dataset.v); $$('[data-v]', $('#stSkin', m)).forEach(x => x.setAttribute('aria-pressed', x === b)); $('#stThemeRow', m).hidden = THEMES[b.dataset.v].mode !== 'user'; $('#stLook', m).innerHTML = lookRows(THEMES[b.dataset.v]); };
     const lookEl = $('#stLook', m), relook = () => { lookEl.innerHTML = lookRows(theme()); };
     lookEl.onclick = e => { const b = e.target.closest('[data-tint], [data-acc]'); if (!b) return; setLook(b.dataset.tint ? { tint: b.dataset.tint } : { accent: b.dataset.acc }); relook(); };
-    lookEl.oninput = e => { if (e.target.matches('input[type="color"]')) setLook({ accent: e.target.value }, true); };
-    lookEl.onchange = e => { if (e.target.matches('input[type="color"]')) { setLook({ accent: e.target.value }); relook(); } }; segBind('stPress', 'pressure'); segBind('stSrc', 'source'); segBind('stWheel', 'wheel');
+    const lookOf = t => t.dataset.k === 'tint' ? { tint: 'custom', tintHex: t.value } : { accent: t.value };
+    lookEl.oninput = e => { if (e.target.matches('input[type="color"]')) setLook(lookOf(e.target), true); };
+    lookEl.onchange = e => { if (e.target.matches('input[type="color"]')) { setLook(lookOf(e.target)); relook(); } }; segBind('stPress', 'pressure'); segBind('stSrc', 'source'); segBind('stWheel', 'wheel');
     $('#stPen', m).onchange = e => { p.autoPen = e.target.checked; save(); };
     $('#stAi', m).onchange = e => { p.aiOn = e.target.checked; save(); applyAi(); };
     $('#stSens', m).oninput = e => { p.sens = +e.target.value; $('#stSensV', m).textContent = Math.round(p.sens * 100) + ' %'; save(); };

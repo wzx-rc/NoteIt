@@ -6,8 +6,8 @@ defineTheme({
   id: 'adjust', order: .5, label: 'Minimal Adjust', desc: 'Anthracite et crème, l’atelier partout',
   mode: 'dark', meta: '#202220', chalk: '#E9DECA',
   tints: [
-    { id: 'anthracite', name: 'Anthracite', h: 118, c: .007 },
-    { id: 'graphite', name: 'Graphite', h: 100, c: .002 },
+    { id: 'anthracite', name: 'Anthracite', h: 110, c: .004 },
+    { id: 'graphite', name: 'Graphite', h: 100, c: .0012 },
     { id: 'ardoise', name: 'Ardoise', h: 235, c: .009 },
     { id: 'terre', name: 'Terre', h: 62, c: .011 },
     { id: 'mousse', name: 'Mousse', h: 140, c: .013 },

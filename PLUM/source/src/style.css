@@ -883,8 +883,9 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .lk-acc { background: var(--c); }
 .lk-acc.any { background: conic-gradient(#FF5F5F, #F5A524, #2FBF71, #22C3E6, #4B8DF8, #8C7BFF, #F0549B, #FF5F5F); }
 .lk-acc.any[style*="--c"] { background: var(--c); }
-.lk-acc.any::after { content: "+"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 15px/1 var(--font-ui); color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / .5); }
-.lk-acc.any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.lk-tint.any::after, .lk-acc.any::after { content: "+"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 15px/1 var(--font-ui); color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / .5); }
+.lk-tint.any:not([style*="--h"]) { background: conic-gradient(oklch(.6 .08 30), oklch(.6 .08 90), oklch(.6 .08 150), oklch(.6 .08 210), oklch(.6 .08 270), oklch(.6 .08 330), oklch(.6 .08 30)); }
+.lk-acc.any input, .lk-tint.any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
 .lk-tint[aria-pressed="true"], .lk-acc[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
 /* decoration layers a theme adds (decor in its theme.js): they never catch the pointer; the theme's CSS draws them */
 .th-decor { position: absolute; pointer-events: none; z-index: 0; }

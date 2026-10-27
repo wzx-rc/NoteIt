@@ -53,6 +53,13 @@ const theme = () => THEMES[skin()] || THEMES.minimal || THEME_BASE;
 /* what the user chose for a theme with tints / accents: S.prefs.look[id] = { tint, accent } */
 const themeLook = (id, prefs) => (prefs && prefs.look && prefs.look[id]) || {};
 /* text colour on an accent: dark on bright colours (yellow, cyan, green), white otherwise */
+/* a freely picked theme colour as a tint: its oklch hue, and its chroma brought down to the range of the tint lists */
+const tintOf = hex => {
+  const [r, g, b] = hex2rgb(hex).map(c => { c /= 255; return c <= .04045 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); });
+  const l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b), m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b), s = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+  const A = 1.9779984951 * l - 2.428592205 * m + .4505937099 * s, B = .0259040371 * l + .7827717662 * m - .808675766 * s;
+  return { id: 'custom', h: Math.round((Math.atan2(B, A) * 180 / Math.PI + 360) % 360), c: +Math.min(.035, Math.hypot(A, B) * .15).toFixed(4) };
+};
 const onAccent = hex => lum(hex) > .36 ? '#0B0D12' : '#FFFFFF';
 /* a swatch set of the current theme, else the base one */
 const themeColors = (k, base) => theme().colors[k] || base;

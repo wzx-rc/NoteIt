@@ -6,18 +6,18 @@
    Surfaces use the tint's hue (--th-h, olive by default) and edges and text a warmer hue (--ad-w), both scaled by
    the tint's chroma, so every tint keeps the same light. Always dark, like the studio. */
 :root[data-skin="adjust"] {
-  --th-h: 118; --th-c: .007;
+  --th-h: 110; --th-c: .004;
   --ad-w: calc(var(--th-h) - 34); --ad-k: calc(var(--th-c) / .007);
   /* surfaces (tint hue) */
-  --ad-bg: oklch(.249 calc(var(--th-c) * .7) var(--th-h));
-  --ad-top: oklch(.342 var(--th-c) var(--th-h)); --ad-bot: oklch(.266 calc(var(--th-c) * .8) var(--th-h));
-  --ad-c1: oklch(.287 var(--th-c) var(--th-h)); --ad-c2: oklch(.25 calc(var(--th-c) * .7) var(--th-h));
-  --ad-inset: oklch(.226 calc(var(--th-c) * .6) var(--th-h)); --ad-ctl: oklch(.307 calc(var(--th-c) * 1.2) var(--th-h));
-  --ad-ctl-h: oklch(.36 calc(var(--th-c) * 1.4) var(--th-h)); --ad-tile: oklch(.322 calc(var(--th-c) * 1.5) var(--th-h));
+  --ad-bg: oklch(.222 calc(var(--th-c) * .7) var(--th-h));
+  --ad-top: oklch(.312 var(--th-c) var(--th-h)); --ad-bot: oklch(.24 calc(var(--th-c) * .8) var(--th-h));
+  --ad-c1: oklch(.262 var(--th-c) var(--th-h)); --ad-c2: oklch(.226 calc(var(--th-c) * .7) var(--th-h));
+  --ad-inset: oklch(.2 calc(var(--th-c) * .6) var(--th-h)); --ad-ctl: oklch(.284 calc(var(--th-c) * 1.2) var(--th-h));
+  --ad-ctl-h: oklch(.335 calc(var(--th-c) * 1.4) var(--th-h)); --ad-tile: oklch(.3 calc(var(--th-c) * 1.5) var(--th-h));
   /* edges and text (warm hue) */
-  --ad-edge: oklch(.464 calc(var(--th-c) * 2.3) calc(var(--th-h) - 25)); --ad-edge2: oklch(.394 calc(var(--th-c) * 2.3) calc(var(--th-h) - 7));
-  --ad-hair: oklch(.34 calc(var(--th-c) * 1.6) var(--th-h)); --ad-bronze: oklch(.517 calc(var(--th-c) * 4.2) var(--ad-w));
-  --ad-sel: oklch(.466 calc(var(--th-c) * 2.4) var(--ad-w)); --ad-sel-edge: oklch(.696 calc(var(--th-c) * 6.2) var(--ad-w));
+  --ad-edge: oklch(.43 calc(var(--th-c) * 2.3) calc(var(--th-h) - 25)); --ad-edge2: oklch(.362 calc(var(--th-c) * 2.3) calc(var(--th-h) - 7));
+  --ad-hair: oklch(.315 calc(var(--th-c) * 1.6) var(--th-h)); --ad-bronze: oklch(.517 calc(var(--th-c) * 4.2) var(--ad-w));
+  --ad-sel: oklch(.44 calc(var(--th-c) * 2.4) var(--ad-w)); --ad-sel-edge: oklch(.696 calc(var(--th-c) * 6.2) var(--ad-w));
   --ad-tool: oklch(.798 calc(var(--th-c) * 4.2) var(--ad-w)); --ad-tool-hi: oklch(.916 calc(var(--th-c) * 4.7) var(--ad-w));
   --ad-title: oklch(.88 calc(var(--th-c) * 5) var(--ad-w));
   --ad-grain: url("asset:grain.png");
@@ -34,9 +34,9 @@
   --font-title: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
   --r-sm: 6px; --r-md: 8px; --r-lg: 14px; --r-xl: 17px;
 
-  --side: oklch(.3 var(--th-c) var(--th-h)); --side-2: var(--ad-ctl); --side-3: var(--ad-sel); --side-line: var(--ad-edge);
+  --side: oklch(.272 var(--th-c) var(--th-h)); --side-2: var(--ad-ctl); --side-3: var(--ad-sel); --side-line: var(--ad-edge);
   --side-text: oklch(.904 calc(var(--th-c) * 4.2) var(--ad-w)); --side-mute: oklch(.664 calc(var(--th-c) * 2.6) var(--ad-w));
-  --paper: var(--ad-bg); --card: var(--ad-c1); --sunk: var(--ad-inset); --raise: var(--ad-ctl); --menu: oklch(.29 var(--th-c) var(--th-h)); --canvas: var(--ad-bg);
+  --paper: var(--ad-bg); --card: var(--ad-c1); --sunk: var(--ad-inset); --raise: var(--ad-ctl); --menu: oklch(.265 var(--th-c) var(--th-h)); --canvas: var(--ad-bg);
   --line: var(--ad-hair); --line-2: var(--ad-edge);
   --ink: oklch(.904 calc(var(--th-c) * 4.2) var(--ad-w)); --ink-2: oklch(.808 calc(var(--th-c) * 4) var(--ad-w)); --ink-3: oklch(.664 calc(var(--th-c) * 2.6) var(--ad-w));
   --strong: oklch(.924 calc(var(--th-c) * 4.9) var(--ad-w));
@@ -46,7 +46,7 @@
   --ok: #8FAE8F; --warn: #E9C46A; --err: #E0806A; --info: #8199D2; --pink: #D8A7A0;
   --shadow-1: var(--ad-shadow-sm); --shadow-2: var(--ad-shadow), 0 0 0 1px var(--ad-edge2); --shadow-note: 0 2px 2px rgb(0 0 0 / .3), 0 10px 18px -8px rgb(0 0 0 / .6);
   --br-a: var(--ad-top); --br-b: var(--ad-bot); --br-rim: var(--ad-edge); --br-l1: var(--strong); --br-l2: var(--accent); --br-vein: var(--ad-bot); --br-text: var(--ad-title);
-  --tb-l: var(--ad-bg); --tb-r: var(--ad-bg); --tb-sym: var(--ink-2); --tb-text: var(--ink-3);
+  --tb-l: var(--ad-top); --tb-r: var(--ad-top); --tb-sym: var(--ink-2); --tb-text: var(--ink-3);
   color-scheme: dark;
 }
 /* a custom accent: the tile of what is on takes a little of it, the cream stays for the text */
@@ -65,17 +65,10 @@
 /* ---------- the panels: the rail's gradient, its grain and its warm edge ---------- */
 [data-skin="adjust"] :is(#side, #ai) { background: var(--ad-grain) 0 0 / 256px, linear-gradient(var(--ad-top), var(--ad-bot) 320px, var(--ad-c2)); border: 1px solid var(--ad-edge); box-shadow: var(--ad-shadow-sm); }
 [data-skin="adjust"] #top { background: var(--ad-grain) 0 0 / 256px, var(--ad-panel); border: 1px solid var(--ad-edge); box-shadow: var(--ad-shadow-sm); }
-@media (min-width: 761px) {
-  [data-skin="adjust"] #app { padding: 0 10px 10px; gap: 10px; grid-template-columns: var(--side-w) minmax(0, 1fr) auto; }
-  [data-skin="adjust"]:not(.tbar) #app { padding-top: 10px; }
-  [data-skin="adjust"] #side { border-radius: 17px; padding: 12px 10px 10px; }
-  [data-skin="adjust"] #main { gap: 10px; }
-  [data-skin="adjust"] #top { border-radius: 17px; height: 50px; isolation: isolate; }
-  [data-skin="adjust"] #ai { border-radius: 17px; overflow: hidden; }
-  [data-skin="adjust"][data-focus] #app { grid-template-columns: 0 minmax(0, 1fr) auto; gap: 0 10px; }
-  [data-skin="adjust"][data-focus] #side { border: 0; }
-}
-@media (max-width: 760px) { [data-skin="adjust"] #top { border-width: 0 0 1px; border-radius: 0; isolation: isolate; } }
+/* welded like Minimal: the rail on the left and the top bar meet the page edge to edge, a warm hairline between */
+[data-skin="adjust"] #side { border-width: 0 1px 0 0; border-radius: 0; box-shadow: inset -1px 0 rgb(0 0 0 / .25); }
+[data-skin="adjust"] #ai { border-width: 0 0 0 1px; border-radius: 0; box-shadow: none; }
+[data-skin="adjust"] #top { border-width: 0 0 1px; border-radius: 0; height: 50px; box-shadow: 0 6px 14px -8px rgb(0 0 0 / .5); }
 
 /* ---------- sidebar: the rail's buttons, the pressed tile for the open page ---------- */
 [data-skin="adjust"] .brand .pill { height: 42px; padding: 0 16px 0 11px; box-shadow: inset 0 0 0 1px var(--br-rim), inset 0 1px rgb(255 255 255 / .08), 0 6px 14px rgb(0 0 0 / .32); }
