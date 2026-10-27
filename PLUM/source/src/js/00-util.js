@@ -47,9 +47,9 @@ const THEME_BASE = {
 };
 function defineTheme(t) { THEMES[t.id] = Object.assign({}, THEME_BASE, t, { colors: Object.assign({}, t.colors) }); }
 const themeList = () => Object.values(THEMES).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
-/* the skin id is kept in S.prefs.skin and on <html data-skin>; 'notely' (now Nuit) is the base theme */
-const skin = () => document.documentElement.dataset.skin || 'notely';
-const theme = () => THEMES[skin()] || THEMES.notely || THEME_BASE;
+/* the skin id is kept in S.prefs.skin and on <html data-skin>; 'minimal' is the default theme, 'notely' (Nuit) holds the base colours of style.css */
+const skin = () => document.documentElement.dataset.skin || 'minimal';
+const theme = () => THEMES[skin()] || THEMES.minimal || THEME_BASE;
 /* what the user chose for a theme with tints / accents: S.prefs.look[id] = { tint, accent } */
 const themeLook = (id, prefs) => (prefs && prefs.look && prefs.look[id]) || {};
 /* text colour on an accent: dark on bright colours (yellow, cyan, green), white otherwise */

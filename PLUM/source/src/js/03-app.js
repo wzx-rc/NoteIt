@@ -1,6 +1,6 @@
 /* ================= workspace state ================= */
 const SPACE_COLORS = ['#5B7CFA', '#F2B33D', '#EC6A9C', '#E5484D', '#F5A524', '#2E9E6A', '#8B76FF', '#22A6B3', '#8B5E3C', '#5E6B78'];
-const DEFAULT_PREFS = { theme: 'auto', skin: 'notely', name: 'Romain', autoPen: true, wheel: 'zoom', pressure: 'pen', source: 'auto', sens: .5, last: 'home',
+const DEFAULT_PREFS = { theme: 'auto', skin: 'minimal', name: 'Romain', autoPen: true, wheel: 'zoom', pressure: 'pen', source: 'auto', sens: .5, last: 'home',
   pens: Object.fromEntries(PEN_ORDER.map(k => [k, { c: PEN_DEFAULT_COLORS[k], s: PENS[k].size }])),
   bd: { sc: '#1E1E1E', fc: null, sw: 2, sty: 'sketch', dash: '', fill: 'solid', font: 'hand', route: 'curve' }, recent: [], props: null,
   ai: { provider: 'auto', tier: 'quick', model: '' }, aiOn: false, taskOrder: [] };
@@ -724,7 +724,7 @@ function placeDecor(th) {
   for (const d of th.decor || []) $$(d.at).forEach(host => { const el = document.createElement('div'); el.className = 'th-decor ' + (d.cls || ''); el.setAttribute('aria-hidden', 'true'); host.appendChild(el); });
 }
 function applyTheme() {
-  const sk = S && THEMES[S.prefs.skin] ? S.prefs.skin : 'notely', th = THEMES[sk] || THEME_BASE, r = document.documentElement;
+  const sk = S && THEMES[S.prefs.skin] ? S.prefs.skin : 'minimal', th = THEMES[sk] || THEME_BASE, r = document.documentElement;
   const t = th.mode === 'user' ? (S ? S.prefs.theme : 'auto') : th.mode;
   const prev = themeOn; themeOn = th;
   if (prev && prev !== th && prev.apply) prev.apply(false);

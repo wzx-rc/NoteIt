@@ -192,6 +192,7 @@ const Note = (() => {
     if (keep.length !== erasing.cur.length) { erasing.cur = keep; P.ink = keep; renderInk(); }
   }
   function onMove(e) {
+    if (e.pointerType === 'mouse' && wrap && wrap.classList.contains('typing') && (Math.abs(e.movementX) + Math.abs(e.movementY) > 2)) wrap.classList.remove('typing');
     if (drawing === e.pointerId) ink.feed(e);
     else if (erasing && erasing.id === e.pointerId) eraseAt(e);
   }
@@ -256,7 +257,7 @@ const Note = (() => {
     g.data = pageData(g.i);
     const b = g.body;
     b.addEventListener('focusin', () => use(g));
-    b.addEventListener('input', () => { use(g); saveBody(); });
+    b.addEventListener('input', () => { use(g); saveBody(); wrap.classList.add('typing'); });
     b.addEventListener('keydown', onKey);
     b.addEventListener('keyup', renderTool); b.addEventListener('mouseup', renderTool);
     b.addEventListener('paste', onPaste);
@@ -374,14 +375,17 @@ const Note = (() => {
     titleIn.onblur = () => { if (!titleIn.value.trim()) { D.title = 'Sans titre'; titleIn.value = D.title; touch(D); const t = $('#docTitle'); if (t) t.value = D.title; } };
     addEventListener('pointermove', onMove); addEventListener('pointerup', onUp); addEventListener('pointercancel', onCancel);
     ro.observe(view);
+    view.addEventListener('scroll', onScroll, { passive: true });
     layout();
   }
+  /* themes can mark the toolbar once the note scrolls under it (.scrolled) and dim it while typing (.typing, cleared by a mouse move) */
+  function onScroll() { if (mounted) wrap.classList.toggle('scrolled', view.scrollTop > 4); }
   function flush() { if (!mounted) return; saveBody.flush(); }
   function unmount() {
     if (!mounted) return;
     flush(); mounted = false;
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onCancel);
-    if (ro) ro.disconnect(); if (liveBox) liveBox.remove();
+    if (ro) ro.disconnect(); if (liveBox) liveBox.remove(); if (view) view.removeEventListener('scroll', onScroll);
     D = null; PG = []; cur = null; P = null; view = null;
   }
 
