@@ -3,12 +3,13 @@
    logo, wooden tabs on the panel titles, sticky notes in yellow / green / blue / peach, the forest green of the
    "Share" button as the accent, vines and leaves around the edges, and the painted isometric farm on the welcome.
    Icons are the kit's painted ones (Gemini extractions of the boards, in assets/): game-asset pictures for the
-   sidebar (barn, notebook, clipboard, cork board, sunflower, bucket…); the board keeps fine brown line icons, as on the concept.
+   sidebar (barn, notebook, clipboard, cork board, sunflower, bucket…), cream glyphs on the board's walnut rail.
+   demo.js makes the example board "Plan de la ferme" once.
    Kalam (felt pen) for titles and handwriting, Nunito for the interface. Always light. */
 const FM_IMG = f => ({ vb: '0 0 24 24', svg: `<image href="${f}" width="24" height="24"/>` });
 defineTheme({
   id: 'farmer', order: .8, label: 'Farmer', desc: 'Ferme peinte : bois, papier crème, post-it',
-  mode: 'light', meta: '#F3EAD7', chalk: '#3B2A1C', hand: '#3B2A1C', atlInk: '#3B2A1C',
+  mode: 'light', meta: '#F3EAD7', boardInset: 150, chalk: '#3B2A1C', hand: '#3B2A1C', atlInk: '#3B2A1C',
   accents: [
     { name: 'Vert prairie', value: '#5B8A3C' }, { name: 'Grange', value: '#B5452F' }, { name: 'Blé', value: '#D9A441' },
     { name: 'Étang', value: '#4F8FB8' }, { name: 'Noyer', value: '#7A4E2D' }, { name: 'Lavande', value: '#8A74B8' }
@@ -40,10 +41,18 @@ defineTheme({
     spark: FM_IMG('asset:ic-spark.webp'),
     cal: FM_IMG('asset:ic-cal.webp'),
     clock: FM_IMG('asset:ic-clock.webp'),
-    /* board tools: the concept's fine brown line icons (base set), the sticky as a yellow square */
-    sticky: '<path d="M5.5 4.5h13a1 1 0 0 1 1 1V14l-6 6h-8a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1z" fill="#F4CE5B" stroke="#B98A2A" stroke-width="1.3"/><path d="M19.5 14h-5a1 1 0 0 0-1 1v5z" fill="#E2B23F" stroke="#B98A2A" stroke-width="1.3"/>',
+    /* board tools: the cream glyphs of the walnut rail */
+    cursor: FM_IMG('asset:ic-cursor.webp'),
+    pen: FM_IMG('asset:ic-pencil.webp'),
+    pencil: FM_IMG('asset:ic-pencil.webp'),
+    text: FM_IMG('asset:ic-text.webp'),
+    rect: FM_IMG('asset:ic-shape.webp'),
+    sticky: FM_IMG('asset:ic-sticky.webp'),
+    conn: FM_IMG('asset:ic-conn.webp'),
+    dots: FM_IMG('asset:ic-dots.webp'),
     plus: '<path d="M12 5v14M5 12h14" stroke-width="2.3"/>'
   },
   /* a vine hanging over the top right corner, a sprig at the bottom left of the page */
-  decor: [{ at: '#main', cls: 'fm-vine' }, { at: '#main', cls: 'fm-leaf' }]
+  decor: [{ at: '#main', cls: 'fm-vine' }, { at: '#main', cls: 'fm-leaf' }],
+  apply: on => { if (on) setTimeout(fmDemo, 800); }
 });

@@ -1102,9 +1102,10 @@ const Board = (() => {
   }
   function reveal(bb) { const r = hostRect(), a = toS(bb[0], bb[1]), b = toS(bb[2], bb[3]); if (a.x >= 20 && a.y >= 20 && b.x <= r.width - 20 && b.y <= r.height - 90) return; fitTo(bb, Math.min(1, view.k)); }
   function fitTo(bb, maxK = 1.2) {
-    const r = hostRect(), pad = r.width < 600 ? 18 : 70, right = propsOpen() && r.width > 900 ? 300 : 0, W = Math.max(50, r.width - right - pad * 2), H = Math.max(50, r.height - pad * 2 - 60);
+    /* the theme manifest's boardInset: room a theme's own side rail takes on the left of the board */
+    const r = hostRect(), pad = r.width < 600 ? 18 : 70, left = r.width > 760 ? (THEMES[skin()] || {}).boardInset || 0 : 0, right = (propsOpen() && r.width > 900 ? 300 : 0) + left, W = Math.max(50, r.width - right - pad * 2), H = Math.max(50, r.height - pad * 2 - 60);
     const k = clamp(Math.min(W / Math.max(1, bb[2] - bb[0]), H / Math.max(1, bb[3] - bb[1]), maxK), MINK, MAXK);
-    view.k = k; view.x = (r.width - right) / 2 - (bb[0] + bb[2]) / 2 * k; view.y = (r.height + 30) / 2 - (bb[1] + bb[3]) / 2 * k; viewChanged();
+    view.k = k; view.x = left + (r.width - right) / 2 - (bb[0] + bb[2]) / 2 * k; view.y = (r.height + 30) / 2 - (bb[1] + bb[3]) / 2 * k; viewChanged();
   }
   function fitAll() { const bb = unionBox(items.filter(i => i.k !== 'conn' && !i.hid)); if (bb) fitTo(bb); else { view.x = hostRect().width / 2; view.y = hostRect().height / 2; view.k = 1; viewChanged(); } }
 

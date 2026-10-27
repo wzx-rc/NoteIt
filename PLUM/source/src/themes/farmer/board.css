@@ -1,72 +1,93 @@
-/* ================= Farmer: the board, as on the eco-farm concept =================
-   A sheet of warm cream paper; down the left a cream tool rail in a beige frame (fine brown line icons, the current
-   tool on a green square); at the bottom the undo/redo and fit/help pills resting on a weathered wooden log with a
-   sprout at its end (holder.webp); the zoom pill "− 100 % +" at the bottom right; the Style panel on the right as a
-   cream card in a beige frame with a little grip bar on top. Sticky notes are paper squares with a lifted corner. */
-[data-skin="farmer"] .bwrap { background: var(--fm-img-paper) 0 0 / 512px 512px, #F6F0E2; }
+/* ================= Farmer: the board, as on the farm concept board =================
+   The canvas is cream paper with a faint grid inside a wooden frame (panel.webp nine-slice over the board edge).
+   Down the left, the dark walnut tool rail (rail-s.webp nine-slice) with cream painted glyphs and a small label
+   under each tool, the current one on a lighter wooden tile. At the bottom the charcoal dock of the concept: the
+   options of the chosen tool (pens, colours, sizes), with undo and zoom as small charcoal pills beside it. On the
+   right the panel is a cream sheet in the wooden frame with pill tabs (the chosen one outlined in green).
+   Sticky notes are paper squares with a lifted corner. */
+[data-skin="farmer"] .bwrap { background: var(--fm-img-paper) 0 0 / 512px 512px, #F4ECDA; }
 [data-skin="farmer"] .bhost { background-color: transparent; }
 [data-skin="farmer"] .bhost.bg-dots { background-image: radial-gradient(rgb(110 80 45 / .16) 1.1px, transparent 1.5px); }
-[data-skin="farmer"] .bhost.bg-grid { background-image: linear-gradient(rgb(110 80 45 / .08) 1px, transparent 1px), linear-gradient(90deg, rgb(110 80 45 / .08) 1px, transparent 1px); }
+[data-skin="farmer"] .bhost.bg-grid, [data-skin="farmer"] .bhost.bg-plain { background-image: linear-gradient(rgb(110 80 45 / .07) 1px, transparent 1px), linear-gradient(90deg, rgb(110 80 45 / .07) 1px, transparent 1px); background-size: 26px 26px; }
+/* the wooden frame round the board */
+[data-skin="farmer"] .bwrap::before { content: ""; position: absolute; inset: 0; z-index: 18; pointer-events: none; border: 16px solid transparent; border-image: var(--fm-img-panel) 40 / 16px stretch; filter: drop-shadow(0 0 6px rgb(62 38 21 / .25)); }
 
-/* every island: cream, a hairline, a beige frame around it and a soft shadow */
+/* the small islands: charcoal pills like the concept's dock */
 [data-skin="farmer"] .isl {
-  background: #FBF7EE; border: 1px solid #DCCDB0; border-radius: 16px; padding: 5px;
-  box-shadow: 0 0 0 5px #EADFC8, 0 0 0 6px #D3C1A0, 0 12px 22px -10px rgb(62 38 21 / .45);
+  background: linear-gradient(180deg, #3D3833, #2A2622); border: 1px solid #1C1916; border-radius: 16px; padding: 5px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), 0 10px 20px -8px rgb(30 18 8 / .6);
 }
-[data-skin="farmer"] .isl .vs { background: #E0D3BA; }
-[data-skin="farmer"] .tl { border-radius: 11px; color: #4A3726; }
-[data-skin="farmer"] .tl .i { width: 21px; height: 21px; stroke-width: 1.6; }
-[data-skin="farmer"] .tl:hover { background: #F0E7D4; color: var(--strong); }
-[data-skin="farmer"] .tl[aria-pressed="true"] { background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 88%, white), var(--accent)); color: var(--on-accent); box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), 0 2px 0 var(--accent-2), 0 4px 8px -3px rgb(62 38 21 / .4); }
+[data-skin="farmer"] .isl .vs { background: rgb(255 255 255 / .14); }
+[data-skin="farmer"] .tl { border-radius: 11px; color: #EFE3CC; }
+[data-skin="farmer"] .tl .i { width: 21px; height: 21px; stroke-width: 1.8; }
+[data-skin="farmer"] .tl:hover { background: rgb(255 240 215 / .1); color: #FFF7E8; }
+[data-skin="farmer"] .tl[aria-pressed="true"] { background: rgb(255 240 215 / .16); color: #FFF7E8; box-shadow: inset 0 0 0 1px rgb(255 240 215 / .2); }
 [data-skin="farmer"] .tl kbd { color: currentColor; }
-[data-skin="farmer"] .tl .cdot { box-shadow: 0 0 0 1.5px #FBF7EE; }
-[data-skin="farmer"] .isl .zv { color: #4A3726; font-weight: 800; border-radius: 9px; background: #FFFDF7; box-shadow: inset 0 0 0 1px #E3D6BD; }
-[data-skin="farmer"] .isl .zv:hover { background: #F0E7D4; color: var(--strong); }
+[data-skin="farmer"] .tl .cdot { box-shadow: 0 0 0 1.5px #2A2622; }
+[data-skin="farmer"] .isl .zv { color: #EFE3CC; font-weight: 800; border-radius: 9px; }
+[data-skin="farmer"] .isl .zv:hover { background: rgb(255 240 215 / .1); color: #FFF7E8; }
 [data-skin="farmer"] .isl.tr .tl { font-weight: 700; }
-[data-skin="farmer"] .bhint { background: #FBF7EE; color: var(--ink); border: 1px solid #DCCDB0; border-radius: 12px; font-weight: 700; box-shadow: 0 10px 20px -10px rgb(62 38 21 / .45); }
+[data-skin="farmer"] .bhint { background: #FBF5E8; color: var(--ink); border: 1px solid var(--line-2); border-radius: 12px; font-weight: 700; box-shadow: 0 10px 20px -10px rgb(62 38 21 / .45); }
 
 @media (min-width: 761px) {
-  /* the tool rail down the left side */
+  /* the walnut rail down the left, a label under each tool */
   [data-skin="farmer"] .bwrap:is(*, .props-open, .drawing) .isl.tools {
-    top: 50%; left: 22px; transform: translateY(-50%); flex-direction: column; gap: 4px; padding: 8px 6px;
-    max-height: calc(100% - 150px); max-width: none; overflow-x: hidden; overflow-y: auto; border-radius: 18px;
+    top: 50%; left: 26px; transform: translateY(-50%); flex-direction: column; gap: 1px; padding: 12px 8px;
+    max-height: calc(100% - 64px); max-width: none; overflow-x: hidden; overflow-y: auto;
+    background: none; border: 12px solid transparent; border-image: url("asset:rail-s.webp") 22 fill / 12px stretch; border-radius: 0;
+    box-shadow: none; filter: drop-shadow(0 10px 12px rgb(30 18 8 / .45));
   }
-  [data-skin="farmer"] .isl.tools .tl { width: 44px; height: 44px; }
-  [data-skin="farmer"] .isl.tools .tl .i { width: 23px; height: 23px; }
+  [data-skin="farmer"] .isl.tools .tl { width: 58px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 10px; color: #F3E2C3; }
+  [data-skin="farmer"] .isl.tools .tl::after { content: attr(aria-label); font: 700 9.5px/1 var(--font-ui); color: #F0DFC0; text-shadow: 0 1px 1px rgb(0 0 0 / .6); white-space: nowrap; max-width: 58px; overflow: hidden; text-overflow: ellipsis; }
+  [data-skin="farmer"] .isl.tools .tl .i { width: 25px; height: 25px; filter: drop-shadow(0 1px 1px rgb(0 0 0 / .5)); }
   [data-skin="farmer"] .isl.tools .tl kbd { display: none; }
-  [data-skin="farmer"] .isl.tools .vs { width: 26px; height: 1px; margin: 3px auto; }
-  [data-skin="farmer"] .bwrap .bhint { left: calc(50% + 40px); }
+  [data-skin="farmer"] .isl.tools .tl .cdot { left: 8px; bottom: 16px; }
+  [data-skin="farmer"] .isl.tools .tl:hover { background: rgb(255 236 205 / .1); }
+  /* the chosen tool: a lighter wooden tile with a warm rim */
+  [data-skin="farmer"] .isl.tools .tl[aria-pressed="true"] { background: linear-gradient(180deg, #A8784A, #7E5532); box-shadow: inset 0 1px 0 rgb(255 225 180 / .45), inset 0 0 0 1px rgb(255 215 160 / .25), 0 2px 0 #2E1A0B, 0 3px 6px rgb(0 0 0 / .4); }
+  [data-skin="farmer"] .isl.tools .vs { width: 34px; height: 1px; margin: 4px auto; background: rgb(255 225 180 / .2); box-shadow: 0 1px 0 rgb(0 0 0 / .35); }
+  [data-skin="farmer"] .bwrap .bhint { top: 26px; left: calc(50% + 40px); }
   [data-skin="farmer"] .bwrap.props-open .bhint { left: calc((100% - var(--props-w) - 12px) / 2 + 40px); }
 
-  /* the wooden log at the bottom, the undo and fit pills resting on it */
-  [data-skin="farmer"] .bwrap::after {
-    content: ""; position: absolute; z-index: 19; pointer-events: none; bottom: 6px; left: calc(50% - 165px); width: 330px; height: 72px;
-    background: var(--fm-img-holder) center / 100% 100% no-repeat; filter: drop-shadow(0 8px 8px rgb(62 38 21 / .3));
+  /* the charcoal dock at the bottom: the chosen tool's options (pens, colours, sizes) */
+  [data-skin="farmer"] .topts:not([hidden]) {
+    display: flex; position: absolute; z-index: 21; bottom: 26px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 420px);
+    align-items: center; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 6px 12px; border-radius: 18px;
+    background: linear-gradient(180deg, #3D3833, #2A2622); border: 1px solid #1C1916; color: #EFE3CC; box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), 0 14px 24px -10px rgb(30 18 8 / .65);
   }
-  [data-skin="farmer"] .bwrap.props-open::after { left: calc((100% - var(--props-w) - 12px) / 2 - 165px); }
-  [data-skin="farmer"] .bwrap .isl.bl.undo, [data-skin="farmer"] .bwrap .isl.br { bottom: 22px; box-shadow: 0 0 0 1px #E8DCC4, 0 6px 10px -4px rgb(40 22 8 / .45); border-radius: 15px; }
-  [data-skin="farmer"] .bwrap .isl.bl.undo { left: auto; right: calc(50% + 6px); }
-  [data-skin="farmer"] .bwrap .isl.br { right: auto; left: calc(50% + 6px); }
-  [data-skin="farmer"] .bwrap.props-open .isl.bl.undo { right: calc(100% - (100% - var(--props-w) - 12px) / 2 + 6px); }
-  [data-skin="farmer"] .bwrap.props-open .isl.br { left: calc((100% - var(--props-w) - 12px) / 2 + 6px); }
-  /* zoom: bottom right, as on the concept */
-  [data-skin="farmer"] .bwrap .isl.bl.zoom { left: auto; right: 22px; bottom: 22px; }
-  [data-skin="farmer"] .bwrap.props-open .isl.bl.zoom { display: flex; right: calc(var(--props-w) + 34px); }
-  [data-skin="farmer"] .bwrap .isl.tr { top: 18px; right: 22px; }
+  [data-skin="farmer"] .bwrap.props-open .topts:not([hidden]) { left: calc((100% - var(--props-w) - 12px) / 2); max-width: calc(100% - var(--props-w) - 420px); }
+  [data-skin="farmer"] .topts .vs { width: 1px; height: 26px; margin: 0 6px; background: rgb(255 255 255 / .14); }
+  [data-skin="farmer"] .topts .ol { font: 700 11px var(--font-ui); color: #BFAF95; margin: 0 4px 0 2px; }
+  [data-skin="farmer"] .topts .seg { background: rgb(0 0 0 / .25); padding: 2px; gap: 2px; border: 0; border-radius: 12px; box-shadow: none; }
+  [data-skin="farmer"] .topts .seg button { height: 32px; min-width: 32px; padding: 0 6px; border-radius: 10px; color: #EFE3CC; background: none; box-shadow: none; }
+  [data-skin="farmer"] .topts .seg button[aria-pressed="true"] { background: rgb(255 240 215 / .18); color: #FFF7E8; box-shadow: inset 0 0 0 1px rgb(255 240 215 / .25); }
+  [data-skin="farmer"] .topts .seg .i { width: 19px; height: 19px; }
+  [data-skin="farmer"] .topts .seg .pl { width: 30px; height: 14px; }
+  [data-skin="farmer"] .topts .sws { display: flex; gap: 6px; align-items: center; padding: 0 4px; }
+  /* the colours: big round drops as on the concept */
+  [data-skin="farmer"] .topts .sw { width: 30px; height: 30px; border-radius: 50%; border: 0; box-shadow: inset 0 -3px 4px rgb(0 0 0 / .25), inset 0 2px 3px rgb(255 255 255 / .3), 0 1px 2px rgb(0 0 0 / .5); }
+  [data-skin="farmer"] .topts .sw[aria-pressed="true"] { box-shadow: 0 0 0 2px #2A2622, 0 0 0 4px #EFE3CC; }
+  [data-skin="farmer"] .topts .pchip { height: 32px; padding: 0 10px; border-radius: 12px; border: 1px solid rgb(255 255 255 / .16); background: rgb(0 0 0 / .2); color: #EFE3CC; display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 12px; }
+  /* undo at the left of the bottom, zoom and fit/help at the right */
+  [data-skin="farmer"] .bwrap .isl.bl.undo { left: 108px; bottom: 26px; }
+  [data-skin="farmer"] .bwrap .isl.bl.zoom { left: auto; right: 132px; bottom: 26px; }
+  [data-skin="farmer"] .bwrap .isl.br { right: 26px; bottom: 26px; }
+  [data-skin="farmer"] .bwrap.props-open .isl.bl.zoom { display: flex; right: calc(var(--props-w) + 132px); }
+  [data-skin="farmer"] .bwrap.props-open .isl.br { right: calc(var(--props-w) + 26px); }
+  [data-skin="farmer"] .bwrap .isl.tr { top: 26px; right: 26px; }
 }
 
-/* the Style panel: a cream card in a beige frame, a little grip bar on top */
+/* the side panel: a cream sheet in the wooden frame, pill tabs */
 [data-skin="farmer"] .props {
-  top: 16px; right: 18px; bottom: 16px; background: #FBF7EE; border: 1px solid #DCCDB0; border-radius: 20px; padding-top: 10px;
-  box-shadow: 0 0 0 6px #EADFC8, 0 0 0 7px #D3C1A0, 0 18px 34px -14px rgb(62 38 21 / .5);
+  top: 10px; right: 10px; bottom: 10px; z-index: 22; background: none; border-radius: 0;
+  border: 20px solid transparent; border-image: var(--fm-img-panel) 40 fill / 20px stretch; box-shadow: none; filter: drop-shadow(0 14px 20px rgb(40 22 8 / .4));
 }
-[data-skin="farmer"] .props::before { content: ""; position: absolute; top: 6px; left: 50%; width: 46%; height: 5px; margin-left: -23%; border-radius: 5px; background: linear-gradient(90deg, #C9D9AE, #9DBB78, #C9D9AE); opacity: .8; }
-[data-skin="farmer"] .props .ptab { font-weight: 700; color: var(--ink-2); }
-[data-skin="farmer"] .props .ptab[aria-pressed="true"] { color: var(--strong); }
-[data-skin="farmer"] .props .ps-l { font: 600 13px var(--font-ui); letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+[data-skin="farmer"] .props .ptab { font-weight: 700; color: var(--ink-2); border-radius: 999px; }
+[data-skin="farmer"] .props .ptab[aria-pressed="true"] { color: var(--strong); background: #E7EFD9; box-shadow: inset 0 0 0 1.5px var(--accent); }
+[data-skin="farmer"] .props .ps-l { font: 700 14px var(--font-head); letter-spacing: 0; text-transform: none; color: var(--ink); }
 [data-skin="farmer"] .props .sw { box-shadow: 0 0 0 1px rgb(62 38 21 / .12), 0 2px 3px rgb(62 38 21 / .15); }
-[data-skin="farmer"] .props .seg { background: #F0E7D4; }
-[data-skin="farmer"] .props .seg button[aria-pressed="true"] { background: #FFFDF7; color: var(--strong); box-shadow: 0 0 0 1px #DCCDB0, 0 2px 3px rgb(62 38 21 / .12); }
+[data-skin="farmer"] .props .seg { background: #EEE4CF; }
+[data-skin="farmer"] .props .seg button[aria-pressed="true"] { background: #FFFDF7; color: var(--strong); box-shadow: 0 0 0 1.5px var(--accent); }
 
 /* sticky notes: square paper, the corner lifted */
 [data-skin="farmer"] .it.note { border-radius: 2px; box-shadow: 0 1px 1px rgb(62 38 21 / .12), 0 12px 16px -12px rgb(62 38 21 / .55); color: #3B2A1C; }
