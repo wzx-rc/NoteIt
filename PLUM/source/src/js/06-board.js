@@ -103,7 +103,7 @@ const Board = (() => {
       case 'link': return `l${Math.round(it.w)}|${Math.round(it.h)}|${it.url}|${it.title}|${it.asset || it.pic || ''}|${Assets.has(it.asset)}`;
       case 'ink': return `k${pv(it.p)}|${it.c}|${it.o}|${it.t}|${it.w0}|${it.h0}|${theme()}|${it.b ? JSON.stringify(it.b) : ''}`;
       case 'mind': return `m${it.lv}|${it.c}|${it.txt}|${skin()}`;
-      case 'frame': return `r${it.title}`;
+      case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}`;
       case 'task': { const t = taskById(it.task) || {}; return `T${t.t}|${t.done}|${t.due}|${t.time}|${t.sp}`; }
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
       case 'sheet': return `g${it.w}|${it.h}|${it.cols}|${it.rows}|${it.fs}|${it.title}|${JSON.stringify(it.cells)}|${theme()}`;
@@ -166,7 +166,7 @@ const Board = (() => {
         n.className = 'it mind l' + Math.min(it.lv || 0, 2); n.style.setProperty('--mc', it.c);
         n.innerHTML = mindIcon(it.txt, it.lv || 0) + `<div class="txt">${fmtText(it.txt) || '<div><br></div>'}</div>`; break;
       case 'frame':
-        n.className = 'frame-it'; n.innerHTML = `<div class="ftitle">${esc(it.title)}</div>`; break;
+        n.className = 'frame-it' + (it.nt ? ' nt' : ''); n.innerHTML = `<div class="ftitle" style="font-size:${FRAME_TFS[it.tfs ?? 1]}px">${esc(it.title)}</div>`; break;
       case 'task': {
         const t = taskById(it.task);
         n.className = 'it card-it task' + (t && t.done ? ' done' : '');
@@ -405,6 +405,7 @@ const Board = (() => {
     if (want.bold) out.push(sec('Graisse', seg('bold', one ? !!one.bold : false, [[false, 'Normal'], [true, '<b>Gras</b>']])));
     if (one && one.k === 'image') out.push(sec('Image', seg('frm', one.frm || 'shadow', [['shadow', 'Ombre'], ['polaroid', 'Polaroïd'], ['square', 'Carré'], ['none', 'Simple']]) + btnRow([['cap', 'text', 'Légende'], Assets.has(one.asset) ? ['view', 'focus', 'Voir en grand'] : null, one.href ? ['src', 'ext', isInsta(one.href) ? 'Voir sur Instagram' : 'Page d’origine'] : null].filter(Boolean))));
     if (one && one.k === 'shape') out.push(sec('Angles', seg('corner', one.sh === 'round' ? 'round' : 'sharp', [['sharp', icon('rect'), 'Vifs'], ['round', icon('round'), 'Arrondis']], 'ic')));
+    if (list.length && list.every(i => i.k === 'frame')) { const f = first(); out.push(sec('Titre du cadre', seg('ftitle', !f.nt, [[true, 'Affiché'], [false, 'Masqué']]) + (f.nt ? '' : `<div style="height:8px"></div>` + seg('tfs', f.tfs ?? 1, [[0, 'S'], [1, 'M'], [2, 'L'], [3, 'XL']])))); }
     if (want.op) { const o = one ? (one.op ?? 1) : (first().op ?? 1); out.push(sec(`Opacité <b class="pv" data-v="op">${Math.round(o * 100)} %</b>`, `<input type="range" class="prange" data-prop="op" min=".05" max="1" step=".05" value="${o}" aria-label="Opacité">`)); }
     if (list.length) {
       out.push(sec('Calques', btnRow([['back', 'back', '', 'Tout en arrière'], ['bwd', 'down', '', 'Reculer'], ['fwd', 'up', '', 'Avancer'], ['front', 'front', '', 'Tout devant']])));
@@ -418,6 +419,7 @@ const Board = (() => {
     }
     return out.join('');
   }
+  const FRAME_TFS = [12, 14, 20, 28];
   const ZICON = { note: 'sticky', text: 'text', shape: 'rect', image: 'image', file: 'file', link: 'link', ink: 'pen', mind: 'mind', frame: 'frame', task: 'tasks', doc: 'note', todo: 'todo', sheet: 'sheet', conn: 'conn' };
   function layersHTML() {
     const rows = [];
@@ -470,6 +472,8 @@ const Board = (() => {
       case 'ital': return it.k === 'text' ? { ital: v === true || v === 'true' } : null;
       case 'op': return { op: +v >= 1 ? undefined : +v };
       case 'frm': return it.k === 'image' ? { frm: v } : null;
+      case 'ftitle': return it.k === 'frame' ? { nt: v === false || v === 'false' ? true : undefined } : null;
+      case 'tfs': return it.k === 'frame' ? { tfs: clamp(+v, 0, 3) } : null;
     }
     return null;
   }
@@ -671,7 +675,7 @@ const Board = (() => {
     if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
     el.style.userSelect = 'text';
     el.focus({ preventScroll: true });
-    const r = document.createRange(); r.selectNodeContents(el); if (char != null || (it.k !== 'mind' && !(it.k === 'todo' && sub === 'title' && !char))) r.collapse(false);
+    const r = document.createRange(); r.selectNodeContents(el); if (char != null || (it.k !== 'mind' && !(it.k === 'todo' && sub === 'title' && !char) && !(it.k === 'frame' && it.title === 'Cadre'))) r.collapse(false);
     const s = getSelection(); s.removeAllRanges(); s.addRange(r);
     editStart = { id, items };
     if (it.k === 'sheet') sheetFx(id, el);
@@ -1840,32 +1844,38 @@ const Board = (() => {
         { label: 'Image ou fichier…', run: pickFiles }, canPaste ? { label: 'Coller ici', run: () => clip ? pasteClip(w) : pasteSystem(w) } : null, { label: 'Tout voir', run: fitAll }]) }
     ]);
   }
+  /* on an item, level 1 is that item's own options (text: B, I, size…; frame: title…); the rest sits in Plus ▸ */
   function mmItemItems(hit) {
-    const it = byId.get(hit), list = selItems(), one = list.length === 1 ? list[0] : null;
-    const texty = list.some(i => ['note', 'shape', 'text', 'todo', 'frame', 'mind'].includes(i.k)), isText = list.some(i => i.k === 'text');
-    const sized = list.find(i => FS_TABLE[i.k]);
+    const list = selItems(), one = list.length === 1 ? list[0] : null, all = k => list.length && list.every(i => i.k === k);
+    const sized = list.find(i => FS_TABLE[i.k]), f0 = (one && one.font) || (list.find(i => i.font) || {}).font || HAND;
     const colors = list.every(i => i.k === 'note' || i.k === 'todo') ? ['fc', NOTE_COLORS] : list.some(i => propPatch(i, 'sc', '#000')) ? ['sc', themeColors('stroke', STROKE_COLORS)] : null;
-    const sheet = one && one.k === 'sheet' ? one : null;
-    return around([
-      sheet ? { label: 'Tableau', run: () => startEdit(sheet.id), sub: () => around([
-        { label: 'Ajouter une ligne', run: () => sheetResize(sheet, { rows: sheet.rows + 1 }) }, { label: 'Ajouter une colonne', run: () => sheetResize(sheet, { cols: sheet.cols + 1 }) },
-        { label: 'Ligne de total', run: () => sheetTotal(sheet) }, sheet.rows > 1 ? { label: 'Retirer la dernière ligne', run: () => sheetResize(sheet, { rows: sheet.rows - 1 }) } : null,
-        sheet.cols > 1 ? { label: 'Retirer la dernière colonne', run: () => sheetResize(sheet, { cols: sheet.cols - 1 }) } : null, { label: 'Modifier le titre', run: () => startEdit(sheet.id, null, 'title') }]) } :
-      texty ? { label: 'Texte', run: one ? () => startEdit(one.id) : null, sub: () => around([
-        one ? { label: 'Modifier', run: () => startEdit(one.id) } : null,
-        isText ? { label: 'Gras', on: !!(one && one.bold), run: () => setProp('bold', !(one && one.bold)) } : null,
-        isText ? { label: 'Italique', on: !!(one && one.ital), run: () => setProp('ital', !(one && one.ital)) } : null,
-        ...(sized ? ['S', 'M', 'L', 'XL'].map((l, i) => ({ label: l, on: fsLevel(sized) === i, run: () => setProp('fs', i) })) : []),
-        { label: 'Police : ' + (FONTS.find(f => f[0] === ((one && one.font) || HAND)) || FONTS[0])[1], run: () => { const i = FONTS.findIndex(f => f[0] === ((one && one.font) || HAND)); setProp('font', FONTS[(i + 1) % FONTS.length][0]); } }
-      ]) } : null,
-      { label: 'Ordre', run: null, sub: () => around([{ label: 'Premier plan', run: () => zMove('front') }, { label: 'Avancer', run: () => zMove('fwd') }, { label: 'Reculer', run: () => zMove('bwd') }, { label: 'Arrière-plan', run: () => zMove('back') }]) },
-      { label: 'Style et calques', run: () => { setProps(true); propsTab = 'style'; renderProps(true); } },
-      colors ? { label: 'Couleur', run: null, sub: () => around(colors[1].map((c, i) => ({ label: (colors[0] === 'fc' ? NOTE_NAMES : ['Noir', 'Rouge', 'Vert', 'Bleu', 'Orange', 'Violet', 'Gris', 'Blanc'])[i] || 'Couleur', sw: c, on: one && propValue(one, colors[0]) === c, run: () => setProp(colors[0], c) }))) } : null,
-      { label: 'Supprimer', run: deleteSel },
-      sel.size > 1 ? { label: 'Entourer d’un cadre', run: () => frameAround(selItems()) } : { label: 'Masquer', run: () => { const ids = new Set(sel); commit(items.map(i => ids.has(i.id) ? Object.assign({}, i, { hid: true }) : i)); sel.clear(); } },
-      { label: 'Copier', run: () => copy(false) },
-      { label: 'Dupliquer', run: () => duplicate() }
-    ]);
+    const sizeIt = sized ? { label: 'Taille', run: null, sub: () => around(['S', 'M', 'L', 'XL'].map((l, i) => ({ label: l, on: fsLevel(sized) === i, run: () => setProp('fs', i) }))) } : null;
+    const fontIt = list.some(i => propPatch(i, 'font', HAND)) ? { label: 'Police', run: null, sub: () => around(FONTS.map(([f, l]) => ({ label: l, on: f0 === f, font: f, run: () => setProp('font', f) }))) } : null;
+    const colorIt = colors ? { label: 'Couleur', run: null, sub: () => around(colors[1].map((c, i) => ({ label: (colors[0] === 'fc' ? NOTE_NAMES : ['Noir', 'Rouge', 'Vert', 'Bleu', 'Orange', 'Violet', 'Gris', 'Blanc'])[i] || 'Couleur', sw: c, on: one && propValue(one, colors[0]) === c, run: () => setProp(colors[0], c) }))) } : null;
+    const alignIt = list.some(i => propPatch(i, 'al', 'left')) ? { label: 'Alignement', run: null, sub: () => around([['left', 'À gauche'], ['center', 'Centré'], ['right', 'À droite']].map(([v, l]) => ({ label: l, on: (one ? one.al || 'left' : '') === v, run: () => setProp('al', v) }))) } : null;
+    const editIt = one && EDITABLE.includes(one.k) ? { label: one.k === 'frame' ? 'Renommer' : 'Modifier', run: () => startEdit(one.id) } : null;
+    const hide = () => { const ids = new Set(sel); commit(items.map(i => ids.has(i.id) ? Object.assign({}, i, { hid: true }) : i)); sel.clear(); };
+    const more = { label: 'Plus', run: null, sub: () => around([
+      { label: 'Premier plan', run: () => zMove('front') }, { label: 'Avancer', run: () => zMove('fwd') }, { label: 'Style et calques', run: () => { setProps(true); propsTab = 'style'; renderProps(true); } },
+      { label: 'Copier', run: () => copy(false) }, { label: 'Arrière-plan', run: () => zMove('back') }, { label: 'Reculer', run: () => zMove('bwd') },
+      sel.size > 1 ? { label: 'Entourer d’un cadre', run: () => frameAround(selItems()) } : { label: 'Masquer', run: hide }]) };
+    const del = { label: 'Supprimer', run: deleteSel }, dup = { label: 'Dupliquer', run: () => duplicate() };
+    if (all('text')) return around([
+      { label: 'Gras', on: list.every(i => i.bold), run: () => setProp('bold', !list.every(i => i.bold)) }, sizeIt, colorIt, editIt || alignIt, del, fontIt, more,
+      { label: 'Italique', on: list.every(i => i.ital), run: () => setProp('ital', !list.every(i => i.ital)) }]);
+    if (all('frame')) { const f = list[0]; return around([
+      editIt || { label: 'Ajuster', run: () => list.forEach(fitFrame) }, { label: f.nt ? 'Afficher le titre' : 'Masquer le titre', run: () => setProp('ftitle', !!f.nt) },
+      { label: 'Taille du titre', run: null, sub: () => around(['S', 'M', 'L', 'XL'].map((l, i) => ({ label: l, on: (f.tfs ?? 1) === i, run: () => setProp('tfs', i) }))) },
+      one ? { label: 'Ajuster au contenu', run: () => fitFrame(one) } : null, del, more, dup]); }
+    if (one && one.k === 'sheet') { const sh = one; return around([
+      { label: 'Ajouter une ligne', run: () => sheetResize(sh, { rows: sh.rows + 1 }) }, { label: 'Ajouter une colonne', run: () => sheetResize(sh, { cols: sh.cols + 1 }) },
+      { label: 'Ligne de total', run: () => sheetTotal(sh) }, sizeIt, del,
+      { label: 'Retirer', run: null, sub: () => around([sh.rows > 1 ? { label: 'La dernière ligne', run: () => sheetResize(sh, { rows: sh.rows - 1 }) } : null, sh.cols > 1 ? { label: 'La dernière colonne', run: () => sheetResize(sh, { cols: sh.cols - 1 }) } : null]) },
+      more, { label: 'Modifier le titre', run: () => startEdit(sh.id, null, 'title') }]); }
+    if (all('note') || all('todo')) return around([editIt, colorIt, sizeIt, alignIt, del, fontIt, more, dup]);
+    if (all('shape')) return around([editIt, colorIt, { label: 'Forme', run: null, sub: () => around(Object.entries(SHAPES).slice(0, 8).map(([k, l]) => ({ label: l, on: one && one.sh === k, run: () => setProp('sh', k) }))) }, sizeIt, del, fontIt, more, dup]);
+    if (all('conn')) return around([{ label: 'Texte', run: () => one && startEdit(one.id) }, colorIt, { label: 'Tracé', run: null, sub: () => around(Object.entries(ROUTES).map(([k, l]) => ({ label: l, on: one && one.route === k, run: () => setProp('route', k) }))) }, null, del, null, more, dup]);
+    return around([editIt, colorIt, sizeIt, fontIt, del, list.some(i => i.k === 'frame') ? null : alignIt, more, dup]);
   }
   function openMarking(e, hit, sticky) {
     closeMarking(); cancelOp();
@@ -1875,7 +1885,7 @@ const Board = (() => {
     el.addEventListener('pointerdown', e => mm && mmDown(e)); el.addEventListener('contextmenu', e => e.preventDefault());
     const items1 = hit ? mmItemItems(hit) : mmToolItems(toW(e.clientX, e.clientY));
     mm = { el, pid: e.pointerId, x: e.clientX, y: e.clientY, mx: e.clientX, my: e.clientY, hover: -1, shown: false, sticky: !!sticky, moved: false,
-      title: hit ? (sel.size > 1 ? sel.size + ' éléments' : 'Élément') : 'Outils', items: items1, lvl1: null };
+      title: hit ? (sel.size > 1 ? sel.size + ' éléments' : KIND_NAMES[(byId.get(hit) || {}).k] || 'Élément') : 'Outils', items: items1, lvl1: null };
     addEventListener('pointermove', mmMove, true); addEventListener('pointerup', mmUp, true); addEventListener('keydown', mmKey, true);
     if (sticky) mmShow(); else mm.t = setTimeout(() => mm && mmShow(), MM_DELAY);
   }
@@ -1927,7 +1937,6 @@ const Board = (() => {
     ev.preventDefault(); mmTrack(ev); if (!mm) return;
     if (mm.hover >= 0) { mmRun(); return; }
     if (mm.lvl1) { const p = mm.lvl1.parent; closeMarking(); if (p.run) { p.run(); schedule(); } return; }   // let go at the centre of level 2: the tool itself
-    if (!mm.moved) { mm.sticky = true; clearTimeout(mm.t); clearTimeout(mm.subT); mmShow(); return; }   // a plain click: the menu stays
     closeMarking();
   }
   function mmDown(e) {
@@ -1967,7 +1976,7 @@ const Board = (() => {
     addEventListener('pointermove', mv, true); addEventListener('pointerup', stop, true); addEventListener('pointercancel', stop, true);
   }
 
-  return {
+  return { busy: () => !!(op || mm || editing),
     mount, unmount, key, keyUp, paste: onPaste,
     get mounted() { return mounted; }, get doc() { return D; },
     refreshRefs() { if (!mounted) return; for (const [id, n] of nodes) { const it = byId.get(id); if (it && (it.k === 'task' || it.k === 'doc' || it.k === 'todo')) { n._sig = ''; n._it = null; } } propSig = ''; schedule(); },

@@ -47,6 +47,7 @@ function bindShell() {
       if (popEl) { closePop(); return; }
       if ($('#modal')) { closeModal(); return; }
       if ($('.lightbox')) { $('.lightbox').remove(); return; }
+      if (document.documentElement.hasAttribute('data-focus') && !editableTarget(e.target) && !(Board.mounted && Board.busy && Board.busy())) { e.preventDefault(); setFocus(false); return; }
     }
     if (R.name === 'doc') {
       if (Board.mounted && Board.key(e)) return;

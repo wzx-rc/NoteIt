@@ -1303,3 +1303,17 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .it.tsheet .shadd .i { width: 1.1em; height: 1.1em; }
 .tdrag.k-sheet .tdp > i { background: var(--card); border: 1px solid var(--line-2); border-radius: 10px; color: var(--ink-2); place-items: start; padding: 10px 12px;
   background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 25% 28px; background-position: 0 38px; }
+
+/* frame without its title (Style > Titre du cadre); it shows again while being renamed */
+.frame-it.nt .ftitle:not([contenteditable="true"]):not([contenteditable="plaintext-only"]) { display: none; }
+
+/* focus mode on Windows: a small exit button in the title bar, left of the window buttons; the floating pill is not shown */
+#tbar .tb-f { display: none; margin-left: auto; height: 100%; align-items: center; -webkit-app-region: no-drag; }
+html[data-focus] #tbar .tb-f { display: flex; }
+html[data-focus] #tbar .tb-f + .tb-w { margin-left: 0; }
+#tbar .tb-f button { width: 36px; height: 100%; display: grid; place-items: center; color: var(--tb-sym); background: none; border: 0; border-radius: 0; padding: 0; opacity: .75; }
+#tbar .tb-f button:hover { opacity: 1; background: color-mix(in oklab, var(--tb-sym) 10%, transparent); }
+#tbar .tb-f button[hidden] { display: none; }
+#tbar .tb-f svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+#tbar .tb-f .i { width: 13px; height: 13px; fill: none; stroke: currentColor; }
+html.tbar[data-focus] .focuspill { display: none; }

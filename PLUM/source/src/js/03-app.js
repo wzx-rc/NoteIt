@@ -740,7 +740,7 @@ function applyTheme() {
 }
 /* the theme's colour and accent chosen in Réglages (themes with tints / accents): the theme's CSS reads them */
 function applyLook(th, r) {
-  const lk = themeLook(th.id, S && S.prefs), st = r.style;
+  const lk0 = themeLook(th.id, S && S.prefs), lk = lk0.def ? {} : lk0, st = r.style;   // def: the theme's own colours, whatever was chosen
   const tint = th.tints && (lk.tint === 'custom' && /^#[0-9a-f]{6}$/i.test(lk.tintHex || '') ? tintOf(lk.tintHex) : th.tints.find(x => x.id === lk.tint) || th.tints[0]);
   if (tint) { st.setProperty('--th-h', tint.h); st.setProperty('--th-c', tint.c); r.dataset.tint = tint.id; }
   else { st.removeProperty('--th-h'); st.removeProperty('--th-c'); delete r.dataset.tint; }
@@ -770,6 +770,10 @@ function syncTitleBar(t) {
     document.documentElement.classList.add('tbar');
     bar = document.createElement('div'); bar.id = 'tbar';
     bar.innerHTML = `<span class="tb-l"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.4 21.4C4.4 21 .8 15.8 1.2 7.6c7.4.6 11 5.6 10.2 13.8zM12.7 19c-.9-8.2 2.7-13.8 10.1-15.2.8 8-2.9 13.9-10.1 15.2z"/></svg>PLUM <small>${APP_VERSION}</small></span>`;
+    // focus mode: a small exit button (and the assistant) next to the window buttons, instead of the floating pill
+    bar.insertAdjacentHTML('beforeend', `<span class="tb-f"><button data-f="exit" title="Quitter le focus (Échap)" aria-label="Quitter le focus"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 1.5v3h-3M7.5 1.5v3h3M4.5 10.5v-3h-3M7.5 10.5v-3h3"/></svg></button></span>`);
+    const ai = $('#focusAi'); if (ai) $('.tb-f', bar).prepend(ai);
+    bar.addEventListener('click', e => { if (e.target.closest('[data-f="exit"]')) setFocus(false); });
     if (window.notely.win) {
       const g = { min: '<path d="M2 6h8"/>', max: '<rect x="2" y="2" width="8" height="8" rx="1"/>', restore: '<rect x="2" y="4" width="6" height="6" rx="1"/><path d="M4 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H8"/>', close: '<path d="m2.5 2.5 7 7m0-7-7 7"/>' };
       const b = (k, t) => `<button class="tb-w-${k}" data-w="${k}" title="${t}" aria-label="${t}"><svg viewBox="0 0 12 12" aria-hidden="true">${g[k === 'max' ? 'max' : k]}</svg></button>`;
@@ -805,6 +809,8 @@ function setFocus(on) {
 /* Réglages > UI: the theme's colour (tint of the neutrals) and accent colour, for themes that offer them */
 function lookRows(th) {
   const lk = themeLook(th.id, S.prefs), out = [];
+  if (th.tints || th.accents) out.push(`<div class="srow"><div class="l"><b>Couleurs par défaut du thème</b><small>Garde la teinte et l’accent d’origine du thème. Tes choix restent en mémoire.</small></div><label class="tg"><input type="checkbox" data-lkdef${lk.def ? ' checked' : ''}><span></span></label></div>`);
+  if (lk.def) return out.join('');
   if (th.tints) {
     const own = lk.tint === 'custom' && /^#[0-9a-f]{6}$/i.test(lk.tintHex || '') ? tintOf(lk.tintHex) : null, cur = own ? 'custom' : (th.tints.find(x => x.id === lk.tint) || th.tints[0]).id;
     out.push(`<div class="srow"><div class="l"><b>Couleur du thème</b><small>La teinte des fonds et des panneaux${own ? ', couleur choisie' : ''}.</small></div><div class="looks">${th.tints.map((x, i) => `<button class="lk-tint" data-tint="${x.id}" style="--h:${x.h};--cc:${x.c}" aria-pressed="${x.id === cur}" title="${esc(x.name)}${i ? '' : ' (par défaut)'}" aria-label="${esc(x.name)}"></button>`).join('')}<label class="lk-tint any" style="${own ? `--h:${own.h};--cc:${own.c}` : ''}" aria-pressed="${!!own}" title="Autre couleur…"><input type="color" data-k="tint" value="${own ? lk.tintHex : '#808080'}" aria-label="Autre couleur du thème"></label></div></div>`);
@@ -862,10 +868,11 @@ function openSettings(section) {
     segBind('stTheme', 'theme', applyTheme);
     $('#stSkin', m).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; switchTheme(b.dataset.v); $$('[data-v]', $('#stSkin', m)).forEach(x => x.setAttribute('aria-pressed', x === b)); $('#stThemeRow', m).hidden = THEMES[b.dataset.v].mode !== 'user'; $('#stLook', m).innerHTML = lookRows(THEMES[b.dataset.v]); };
     const lookEl = $('#stLook', m), relook = () => { lookEl.innerHTML = lookRows(theme()); };
-    lookEl.onclick = e => { const b = e.target.closest('[data-tint], [data-acc]'); if (!b) return; setLook(b.dataset.tint ? { tint: b.dataset.tint } : { accent: b.dataset.acc }); relook(); };
+    // buttons only: <html> carries data-tint too
+    lookEl.onclick = e => { const b = e.target.closest('button[data-tint], button[data-acc]'); if (!b) return; setLook(b.dataset.tint ? { tint: b.dataset.tint } : { accent: b.dataset.acc }); relook(); };
     const lookOf = t => t.dataset.k === 'tint' ? { tint: 'custom', tintHex: t.value } : { accent: t.value };
     lookEl.oninput = e => { if (e.target.matches('input[type="color"]')) setLook(lookOf(e.target), true); };
-    lookEl.onchange = e => { if (e.target.matches('input[type="color"]')) { setLook(lookOf(e.target)); relook(); } }; segBind('stPress', 'pressure'); segBind('stSrc', 'source'); segBind('stWheel', 'wheel');
+    lookEl.onchange = e => { if (e.target.matches('[data-lkdef]')) { setLook({ def: e.target.checked || undefined }); relook(); return; } if (e.target.matches('input[type="color"]')) { setLook(lookOf(e.target)); relook(); } }; segBind('stPress', 'pressure'); segBind('stSrc', 'source'); segBind('stWheel', 'wheel');
     $('#stPen', m).onchange = e => { p.autoPen = e.target.checked; save(); };
     $('#stAi', m).onchange = e => { p.aiOn = e.target.checked; save(); applyAi(); };
     $('#stSens', m).oninput = e => { p.sens = +e.target.value; $('#stSensV', m).textContent = Math.round(p.sens * 100) + ' %'; save(); };
