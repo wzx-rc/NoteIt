@@ -1,0 +1,85 @@
+/* ================= Farmer: the note editor =================
+   PLUM's flat toolbar across the top of the note (it dims while you type), over the page's parchment grid; the note
+   itself is a sheet of cream paper in the thin wooden frame of the panels, its title in felt pen. */
+[data-skin="farmer"] .nwrap { background: var(--paper); padding: 0 16px 160px; }
+/* the note is a white (navy) panel on the grey ground, like the files of the logo page */
+
+/* ---- toolbar: in the page, full width, quiet icons ---- */
+[data-skin="farmer"] .ntool {
+  justify-self: stretch; margin: 0 -16px 6px; padding: 7px 20px 7px max(20px, calc(50% - 410px + 52px));
+  justify-content: flex-start; gap: 2px; flex-wrap: wrap;
+  background: var(--paper); border: 0; border-bottom: 1px solid transparent; border-radius: 0; box-shadow: none; backdrop-filter: none;
+  transition: border-color .2s;
+}
+[data-skin="farmer"] .nwrap.scrolled .ntool { border-bottom-color: var(--line); }
+[data-skin="farmer"] .ntool :is(.grp, .vs, .pchip) { transition: opacity .35s ease; }
+[data-skin="farmer"] .nwrap.typing .ntool :is(.grp, .vs, .pchip) { opacity: .2; }
+[data-skin="farmer"] .nwrap.typing .ntool:hover :is(.grp, .vs, .pchip), [data-skin="farmer"] .nwrap.typing .ntool:focus-within :is(.grp, .vs, .pchip) { opacity: 1; }
+[data-skin="farmer"] .ntool .vs { height: 14px; margin: 0 7px; background: var(--line-2); }
+[data-skin="farmer"] .ntool .vs.end { margin-left: auto; visibility: hidden; }
+[data-skin="farmer"] .ntool .nb { height: 30px; min-width: 30px; padding: 0 6px; border-radius: 6px; color: var(--ink-3); font-weight: 500; }
+[data-skin="farmer"] .ntool .nb .i { width: 17px; height: 17px; }
+[data-skin="farmer"] .ntool .nb:hover { background: var(--raise); color: var(--ink); }
+[data-skin="farmer"] .ntool .nb[aria-pressed="true"] { background: none; color: var(--accent); }
+[data-skin="farmer"] .ntool .nb[aria-pressed="true"] .i { --i-d: var(--accent); --i-dk: 1.6; }
+[data-skin="farmer"] .ntool .nb .txt { font: 600 12.5px/1 var(--font-ui); letter-spacing: .01em; }
+/* Texte / Dessin: two words, the chosen one in ink with a small accent rule under it */
+[data-skin="farmer"] .ntool .modes { gap: 0; }
+[data-skin="farmer"] .ntool .modes .nb { position: relative; color: var(--ink-3); padding: 0 9px; }
+[data-skin="farmer"] .ntool .modes .nb .i { display: none; }
+[data-skin="farmer"] .ntool .modes .nb .lbl { font-size: 13px; font-weight: 500; }
+[data-skin="farmer"] .ntool .modes .nb[aria-pressed="true"] { color: var(--strong); }
+[data-skin="farmer"] .ntool .modes .nb[aria-pressed="true"]::after { content: ""; position: absolute; left: 9px; right: 9px; bottom: 2px; height: 2px; border-radius: 2px; background: var(--accent); }
+[data-skin="farmer"] .ntool .sw { width: 18px; height: 18px; border-width: 0; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .15); margin: 0 1px; }
+[data-skin="farmer"] .ntool .sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--ink-2); }
+[data-skin="farmer"] .ntool .pchip { height: 28px; border-radius: 6px; background: none; box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-2); }
+[data-skin="farmer"] .ntool .pchip:hover { background: var(--raise); color: var(--ink); }
+
+/* ---- the page ---- */
+[data-skin="farmer"] .sheet { background-color: transparent; border-radius: 0; box-shadow: none; padding: 26px 64px 120px; }
+[data-skin="farmer"] .sheet.npg-more { border-top: 1px dashed var(--line-2); padding-top: 48px; }
+[data-skin="farmer"] .ntitle { font: 400 46px/1.08 var(--font-title); letter-spacing: -.005em; color: var(--strong); }
+[data-skin="farmer"] .ntitle::placeholder { color: var(--ink-3); font-style: italic; }
+[data-skin="farmer"] .nsub { margin: 10px 0 28px; gap: 12px; font-size: 12px; color: var(--ink-3); }
+[data-skin="farmer"] .nsub .chip { background: none; padding: 0; height: auto; color: var(--ink-2); font-weight: 500; }
+[data-skin="farmer"] .nbody { font-size: 15.5px; line-height: 1.68; color: var(--ink); }
+[data-skin="farmer"] .nbody h1 { font: 400 32px/1.15 var(--font-title); letter-spacing: -.005em; margin: 28px 0 8px; color: var(--strong); }
+[data-skin="farmer"] .nbody h2 { font: 600 20px/1.3 var(--font-ui); letter-spacing: -.01em; margin: 24px 0 6px; color: var(--strong); }
+[data-skin="farmer"] .nbody h3 { font: 600 16px/1.4 var(--font-ui); margin: 18px 0 4px; }
+[data-skin="farmer"] .nbody ul.chk > li::before { top: 5px; width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid var(--ink-3); }
+[data-skin="farmer"] .nbody ul.chk > li[data-done]::before { background-color: var(--accent); border-color: var(--accent); background-size: 12px; }
+[data-skin="farmer"] .nbody ul.chk > li[data-done] { text-decoration-color: color-mix(in oklab, var(--ink-3) 70%, transparent); }
+[data-skin="farmer"] .nbody blockquote { transform: none; box-shadow: none; border-radius: 6px; background: #F8EBB0; }
+[data-skin="farmer"] .nbody figure img, [data-skin="farmer"] .nbody img { border-radius: 6px; }
+[data-skin="farmer"] .nbody mark { background: color-mix(in oklab, #F5D547 55%, transparent); }
+[data-skin="farmer"] .nbody .nfile { border-radius: 7px; }
+[data-skin="farmer"] .naddpg { border-style: solid; border-width: 1px; border-color: var(--line); color: var(--ink-3); font-weight: 500; }
+[data-skin="farmer"] .naddpg:hover { color: var(--ink); border-color: var(--line-2); }
+[data-skin="farmer"] .npager { background: var(--menu); border-color: var(--line); box-shadow: var(--shadow-2); }
+
+@media (prefers-reduced-motion: reduce) { [data-skin="farmer"] .ntool, [data-skin="farmer"] .ntool :is(.grp, .vs, .pchip) { transition: none; } }
+
+/* ---- Farmer: cream paper in a wooden frame, Kalam titles ---- */
+[data-skin="farmer"] .nwrap { background: transparent; }
+[data-skin="farmer"] .ntool { background: rgb(251 245 232 / .86); backdrop-filter: blur(6px); }
+[data-skin="farmer"] .nwrap.scrolled .ntool { border-bottom-color: var(--line); }
+[data-skin="farmer"] .ntool .nb { color: var(--ink-2); font-weight: 700; }
+[data-skin="farmer"] .ntool .nb .i { width: 19px; height: 19px; }
+[data-skin="farmer"] .ntool .nb:hover { background: var(--fm-parch); color: var(--ink); }
+[data-skin="farmer"] .ntool .modes .nb .lbl { font: 700 15px var(--font-head); }
+[data-skin="farmer"] .sheet { background: none; border-radius: 0; box-shadow: 0 18px 34px -22px rgb(62 38 21 / .7); border: 20px solid transparent; border-image: var(--fm-img-panel) 40 fill / 20px stretch; padding: 22px 46px 110px; margin-top: 8px; }
+[data-skin="farmer"] .sheet.npg-more { border-top: 20px solid transparent; padding-top: 22px; }
+[data-skin="farmer"] .ntitle { font: 700 46px/1.15 var(--font-title); letter-spacing: 0; color: var(--strong); }
+[data-skin="farmer"] .ntitle::placeholder { font-style: normal; color: var(--ink-3); }
+[data-skin="farmer"] .nbody { font-size: 16px; line-height: 1.65; color: var(--ink); }
+[data-skin="farmer"] .nbody h1 { font: 700 32px/1.2 var(--font-head); letter-spacing: 0; color: var(--strong); }
+[data-skin="farmer"] .nbody h2 { font: 700 22px/1.3 var(--font-head); letter-spacing: 0; color: var(--fm-wood); }
+[data-skin="farmer"] .nbody h3 { font: 800 16px/1.4 var(--font-ui); }
+[data-skin="farmer"] .nbody ul.chk > li::before { border-radius: 3px; border: 1.8px solid var(--fm-wood-m); background-color: #FFFaF0; }
+[data-skin="farmer"] .nbody ul.chk > li[data-done]::before { background-color: var(--accent); border-color: var(--accent-2); }
+/* a quote is a sticky note */
+[data-skin="farmer"] .nbody blockquote { background: var(--fm-y); color: #3B2A1C; border-radius: 2px 2px 2px 14px; font-family: var(--font-hand); font-size: 17px; box-shadow: var(--shadow-note); transform: rotate(-.5deg); }
+[data-skin="farmer"] .nbody mark { background: color-mix(in oklab, #E9D36A 60%, transparent); }
+[data-skin="farmer"] .nbody figure img, [data-skin="farmer"] .nbody img { border-radius: 3px; box-shadow: 0 0 0 6px #FFFDF7, 0 8px 16px -6px rgb(62 38 21 / .5); }
+[data-skin="farmer"] .naddpg { border: 2px dashed var(--line-2); border-radius: 12px; color: var(--ink-2); font-weight: 700; background: rgb(251 245 232 / .6); }
+[data-skin="farmer"] .npager { background: var(--fm-cream); border-color: var(--line-2); }

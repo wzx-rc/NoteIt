@@ -10,6 +10,7 @@ src/themes/
   notely/      Nuit, d'après le thème Nuit de WZX Web (l'id "notely" est gardé pour les données existantes ; ses couleurs de base restent dans style.css)
   inkspace/    Éclipse, d'après le thème Éclipse de WZX Web (id "inkspace" gardé)
   nature/      Nature
+  farmer/      Farmer (ferme peinte d’après les deux planches « ferme » : rail en noyer, enseigne en bois, onglets bois, cadres, post-it, icônes peintes extraites avec Gemini ; Kalam et Nunito)
   pokedex/     Pokédex (éléments peints du kit : boîtiers en neuf-tranches, rail anthracite, icônes stickers, roue peinte, mascotte ; polices Nunito et Kalam intégrées)
   _modele/     modèle à copier (un dossier qui commence par _ n'est pas inclus dans l'app)
 ```

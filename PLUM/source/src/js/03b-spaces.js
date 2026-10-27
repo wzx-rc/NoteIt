@@ -5,7 +5,7 @@
    a note, or go there with a click from the drawer. */
 
 /* ---------- welcome ---------- */
-const WELCOME_THEMES = ['minimal', 'adjust', 'plum'];
+const WELCOME_THEMES = ['minimal', 'adjust', 'plum', 'farmer'];
 function renderWelcome(v) {
   const ths = WELCOME_THEMES.map(id => THEMES[id]).filter(Boolean), cur = theme().id, p = S.prefs;
   const mark = '';

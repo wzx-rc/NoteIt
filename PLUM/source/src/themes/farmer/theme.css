@@ -1,0 +1,342 @@
+/* ================= Farmer (id "farmer") =================
+   The two cosy-farm concept boards as an app. Cream parchment pages with a faint pencil grid, the dark walnut of the
+   concept's tool rail for the sidebar and the board islands, the wooden sign as the logo, wooden tabs on the panel
+   titles, cream panels in a thin wooden frame (panel*.webp nine-slice, prescaled 2x so the slices are whole pixels),
+   sticky notes, polaroid moodboard pictures, vines and leaves at the edges. Accent: the forest green of the concept's
+   "Share" button (or the "Couleur d'accent"). Kalam for titles and handwriting, Nunito for the interface. Always light.
+   The rules right below the colours start from PLUM's (same structure), the Farmer layer comes after them;
+   notes.css is the note editor, board.css the board. All pictures are painted extractions of the boards (Gemini). */
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 400 800; font-display: swap; src: url("asset:fonts/nunito-latin.woff2") format("woff2"); }
+@font-face { font-family: "Kalam"; font-style: normal; font-weight: 400; font-display: swap; src: url("asset:fonts/kalam-400-latin.woff2") format("woff2"); }
+@font-face { font-family: "Kalam"; font-style: normal; font-weight: 700; font-display: swap; src: url("asset:fonts/kalam-700-latin.woff2") format("woff2"); }
+
+:root[data-skin="farmer"] {
+  --font-ui: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --font-head: "Kalam", "Segoe Print", "Comic Sans MS", cursive;
+  --font-title: "Kalam", "Segoe Print", cursive;
+  --font-hand: "Kalam", "Segoe Print", cursive;
+  --r-sm: 7px; --r-md: 10px; --r-lg: 14px; --r-xl: 18px;
+  /* wood and paper */
+  --fm-wood-d: #3E2615; --fm-wood: #5C3A21; --fm-wood-m: #7A4E2D; --fm-wood-l: #B07A48; --fm-wood-hi: #D9A86E;
+  --fm-cream: #FBF5E8; --fm-paper: #F3EAD7; --fm-parch: #EFE2C6; --fm-grid: rgb(122 92 52 / .07);
+  --fm-y: #F8E7A8; --fm-g: #D9E8B6; --fm-b: #C4DFF0; --fm-o: #F7C7A6;
+  --side: #5C3A21; --side-2: rgb(255 236 205 / .09); --side-3: #F1E4C8; --side-line: rgb(20 10 2 / .35);
+  --side-text: #F7EBD3; --side-mute: #D7BF99;
+  --paper: #F3EAD7; --card: #FBF5E8; --sunk: #EADDC2; --raise: #FFFaF0;
+  --menu: #FBF5E8; --canvas: #F3EAD7;
+  --line: #DCCAA9; --line-2: #C6AE86;
+  --ink: #3B2A1C; --ink-2: #6E5640; --ink-3: #9C8467; --strong: #2E1F13;
+  --dot: rgb(110 80 45 / .16);
+  --accent: #5B8A3C; --accent-2: #4A7530; --on-accent: #FFF9EC;
+  --ok: #5B8A3C; --warn: #D9A441; --err: #B5452F; --info: #4F8FB8; --pink: #D97A8A;
+  --shadow-1: 0 1px 0 rgb(90 60 30 / .08);
+  --shadow-2: 0 16px 36px -14px rgb(62 38 21 / .45), 0 0 0 1px #DCCAA9;
+  --shadow-note: 0 1px 1px rgb(62 38 21 / .12), 0 10px 18px -10px rgb(62 38 21 / .45);
+  --br-a: #7A4E2D; --br-b: #5C3A21; --br-rim: rgb(255 255 255 / .08); --br-l1: #A8C97A; --br-l2: #5B8A3C; --br-vein: #3E2615; --br-text: #F7EBD3;
+  --i-dk: 1;
+  color-scheme: light;
+}
+/* the big pictures once, also for the preview card in Réglages when another theme is on */
+:root {--fm-img-wood: url("asset:wood.webp"); --fm-img-panel: url("asset:panel.webp"); --fm-img-paper: url("asset:paper.webp"); --fm-img-sign: url("asset:sign.webp"); }
+:root[data-skin="farmer"][data-accent="custom"] { --accent: var(--accent-c); --on-accent: var(--on-accent-c); --accent-2: color-mix(in oklab, var(--accent) 84%, black); }
+:root[data-skin="farmer"] { --tb-l: var(--side); --tb-r: var(--paper); --tb-sym: var(--ink-2); --tb-text: var(--side-mute); --accent-soft: color-mix(in oklab, var(--accent) 18%, transparent); }
+
+[data-skin="farmer"] body { font-size: 13.5px; font-feature-settings: "ss01", "cv11"; }
+[data-skin="farmer"] ::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+[data-skin="farmer"] .i { stroke-width: 1.5; }
+
+/* ---------- sidebar: small dense rows, no boxes; the open page gets a faint tile and its icon's tone in the accent ---------- */
+[data-skin="farmer"] #side { border-right: 1px solid var(--side-line); }
+/* the usual PLUM pill (style.css), a little smaller, in the theme's greys with the accent on the leaves */
+[data-skin="farmer"] .brand .pill { height: 40px; padding: 0 16px 0 11px; box-shadow: inset 0 0 0 1px var(--br-rim), inset 0 1px rgb(255 255 255 / .05), 0 2px 8px rgb(0 0 0 / .25); }
+[data-skin="farmer"] .brand b { font-size: 19.5px; }
+[data-skin="farmer"] .sbox { height: 32px; border-radius: 8px; background: var(--side-2); box-shadow: none; color: var(--side-mute); }
+[data-skin="farmer"] .sbox kbd { border: 0; opacity: .7; font-weight: 500; }
+[data-skin="farmer"] .nv { height: 30px; border-radius: 6px; font-size: 13px; font-weight: 450; color: color-mix(in oklab, var(--side-text) 86%, var(--side)); gap: 10px; }
+[data-skin="farmer"] .nv .i { width: 17px; height: 17px; color: var(--side-mute); }
+[data-skin="farmer"] .nv:hover { background: var(--side-2); color: var(--side-text); }
+[data-skin="farmer"] .nv:hover .i { color: var(--side-text); }
+[data-skin="farmer"] .nv[aria-current="page"] { background: var(--side-3); color: var(--strong); font-weight: 550; }
+[data-skin="farmer"] .nv[aria-current="page"] .i { color: var(--strong); }
+[data-skin="farmer"] .nv[aria-current="page"] .i { --i-d: var(--accent); --i-dk: 3.5; }
+[data-skin="farmer"] .nv .ct { color: var(--side-mute); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+[data-skin="farmer"] .sec { margin: 22px 10px 4px; font-size: 12px; font-weight: 550; letter-spacing: 0; color: var(--side-mute); }
+[data-skin="farmer"] .sec span { display: inline-block; text-transform: lowercase; }
+[data-skin="farmer"] .sec span::first-letter { text-transform: uppercase; }
+[data-skin="farmer"] .me { color: var(--side-text); font-weight: 500; }
+[data-skin="farmer"] .av { background: var(--accent); color: var(--on-accent); }
+[data-skin="farmer"] .sib { color: var(--side-mute); }
+[data-skin="farmer"] .sib:hover { color: var(--side-text); background: var(--side-2); }
+
+/* ---------- top bar: part of the page, a hairline under it ---------- */
+[data-skin="farmer"] #top { height: 48px; background: var(--paper); border-bottom-color: var(--line); }
+[data-skin="farmer"] #top .crumbs { font-size: 12.5px; }
+[data-skin="farmer"] #top .crumbs .cur { color: var(--ink); font-weight: 550; }
+[data-skin="farmer"] .tb { border-radius: 7px; height: 30px; color: var(--ink-2); }
+[data-skin="farmer"] .tb:hover { background: var(--raise); color: var(--ink); }
+[data-skin="farmer"] .tb[aria-pressed="true"] .i { --i-d: var(--accent); --i-dk: 3.5; }
+[data-skin="farmer"] .tb.pri { background: var(--accent); color: var(--on-accent); border-radius: 7px; }
+[data-skin="farmer"] .tb.pri:hover { background: var(--accent-2); color: var(--on-accent); }
+
+/* ---------- pages: serif titles, cards as quiet panels ---------- */
+[data-skin="farmer"] .ph h1 { font: 300 38px/1.1 var(--font-head); letter-spacing: -.035em; color: var(--strong); }
+[data-skin="farmer"] .ph .acts { border: 0; padding: 0; align-self: center; }
+[data-skin="farmer"] .ph .sub { font-size: 13px; color: var(--ink-3); }
+[data-skin="farmer"] .card, [data-skin="farmer"] .tlist { background: var(--card); border-color: var(--line); border-radius: 10px; box-shadow: none; }
+[data-skin="farmer"] .card > h2 { font-size: 13px; font-weight: 600; color: var(--strong); }
+[data-skin="farmer"] .card > h2 .i { color: var(--ink-3); }
+[data-skin="farmer"] .card > h2 .more { color: var(--ink-2); font-weight: 500; }
+[data-skin="farmer"] .card > h2 .more:hover { color: var(--accent); }
+[data-skin="farmer"] .dcard .th { border-radius: 8px; border-color: var(--line); background: var(--sunk); }
+[data-skin="farmer"] .dcard:hover .th { transform: none; border-color: var(--line-2); box-shadow: none; }
+[data-skin="farmer"] .dcard .kind { border-radius: 5px; }
+[data-skin="farmer"] .trow { border-radius: 7px; }
+[data-skin="farmer"] .trow:hover, [data-skin="farmer"] .sprow:hover { background: var(--raise); }
+[data-skin="farmer"] .sprow .bar { height: 3px; }
+[data-skin="farmer"] .chip { border-radius: 5px; font-weight: 500; }
+[data-skin="farmer"] .cb { border-radius: 50%; background: transparent; }
+[data-skin="farmer"] .cb[aria-checked="true"] { color: var(--on-accent); }
+[data-skin="farmer"] .focuscard { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+[data-skin="farmer"] .focuscard p { color: var(--ink-2); }
+[data-skin="farmer"] .fab { background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 24px -6px color-mix(in oklab, var(--accent) 60%, transparent); }
+[data-skin="farmer"] .fab .i { --i-dk: 2; }
+
+/* ---------- controls ---------- */
+[data-skin="farmer"] .btn { height: 32px; border-radius: 7px; font-weight: 500; background: var(--card); border-color: var(--line-2); }
+[data-skin="farmer"] .btn:hover { background: var(--raise); }
+[data-skin="farmer"] .btn.pri { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+[data-skin="farmer"] .btn.pri:hover { background: var(--accent-2); border-color: var(--accent-2); }
+[data-skin="farmer"] .btn.pri .i { --i-dk: 2; }
+[data-skin="farmer"] .btn.ghost { background: none; }
+[data-skin="farmer"] .btn.sm { height: 28px; border-radius: 6px; }
+[data-skin="farmer"] .seg, [data-skin="farmer"] .stabs { background: var(--sunk); border-radius: 8px; }
+[data-skin="farmer"] .stabs { border-color: var(--line); }
+[data-skin="farmer"] .seg button, [data-skin="farmer"] .stabs button { border-radius: 6px; font-weight: 500; }
+[data-skin="farmer"] .seg button[aria-pressed="true"], [data-skin="farmer"] .stabs button[aria-selected="true"] { background: var(--raise); color: var(--strong); box-shadow: 0 0 0 1px var(--line); }
+[data-skin="farmer"] .tg input:checked + span { background: var(--accent); }
+[data-skin="farmer"] .srow input[type="text"] { border-radius: 6px; background: var(--sunk); border-color: var(--line); }
+[data-skin="farmer"] .pop, [data-skin="farmer"] .qbar { background: var(--menu); border-color: var(--line); border-radius: 9px; box-shadow: var(--shadow-2); }
+[data-skin="farmer"] .mi { border-radius: 5px; }
+[data-skin="farmer"] .mi:hover { background: var(--raise); }
+[data-skin="farmer"] .sheet-m { background: var(--menu); border-radius: 12px; box-shadow: var(--shadow-2); }
+[data-skin="farmer"] .sheet-m h2 { font: 400 22px/1.15 var(--font-head); letter-spacing: -.025em; color: var(--strong); }
+[data-skin="farmer"] .sheet-m h5 { font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12.5px; color: var(--ink-2); }
+[data-skin="farmer"] .skin-c { border-radius: 9px; background: var(--card); border-color: var(--line-2); }
+
+/* ---------- board: a plain canvas with faint dots, light islands ---------- */
+[data-skin="farmer"] .bhost { background-color: var(--canvas); }
+[data-skin="farmer"] .isl { background: color-mix(in oklab, var(--menu) 96%, transparent); border-color: var(--line); border-radius: 10px; box-shadow: var(--shadow-2); }
+[data-skin="farmer"] .tl { border-radius: 7px; }
+[data-skin="farmer"] .tl:hover { background: var(--raise); }
+[data-skin="farmer"] .tl[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+[data-skin="farmer"] .props { background: var(--card); border-color: var(--line); border-radius: 10px; }
+[data-skin="farmer"] .ptab[aria-pressed="true"] { color: var(--strong); }
+[data-skin="farmer"] .ps-l { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+
+/* ---------- scrollbars: thin, only the thumb ---------- */
+[data-skin="farmer"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+[data-skin="farmer"] ::-webkit-scrollbar-track { background: transparent; }
+[data-skin="farmer"] ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+[data-skin="farmer"] ::-webkit-scrollbar-thumb:hover { background-color: var(--ink-3); }
+
+
+/* ---------- 0.2: the space switcher, the welcome, the space home and the moodboard ---------- */
+[data-skin="farmer"] .spsw { height: 38px; border-radius: 8px; box-shadow: none; padding-left: 10px; }
+[data-skin="farmer"] .spsw:hover, [data-skin="farmer"] .spsw[aria-expanded="true"] { background: var(--side-3); }
+[data-skin="farmer"] .spsw .spn small { font-size: 10px; letter-spacing: .6px; font-weight: 550; }
+[data-skin="farmer"] .spsw .spn b { font-weight: 600; font-size: 13.5px; color: var(--strong); }
+[data-skin="farmer"] .spsw .dot { width: 10px; height: 10px; border-radius: 3px; box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 0%, transparent); }
+[data-skin="farmer"] .spadd { width: 38px; height: 38px; border-radius: 8px; box-shadow: none; }
+[data-skin="farmer"] .spadd .i { --i-dk: 2; }
+[data-skin="farmer"] .pop.spm .mi { min-height: 32px; }
+[data-skin="farmer"] .spm-new { border-radius: 7px; height: 34px; }
+[data-skin="farmer"] .wl-h { font: 300 46px/1.05 var(--font-head); letter-spacing: -.04em; }
+[data-skin="farmer"] .wl-sub { font-size: 14.5px; }
+[data-skin="farmer"] .wl-txt > b { font: 400 26px/1.1 var(--font-title); letter-spacing: -.01em; }
+[data-skin="farmer"] .wl-plus .wl-ring svg { stroke-width: 2.6; }
+[data-skin="farmer"] .wl-th { border-radius: 10px; }
+[data-skin="farmer"] .sp-kick { font-size: 11px; letter-spacing: .7px; font-weight: 550; }
+[data-skin="farmer"] .sp-title { font: 300 38px/46px var(--font-head); letter-spacing: -.035em; }
+[data-skin="farmer"] .mw-fold { border-radius: 9px; }
+[data-skin="farmer"] .sp-h { font-size: 13px; font-weight: 600; color: var(--strong); }
+[data-skin="farmer"] .mw { border-radius: 9px; }
+[data-skin="farmer"] .mw:hover { transform: none; box-shadow: none; border-color: var(--line-2); }
+[data-skin="farmer"] .mw-text { background: var(--card); }
+[data-skin="farmer"] .mw-text p { font: 400 19px/1.35 var(--font-title); }
+[data-skin="farmer"] .mwall.dr .mw-text p, [data-skin="farmer"] .mwall.pv .mw-text p { font-size: 16px; }
+[data-skin="farmer"] .mw-fav, [data-skin="farmer"] .mw-ext { border-radius: 7px; box-shadow: none; }
+[data-skin="farmer"] .mdr { border-radius: 10px; background: var(--menu); }
+[data-skin="farmer"] .mw-empty { border-radius: 12px; }
+
+
+
+/* ================= Farmer's own layer ================= */
+[data-skin="farmer"] body { font-size: 14px; font-feature-settings: normal; letter-spacing: 0; color: var(--ink); }
+[data-skin="farmer"] .i { stroke-width: 1.7; }
+[data-skin="farmer"] ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+
+/* ---------- the page: cream parchment with a faint pencil grid ---------- */
+[data-skin="farmer"] #main {
+  background:
+    linear-gradient(var(--fm-grid) 1px, transparent 1px) 0 0 / 26px 26px,
+    linear-gradient(90deg, var(--fm-grid) 1px, transparent 1px) 0 0 / 26px 26px,
+    var(--fm-img-paper) 0 0 / 512px 512px, var(--fm-paper);
+}
+[data-skin="farmer"] #top { padding-right: 58px; background: rgb(251 245 232 / .82); border-bottom: 1px solid var(--line); backdrop-filter: blur(6px); }
+[data-skin="farmer"] #view { background: transparent; }
+[data-skin="farmer"] #top .crumbs .cur { font-weight: 700; color: var(--strong); }
+[data-skin="farmer"] #top .crumbs .sp { padding: 4px 10px; border-radius: 999px; background: var(--fm-cream); box-shadow: inset 0 0 0 1px var(--line); }
+[data-skin="farmer"] .tb { border-radius: 9px; color: var(--ink-2); font-weight: 600; }
+[data-skin="farmer"] .tb:hover { background: var(--fm-cream); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+[data-skin="farmer"] .tb .i { width: 19px; height: 19px; }
+
+/* ---------- sidebar: the dark walnut rail ---------- */
+[data-skin="farmer"] #side {
+  background: var(--fm-img-wood) 0 0 / 180px 320px, var(--fm-wood);
+  border-right: 0;
+  box-shadow: inset -2px 0 0 rgb(255 220 170 / .16), inset -6px 0 0 var(--fm-wood-d), inset -7px 0 0 rgb(255 220 170 / .1), 4px 0 14px -6px rgb(40 22 8 / .55);
+  color: var(--side-text);
+}
+[data-skin="farmer"] #side::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgb(30 15 5 / .18), rgb(30 15 5 / .38)); }
+[data-skin="farmer"] #side > * { position: relative; }
+/* the logo: the wooden sign with its sprout, PLUM painted on it */
+[data-skin="farmer"] .brand .pill {
+  height: 58px; width: 186px; padding: 0 0 0 64px; border-radius: 0; gap: 0; justify-content: flex-start;
+  background: var(--fm-img-sign) center / 100% 100% no-repeat; box-shadow: none; filter: drop-shadow(0 4px 5px rgb(20 10 2 / .5));
+}
+[data-skin="farmer"] .brand .pill .mark { display: none; }
+[data-skin="farmer"] .brand b { font: 700 25px/1 var(--font-head); letter-spacing: .08em; text-transform: uppercase; color: #FBEBCB; text-shadow: 0 1px 0 #2E1A0B, 0 2px 3px rgb(0 0 0 / .45); margin: 5px 0 0; }
+[data-skin="farmer"] .brand .ver { font: 700 10.5px/1 var(--font-ui); background: rgb(20 10 2 / .3); border: 1px solid rgb(255 230 190 / .18); color: var(--side-mute); }
+[data-skin="farmer"] .sec { font: 700 13px/1 var(--font-head); letter-spacing: .04em; text-transform: none; color: var(--side-mute); margin: 22px 12px 6px; }
+[data-skin="farmer"] .sec span, [data-skin="farmer"] .sec span::first-letter { text-transform: none; }
+[data-skin="farmer"] .sec button { color: var(--side-mute); }
+[data-skin="farmer"] .nv { height: 36px; border-radius: 10px; font-size: 14.5px; font-weight: 600; color: var(--side-text); gap: 11px; }
+[data-skin="farmer"] .nv .i { width: 22px; height: 22px; filter: drop-shadow(0 1px 1px rgb(0 0 0 / .35)); }
+[data-skin="farmer"] #pages .nv .i { width: 18px; height: 18px; }
+[data-skin="farmer"] .nv:hover { background: rgb(255 236 205 / .1); color: #FFF6E4; }
+/* the open page: a parchment plate pinned on the wood */
+[data-skin="farmer"] .nv[aria-current="page"] { background: linear-gradient(180deg, #F6EBD3, #E9D9B8); color: var(--strong); font-weight: 700; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .5), 0 2px 0 #3E2615, 0 4px 8px -2px rgb(0 0 0 / .45); }
+[data-skin="farmer"] .nv[aria-current="page"] .i { filter: none; }
+[data-skin="farmer"] .nv .ct { font: 700 11.5px var(--font-ui); color: var(--side-mute); }
+[data-skin="farmer"] .nv[aria-current="page"] .ct { color: var(--ink-3); }
+[data-skin="farmer"] .sbox { height: 36px; border-radius: 10px; background: rgb(20 10 2 / .32); box-shadow: inset 0 2px 4px rgb(0 0 0 / .4), 0 1px 0 rgb(255 225 180 / .12); color: var(--side-mute); }
+[data-skin="farmer"] .sbox input { color: var(--side-text); }
+[data-skin="farmer"] .sbox input::placeholder { color: var(--side-mute); }
+[data-skin="farmer"] .sbox .i { width: 18px; height: 18px; }
+[data-skin="farmer"] .sbox kbd { color: var(--side-mute); background: rgb(255 236 205 / .08); border: 0; }
+[data-skin="farmer"] .spsw { height: 46px; border-radius: 11px; background: linear-gradient(180deg, #F6EBD3, #E9D9B8); color: var(--ink); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .5), 0 2px 0 #3E2615, 0 4px 8px -2px rgb(0 0 0 / .45); }
+[data-skin="farmer"] .spsw:hover, [data-skin="farmer"] .spsw[aria-expanded="true"] { background: linear-gradient(180deg, #FBF2DF, #EEDFC1); }
+[data-skin="farmer"] .spsw .spn small { font: 700 10px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+[data-skin="farmer"] .spsw .spn b { font: 700 16px/1.1 var(--font-head); color: var(--strong); }
+[data-skin="farmer"] .spsw .dot { border-radius: 50%; }
+[data-skin="farmer"] .spadd { width: 46px; height: 46px; border-radius: 11px; background: rgb(20 10 2 / .3); color: var(--side-text); box-shadow: inset 0 2px 4px rgb(0 0 0 / .35), 0 1px 0 rgb(255 225 180 / .12); }
+[data-skin="farmer"] .spadd:hover { background: var(--accent); color: var(--on-accent); }
+[data-skin="farmer"] .me { color: var(--side-text); font-weight: 700; }
+[data-skin="farmer"] .av { background: var(--accent); color: var(--on-accent); box-shadow: 0 0 0 2px rgb(255 236 205 / .35); }
+[data-skin="farmer"] .sib { color: var(--side-mute); }
+[data-skin="farmer"] .sib:hover { color: #FFF6E4; background: rgb(255 236 205 / .1); }
+[data-skin="farmer"] .sib .i { width: 20px; height: 20px; }
+
+/* ---------- page titles: felt pen, a sprig after them ---------- */
+[data-skin="farmer"] :is(.ph h1, .sp-title) { font: 700 42px/1.15 var(--font-head); letter-spacing: 0; color: var(--strong); }
+[data-skin="farmer"] :is(.ph h1, .sp-title)::after { content: ""; display: inline-block; width: 34px; height: 30px; margin-left: 10px; vertical-align: -2px; background: url("asset:leaf-2.webp") center / contain no-repeat; transform: rotate(-18deg); }
+[data-skin="farmer"] .ph .sub, [data-skin="farmer"] .nsub { font: 400 14px var(--font-hand); color: var(--ink-2); }
+[data-skin="farmer"] .sp-kick { font: 700 11px var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+[data-skin="farmer"] .sp-h { font: 700 17px var(--font-head); letter-spacing: 0; text-transform: none; color: var(--ink); }
+[data-skin="farmer"] .sheet-m h2 { font: 700 26px/1.15 var(--font-head); letter-spacing: 0; color: var(--strong); }
+[data-skin="farmer"] .sheet-m h5, [data-skin="farmer"] .ps-l { font: 700 11px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ---------- panels: cream paper in a thin wooden frame, the title on a wooden tab ---------- */
+[data-skin="farmer"] :is(.card, .tlist, .focuscard) {
+  position: relative; background: none; border-radius: 0; box-shadow: 0 10px 22px -16px rgb(62 38 21 / .55);
+  border: 10px solid transparent; border-image: url("asset:panel-s.webp") 20 fill / 10px stretch; padding: 14px 16px 12px;
+}
+[data-skin="farmer"] .card > h2 {
+  display: inline-flex; width: auto; max-width: calc(100% - 70px); margin: -20px 0 12px -22px; height: 34px; padding: 0 22px 2px 14px; gap: 8px;
+  border: 0 solid transparent; border-width: 0 12px; border-image: url("asset:tab-s.webp") 0 24 fill / 0 12px stretch;
+  font: 700 17px/1 var(--font-head); letter-spacing: 0; text-transform: none; color: #FBEBCB; text-shadow: 0 1px 0 #2E1A0B, 0 1px 3px rgb(0 0 0 / .4);
+}
+[data-skin="farmer"] .card > h2 .i { width: 20px; height: 20px; color: #FBEBCB; filter: drop-shadow(0 1px 1px rgb(0 0 0 / .4)); }
+[data-skin="farmer"] .card > h2 .ct { color: #E8CFA6; font: 700 12px var(--font-ui); }
+[data-skin="farmer"] .card > h2 .more { position: absolute; right: 10px; top: 6px; font: 700 13px var(--font-ui); letter-spacing: 0; text-transform: none; color: var(--accent); text-shadow: none; }
+[data-skin="farmer"] .card > h2 .more:hover { color: var(--accent-2); text-decoration: underline; }
+[data-skin="farmer"] .mw-fold { background: var(--fm-cream); border: 1px solid var(--line); border-radius: 12px; }
+[data-skin="farmer"] .trow { border-radius: 9px; }
+[data-skin="farmer"] .trow:hover, [data-skin="farmer"] .sprow:hover { background: rgb(255 250 238 / .9); }
+/* square checkboxes with a green tick, as on the concept's lists */
+[data-skin="farmer"] .cb { border-radius: 4px; border: 1.8px solid var(--fm-wood-m); background: var(--fm-cream); }
+[data-skin="farmer"] .cb[aria-checked="true"] { background: var(--accent); border-color: var(--accent-2); color: var(--on-accent); }
+[data-skin="farmer"] .chip { border-radius: 999px; font-weight: 700; }
+[data-skin="farmer"] .mw-in, [data-skin="farmer"] .qadd { background: var(--fm-cream); border: 1.5px dashed var(--line-2); border-radius: 12px; }
+[data-skin="farmer"] .qadd input { font-family: var(--font-ui); }
+/* doc cards: a sheet pinned with a strip of tape */
+[data-skin="farmer"] .dcard .th { position: relative; overflow: visible; border-radius: 4px; background: var(--fm-cream); border: 1px solid var(--line); box-shadow: 0 8px 16px -10px rgb(62 38 21 / .55); }
+[data-skin="farmer"] .dcard .th::before { content: ""; position: absolute; z-index: 2; top: -9px; left: 50%; width: 64px; height: 18px; margin-left: -32px; transform: rotate(-3deg); background: rgb(240 226 180 / .82); box-shadow: 0 1px 2px rgb(62 38 21 / .2); }
+[data-skin="farmer"] .dcard:hover .th { transform: rotate(-.6deg) translateY(-2px); border-color: var(--line-2); box-shadow: 0 14px 22px -12px rgb(62 38 21 / .6); }
+[data-skin="farmer"] .dcard .kind { border-radius: 999px; font-weight: 700; }
+[data-skin="farmer"] .dcard b, [data-skin="farmer"] .dcard .nm { font-weight: 700; }
+/* the "new" cards: a dashed seed bed */
+[data-skin="farmer"] .dcard.new .th, [data-skin="farmer"] .nwc { background: rgb(251 245 232 / .6); border: 2px dashed var(--line-2); box-shadow: none; }
+[data-skin="farmer"] .dcard.new .th::before { display: none; }
+
+/* ---------- controls ---------- */
+[data-skin="farmer"] .btn { height: 36px; border-radius: 11px; font-weight: 700; background: var(--fm-cream); border: 1px solid var(--line-2); color: var(--ink); box-shadow: 0 2px 0 var(--line); }
+[data-skin="farmer"] .btn:hover { background: #FFFaF0; }
+/* the green of the concept's Share button: a rounded pill with a darker lip */
+[data-skin="farmer"] :is(.btn.pri, .tb.pri) { background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 88%, white), var(--accent)); border: 1px solid var(--accent-2); color: var(--on-accent); box-shadow: inset 0 1px 0 rgb(255 255 255 / .25), 0 2px 0 var(--accent-2); text-shadow: 0 1px 0 rgb(0 0 0 / .15); }
+[data-skin="farmer"] :is(.btn.pri, .tb.pri):hover { background: linear-gradient(180deg, var(--accent), var(--accent-2)); color: var(--on-accent); }
+[data-skin="farmer"] .btn.pri .i, [data-skin="farmer"] .tb.pri .i { filter: drop-shadow(0 1px 0 rgb(0 0 0 / .15)); }
+[data-skin="farmer"] .btn.ghost { background: none; box-shadow: none; border-color: transparent; }
+[data-skin="farmer"] .btn.sm { height: 30px; border-radius: 9px; }
+[data-skin="farmer"] .fab { background: radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--accent) 75%, white), var(--accent) 60%, var(--accent-2)); color: var(--on-accent); box-shadow: 0 3px 0 var(--accent-2), 0 12px 24px -8px rgb(62 38 21 / .6); }
+[data-skin="farmer"] :is(.seg, .stabs) { background: var(--sunk); border-radius: 12px; box-shadow: inset 0 1px 2px rgb(62 38 21 / .15); }
+[data-skin="farmer"] :is(.seg button, .stabs button) { border-radius: 9px; font-weight: 700; }
+[data-skin="farmer"] :is(.seg button[aria-pressed="true"], .stabs button[aria-selected="true"]) { background: var(--accent); color: var(--on-accent); box-shadow: 0 1px 0 var(--accent-2); }
+[data-skin="farmer"] .tg input:checked + span { background: var(--accent); }
+[data-skin="farmer"] :is(.pop, .qbar) { background: var(--fm-cream); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow-2); }
+[data-skin="farmer"] .mi { border-radius: 8px; font-weight: 600; }
+[data-skin="farmer"] .mi:hover { background: var(--fm-parch); }
+[data-skin="farmer"] .sheet-m { background: none; border-radius: 0; box-shadow: 0 30px 60px -20px rgb(40 22 8 / .6); border: 20px solid transparent; border-image: var(--fm-img-panel) 40 fill / 20px stretch; }
+[data-skin="farmer"] .skin-c { border-radius: 12px; background: var(--fm-cream); border-color: var(--line-2); }
+[data-skin="farmer"] .srow input[type="text"], [data-skin="farmer"] input.fi, [data-skin="farmer"] textarea { background: #FFFaF0; border-color: var(--line-2); border-radius: 9px; }
+[data-skin="farmer"] ::-webkit-scrollbar-thumb { background: var(--fm-wood-l); border: 3px solid transparent; background-clip: content-box; border-radius: 10px; }
+[data-skin="farmer"] #side ::-webkit-scrollbar-thumb { background: rgb(255 230 190 / .25); background-clip: content-box; }
+
+/* ---------- the moodboard: polaroids, a little crooked ---------- */
+[data-skin="farmer"] .mw { background: #FFFDF7; border: 0; border-radius: 3px; padding: 7px 7px 0; box-shadow: 0 1px 1px rgb(62 38 21 / .14), 0 10px 18px -10px rgb(62 38 21 / .55); }
+[data-skin="farmer"] .mw:nth-child(3n+1) { transform: rotate(-1.2deg); }
+[data-skin="farmer"] .mw:nth-child(3n+2) { transform: rotate(.9deg); }
+[data-skin="farmer"] .mw:hover { transform: rotate(0) translateY(-3px); box-shadow: 0 16px 26px -12px rgb(62 38 21 / .6); }
+[data-skin="farmer"] .mw img { border-radius: 1px; }
+[data-skin="farmer"] .mw-text { background: var(--fm-y); }
+[data-skin="farmer"] .mw-text p { font: 400 19px/1.3 var(--font-hand); color: #3B2A1C; }
+[data-skin="farmer"] .mw-ft small { font-family: var(--font-hand); }
+[data-skin="farmer"] .mdr { background: var(--fm-cream); border-radius: 14px; }
+[data-skin="farmer"] .mw-empty { border-radius: 14px; border: 2px dashed var(--line-2); background: rgb(251 245 232 / .6); }
+
+/* ---------- welcome: the painted farm ---------- */
+[data-skin="farmer"] .welcome { background: transparent; }
+[data-skin="farmer"] .wl-mark { width: 440px; height: 268px; max-width: 80vw; border-radius: 0; background: url("asset:farm.webp") center / contain no-repeat; box-shadow: none; margin-bottom: -8px; }
+[data-skin="farmer"] .wl-h { font: 700 50px/1.1 var(--font-head); letter-spacing: 0; color: var(--strong); }
+[data-skin="farmer"] .wl-sub { font: 400 17px var(--font-hand); color: var(--ink-2); }
+[data-skin="farmer"] .wl-k { font: 700 18px var(--font-head); letter-spacing: 0; text-transform: none; color: var(--ink); }
+[data-skin="farmer"] .wl-n { border-color: var(--accent); color: var(--accent); }
+[data-skin="farmer"] .wl-txt > b { font: 700 28px/1.15 var(--font-head); letter-spacing: 0; }
+[data-skin="farmer"] .wl-th { border-radius: 12px; }
+[data-skin="farmer"] .wl-plus .wl-ring { background: radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--accent) 72%, white), var(--accent) 60%, var(--accent-2)); color: var(--on-accent); }
+
+/* ---------- decoration: vines over the page corners, a sprig at the foot of the sidebar ---------- */
+[data-skin="farmer"] .th-decor { position: absolute; pointer-events: none; z-index: 31; background-repeat: no-repeat; background-size: contain; }
+[data-skin="farmer"] .th-decor.fm-vine { top: -8px; right: -10px; width: 58px; height: 150px; background-image: url("asset:vine.webp"); background-position: top right; filter: drop-shadow(0 6px 6px rgb(40 22 8 / .3)); }
+[data-skin="farmer"] .th-decor.fm-leaf { left: -8px; bottom: -10px; width: 150px; height: 150px; background-image: url("asset:leaf-0.webp"); transform: rotate(18deg); filter: drop-shadow(0 6px 6px rgb(40 22 8 / .3)); z-index: 5; }
+[data-skin="farmer"] #main { position: relative; }
+/* the space home: a few painted props in the head of the page */
+[data-skin="farmer"] .sp-head, [data-skin="farmer"] .ph { position: relative; }
+
+/* preview card in Réglages > UI: walnut rail, parchment page, a wooden tab and a sticky note */
+.sk-farmer .skin-pv { background: var(--fm-img-paper) 0 0 / 200px, #F3EAD7; }
+.sk-farmer .skin-pv::before { content: ""; position: absolute; inset: 0; background: var(--fm-img-wood) 0 0 / 60px 110px no-repeat; width: 24%; }
+.sk-farmer .skin-pv i:nth-child(1) { left: 2%; top: 10%; width: 20%; height: 14%; background: var(--fm-img-sign) center / 100% 100%; }
+.sk-farmer .skin-pv i:nth-child(2) { left: 3%; top: 34%; width: 18%; height: 9%; background: #EFE2C6; border-radius: 3px; }
+.sk-farmer .skin-pv i:nth-child(3) { left: 32%; top: 18%; width: 40%; height: 60%; background: #FBF5E8; border: 3px solid #8A5A34; border-radius: 4px; }
+.sk-farmer .skin-pv i:nth-child(4) { left: 64%; top: 40%; width: 28%; height: 40%; background: #F8E7A8; transform: rotate(4deg); box-shadow: 0 4px 8px -3px rgb(62 38 21 / .5); }
