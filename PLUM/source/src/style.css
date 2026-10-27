@@ -1270,3 +1270,11 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .tdrag.k-todo .tdp u { display: block; height: 8px; border-radius: 4px; background: var(--sunk); }
 .tdrag .tdp b { font: 600 13px/1.2 var(--font-ui, system-ui), system-ui, sans-serif; }
 .tdragging .bhost { cursor: copy; }
+.mmenu .mmp { display: inline-flex; align-items: center; gap: 6px; }
+.mmenu .mmp i { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); flex: none; }
+.mmenu .mmp em { font-style: normal; opacity: .55; margin-left: 1px; font-size: 10px; }
+.mmenu .mmp.dim { opacity: .38; }
+.mmenu .mmp.dim.hot { opacity: .9; }
+.mmenu .mmg line.lv { stroke: rgba(255,226,102,.45); stroke-dasharray: 3 3; }
+.mmenu .mmt.sub { color: #FFE266; font-weight: 600; }
+:root:not([data-resolved="dark"]) .mmenu .mmt.sub { color: #9A7B00; }
