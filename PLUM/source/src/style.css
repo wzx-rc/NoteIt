@@ -1589,3 +1589,38 @@ details.mw-found[open] > summary .i { transform: rotate(90deg); }
 .brand .mark .pm { width: 26px; height: 26px; }
 #tbar .tb-l .pm { width: 14px; height: 14px; }
 .wl-mark, [data-skin] .wl-mark { background: var(--plum-icon) center / cover; }
+
+/* ---- note: drawings in the text (0.2.3) ---- */
+.nbody figure.ndraw { position: relative; margin: 0 0 10px; user-select: none; -webkit-user-select: none; cursor: grab; border-radius: 6px; touch-action: none; }
+.nbody figure.ndraw.f-l { float: left; margin-right: 22px; }
+.nbody figure.ndraw.f-r { float: right; margin-left: 22px; }
+.nbody figure.ndraw.f-c { clear: both; }
+.nbody figure.ndraw > svg { display: block; width: 100%; height: auto; overflow: visible; }
+.nbody figure.ndraw:hover { box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 40%, transparent); }
+.nbody figure.ndraw.sel { box-shadow: 0 0 0 1.5px var(--accent); }
+.nbody figure.ndraw.dragging { opacity: .7; cursor: grabbing; z-index: 5; box-shadow: 0 0 0 1.5px var(--accent), var(--shadow-2); }
+.drawmode .nbody figure.ndraw { box-shadow: none; }
+.nbody::after { content: ""; display: block; clear: both; }
+.nd-bar { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--menu); box-shadow: var(--shadow-2); z-index: 6; white-space: nowrap; }
+.nd-bar button { width: 28px; height: 28px; border: 0; border-radius: 7px; background: none; color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
+.nd-bar button:hover { background: var(--sunk); color: var(--ink); }
+.nd-bar button[aria-pressed="true"] { background: var(--accent-soft, var(--sunk)); color: var(--accent); }
+.nd-bar .nd-sep { width: 1px; height: 18px; background: var(--line); margin: 0 3px; }
+.nd-h { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 4px; background: var(--paper); border: 1.5px solid var(--accent); cursor: nwse-resize; }
+figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
+/* ---- note: font, size and colour of the text ---- */
+.nbody font[face="pf-ui"] { font-family: var(--font-ui); }
+.nbody font[face="pf-serif"] { font-family: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif; font-size: 1.12em; }
+.nbody font[face="pf-mono"] { font-family: var(--font-mono); font-size: .92em; }
+.nbody font[face="pf-hand"] { font-family: var(--font-hand); font-size: 1.4em; line-height: 1.25; }
+.nbody font[size="1"] { font-size: .75em; } .nbody font[size="2"] { font-size: .875em; } .nbody font[size="3"] { font-size: 1em; }
+.nbody font[size="4"] { font-size: 1.25em; } .nbody font[size="5"] { font-size: 1.6em; line-height: 1.3; } .nbody font[size="6"] { font-size: 2.1em; line-height: 1.2; } .nbody font[size="7"] { font-size: 2.8em; line-height: 1.15; }
+.ntool .nb.tx { width: auto; padding: 0 5px 0 7px; gap: 1px; }
+.ntool .nb.tx .i.sm { width: 12px; height: 12px; opacity: .6; }
+.ntool .tsz { font-weight: 600; font-size: 16px; } .ntool .tsz small { font-size: 11px; margin-left: 1px; }
+.ntool .tca { position: relative; font-weight: 700; font-size: 15px; line-height: 1; padding-bottom: 4px; }
+.ntool .tca i { position: absolute; left: -1px; right: -1px; bottom: 0; height: 3px; border-radius: 2px; }
+.tpop { min-width: 170px; }
+.tpop .tc-grid { display: grid; grid-template-columns: repeat(4, 26px); gap: 8px; padding: 8px 10px 6px; }
+.tpop .tc-grid .sw { width: 26px; height: 26px; border-radius: 50%; border: 0; cursor: pointer; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); }
+.tpop .tc-grid .sw:hover { transform: scale(1.1); }

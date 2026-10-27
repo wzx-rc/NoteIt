@@ -739,9 +739,10 @@ function applyLook(th, r) {
   const tint = th.tints && (lk.tint === 'custom' && /^#[0-9a-f]{6}$/i.test(lk.tintHex || '') ? tintOf(lk.tintHex) : th.tints.find(x => x.id === lk.tint) || th.tints[0]);
   if (tint) { st.setProperty('--th-h', tint.h); st.setProperty('--th-c', tint.c); r.dataset.tint = tint.id; }
   else { st.removeProperty('--th-h'); st.removeProperty('--th-c'); delete r.dataset.tint; }
-  // a colour picked by hand also sets how light the surfaces are: dark looks are lifted from about .23, light looks lowered from about .97
+  // a colour picked by hand also sets how light the surfaces are, but only in the mode it fits: a dark colour lifts the dark look
+  // (from about .23), a pale one lowers the light look a little (from about .97). A dark colour no longer greys the light mode.
   st.removeProperty('--th-ld'); st.removeProperty('--th-ll');
-  if (tint && tint.l != null) { if (r.dataset.resolved === 'light') st.setProperty('--th-ll', clamp(tint.l - .97, -.3, 0).toFixed(3)); else st.setProperty('--th-ld', clamp(tint.l - .23, -.1, .22).toFixed(3)); }
+  if (tint && tint.l != null) { if (r.dataset.resolved === 'light') { if (tint.l > .82) st.setProperty('--th-ll', clamp(tint.l - .97, -.06, 0).toFixed(3)); } else if (tint.l < .55) st.setProperty('--th-ld', clamp(tint.l - .23, -.1, .22).toFixed(3)); }
   const a = th.accents && /^#[0-9a-f]{6}$/i.test(lk.accent || '') && lk.accent.toLowerCase() !== th.accents[0].value.toLowerCase() ? lk.accent : null;
   if (a) { st.setProperty('--accent-c', a); st.setProperty('--on-accent-c', onAccent(a)); r.dataset.accent = 'custom'; }
   else { st.removeProperty('--accent-c'); st.removeProperty('--on-accent-c'); delete r.dataset.accent; }

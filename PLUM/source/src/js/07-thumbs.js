@@ -51,6 +51,9 @@ const Thumbs = (() => {
       for (const el of n.children) {
         if (y > 640) return;
         const t = (el.textContent || '').trim(), T = el.tagName;
+        if (T === 'FIGURE' && el.classList.contains('ndraw')) { const dr = d.draws && d.draws[el.dataset.draw]; if (!dr) continue;
+          const pw = parseFloat(el.style.width) || 50, w = 680 * pw / 100, h = w * dr.h / dr.w, x = 70 + 680 * (parseFloat(el.style.marginLeft) || 0) / 100;
+          out.push(`<svg x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" viewBox="0 0 ${dr.w} ${dr.h}">${dr.st.map(st => inkSVG(st)).join('')}</svg>`); if (!el.classList.contains('f-l') && !el.classList.contains('f-r')) y += h + 14; continue; }
         if (T === 'FIGURE' || T === 'IMG') { const im = T === 'IMG' ? el : el.querySelector('img'), u = im && Assets.url(im.dataset.asset);
           out.push(u ? `<image href="${u}" x="70" y="${y}" width="320" height="210" preserveAspectRatio="xMidYMid slice"/>` : `<rect x="70" y="${y}" width="320" height="210" rx="10" style="fill:var(--sunk)"/>`); y += 230; continue; }
         if (T === 'UL' || T === 'OL') { for (const li of el.children) { if (y > 640) return; const chk = el.classList.contains('chk'); out.push(chk ? `<rect x="74" y="${y - 4}" width="18" height="18" rx="4" style="fill:none;stroke:var(--ink-3)" stroke-width="2"/>` : `<circle cx="82" cy="${y + 5}" r="4" style="fill:var(--ink-3)"/>`); const L = Math.min(560, (li.textContent || '').length * 9 + 30); const hand = li.closest('.hand-p') || el.classList.contains('hand-p'); bar(104, L, hand ? 14 : 10); y += 34; } y += 6; continue; }

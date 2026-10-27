@@ -13,6 +13,8 @@ const Note = (() => {
   /* the page views; sheet, body, inkSvg, pad and P (the page's data) follow the page being written or drawn on */
   let PG = [], cur = null, P = null, spr = 0, spreadOn = false, fillH = 0;
   let mode = 'text', pen = 'pen', hist = [], fut = [], mounted = false, penSeen = false, drawing = null, erasing = null;
+  /* drawings in the text: strokes of the current drawing session, the pause timer of a stylus in text mode, the picked drawing, a move or resize */
+  let fresh = new WeakSet(), autoFin = 0, ndSel = null, ndOp = null;
 
   const scale = () => sheet.getBoundingClientRect().width / SW;
   // the layout scale, without the zoom of the double page
@@ -23,19 +25,22 @@ const Note = (() => {
   function placeLive() { const v = $('#view'); liveBox.style.top = v.offsetTop + 'px'; ink.resize(); }
 
   /* ---------- text ---------- */
-  function hydrateInto(body, html) {
+  function hydrateInto(body, html, data) {
     body.innerHTML = html || '';
     for (const im of $$('img[data-asset]', body)) { const u = Assets.url(im.dataset.asset); if (u) im.src = u; else im.closest('figure') ? im.closest('figure').classList.add('missing') : im.remove(); }
+    for (const f of $$('figure.ndraw', body)) drawFig(f, data);
   }
   function serialize() {
     const c = body.cloneNode(true);
     for (const im of $$('img[data-asset]', c)) im.removeAttribute('src');
+    for (const f of $$('figure.ndraw', c)) { f.innerHTML = ''; f.classList.remove('sel', 'dragging'); f.style.transform = ''; }
     return c.innerHTML.replace(/<br>(<\/(p|div|li|h1|h2|h3)>)/g, '$1');
   }
   const saveBody = debounce(() => { if (!mounted) return; P.html = serialize(); touch(D); renderSub(); }, 400);
   function renderSub() {
     const sp = spaceById(D.sp), words = PG.reduce((n, g) => n + (g.body.innerText.match(/[\p{L}\p{N}]+/gu) || []).length, 0), strokes = PG.reduce((n, g) => n + (g.data.ink || []).length, 0), np = PG.length;
-    sub.innerHTML = `${sp ? `<span class="chip"><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</span>` : ''}<span>Modifiée ${ago(D.updated)}</span><span>${words} mot${words > 1 ? 's' : ''}</span>${strokes ? `<span>${strokes} trait${strokes > 1 ? 's' : ''}</span>` : ''}${np > 1 ? `<span>${np} pages</span>` : ''}`;
+    const draws = PG.reduce((n, g) => n + $$('figure.ndraw', g.body).length, 0);
+    sub.innerHTML = `${sp ? `<span class="chip"><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</span>` : ''}<span>Modifiée ${ago(D.updated)}</span><span>${words} mot${words > 1 ? 's' : ''}</span>${draws ? `<span>${draws} dessin${draws > 1 ? 's' : ''}</span>` : ''}${strokes ? `<span>${strokes} trait${strokes > 1 ? 's' : ''}</span>` : ''}${np > 1 ? `<span>${np} pages</span>` : ''}`;
   }
   const blockOf = n => { while (n && n !== body) { if (n.nodeType === 1 && /^(P|DIV|H1|H2|H3|LI|BLOCKQUOTE|FIGURE)$/.test(n.tagName)) return n; n = n.parentNode; } return null; };
   const selInBody = () => { const s = getSelection(); return s.rangeCount && body.contains(s.anchorNode) ? s : null; };
@@ -66,8 +71,37 @@ const Note = (() => {
     }
     saveBody(); renderTool();
   }
+  /* font, size and colour of the selected text (or of what is typed next): <font face|size|color>, styled in style.css */
+  const TFONTS = [['pf-ui', 'Par défaut', 'var(--font-ui)'], ['pf-serif', 'Serif', '"Instrument Serif", "Iowan Old Style", Georgia, serif'], ['pf-mono', 'Mono', 'var(--font-mono)'], ['pf-hand', 'Manuscrite', 'var(--font-hand)']];
+  const TSIZES = [['2', 'Petit', 13], ['3', 'Normal', 15], ['4', 'Grand', 18], ['5', 'Très grand', 22], ['6', 'Titre', 27]];
+  const NOCOLOR = '#010203';
+  function textPop(btn) {
+    const s0 = selInBody(), range = s0 && s0.rangeCount ? s0.getRangeAt(0).cloneRange() : null, k = btn.dataset.tx;
+    const apply = f => { body.focus(); const sel = getSelection(); if (range) { sel.removeAllRanges(); sel.addRange(range); } else ensureFocus(); try { document.execCommand('styleWithCSS', false, false); } catch (e) {} f(); saveBody(); renderTool(); };
+    const color = c => apply(() => {
+      document.execCommand('foreColor', false, c || NOCOLOR);
+      if (!c) for (const el of $$('font[color]', body)) if (el.getAttribute('color').toLowerCase() === NOCOLOR) { el.removeAttribute('color'); if (!el.attributes.length) el.replaceWith(...el.childNodes); }
+      if (c) { S.prefs.noteColor = c; save(); renderToolbar(); }
+    });
+    if (k === 'color' && btn.dataset.wheel) { radialPop(btn, { get: () => S.prefs.noteColor || '#E03131', set: (c, final) => { if (final) color(c); } }); return; }
+    const html = k === 'font' ? TFONTS.map(([v, l, ff]) => `<button class="mi" data-v="${v}"><span style="font-family:${ff};font-size:16px">${l}</span></button>`).join('')
+      : k === 'size' ? TSIZES.map(([v, l, px]) => `<button class="mi" data-v="${v}"><span style="font-size:${px}px">${l}</span></button>`).join('')
+      : `<div class="tc-grid">${themeColors('ink', INK_COLORS).slice(0, 8).map(c => `<button class="sw" data-v="${c}" style="background:${c}" aria-label="Couleur ${c}"></button>`).join('')}</div><div class="msep"></div><button class="mi" data-v="">${icon('x', 'sm')}<span>Couleur par défaut</span></button><button class="mi" data-v="wheel">${icon('wheel', 'sm')}<span>Autre couleur…</span></button>`;
+    const pop = openPop(btn, html, { cls: 'tpop', focus: false });
+    pop.addEventListener('pointerdown', e => e.preventDefault());
+    pop.addEventListener('click', e => {
+      const b = e.target.closest('[data-v]'); if (!b) return; const v = b.dataset.v; closePop();
+      if (k === 'font') apply(() => document.execCommand('fontName', false, v));
+      else if (k === 'size') apply(() => document.execCommand('fontSize', false, v));
+      else if (v === 'wheel') { btn.dataset.wheel = '1'; textPop(btn); delete btn.dataset.wheel; }
+      else color(v);
+    });
+  }
   /* « # », « ## », « - », « [] », « > » and « 1. » at the start of a line */
   function onKey(e) {
+    if (ndSel && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); ndAction(cur, ndSel, 'del'); return; }
+    if (ndSel && e.key === 'Escape') { ndPick(null); return; }
+    if (ndSel) ndPick(null);
     if (e.key === 'Enter' && !e.shiftKey) {
       const s = selInBody(); if (!s || !s.isCollapsed) return;
       const blk = blockOf(s.anchorNode); if (!blk || blk.tagName !== 'BLOCKQUOTE') return;
@@ -170,6 +204,122 @@ const Note = (() => {
     const h = cd.getData('text/html'); if (h) { e.preventDefault(); document.execCommand('insertHTML', false, sanitize(h)); saveBody(); return; }
   }
 
+  /* ---------- drawings in the text ----------
+     When the pen is put down (back to Texte, or a pause after writing with a stylus in text mode), the new strokes of each page
+     are grouped by distance and each group becomes a <figure class="ndraw"> in the text, at the height it was drawn: a narrow one
+     floats against the left or right side and the text goes round it, a wide one sits between the paragraphs. Typing above pushes it down.
+     It can then be picked, moved (it lands in the text where it is dropped) and resized; drawing over it adds to it.
+     Its strokes live in the page's draws[id], in the figure's own units; the highlighter stays on the ink layer, over the text. */
+  function drawFig(f, data) {
+    const d = data && data.draws && data.draws[f.dataset.draw];
+    if (!d) { f.remove(); return; }
+    f.contentEditable = 'false';
+    f.innerHTML = `<svg viewBox="0 0 ${d.w} ${d.h}" aria-hidden="true">${d.st.map(st => inkSVG(st)).join('')}</svg>`;
+    if (f === ndSel) ndBar(f);
+  }
+  // an element's box in sheet units
+  function rectIn(g, el) { const s = g.el.getBoundingClientRect(), r = el.getBoundingClientRect(), u = SW / s.width; return { x: (r.left - s.left) * u, y: (r.top - s.top) * u, w: r.width * u, h: r.height * u }; }
+  const xfStroke = (st, dx, dy, k) => { const p = st.p.slice(); for (let i = 0; i < p.length; i += 3) { p[i] = +(p[i] * k + dx).toFixed(1); p[i + 1] = +(p[i + 1] * k + dy).toFixed(1); } return Object.assign({}, st, { p, s: +(st.s * k).toFixed(2) }); };
+  const floatOf = f => f.classList.contains('f-l') ? 'l' : f.classList.contains('f-r') ? 'r' : 'c';
+  const snap = p => ({ p, ink: p.ink || [], html: p.html, draws: JSON.parse(JSON.stringify(p.draws || {})) });
+  function pushSnap(p) { hist.push(snap(p)); if (hist.length > 80) hist.shift(); fut = []; }
+  // text typed straight into the page (no paragraph yet) goes into one, so a drawing can sit between blocks
+  function wrapLoose(b) {
+    let run = [];
+    const close = () => { if (run.some(n => n.nodeType === 1 || n.data.trim())) { const p = document.createElement('p'); run[0].before(p); p.append(...run); } run = []; };
+    for (const n of [...b.childNodes]) { if (n.nodeType === 3 || (n.nodeType === 1 && !/^(P|DIV|H1|H2|H3|UL|OL|BLOCKQUOTE|FIGURE)$/.test(n.tagName))) run.push(n); else close(); }
+    close();
+  }
+  /* put a figure in the text: before the first block that starts below y, floating by where it is, at the height asked */
+  function placeFig(g, f, x, y, w, fl) {
+    if (f.parentNode) f.remove();
+    const br = rectIn(g, g.body), bw = br.w; w = Math.min(w, bw);
+    if (!fl) fl = w > bw * .62 ? 'c' : x + w / 2 < br.x + bw / 2 ? 'l' : 'r';
+    const pc = v => +(v / bw * 100).toFixed(2) + '%';
+    f.classList.remove('f-l', 'f-r', 'f-c'); f.classList.add('f-' + fl);
+    f.style.width = pc(w); f.style.marginTop = '';
+    // a floating drawing sits against its side, one alone on its line keeps where it was drawn
+    f.style.marginLeft = fl === 'c' ? pc(clamp(x - br.x, 0, bw - w)) : '';
+    f.style.marginRight = '';
+    const at = [...g.body.children].find(c => { const r = rectIn(g, c); return r.y + Math.min(r.h, 40) / 2 > y; });
+    if (at) g.body.insertBefore(f, at); else g.body.append(f);
+    if (!f.nextElementSibling) { const p = document.createElement('p'); p.innerHTML = '<br>'; f.after(p); }
+    const top = rectIn(g, f).y; if (y - top > 12) f.style.marginTop = pc(y - top);
+  }
+  function finalizeDrawing() {
+    clearTimeout(autoFin); autoFin = 0;
+    if (!mounted) return;
+    let any = false;
+    for (const g of PG) {
+      const all = g.data.ink || [], nw = all.filter(st => fresh.has(st) && st.t !== 'highlight');
+      if (!nw.length) continue;
+      any = true; use(g); saveBody.flush(); P.html = serialize(); pushSnap(P);
+      if (!P.draws) P.draws = {};
+      wrapLoose(body);
+      const near = (a, b, m) => a[0] - m < b[2] && b[0] - m < a[2] && a[1] - m < b[3] && b[1] - m < a[3];
+      const join = (a, b) => ({ b: [Math.min(a.b[0], b.b[0]), Math.min(a.b[1], b.b[1]), Math.max(a.b[2], b.b[2]), Math.max(a.b[3], b.b[3])], st: a.st.concat(b.st), figs: a.figs.concat(b.figs) });
+      let groups = nw.map(st => ({ b: inkBounds(st.p, st.s), st: [st], figs: [] }));
+      const merge = () => { for (let i = 0; i < groups.length; i++) for (let j = i + 1; j < groups.length; j++) if (near(groups[i].b, groups[j].b, 36)) { groups[i] = join(groups[i], groups[j]); groups.splice(j, 1); return true; } return false; };
+      while (merge());
+      // strokes drawn over a drawing go into it
+      for (const f of $$('figure.ndraw', body)) {
+        const d = P.draws[f.dataset.draw]; if (!d) continue;
+        const r = rectIn(g, f), fb = [r.x, r.y, r.x + r.w, r.y + r.h], hit = groups.filter(gr => near(gr.b, fb, 4)); if (!hit.length) continue;
+        groups = groups.filter(gr => !hit.includes(gr)); groups.push(hit.reduce(join, { b: fb, st: d.st.map(st => xfStroke(st, r.x, r.y, r.w / d.w)), figs: [f] }));
+        while (merge());
+      }
+      for (const gr of groups) for (const f of gr.figs) { delete P.draws[f.dataset.draw]; f.remove(); }
+      groups.sort((a, b) => a.b[1] - b.b[1]);
+      for (const gr of groups) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const st of gr.st) { const b = inkBounds(st.p, st.s); x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); }
+        const id = uid('w'); P.draws[id] = { w: +(x1 - x0).toFixed(1), h: +(y1 - y0).toFixed(1), st: gr.st.map(st => xfStroke(st, -x0, -y0, 1)) };
+        const f = document.createElement('figure'); f.className = 'ndraw'; f.dataset.draw = id; drawFig(f, P);
+        placeFig(g, f, x0, y0, x1 - x0, gr.figs[0] && floatOf(gr.figs[0]));
+      }
+      P.ink = all.filter(st => !nw.includes(st));
+      P.html = serialize(); touch(D); renderInk(g);
+    }
+    if (any) { renderSub(); renderToolbar(); }
+  }
+  /* picking, moving and resizing a drawing (in text mode) */
+  const AL = { l: '<path d="M4 5h16M4 19h16M4 9h7v6H4z"/><path d="M14 11h6M14 13h6"/>', c: '<path d="M4 5h16M4 19h16M8 9h8v6H8z"/>', r: '<path d="M4 5h16M4 19h16M13 9h7v6h-7z"/><path d="M4 11h6M4 13h6"/>' };
+  function ndBar(f) {
+    if ($('.nd-bar', f)) $('.nd-bar', f).remove(); if ($('.nd-h', f)) $('.nd-h', f).remove();
+    const fl = floatOf(f), t = { l: 'À gauche, le texte à droite', c: 'Seul sur sa ligne', r: 'À droite, le texte à gauche' };
+    f.insertAdjacentHTML('beforeend', `<div class="nd-bar">${['l', 'c', 'r'].map(k => `<button data-nd="${k}" title="${t[k]}" aria-label="${t[k]}" aria-pressed="${fl === k}"><svg viewBox="0 0 24 24" class="i sm" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${AL[k]}</svg></button>`).join('')}<span class="nd-sep"></span><button data-nd="del" title="Supprimer le dessin (Suppr)" aria-label="Supprimer le dessin">${icon('trash', 'sm')}</button></div><i class="nd-h" data-ndh="1" title="Redimensionner"></i>`);
+  }
+  function ndPick(f) {
+    if (ndSel && ndSel !== f) { ndSel.classList.remove('sel'); for (const x of $$('.nd-bar,.nd-h', ndSel)) x.remove(); }
+    ndSel = f || null; if (f) { f.classList.add('sel'); ndBar(f); }
+  }
+  function ndAction(g, f, k) {
+    use(g); saveBody.flush(); P.html = serialize(); pushSnap(P);
+    if (k === 'del') { delete (P.draws || {})[f.dataset.draw]; if (ndSel === f) ndSel = null; f.remove(); }
+    else { const r = rectIn(g, f), br = rectIn(g, body); placeFig(g, f, k === 'l' ? br.x : k === 'r' ? br.x + br.w - r.w : br.x + (br.w - r.w) / 2, r.y, r.w, k); ndBar(f); }
+    P.html = serialize(); touch(D); renderSub(); renderToolbar();
+  }
+  function ndStart(g, f, e, resize) {
+    ndOp = { g, f, resize, id: e.pointerId, x: e.clientX, y: e.clientY, r0: f.getBoundingClientRect(), bw: g.body.getBoundingClientRect().width, moved: false };
+  }
+  function ndMove(e) {
+    const o = ndOp, dx = e.clientX - o.x, dy = e.clientY - o.y;
+    if (!o.moved) { if (Math.hypot(dx, dy) < 4) return; o.moved = true; use(o.g); saveBody.flush(); P.html = serialize(); pushSnap(P); if (!o.resize) o.f.classList.add('dragging'); }
+    if (o.resize) { const w = clamp(o.r0.width + (floatOf(o.f) === 'r' ? -dx : dx), 24, o.bw); o.f.style.width = (w / o.bw * 100).toFixed(2) + '%'; }
+    else o.f.style.transform = `translate(${dx}px, ${dy}px)`;
+  }
+  function ndEnd(e) {
+    const o = ndOp; ndOp = null; if (!o.moved) return;
+    const { g, f } = o;
+    if (!o.resize) {
+      f.classList.remove('dragging'); f.style.transform = '';
+      const s = g.el.getBoundingClientRect(), u = SW / s.width;
+      placeFig(g, f, (o.r0.left + e.clientX - o.x - s.left) * u, (o.r0.top + e.clientY - o.y - s.top) * u, o.r0.width * u);
+      ndBar(f);
+    }
+    P.html = serialize(); touch(D); renderSub(); renderToolbar();
+  }
+
   /* ---------- ink ---------- */
   function renderInk(g = cur) {
     if (!g) return;
@@ -182,15 +332,20 @@ const Note = (() => {
   }
   const renderAllInk = () => { for (const g of PG) renderInk(g); };
   function setMode(m) {
-    mode = m; for (const g of PG) g.el.classList.toggle('drawmode', m === 'draw');
-    if (m === 'draw') { if (document.activeElement === body) body.blur(); }
+    const was = mode; mode = m; for (const g of PG) g.el.classList.toggle('drawmode', m === 'draw');
+    if (m === 'draw') { ndPick(null); if (document.activeElement === body) body.blur(); }
     renderToolbar();
+    if (was === 'draw' && m !== 'draw') finalizeDrawing();
   }
   /* the history keeps which page each stroke went to */
   function commitInk(next) { hist.push({ p: P, ink: P.ink || [] }); if (hist.length > 80) hist.shift(); fut = []; P.ink = next; touch(D); renderInk(); renderSub(); renderToolbar(); }
   function stepInk(from, to) {
-    const h = from.pop(); if (!h) return; to.push({ p: h.p, ink: h.p.ink || [] }); h.p.ink = h.ink; touch(D);
-    const g = PG.find(g => g.data === h.p); if (g) { renderInk(g); if (spreadOn && !g.el.classList.contains('on')) { spr = g.i >> 1; layout(); } }
+    const h = from.pop(); if (!h) return;
+    if (h.html !== undefined) { saveBody.flush(); to.push(snap(h.p)); } else to.push({ p: h.p, ink: h.p.ink || [] });
+    h.p.ink = h.ink; touch(D);
+    const g = PG.find(g => g.data === h.p);
+    if (h.html !== undefined) { h.p.html = h.html; h.p.draws = h.draws; ndSel = null; if (g) hydrateInto(g.body, h.html, h.p); }
+    if (g) { renderInk(g); if (spreadOn && !g.el.classList.contains('on')) { spr = g.i >> 1; layout(); } }
     renderSub(); renderToolbar();
   }
   const undoInk = () => stepInk(hist, fut), redoInk = () => stepInk(fut, hist);
@@ -198,7 +353,8 @@ const Note = (() => {
     if (e.pointerType === 'pen') { penSeen = true; for (const g of PG) g.el.classList.add('penseen'); }
     const erase = pen === 'eraser' || (e.pointerType === 'pen' && (e.button === 5 || (e.buttons & 32)));
     try { e.target.setPointerCapture(e.pointerId); } catch (er) {}
-    if (erase) { erasing = { id: e.pointerId, base: P.ink || [], cur: (P.ink || []).slice() }; eraseAt(e); return; }
+    if (erase) { saveBody.flush(); erasing = { id: e.pointerId, base: P.ink || [], cur: (P.ink || []).slice(), snap: snap(P), figs: false }; eraseAt(e); return; }
+    clearTimeout(autoFin);
     const pr = penPref(pen);
     placeLive();
     drawing = e.pointerId;
@@ -208,22 +364,37 @@ const Note = (() => {
     const p = toLocal(e.clientX, e.clientY), r = 10 / scale();
     const keep = erasing.cur.filter(st => !inkHit(st.p, st.s, p.x, p.y, r));
     if (keep.length !== erasing.cur.length) { erasing.cur = keep; P.ink = keep; renderInk(); }
+    // and the drawings in the text
+    for (const f of $$('figure.ndraw', body)) {
+      const d = (P.draws || {})[f.dataset.draw]; if (!d) continue;
+      const b = rectIn(cur, f); if (p.x < b.x - r || p.x > b.x + b.w + r || p.y < b.y - r || p.y > b.y + b.h + r) continue;
+      const k = b.w / d.w, st = d.st.filter(st => !inkHit(st.p, st.s, (p.x - b.x) / k, (p.y - b.y) / k, r / k));
+      if (st.length === d.st.length) continue;
+      erasing.figs = true; d.st = st; if (st.length) drawFig(f, P); else { delete P.draws[f.dataset.draw]; f.remove(); }
+    }
   }
   function onMove(e) {
     if (e.pointerType === 'mouse' && wrap && wrap.classList.contains('typing') && (Math.abs(e.movementX) + Math.abs(e.movementY) > 2)) wrap.classList.remove('typing');
+    if (ndOp && ndOp.id === e.pointerId) { ndMove(e); return; }
     if (drawing === e.pointerId) ink.feed(e);
     else if (erasing && erasing.id === e.pointerId) eraseAt(e);
   }
   function onUp(e) {
-    if (drawing === e.pointerId) { drawing = null; const st = ink.end(); if (st && st.p.length >= 3) { if (st.p.length === 3) st.p.push(st.p[0] + .4, st.p[1] + .2, st.p[2]); commitInk((P.ink || []).concat([Object.assign({ t: st.t, c: st.c, s: st.s, o: st.o, p: st.p }, st.b ? { b: st.b } : {})])); useColor(st.c); } }
-    else if (erasing && erasing.id === e.pointerId) { const er = erasing; erasing = null; if (er.cur.length !== er.base.length) { P.ink = er.base; commitInk(er.cur); } }
+    if (ndOp && ndOp.id === e.pointerId) { ndEnd(e); return; }
+    if (drawing === e.pointerId) { drawing = null; const st = ink.end(); if (st && st.p.length >= 3) { if (st.p.length === 3) st.p.push(st.p[0] + .4, st.p[1] + .2, st.p[2]); const nst = Object.assign({ t: st.t, c: st.c, s: st.s, o: st.o, p: st.p }, st.b ? { b: st.b } : {}); fresh.add(nst); commitInk((P.ink || []).concat([nst])); useColor(st.c); }
+      // a stylus writing in text mode: the drawing settles into the text after a pause
+      if (mode === 'text') { clearTimeout(autoFin); autoFin = setTimeout(finalizeDrawing, 1400); } }
+    else if (erasing && erasing.id === e.pointerId) { const er = erasing; erasing = null;
+      if (er.figs) { hist.push(er.snap); if (hist.length > 80) hist.shift(); fut = []; P.ink = er.cur; P.html = serialize(); touch(D); renderInk(); renderSub(); renderToolbar(); }
+      else if (er.cur.length !== er.base.length) { P.ink = er.base; commitInk(er.cur); } }
   }
-  function onCancel(e) { if (drawing === e.pointerId) { drawing = null; ink.cancel(); } if (erasing && erasing.id === e.pointerId) { P.ink = erasing.base; erasing = null; renderInk(); } }
+  function onCancel(e) { if (ndOp && ndOp.id === e.pointerId) { ndEnd(e); return; } if (drawing === e.pointerId) { drawing = null; ink.cancel(); } if (erasing && erasing.id === e.pointerId) { P.ink = erasing.base; erasing = null; renderInk(); } }
 
   /* ---------- toolbar ---------- */
   function renderToolbar() {
     const pr = penPref(pen === 'eraser' ? 'pen' : pen), cols = pen === 'highlight' ? themeColors('hl', HL_COLORS) : themeColors('ink', INK_COLORS), b = (c, ic, t, extra = '') => `<button class="nb" data-cmd="${c}" title="${t}" aria-label="${t}" ${extra}>${ic}</button>`;
     const textG = `<div class="grp">${b('h1', '<span class="txt">T1</span>', 'Grand titre (#)')}${b('h2', '<span class="txt">T2</span>', 'Sous-titre (##)')}${b('bold', icon('bold'), 'Gras (Ctrl B)')}${b('italic', icon('ital'), 'Italique (Ctrl I)')}${b('mark', icon('hl'), 'Surligner')}</div><span class="vs"></span>
+      <div class="grp tfmt"><button class="nb tx" data-tx="font" title="Police" aria-label="Police"><span class="txt" style="font-family:'Instrument Serif',Georgia,serif;font-size:17px">Aa</span>${icon('chevd', 'sm')}</button><button class="nb tx" data-tx="size" title="Taille du texte" aria-label="Taille du texte"><span class="txt tsz">T<small>T</small></span>${icon('chevd', 'sm')}</button><button class="nb tx" data-tx="color" title="Couleur du texte" aria-label="Couleur du texte"><span class="tca">A<i style="background:${S.prefs.noteColor || '#E03131'}"></i></span>${icon('chevd', 'sm')}</button></div><span class="vs"></span>
       <div class="grp">${b('ul', icon('list'), 'Liste (-)')}${b('chk', icon('chk'), 'Cases à cocher ([])')}${b('quote', icon('sticky'), 'Post-it (>)')}${b('hand', '<span class="txt" style="font-family:var(--font-hand);font-size:17px">Aa</span>', 'Écriture manuscrite')}</div>`;
     const drawG = `<div class="grp">${NOTE_PENS.concat(NOTE_PENS.includes(pen) || !PENS[pen] ? [] : [pen]).map(k => `<button class="nb" data-pen="${k}" title="${PENS[k].name}${PEN_ORDER.indexOf(k) < 9 ? ` (${PEN_ORDER.indexOf(k) + 1})` : ''}" aria-label="${PENS[k].name}" aria-pressed="${pen === k}">${icon(PENS[k].icon)}</button>`).join('')}<button class="nb" data-pen="eraser" title="Gomme (E)" aria-label="Gomme" aria-pressed="${pen === 'eraser'}">${icon('eraser')}</button></div><span class="vs"></span>
       ${pen === 'eraser' ? '' : `<button class="pchip" data-pp="1" title="${PENS[pen].name} : pinceau, taille, flux, forme, texture">${brushPreview(pen, Object.assign({}, pr, { s: Math.min(pr.s, 14) }), 96, 26)}<span>${pr.s}</span>${icon('chevd', 'sm')}</button>
@@ -238,6 +409,7 @@ const Note = (() => {
   function onToolClick(e) {
     const m = e.target.closest('[data-mode]'); if (m) { setMode(m.dataset.mode); return; }
     const c = e.target.closest('[data-cmd]'); if (c) { if (c.dataset.cmd === 'dictate') dictateHere(c); else cmd(c.dataset.cmd); return; }
+    const tx = e.target.closest('[data-tx]'); if (tx) { textPop(tx); return; }
     const p = e.target.closest('[data-pen]'); if (p) { pen = p.dataset.pen; if (mode !== 'draw') setMode('draw'); else renderToolbar(); return; }
     const sw = e.target.closest('[data-col]'); if (sw) { S.prefs.pens[pen].c = sw.dataset.col; save(); renderToolbar(); return; }
     const wh = e.target.closest('[data-wheel]'); if (wh) { radialPop(wh, { get: () => penPref(pen).c, set: (v, final) => { S.prefs.pens[pen].c = v; save(); const cur = $('[data-wheel]', tool); if (cur) cur.style.background = v; } }); return; }
@@ -285,13 +457,20 @@ const Note = (() => {
       const f = e.target.closest('.nfile'); if (f) { const u = Assets.url(f.dataset.asset); if (u) { const l = document.createElement('a'); l.href = u; l.download = f.querySelector('b').textContent; document.body.append(l); l.click(); l.remove(); } }
     });
     b.addEventListener('dblclick', e => { const im = e.target.closest('figure img'); if (im && im.src) { const lb = document.createElement('div'); lb.className = 'lightbox'; lb.innerHTML = `<img src="${im.src}" alt="">`; lb.onclick = () => lb.remove(); document.body.append(lb); } });
+    b.addEventListener('pointerdown', e => {
+      if (mode !== 'text' || (e.pointerType === 'mouse' && e.button > 0)) return;
+      const f = e.target.closest('figure.ndraw'); if (!f) { if (ndSel) ndPick(null); return; }
+      e.preventDefault(); use(g);
+      const a = e.target.closest('[data-nd]'); if (a) { ndAction(g, f, a.dataset.nd); return; }
+      ndPick(f); ndStart(g, f, e, !!e.target.closest('[data-ndh]'));
+    });
     g.pad.addEventListener('pointerdown', e => { if (e.button > 0 && e.pointerType === 'mouse') return; if (e.pointerType === 'touch' && penSeen) return; e.preventDefault(); use(g); startStroke(e); });
     /* a stylus writes even in text mode, unless the setting is off */
     el.addEventListener('pointerdown', e => { if (mode === 'text' && e.pointerType === 'pen' && S.prefs.autoPen && !e.target.closest('input')) { e.preventDefault(); use(g); if (PENS[pen] === undefined && pen !== 'eraser') pen = 'pen'; startStroke(e); } }, true);
     el.addEventListener('dragover', e => { const ty = [...(e.dataTransfer.types || [])]; if (ty.includes('Files') || ty.includes('application/x-notely')) { e.preventDefault(); el.classList.add('dropping'); } });
     el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('dropping'); });
     el.addEventListener('drop', e => { use(g); onDrop(e); });
-    hydrateInto(b, g.data.html);
+    hydrateInto(b, g.data.html, g.data);
     if (ro) ro.observe(el);
     return g;
   }
@@ -363,6 +542,9 @@ const Note = (() => {
     D = d; hist = []; fut = []; mode = 'text'; drawing = null; erasing = null; if (!Array.isArray(D.ink)) D.ink = [];
     if (D.pages && !Array.isArray(D.pages)) delete D.pages;
     for (const p of D.pages || []) { if (!Array.isArray(p.ink)) p.ink = []; if (typeof p.html !== 'string') p.html = ''; }
+    // drawings no longer in the text (deleted while typing) are dropped when the note opens
+    for (const p of [D, ...(D.pages || [])]) if (p.draws) { const used = new Set([...(p.html || '').matchAll(/data-draw="([\w-]+)"/g)].map(m => m[1])); for (const id in p.draws) if (!used.has(id)) delete p.draws[id]; }
+    fresh = new WeakSet(); ndSel = null; ndOp = null; clearTimeout(autoFin);
     PG = []; cur = null; P = null; spr = 0; spreadOn = false; view = $('#view');
     const n = 1 + (D.pages || []).length;
     v.innerHTML = `<div class="nwrap"><div class="ntool" role="toolbar" aria-label="Mise en forme"></div>
@@ -379,7 +561,7 @@ const Note = (() => {
     use(PG[0]);
     renderSub(); renderToolbar();
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
-    tool.addEventListener('pointerdown', e => { if (e.target.closest('[data-cmd]')) e.preventDefault(); });
+    tool.addEventListener('pointerdown', e => { if (e.target.closest('[data-cmd],[data-tx]')) e.preventDefault(); });
     tool.addEventListener('click', onToolClick);
     wrap.addEventListener('click', e => {
       const a = e.target.closest('[data-pga]'); if (!a) return;
@@ -395,13 +577,16 @@ const Note = (() => {
     ro.observe(view);
     view.addEventListener('scroll', onScroll, { passive: true });
     layout();
+    // pen strokes from before 0.2.3 lay over the text: they settle into it as drawings the first time the note opens
+    let old = false; for (const g of PG) for (const st of g.data.ink || []) if (st.t !== 'highlight') { fresh.add(st); old = true; }
+    if (old) { finalizeDrawing(); use(PG[0]); }
   }
   /* themes can mark the toolbar once the note scrolls under it (.scrolled) and dim it while typing (.typing, cleared by a mouse move) */
   function onScroll() { if (mounted) wrap.classList.toggle('scrolled', view.scrollTop > 4); }
   function flush() { if (!mounted) return; saveBody.flush(); }
   function unmount() {
     if (!mounted) return;
-    flush(); mounted = false;
+    finalizeDrawing(); flush(); mounted = false;
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onCancel);
     if (ro) ro.disconnect(); if (liveBox) liveBox.remove(); if (view) view.removeEventListener('scroll', onScroll);
     D = null; PG = []; cur = null; P = null; view = null;
