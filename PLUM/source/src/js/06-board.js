@@ -533,7 +533,7 @@ const Board = (() => {
   }
   function helpModal() {
     const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O · D', 'Rectangle · Ellipse · Losange'], ['A', 'Flèche'], ['L', 'Ligne'], ['P', 'Stylo'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['F', 'Cadre'], ['I', 'Image ou fichier']]],
-      ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
+      ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Maj + glisser', 'Dupliquer et déplacer la copie'], ['Page ↑ / ↓', 'Avancer / reculer d’un plan'], ['Ctrl + Page ↑ / ↓', 'Tout devant / tout au fond'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
       ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]]];
     openModal(`<div class="mhd"><h2>Raccourcis du board</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div><div class="keys">${K.map(([t, rows]) => `<div><h5>${t}</h5>${rows.map(([k, l]) => `<div class="krow"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`);
   }
@@ -807,7 +807,8 @@ const Board = (() => {
       const tadd = t.closest('[data-tadd]'); if (tadd && hit) { e.preventDefault(); const it = byId.get(hit); sel = new Set([hit]); todoAddRow(hit, it.tasks.length - 1); return; }
       if (hit) {
         const was = sel.has(hit) && sel.size === 1;
-        if (e.shiftKey || e.ctrlKey || e.metaKey) { sel.has(hit) ? sel.delete(hit) : sel.add(hit); schedule(); return; }
+        if (e.shiftKey && !e.ctrlKey && !e.metaKey) { startDupMove(e, w, hit); return; }
+        if (e.ctrlKey || e.metaKey) { sel.has(hit) ? sel.delete(hit) : sel.add(hit); schedule(); return; }
         if (!sel.has(hit)) sel = new Set([hit]);
         startMove(e, w, was, t); return;
       }
@@ -843,6 +844,19 @@ const Board = (() => {
       if (it.k === 'mind' && !it.parent) mindDesc(id, ids);
     }
     return ids;
+  }
+  /* Shift + drag: the item (or the selection it belongs to) is copied and the copy follows the pointer; Shift + click still adds to or removes from the selection */
+  function startDupMove(e, w, hit) {
+    grab(e);
+    const x0 = e.clientX, y0 = e.clientY;
+    op = { id: e.pointerId, kind: 'dupwait', moved: false,
+      move(ev) {
+        if (ev.pointerId !== this.id || Math.hypot(ev.clientX - x0, ev.clientY - y0) < 5) return;
+        if (!sel.has(hit)) sel = new Set([hit]);
+        duplicate(0, 0); render();
+        startMove(e, w, true, null); op.move(ev);
+      },
+      up() { op = null; sel.has(hit) ? sel.delete(hit) : sel.add(hit); schedule(); } };
   }
   function startMove(e, w, wasSelected, target) {
     grab(e);
@@ -1459,6 +1473,8 @@ const Board = (() => {
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
     const mod = e.ctrlKey || e.metaKey, k = e.key;
     if (op && op.keep) { if (k === 'Enter') { op.finish(); e.preventDefault(); return true; } if (k === 'Escape') { cancelOp(); e.preventDefault(); return true; } }
+    /* layer order: Page Up / Down one step, with Ctrl all the way to the front / back */
+    if ((k === 'PageUp' || k === 'PageDown') && sel.size) { e.preventDefault(); zMove(k === 'PageUp' ? (mod ? 'front' : 'fwd') : (mod ? 'back' : 'bwd')); return true; }
     if (k === ' ' && !e.repeat) { spaceDown = true; host.classList.add('t-hand'); e.preventDefault(); return true; }
     if (mod) {
       const lk = k.toLowerCase();
@@ -1621,6 +1637,8 @@ const Board = (() => {
     toolsEl.addEventListener('contextmenu', e => { const b = e.target.closest('[data-tool="shape"],[data-tool="note"],[data-tool="pen"]'); if (b) { e.preventDefault(); setTool(b.dataset.tool === 'pen' ? penKind : b.dataset.tool); b.click(); } });
     toolsEl.addEventListener('pointerdown', e => e.preventDefault());
     toolsEl.addEventListener('pointerdown', toolDragStart);
+    toolsEl.addEventListener('dragstart', e => e.preventDefault());   // only our own drag: a native one would drop the button's text on the board
+    toolsEl.addEventListener('mousedown', e => e.preventDefault());
     bindDock();
     trEl.onclick = e => { if (!e.target.closest('[data-a="props"]')) return; if (drawingTool()) { Studio.toggleCard('brush'); return; } setProps(!propsOpen()); };
     propsEl.addEventListener('click', propsClick);
