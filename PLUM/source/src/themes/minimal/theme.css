@@ -1,0 +1,171 @@
+/* ================= Minimal (id "minimal", the default theme) =================
+   Quiet and airy, in the spirit of Evernote: flat surfaces, hairlines rather than boxes and shadows, small dense
+   navigation, the content in the middle with room around it. Instrument Sans for the interface, Instrument Serif for
+   the titles (pages, notes, cards' headings stay sans). Icons are fine lines with a soft second tone (MIN_D in theme.js, coloured by --i-d / --i-dk)
+   which takes the accent on the open page. Greys are oklch(L, chroma, hue) with the hue and chroma of the "Couleur du
+   thème" (--th-h, --th-c); the accent is Émeraude or the "Couleur d'accent" (--accent-c). The note editor is notes.css. */
+@font-face { font-family: "Instrument Sans"; font-style: normal; font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; src: url("asset:fonts/instrument-sans.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Sans"; font-style: italic; font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; src: url("asset:fonts/instrument-sans-italic.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Serif"; font-style: normal; font-weight: 400; font-display: swap; src: url("asset:fonts/instrument-serif.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Serif"; font-style: italic; font-weight: 400; font-display: swap; src: url("asset:fonts/instrument-serif-italic.woff2") format("woff2"); }
+
+:root[data-skin="minimal"] {
+  --th-h: 80; --th-c: .003;
+  --mn: var(--th-c); --mn-lo: calc(var(--th-c) * .5); --mn-hi: calc(var(--th-c) * 1.4);
+  --font-ui: "Instrument Sans", "Segoe UI Variable Text", "Segoe UI", -apple-system, system-ui, sans-serif;
+  --font-title: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --r-sm: 5px; --r-md: 7px; --r-lg: 10px; --r-xl: 14px;
+  --ok: #2FA96A; --warn: #E09A2E; --err: #E5564B; --info: #3E7BFA; --pink: #E5579A;
+}
+/* ---- dark: rail a touch lighter than the page, like Evernote; the note page is the page itself ---- */
+:root[data-skin="minimal"][data-resolved="dark"] {
+  --side: oklch(.205 var(--mn) var(--th-h)); --side-2: oklch(.245 var(--mn) var(--th-h)); --side-3: oklch(.275 var(--mn-hi) var(--th-h)); --side-line: oklch(.24 var(--mn) var(--th-h));
+  --side-text: oklch(.9 var(--mn-lo) var(--th-h)); --side-mute: oklch(.62 var(--mn) var(--th-h));
+  --paper: oklch(.18 var(--mn) var(--th-h)); --card: oklch(.215 var(--mn) var(--th-h)); --sunk: oklch(.165 var(--mn) var(--th-h)); --raise: oklch(.245 var(--mn) var(--th-h));
+  --menu: oklch(.235 var(--mn) var(--th-h)); --canvas: oklch(.2 var(--mn) var(--th-h));
+  --line: oklch(.265 var(--mn) var(--th-h)); --line-2: oklch(.33 var(--mn-hi) var(--th-h));
+  --ink: oklch(.93 var(--mn-lo) var(--th-h)); --ink-2: oklch(.74 var(--mn) var(--th-h)); --ink-3: oklch(.57 var(--mn-hi) var(--th-h));
+  --strong: oklch(.985 var(--mn-lo) var(--th-h));
+  --dot: oklch(1 0 0 / .07);
+  --accent: #22A55B; --accent-2: #33B86C; --on-accent: #FFFFFF;
+  --shadow-1: none;
+  --shadow-2: 0 16px 40px rgb(0 0 0 / .5), 0 0 0 1px oklch(.3 var(--mn) var(--th-h));
+  --shadow-note: 0 1px 1px rgb(0 0 0 / .3), 0 8px 16px -8px rgb(0 0 0 / .6);
+  --br-a: oklch(.27 var(--mn) var(--th-h)); --br-b: oklch(.235 var(--mn) var(--th-h)); --br-rim: rgb(255 255 255 / .06); --br-l1: #FFFFFF; --br-l2: var(--accent); --br-vein: oklch(.24 var(--mn) var(--th-h)); --br-text: var(--strong);
+  color-scheme: dark;
+}
+/* ---- light: white page, a pale rail, ink almost black ---- */
+:root[data-skin="minimal"][data-resolved="light"] {
+  --side: oklch(.972 calc(var(--th-c) * 1.4) var(--th-h)); --side-2: oklch(.94 calc(var(--th-c) * 1.6) var(--th-h)); --side-3: oklch(.915 calc(var(--th-c) * 1.8) var(--th-h)); --side-line: oklch(.925 calc(var(--th-c) * 1.6) var(--th-h));
+  --side-text: oklch(.25 var(--mn) var(--th-h)); --side-mute: oklch(.52 var(--mn-hi) var(--th-h));
+  --paper: #FFFFFF; --card: #FFFFFF; --sunk: oklch(.965 calc(var(--th-c) * 1.4) var(--th-h)); --raise: oklch(.975 calc(var(--th-c) * 1.2) var(--th-h));
+  --menu: #FFFFFF; --canvas: oklch(.975 calc(var(--th-c) * 1.2) var(--th-h));
+  --line: oklch(.92 calc(var(--th-c) * 1.6) var(--th-h)); --line-2: oklch(.86 calc(var(--th-c) * 2) var(--th-h));
+  --ink: oklch(.22 var(--mn) var(--th-h)); --ink-2: oklch(.46 var(--mn-hi) var(--th-h)); --ink-3: oklch(.6 var(--mn-hi) var(--th-h));
+  --strong: oklch(.15 var(--mn) var(--th-h));
+  --dot: oklch(.3 var(--mn-hi) var(--th-h) / .14);
+  --accent: #1E9A53; --accent-2: #17864A; --on-accent: #FFFFFF;
+  --shadow-1: none;
+  --shadow-2: 0 16px 40px rgb(20 20 18 / .12), 0 0 0 1px rgb(20 20 18 / .07);
+  --shadow-note: 0 1px 1px rgb(20 20 18 / .08), 0 6px 14px -6px rgb(20 20 18 / .25);
+  --br-a: #262624; --br-b: #161615; --br-rim: rgb(255 255 255 / .08); --br-l1: #FFFFFF; --br-l2: var(--accent); --br-vein: #161615; --br-text: #FFFFFF;
+  color-scheme: light;
+}
+:root[data-skin="minimal"][data-accent="custom"] { --accent: var(--accent-c); --on-accent: var(--on-accent-c); --accent-2: color-mix(in oklab, var(--accent) 88%, white); }
+:root[data-skin="minimal"][data-accent="custom"][data-resolved="light"] { --accent-2: color-mix(in oklab, var(--accent) 86%, black); }
+:root[data-skin="minimal"] { --tb-l: var(--side); --tb-r: var(--paper); --tb-sym: var(--ink-2); --tb-text: var(--side-mute); --accent-soft: color-mix(in oklab, var(--accent) 14%, transparent); }
+
+[data-skin="minimal"] body { font-size: 13.5px; font-feature-settings: "ss01", "cv11"; }
+[data-skin="minimal"] ::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+[data-skin="minimal"] .i { stroke-width: 1.5; }
+
+/* ---------- sidebar: small dense rows, no boxes; the open page gets a faint tile and its icon's tone in the accent ---------- */
+[data-skin="minimal"] #side { border-right: 1px solid var(--side-line); }
+[data-skin="minimal"] .brand { padding-bottom: 14px; }
+[data-skin="minimal"] .brand .pill { height: 36px; border-radius: 9px; padding: 0 13px 0 9px; gap: 7px; background: none; box-shadow: none; }
+[data-skin="minimal"] .brand .mark, [data-skin="minimal"] .brand .mark svg { width: 22px; height: 22px; }
+[data-skin="minimal"] .brand b { font: 400 25px/1 var(--font-title); letter-spacing: 0; color: var(--side-text); }
+[data-skin="minimal"] .sbox { height: 32px; border-radius: 8px; background: var(--side-2); box-shadow: none; color: var(--side-mute); }
+[data-skin="minimal"] .sbox kbd { border: 0; opacity: .7; font-weight: 500; }
+[data-skin="minimal"] .nv { height: 30px; border-radius: 6px; font-size: 13px; font-weight: 450; color: color-mix(in oklab, var(--side-text) 86%, var(--side)); gap: 10px; }
+[data-skin="minimal"] .nv .i { width: 17px; height: 17px; color: var(--side-mute); }
+[data-skin="minimal"] .nv:hover { background: var(--side-2); color: var(--side-text); }
+[data-skin="minimal"] .nv:hover .i { color: var(--side-text); }
+[data-skin="minimal"] .nv[aria-current="page"] { background: var(--side-3); color: var(--strong); font-weight: 550; }
+[data-skin="minimal"] .nv[aria-current="page"] .i { color: var(--strong); }
+[data-skin="minimal"] .nv[aria-current="page"] .i { --i-d: var(--accent); --i-dk: 3.5; }
+[data-skin="minimal"] .nv .ct { color: var(--side-mute); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+[data-skin="minimal"] .sec { margin: 22px 10px 4px; font-size: 12px; font-weight: 550; letter-spacing: 0; color: var(--side-mute); }
+[data-skin="minimal"] .sec span { display: inline-block; text-transform: lowercase; }
+[data-skin="minimal"] .sec span::first-letter { text-transform: uppercase; }
+[data-skin="minimal"] .me { color: var(--side-text); font-weight: 500; }
+[data-skin="minimal"] .av { background: var(--accent); color: var(--on-accent); }
+[data-skin="minimal"] .sib { color: var(--side-mute); }
+[data-skin="minimal"] .sib:hover { color: var(--side-text); background: var(--side-2); }
+
+/* ---------- top bar: part of the page, a hairline under it ---------- */
+[data-skin="minimal"] #top { height: 48px; background: var(--paper); border-bottom-color: var(--line); }
+[data-skin="minimal"] #top .crumbs { font-size: 12.5px; }
+[data-skin="minimal"] #top .crumbs .cur { color: var(--ink); font-weight: 550; }
+[data-skin="minimal"] .tb { border-radius: 7px; height: 30px; color: var(--ink-2); }
+[data-skin="minimal"] .tb:hover { background: var(--raise); color: var(--ink); }
+[data-skin="minimal"] .tb[aria-pressed="true"] .i { --i-d: var(--accent); --i-dk: 3.5; }
+[data-skin="minimal"] .tb.pri { background: var(--accent); color: var(--on-accent); border-radius: 7px; }
+[data-skin="minimal"] .tb.pri:hover { background: var(--accent-2); color: var(--on-accent); }
+
+/* ---------- pages: serif titles, cards as quiet panels ---------- */
+[data-skin="minimal"] .ph h1 { font: 400 40px/1.08 var(--font-title); letter-spacing: -.005em; color: var(--strong); }
+[data-skin="minimal"] .ph .acts { border: 0; padding: 0; align-self: center; }
+[data-skin="minimal"] .ph .sub { font-size: 13px; color: var(--ink-3); }
+[data-skin="minimal"] .card, [data-skin="minimal"] .tlist { background: var(--card); border-color: var(--line); border-radius: 10px; box-shadow: none; }
+[data-skin="minimal"][data-resolved="light"] .card, [data-skin="minimal"][data-resolved="light"] .tlist { background: var(--raise); border-color: transparent; }
+[data-skin="minimal"] .card > h2 { font-size: 13px; font-weight: 600; color: var(--strong); }
+[data-skin="minimal"] .card > h2 .i { color: var(--ink-3); }
+[data-skin="minimal"] .card > h2 .more { color: var(--ink-2); font-weight: 500; }
+[data-skin="minimal"] .card > h2 .more:hover { color: var(--accent); }
+[data-skin="minimal"] .dcard .th { border-radius: 8px; border-color: var(--line); background: var(--sunk); }
+[data-skin="minimal"][data-resolved="light"] .dcard .th { background: #FFFFFF; }
+[data-skin="minimal"] .dcard:hover .th { transform: none; border-color: var(--line-2); box-shadow: none; }
+[data-skin="minimal"] .dcard .kind { border-radius: 5px; }
+[data-skin="minimal"] .trow { border-radius: 7px; }
+[data-skin="minimal"] .trow:hover, [data-skin="minimal"] .sprow:hover { background: var(--raise); }
+[data-skin="minimal"][data-resolved="light"] .trow:hover, [data-skin="minimal"][data-resolved="light"] .sprow:hover { background: #FFFFFF; }
+[data-skin="minimal"] .sprow .bar { height: 3px; }
+[data-skin="minimal"] .chip { border-radius: 5px; font-weight: 500; }
+[data-skin="minimal"] .cb { border-radius: 50%; background: transparent; }
+[data-skin="minimal"] .cb[aria-checked="true"] { color: var(--on-accent); }
+[data-skin="minimal"] .focuscard { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+[data-skin="minimal"] .focuscard p { color: var(--ink-2); }
+[data-skin="minimal"] .fab { background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 24px -6px color-mix(in oklab, var(--accent) 60%, transparent); }
+[data-skin="minimal"] .fab .i { --i-dk: 2; }
+
+/* ---------- controls ---------- */
+[data-skin="minimal"] .btn { height: 32px; border-radius: 7px; font-weight: 500; background: var(--card); border-color: var(--line-2); }
+[data-skin="minimal"] .btn:hover { background: var(--raise); }
+[data-skin="minimal"] .btn.pri { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+[data-skin="minimal"] .btn.pri:hover { background: var(--accent-2); border-color: var(--accent-2); }
+[data-skin="minimal"] .btn.pri .i { --i-dk: 2; }
+[data-skin="minimal"] .btn.ghost { background: none; }
+[data-skin="minimal"] .btn.sm { height: 28px; border-radius: 6px; }
+[data-skin="minimal"] .seg, [data-skin="minimal"] .stabs { background: var(--sunk); border-radius: 8px; }
+[data-skin="minimal"] .stabs { border-color: var(--line); }
+[data-skin="minimal"] .seg button, [data-skin="minimal"] .stabs button { border-radius: 6px; font-weight: 500; }
+[data-skin="minimal"] .seg button[aria-pressed="true"], [data-skin="minimal"] .stabs button[aria-selected="true"] { background: var(--raise); color: var(--strong); box-shadow: 0 0 0 1px var(--line); }
+[data-skin="minimal"][data-resolved="light"] .seg button[aria-pressed="true"], [data-skin="minimal"][data-resolved="light"] .stabs button[aria-selected="true"] { background: #FFFFFF; box-shadow: 0 1px 2px rgb(20 20 18 / .12), 0 0 0 1px rgb(20 20 18 / .05); }
+[data-skin="minimal"] .tg input:checked + span { background: var(--accent); }
+[data-skin="minimal"] .srow input[type="text"] { border-radius: 6px; background: var(--sunk); border-color: var(--line); }
+[data-skin="minimal"] .pop, [data-skin="minimal"] .qbar { background: var(--menu); border-color: var(--line); border-radius: 9px; box-shadow: var(--shadow-2); }
+[data-skin="minimal"] .mi { border-radius: 5px; }
+[data-skin="minimal"] .mi:hover { background: var(--raise); }
+[data-skin="minimal"][data-resolved="light"] .mi:hover { background: var(--sunk); }
+[data-skin="minimal"] .sheet-m { background: var(--menu); border-radius: 12px; box-shadow: var(--shadow-2); }
+[data-skin="minimal"] .sheet-m h2 { font: 400 26px/1.1 var(--font-title); color: var(--strong); }
+[data-skin="minimal"] .sheet-m h5 { font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12.5px; color: var(--ink-2); }
+[data-skin="minimal"] .skin-c { border-radius: 9px; background: var(--card); border-color: var(--line-2); }
+
+/* ---------- board: a plain canvas with faint dots, light islands ---------- */
+[data-skin="minimal"] .bhost { background-color: var(--canvas); }
+[data-skin="minimal"] .isl { background: color-mix(in oklab, var(--menu) 96%, transparent); border-color: var(--line); border-radius: 10px; box-shadow: var(--shadow-2); }
+[data-skin="minimal"] .tl { border-radius: 7px; }
+[data-skin="minimal"] .tl:hover { background: var(--raise); }
+[data-skin="minimal"][data-resolved="light"] .tl:hover { background: var(--sunk); }
+[data-skin="minimal"] .tl[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+[data-skin="minimal"] .props { background: var(--card); border-color: var(--line); border-radius: 10px; }
+[data-skin="minimal"] .ptab[aria-pressed="true"] { color: var(--strong); }
+[data-skin="minimal"] .ps-l { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+
+/* ---------- scrollbars: thin, only the thumb ---------- */
+[data-skin="minimal"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+[data-skin="minimal"] ::-webkit-scrollbar-track { background: transparent; }
+[data-skin="minimal"] ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+[data-skin="minimal"] ::-webkit-scrollbar-thumb:hover { background-color: var(--ink-3); }
+
+
+/* preview card in Réglages > UI: a graphite rail, a dark page with a serif title and a line of text */
+.sk-minimal .skin-pv { background: #1B1B1A; }
+.sk-minimal .skin-pv::before { content: ""; position: absolute; inset: 0; background: linear-gradient(#232322 0 0) 0 0 / 26% 100% no-repeat; }
+.sk-minimal .skin-pv i:nth-child(1) { left: 5%; top: 18%; width: 9%; height: 9%; background: #22A55B; border-radius: 2px; }
+.sk-minimal .skin-pv i:nth-child(2) { left: 5%; top: 36%; width: 16%; height: 6%; background: #3A3A38; border-radius: 2px; }
+.sk-minimal .skin-pv i:nth-child(3) { left: 36%; top: 22%; width: 44%; height: 14%; border-radius: 0; background: none; font: 400 15px/1 "Instrument Serif", Georgia, serif; color: #ECEBE8; }
+.sk-minimal .skin-pv i:nth-child(3)::before { content: "Titre"; }
+.sk-minimal .skin-pv i:nth-child(4) { left: 36%; top: 52%; width: 50%; height: 5%; background: #3A3A38; border-radius: 2px; box-shadow: 0 9px 0 #2C2C2B, 0 18px 0 #2C2C2B; }
