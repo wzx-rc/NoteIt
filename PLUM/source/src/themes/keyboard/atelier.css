@@ -1,0 +1,16 @@
+/* ================= Keyboard : the drawing studio =================
+   Every module is a graphite pad set in a light aluminium bezel (the dock's well, larger), legends in Orbitron,
+   the chosen brush, swatch or mode lit orange. No leaves: this is hardware. */
+[data-skin="keyboard"] :is(.atl, .atl-pop, .pppop, .bp) {
+  --a-canvas: #1B1B1B; --a-panel: #242423; --a-raised: #2E2E2D; --a-inset: #161616; --a-edge: #3E3E3D; --a-edge2: #4A4A49; --a-hair: #3A3A39;
+  --a-ink: #ECECE9; --a-ink2: #BDBDBA; --a-ink3: #8A8A87; --a-title: #F4F4F1; --a-accent: #F2591E; --a-accent-deep: #B83C0E; --a-focus: #FF7E45;
+  --a-sel: #4A2A1C; --a-sel-edge: #F2591E; --a-tile: #2E2E2D; --a-tile-edge: #444443; --a-bronze: #F2591E;
+  --a-font: var(--font-ui);
+  --a-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 0 0 1px rgba(0, 0, 0, .6), 0 0 0 5px #BDBDBA, 0 0 0 6px rgba(0, 0, 0, .14), 0 18px 30px -12px rgba(0, 0, 0, .55);
+  --a-shadow-sm: inset 0 1px 0 rgba(255, 255, 255, .08), 0 0 0 1px rgba(0, 0, 0, .6), 0 0 0 4px #BDBDBA, 0 10px 18px -8px rgba(0, 0, 0, .5);
+  --a-ctl: inset 0 1px 0 rgba(255, 255, 255, .12), 0 0 0 1px rgba(0, 0, 0, .5), 0 2px 0 #0E0E0E;
+}
+[data-skin="keyboard"] :is(.atl, .atl-pop) .lf { display: none; }
+[data-skin="keyboard"] .atl-card { border-radius: 18px; }
+[data-skin="keyboard"] .ch-t { font: 700 13px/1 var(--font-key); letter-spacing: .14em; text-transform: uppercase; color: var(--a-title); text-shadow: none; }
+[data-skin="keyboard"] .atl-bar { border-radius: 18px; }

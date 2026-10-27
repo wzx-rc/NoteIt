@@ -1,0 +1,83 @@
+/* ================= Keyboard : the board =================
+   A light aluminium plate with a dot grid. The tools are the kit's "example toolbar": a black well with graphite
+   keys, the current tool the orange key; under it a light strip with the options of that tool. A knurled knob at the
+   left end of the well moves the whole block. Zoom, undo and the panel are light keys; "Style" is orange. */
+
+[data-skin="keyboard"] .bwrap { background: var(--paper) var(--kb-grain) 0 0 / 256px; background-blend-mode: soft-light; }
+[data-skin="keyboard"] .bhost { background-color: transparent; }
+
+/* islands: light key strips */
+[data-skin="keyboard"] .isl { border: 0; border-radius: 13px; padding: 5px; background: linear-gradient(180deg, #EFEFEC, #E2E2DF); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .08), 0 2px 0 #B5B5B2, 0 10px 18px -8px rgba(0, 0, 0, .35); }
+[data-skin="keyboard"] .tl { border-radius: 9px; color: var(--kb-legend); }
+[data-skin="keyboard"] .tl:hover { background: rgba(0, 0, 0, .06); color: var(--ink); }
+[data-skin="keyboard"] .tl[aria-pressed="true"] { background: var(--kc-o); box-shadow: inset 0 1px 0 rgba(255, 220, 190, .6), 0 2px 0 #B83C0E; color: #fff; }
+[data-skin="keyboard"] .tl kbd { font-family: var(--font-key); font-size: 7.5px; }
+[data-skin="keyboard"] .isl .zv { font: 600 11.5px var(--font-key); letter-spacing: .04em; color: var(--ink-2); }
+/* the hint sits at the foot, out of the way of the dock */
+[data-skin="keyboard"] .bhint { top: auto; bottom: 20px; background: var(--kb-well-2); color: #EDEDEA; border-radius: 10px; box-shadow: var(--shadow-2); }
+
+@media (min-width: 761px) {
+  [data-skin="keyboard"] .tdock { display: block; position: absolute; z-index: 21; top: 14px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 28px); }
+  [data-skin="keyboard"] .bwrap.props-open .tdock:not(.moved) { left: calc((100% - var(--props-w) - 12px) / 2); }
+  [data-skin="keyboard"] .tdock.moved { transform: none; }
+  [data-skin="keyboard"] .tdock.dragging { opacity: .94; }
+  /* the well */
+  [data-skin="keyboard"] .tdock .trow { display: flex; align-items: center; max-width: 100%; gap: 6px; padding: 7px 9px 9px 8px; border-radius: 16px;
+    background: linear-gradient(180deg, #1B1B1B, #111); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), 0 0 0 1px rgba(0, 0, 0, .6), 0 0 0 5px #BDBDBA, 0 0 0 6px rgba(0, 0, 0, .14), 0 16px 26px -10px rgba(0, 0, 0, .55); }
+  /* the knurled knob that moves the block */
+  [data-skin="keyboard"] .tgrip { display: block; flex: none; width: 34px; height: 34px; border-radius: 50%; cursor: grab; touch-action: none;
+    background: radial-gradient(circle at 50% 40%, #F4F4F1 0 34%, transparent 35%), repeating-conic-gradient(#D6D6D3 0 6deg, #B8B8B5 6deg 12deg);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 0 0 1px rgba(0, 0, 0, .55), 0 3px 0 #6E6E6B, 0 5px 8px rgba(0, 0, 0, .5); }
+  [data-skin="keyboard"] .tdock.dragging .tgrip { cursor: grabbing; }
+  [data-skin="keyboard"] .bwrap:is(*, .props-open, .drawing) .tdock .trow .isl { position: static; transform: none; left: auto; top: auto; }
+  [data-skin="keyboard"] .bwrap:is(*, .props-open, .drawing) .isl.tools { flex-direction: row; gap: 5px; padding: 1px 1px 4px; max-width: none; overflow-x: auto; background: none; border: 0; box-shadow: none; }
+  [data-skin="keyboard"] .isl.tools .tl { width: 40px; height: 38px; flex: none; margin: 0; border-radius: 9px; color: #E4E4E1; background: var(--kc-d); box-shadow: var(--kc-d-sh); transition: transform .08s, box-shadow .08s; }
+  [data-skin="keyboard"] .isl.tools .tl .i { width: 20px; height: 20px; }
+  [data-skin="keyboard"] .isl.tools .tl:hover { background: linear-gradient(180deg, #4A4A49, #353534 70%, #2D2D2C); color: #fff; }
+  [data-skin="keyboard"] .isl.tools .tl:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 0 0 1px rgba(0, 0, 0, .5), 0 1px 0 #0E0E0E; }
+  [data-skin="keyboard"] .isl.tools .tl[aria-pressed="true"] { background: var(--kc-o); box-shadow: var(--kc-o-sh); color: #fff; }
+  [data-skin="keyboard"] .isl.tools .tl kbd, [data-skin="keyboard"] .isl.tools .tl .k { display: none; }
+  [data-skin="keyboard"] .isl.tools .vs { width: 1px; height: 26px; margin: 0 3px; background: rgba(255, 255, 255, .12); }
+  /* the options of the chosen tool: a light strip under the well */
+  [data-skin="keyboard"] .topts:not([hidden]) { position: absolute; top: calc(100% + 12px); left: 50%; transform: translateX(-50%); width: max-content; max-width: min(1000px, calc(100vw - 80px)); display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 5px 10px; border-radius: 13px;
+    background: linear-gradient(180deg, #F2F2EF, #E4E4E1); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .1), 0 2px 0 #B5B5B2, 0 10px 18px -8px rgba(0, 0, 0, .35); }
+  [data-skin="keyboard"] .topts .vs { width: 1px; height: 20px; margin: 0 4px; background: rgba(0, 0, 0, .14); }
+  [data-skin="keyboard"] .topts .seg { background: none; padding: 0; gap: 3px; border: 0; box-shadow: none; }
+  [data-skin="keyboard"] .topts .seg button { height: 28px; min-width: 28px; padding: 0 5px; border-radius: 7px; color: var(--kb-legend); }
+  [data-skin="keyboard"] .topts .seg button:hover { background: rgba(0, 0, 0, .06); color: var(--ink); }
+  [data-skin="keyboard"] .topts .seg button[aria-pressed="true"] { background: var(--kc-d); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 2px 0 #0E0E0E; color: #fff; }
+  [data-skin="keyboard"] .topts .seg .i { width: 17px; height: 17px; }
+  [data-skin="keyboard"] .topts .seg .pl { width: 30px; height: 14px; }
+  [data-skin="keyboard"] .topts .sws { display: flex; gap: 4px; align-items: center; }
+  [data-skin="keyboard"] .topts .sw { width: 20px; height: 20px; }
+  [data-skin="keyboard"] .topts .pchip { height: 28px; padding: 0 8px; border-radius: 8px; border: 0; background: var(--kc-l); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .1), 0 2px 0 #B5B5B2; display: inline-flex; align-items: center; gap: 4px; font: 600 11px var(--font-key); }
+  [data-skin="keyboard"][data-focus] .tdock { top: 60px; }
+  [data-skin="keyboard"] .isl.bl { left: 14px; bottom: 14px; }
+  [data-skin="keyboard"] .isl.bl.undo { left: 176px; }
+  [data-skin="keyboard"] .isl.tr { top: 14px; right: 14px; }
+  [data-skin="keyboard"] .bwrap.drawing .isl.tr { right: 92px; }
+  [data-skin="keyboard"] .isl.br { right: 14px; bottom: 14px; }
+}
+/* "Style" is the orange key */
+[data-skin="keyboard"] .isl.tr { padding: 0; background: none; box-shadow: none; }
+[data-skin="keyboard"] .isl.tr .tl { height: 40px; padding: 0 16px 0 13px; border-radius: 10px; background: var(--kc-o); box-shadow: var(--kc-o-sh); color: #fff; font: 700 11.5px var(--font-key); letter-spacing: .1em; text-transform: uppercase; }
+[data-skin="keyboard"] .isl.tr .tl:hover { background: linear-gradient(180deg, #FF8A55, #F7612A 65%, #E8521A); }
+[data-skin="keyboard"] .isl.tr .tl:active { transform: translateY(2px); box-shadow: var(--kc-o-dn); }
+
+/* the panel on the right: the kit's "Properties" panel, tabs as a row of keys */
+[data-skin="keyboard"] .props { border: 0; border-radius: 18px; background: linear-gradient(180deg, #F0F0ED, #E6E6E3); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .08), 0 18px 34px -14px rgba(0, 0, 0, .45); }
+[data-skin="keyboard"] .phead { gap: 4px; padding: 10px 10px 10px; border-bottom: 1px solid rgba(0, 0, 0, .1); box-shadow: 0 1px 0 rgba(255, 255, 255, .7); }
+[data-skin="keyboard"] .ptab { height: 30px; padding: 0 10px; margin: 0; border: 0; border-radius: 8px; color: var(--kb-legend); font: 600 10.5px var(--font-key); letter-spacing: .06em; text-transform: uppercase; background: var(--kc-l); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .08), 0 2px 0 #B5B5B2; }
+[data-skin="keyboard"] .ptab:hover { color: var(--ink); }
+[data-skin="keyboard"] .ptab[aria-pressed="true"] { background: var(--kc-o); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 220, 190, .6), 0 2px 0 #B83C0E; }
+[data-skin="keyboard"] .ps-l { font: 700 10.5px/1.2 var(--font-key); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+[data-skin="keyboard"] .ps-l b { font: 600 11px var(--font-ui); letter-spacing: 0; text-transform: none; }
+[data-skin="keyboard"] .props .bp-pv { background: var(--kb-well-2); border-radius: 10px; box-shadow: var(--kb-sunk); }
+[data-skin="keyboard"] .sw[aria-pressed="true"] { box-shadow: 0 0 0 2px #F4F4F1, 0 0 0 4px var(--kb-orange); }
+
+/* board items: crisp, with graphite ink; pictures get a thin light bezel */
+[data-skin="keyboard"] .it.image.shadow { border-radius: 10px; background: #F7F7F4; padding: 4px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .1), 0 10px 18px -8px rgba(0, 0, 0, .4); }
+[data-skin="keyboard"] .it.image.shadow img { border-radius: 7px; }
+[data-skin="keyboard"] .frame-it .ftitle { font: 700 15px/1 var(--font-key); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+[data-skin="keyboard"] .it.mind.l0 { border-radius: 12px; background: var(--kc-o); color: #fff; border: 0; box-shadow: var(--kc-o-sh); }
+[data-skin="keyboard"] .clabel { font: 600 12px var(--font-key); letter-spacing: .04em; background: var(--paper); border-radius: 6px; }

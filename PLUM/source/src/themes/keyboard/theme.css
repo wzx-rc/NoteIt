@@ -1,0 +1,202 @@
+/* ================= Keyboard : modern keycap hardware =================
+   From the user's three boards: a keyboard corner (aluminium case, black well, an orange esc key among light keys),
+   the "UI Design Kit, modern keycap style" and a sampler pad (grey plate, graphite and light keys, orange accents,
+   small LEDs, a fader). The app is that hardware: the window is a bead-blasted aluminium plate, the sidebar and the
+   pages are raised plates, the top bar is a black well, every button is a sculpted keycap.
+   Three keycaps, used with intent: light = the ordinary keys, graphite = tools and wells, orange = the one key that
+   is on (current page, current tool, primary action). Nothing else is orange.
+   board.css: the board and its dock. notes.css: the note page. */
+
+@font-face { font-family: "Orbitron"; font-style: normal; font-weight: 400 900; font-display: swap; src: url("asset:fonts/orbitron-latin.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400 700; font-display: swap; src: url("asset:fonts/inter-latin.woff2") format("woff2"); }
+
+:root { --kb-grain: url("asset:grain.webp"); }
+:root[data-skin="keyboard"] {
+  /* the hardware */
+  --kb-alu: #C9C9C6; --kb-alu-hi: #D6D6D3; --kb-plate: #DCDCD9; --kb-well: #161616; --kb-well-2: #222221;
+  --kb-orange: #F2591E; --kb-orange-hi: #FF7E45; --kb-orange-lo: #B83C0E;
+  --kb-graphite: #2E2E2D; --kb-legend: #3A3A39; --kb-legend-2: #7A7A77;
+  /* the three keycaps: face, then the skirt drawn as a solid shadow, then the cast shadow */
+  --kc-l: linear-gradient(180deg, #F7F7F4, #E4E4E1 70%, #DADAD7);
+  --kc-l-sh: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -2px 3px rgba(0, 0, 0, .07), 0 0 0 1px rgba(0, 0, 0, .07), 0 3px 0 #ADADAA, 0 6px 10px -3px rgba(0, 0, 0, .3);
+  --kc-l-dn: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 2px 4px rgba(0, 0, 0, .1), 0 0 0 1px rgba(0, 0, 0, .08), 0 1px 0 #ADADAA, 0 2px 4px -2px rgba(0, 0, 0, .3);
+  --kc-d: linear-gradient(180deg, #424241, #2F2F2E 70%, #282827);
+  --kc-d-sh: inset 0 1px 0 rgba(255, 255, 255, .14), inset 0 -2px 3px rgba(0, 0, 0, .25), 0 0 0 1px rgba(0, 0, 0, .5), 0 3px 0 #0E0E0E, 0 6px 10px -3px rgba(0, 0, 0, .45);
+  --kc-o: linear-gradient(180deg, #FF7E45, #F2591E 65%, #E44C12);
+  --kc-o-sh: inset 0 1px 0 rgba(255, 220, 190, .7), inset 0 -2px 3px rgba(120, 30, 0, .25), 0 0 0 1px rgba(150, 40, 0, .35), 0 3px 0 #B83C0E, 0 6px 12px -3px rgba(200, 70, 20, .45);
+  --kc-o-dn: inset 0 1px 0 rgba(255, 220, 190, .5), inset 0 2px 5px rgba(120, 30, 0, .3), 0 0 0 1px rgba(150, 40, 0, .4), 0 1px 0 #B83C0E, 0 2px 5px -2px rgba(200, 70, 20, .4);
+  /* a raised plate (sidebar, pages, panels) */
+  --kb-raise: inset 0 1px 0 rgba(255, 255, 255, .75), inset 0 -1px 0 rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .12), 0 14px 30px -14px rgba(0, 0, 0, .45);
+  --kb-sunk: inset 0 2px 4px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(0, 0, 0, .6), 0 1px 0 rgba(255, 255, 255, .55);
+  /* sidebar */
+  --side: #D3D3D0; --side-2: #C7C7C4; --side-3: #F2591E; --side-line: rgba(0, 0, 0, .1);
+  --side-text: #262626; --side-mute: #6E6E6B;
+  /* pages */
+  --paper: #DEDEDB; --card: #EDEDEA; --sunk: #D2D2CF; --raise: #F4F4F1;
+  --line: rgba(0, 0, 0, .1); --line-2: rgba(0, 0, 0, .18);
+  --ink: #232323; --ink-2: #4E4E4C; --ink-3: #7A7A77;
+  --accent: #F2591E; --accent-2: #D9470F; --on-accent: #FFFFFF;
+  --accent-soft: rgba(242, 89, 30, .14); --accent-line: rgba(242, 89, 30, .55);
+  --ok: #4C9A6A; --warn: #E8A33A; --err: #D9361A; --info: #3C78C8; --pink: #D85B86;
+  --dot: rgba(0, 0, 0, .16);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .12), 0 4px 12px rgba(0, 0, 0, .08);
+  --shadow-2: 0 3px 8px rgba(0, 0, 0, .14), 0 18px 36px -12px rgba(0, 0, 0, .4);
+  --shadow-note: 0 1px 1px rgba(0, 0, 0, .12), 0 8px 14px -6px rgba(0, 0, 0, .3);
+  --font-ui: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-key: "Orbitron", "Bahnschrift", "Segoe UI", sans-serif;
+  --tb-l: transparent; --tb-r: transparent; --tb-sym: #2E2E2D; --tb-text: #5A5A58;
+  color-scheme: light;
+}
+
+/* ---------- the aluminium plate behind everything ---------- */
+[data-skin="keyboard"] body { background: var(--kb-alu) var(--kb-grain) 0 0 / 256px; background-blend-mode: soft-light; }
+[data-skin="keyboard"] #tbar { background: transparent; }
+[data-skin="keyboard"] #tbar .tb-l { font-family: var(--font-key); font-weight: 700; letter-spacing: .14em; color: #5A5A58; }
+[data-skin="keyboard"] #tbar .tb-l svg { fill: var(--kb-orange); }
+
+@media (min-width: 761px) {
+  [data-skin="keyboard"] #app { padding: 12px; gap: 12px; box-sizing: border-box; grid-template-columns: var(--side-w) minmax(0, 1fr) auto; }
+  [data-skin="keyboard"] #side { border-radius: 20px; background: var(--side) var(--kb-grain) 0 0 / 256px; background-blend-mode: soft-light; box-shadow: var(--kb-raise); padding: 16px 12px 12px; }
+  [data-skin="keyboard"] #main { background: transparent; gap: 12px; }
+  /* the top bar is the black well of the keyboard, keys set into it */
+  [data-skin="keyboard"] #top { height: 56px; border: 0; border-radius: 16px; background: linear-gradient(180deg, #1C1C1C, #121212); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), 0 1px 0 rgba(255, 255, 255, .6), 0 0 0 1px rgba(0, 0, 0, .55); }
+  [data-skin="keyboard"] #view { border-radius: 20px; background: var(--paper) var(--kb-grain) 0 0 / 256px; background-blend-mode: soft-light; box-shadow: var(--kb-raise); }
+  [data-skin="keyboard"] #ai { border-radius: 20px; overflow: hidden; box-shadow: var(--kb-raise); }
+  [data-skin="keyboard"][data-focus] #app { grid-template-columns: 0 minmax(0, 1fr) auto; gap: 0 12px; }
+}
+
+/* ---------- sidebar: the keypad ---------- */
+[data-skin="keyboard"] .brand { position: relative; padding: 2px 4px 18px; }
+[data-skin="keyboard"] .brand .pill { height: auto; padding: 0; background: none; box-shadow: none; border-radius: 0; display: grid; grid-template-columns: 42px auto; grid-template-rows: auto auto; column-gap: 12px; align-items: center; }
+/* the logo is the orange esc key of the first board */
+[data-skin="keyboard"] .brand .mark { grid-row: 1 / 3; width: 42px; height: 40px; border-radius: 10px; background: var(--kc-o); box-shadow: var(--kc-o-sh); display: grid; place-items: center; }
+[data-skin="keyboard"] .brand .mark svg { display: none; }
+[data-skin="keyboard"] .brand .mark::after { content: "esc"; font: 500 13px/1 var(--font-ui); color: rgba(255, 238, 226, .92); letter-spacing: .02em; }
+[data-skin="keyboard"] .brand b { font: 800 19px/1 var(--font-key); letter-spacing: .1em; color: var(--ink); align-self: end; }
+[data-skin="keyboard"] .brand .pill::after { content: "Dessine · Planifie · Crée"; font: 500 11px/1.3 var(--font-ui); color: var(--side-mute); align-self: start; margin-top: 4px; white-space: nowrap; }
+[data-skin="keyboard"] .brand .ver { position: absolute; right: 0; top: -3px; margin: 0; font: 600 9px/1 var(--font-key); letter-spacing: .06em; color: #EDEDEA; background: var(--kb-graphite); border-radius: 5px; padding: 4px 6px; }
+/* the search field is a black well, like the kit's dark input */
+[data-skin="keyboard"] .sbox { height: 38px; border-radius: 10px; background: var(--kb-well-2); box-shadow: var(--kb-sunk); color: #9A9A97; }
+[data-skin="keyboard"] .sbox input { color: #EDEDEA; }
+[data-skin="keyboard"] .sbox input::placeholder { color: #8A8A87; }
+[data-skin="keyboard"] .sbox kbd { background: #343433; color: #B5B5B2; border: 0; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .5), 0 0 0 1px rgba(0, 0, 0, .6); font-family: var(--font-key); font-size: 9px; letter-spacing: .04em; }
+/* the main pages are light keys; the page you are on is the orange one */
+[data-skin="keyboard"] #nav { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+[data-skin="keyboard"] #nav .nv { height: 36px; border-radius: 10px; gap: 12px; padding: 0 12px; font-weight: 600; font-size: 13.5px; color: var(--kb-legend); background: var(--kc-l); box-shadow: var(--kc-l-sh); transition: transform .08s, box-shadow .08s; }
+[data-skin="keyboard"] #nav .nv .i { width: 19px; height: 19px; color: var(--kb-legend); }
+[data-skin="keyboard"] #nav .nv:hover { background: linear-gradient(180deg, #FBFBF9, #EAEAE7 70%, #E0E0DD); color: var(--ink); }
+[data-skin="keyboard"] #nav .nv:active { transform: translateY(2px); box-shadow: var(--kc-l-dn); }
+[data-skin="keyboard"] #nav .nv[aria-current="page"] { background: var(--kc-o); box-shadow: var(--kc-o-sh); color: #FFF4EC; }
+[data-skin="keyboard"] #nav .nv[aria-current="page"] .i { color: #FFF4EC; }
+[data-skin="keyboard"] .nv .ct { font: 600 10.5px/1 var(--font-key); letter-spacing: .04em; color: var(--kb-legend-2); }
+[data-skin="keyboard"] #nav .nv[aria-current="page"] .ct { color: rgba(255, 244, 236, .85); }
+/* spaces and pages are the labelled rows of the pad, each space with its LED */
+[data-skin="keyboard"] :is(#spaces, #pages) .nv { height: 32px; border-radius: 9px; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+[data-skin="keyboard"] :is(#spaces, #pages) .nv:hover { background: rgba(255, 255, 255, .45); color: var(--ink); }
+[data-skin="keyboard"] :is(#spaces, #pages) .nv[aria-current="page"] { background: var(--kc-l); box-shadow: var(--kc-l-sh); color: var(--ink); font-weight: 600; }
+[data-skin="keyboard"] .nv .dot { width: 10px; height: 10px; margin: 0 5px; border-radius: 50%; box-shadow: 0 0 0 2px #3A3A39, inset 0 1px 1px rgba(255, 255, 255, .55), inset 0 -1px 2px rgba(0, 0, 0, .3); }
+[data-skin="keyboard"] .nv[aria-current="page"] .dot { box-shadow: 0 0 0 2px #3A3A39, inset 0 1px 1px rgba(255, 255, 255, .55), 0 0 8px 1px currentColor; }
+[data-skin="keyboard"] #pages .pn { font: 600 10px/1 var(--font-key); color: var(--kb-legend-2); }
+/* section names are printed on the plate, with a rule, like the kit's headings */
+[data-skin="keyboard"] .sec { font: 700 10px var(--font-key); letter-spacing: .16em; color: var(--side-mute); gap: 10px; }
+[data-skin="keyboard"] .sec::after { content: ""; flex: 1; height: 1px; background: rgba(0, 0, 0, .16); box-shadow: 0 1px 0 rgba(255, 255, 255, .5); order: 1; }
+[data-skin="keyboard"] .sec > button { order: 2; }
+[data-skin="keyboard"] .side-foot { border-top: 1px solid rgba(0, 0, 0, .12); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5); margin: auto -4px 0; padding: 10px 4px 0; }
+[data-skin="keyboard"] .me { color: var(--ink-2); font-weight: 600; }
+[data-skin="keyboard"] .sib { color: var(--side-mute); }
+
+/* ---------- top bar: graphite keys in the black well ---------- */
+[data-skin="keyboard"] #top { color: #D9D9D6; }
+[data-skin="keyboard"] #top .crumbs { font-weight: 600; color: #BDBDBA; }
+[data-skin="keyboard"] #top .crumbs .sp { height: 34px; padding: 0 12px 0 10px; border-radius: 9px; background: var(--kc-d); box-shadow: var(--kc-d-sh); color: #EDEDEA; }
+[data-skin="keyboard"] #top .crumbs .cur, [data-skin="keyboard"] #top .crumbs input { color: #F4F4F1; font-weight: 700; }
+[data-skin="keyboard"] #top .tb { height: 34px; border-radius: 9px; color: #D9D9D6; background: var(--kc-d); box-shadow: var(--kc-d-sh); font-weight: 600; }
+[data-skin="keyboard"] #top .tb:hover { color: #fff; background: linear-gradient(180deg, #4A4A49, #353534 70%, #2D2D2C); }
+[data-skin="keyboard"] #top .tb:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 0 0 1px rgba(0, 0, 0, .5), 0 1px 0 #0E0E0E; }
+[data-skin="keyboard"] .tb[aria-pressed="true"] { background: var(--kc-o); box-shadow: var(--kc-o-sh); color: #fff; }
+[data-skin="keyboard"] .tb.pri, [data-skin="keyboard"] #top .tb.pri { background: var(--kc-o); box-shadow: var(--kc-o-sh); color: #fff; font-weight: 700; }
+[data-skin="keyboard"] .tb.pri:hover, [data-skin="keyboard"] #top .tb.pri:hover { background: linear-gradient(180deg, #FF8A55, #F7612A 65%, #E8521A); color: #fff; }
+
+/* ---------- buttons and controls ---------- */
+[data-skin="keyboard"] .btn { border: 0; border-radius: 10px; font-weight: 600; color: var(--kb-legend); background: var(--kc-l); box-shadow: var(--kc-l-sh); transition: transform .08s, box-shadow .08s; }
+[data-skin="keyboard"] .btn:hover { background: linear-gradient(180deg, #FBFBF9, #EAEAE7 70%, #E0E0DD); color: var(--ink); }
+[data-skin="keyboard"] .btn:active { transform: translateY(2px); box-shadow: var(--kc-l-dn); }
+[data-skin="keyboard"] .btn.pri { background: var(--kc-o); box-shadow: var(--kc-o-sh); color: #fff; }
+[data-skin="keyboard"] .btn.pri:active { box-shadow: var(--kc-o-dn); }
+[data-skin="keyboard"] .btn.ghost { background: none; box-shadow: none; }
+[data-skin="keyboard"] .btn.danger { color: var(--err); }
+/* the add button is the orange BPM knob */
+[data-skin="keyboard"] .fab { border-radius: 50%; color: #fff; background: radial-gradient(circle at 50% 42%, #FF8A55 0 30%, #F2591E 31% 62%, #D9470F 63%); box-shadow: inset 0 1px 0 rgba(255, 220, 190, .7), 0 0 0 1px rgba(150, 40, 0, .4), 0 4px 0 #A8360C, 0 12px 20px -6px rgba(200, 70, 20, .55); }
+[data-skin="keyboard"] .cb { border-radius: 5px; border: 0; background: var(--kc-l); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .14), 0 2px 0 #ADADAA; }
+[data-skin="keyboard"] .cb[aria-checked="true"] { background: var(--kc-d); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 0 1px rgba(0, 0, 0, .5), 0 2px 0 #0E0E0E; color: var(--kb-orange); }
+[data-skin="keyboard"] .cb[aria-checked="true"] svg { stroke: var(--kb-orange); }
+[data-skin="keyboard"] :is(.pop, .qbar) { border-radius: 14px; background: var(--raise); border: 0; box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .1), var(--shadow-2); }
+[data-skin="keyboard"] .mi:hover { background: var(--sunk); }
+[data-skin="keyboard"] .sheet-m { border-radius: 22px; background: var(--card); box-shadow: inset 0 1px 0 #fff, var(--shadow-2); }
+/* segmented controls: a black well, the chosen key orange (the kit's tabs) */
+[data-skin="keyboard"] .seg { padding: 4px; gap: 4px; border-radius: 12px; background: var(--kb-well-2); box-shadow: var(--kb-sunk); }
+[data-skin="keyboard"] .seg button { border-radius: 8px; color: #BDBDBA; }
+[data-skin="keyboard"] .seg button:hover { color: #fff; }
+[data-skin="keyboard"] .seg button[aria-pressed="true"] { background: var(--kc-o); box-shadow: inset 0 1px 0 rgba(255, 220, 190, .6), 0 2px 0 #B83C0E; color: #fff; }
+[data-skin="keyboard"] .chip { border-radius: 7px; background: var(--kc-l); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .08), 0 2px 0 #B5B5B2; }
+[data-skin="keyboard"] input[type="range"] { accent-color: var(--kb-orange); }
+[data-skin="keyboard"] .tg input:checked + span { background: var(--kb-orange); }
+
+/* ---------- pages ---------- */
+[data-skin="keyboard"] .ph h1 { font: 700 30px/1.1 var(--font-key); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
+[data-skin="keyboard"] .ph .sub { font-weight: 500; color: var(--ink-3); }
+/* cards are light panels on the plate, their headings printed in the kit's legend type */
+[data-skin="keyboard"] .card { border: 0; border-radius: 18px; background: linear-gradient(180deg, #EFEFEC, #E6E6E3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 0 0 1px rgba(0, 0, 0, .06), 0 2px 0 rgba(0, 0, 0, .06), 0 16px 26px -16px rgba(0, 0, 0, .4); }
+[data-skin="keyboard"] .card > h2 { font: 700 12px/1 var(--font-key); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); gap: 10px; }
+[data-skin="keyboard"] .card > h2 > .i:first-child { width: 16px; height: 16px; color: var(--kb-orange); }
+[data-skin="keyboard"] .card > h2 .more { font: 600 12px var(--font-ui); letter-spacing: 0; text-transform: none; color: var(--accent-2); }
+[data-skin="keyboard"] .card > h2 .ct { font: 600 11px var(--font-key); letter-spacing: .04em; text-transform: none; }
+[data-skin="keyboard"] .tlist { border-radius: 16px; border: 0; background: var(--card); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .06), var(--shadow-1); }
+/* documents are big light keys */
+[data-skin="keyboard"] .dcard { border: 0; border-radius: 14px; background: var(--kc-l); box-shadow: var(--kc-l-sh); transition: transform .12s, box-shadow .12s; }
+[data-skin="keyboard"] .dcard:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 0 0 1px rgba(0, 0, 0, .07), 0 4px 0 #ADADAA, 0 12px 18px -6px rgba(0, 0, 0, .32); }
+[data-skin="keyboard"] .dcard .th, [data-skin="keyboard"] .tpl .pv { border-radius: 9px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
+[data-skin="keyboard"] .sprow { border-radius: 12px; }
+[data-skin="keyboard"] .sprow:hover { background: rgba(255, 255, 255, .55); }
+[data-skin="keyboard"] .sprow .sdot { border-radius: 50%; box-shadow: 0 0 0 2px #3A3A39, inset 0 1px 1px rgba(255, 255, 255, .5); }
+/* progress is the orange fader in its slot */
+[data-skin="keyboard"] .sprow .bar { height: 6px; border-radius: 6px; background: var(--kb-well-2); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .6); }
+[data-skin="keyboard"] .sprow .bar i { border-radius: 6px; background: linear-gradient(90deg, #E44C12, #FF7E45); }
+[data-skin="keyboard"] .trow:hover { background: rgba(255, 255, 255, .5); }
+
+/* ---------- preview card in Réglages > UI ---------- */
+.sk-keyboard .skin-pv { background: #C9C9C6 var(--kb-grain) 0 0 / 128px; background-blend-mode: soft-light; }
+.sk-keyboard .skin-pv i:nth-child(1) { left: 5%; top: 9%; width: 22%; height: 82%; border-radius: 6px; background: #D6D6D3; box-shadow: 0 2px 4px rgba(0, 0, 0, .25); }
+.sk-keyboard .skin-pv i:nth-child(2) { left: 8%; top: 15%; width: 16%; height: 13%; border-radius: 3px; background: linear-gradient(#FF7E45, #F2591E); box-shadow: 0 2px 0 #B83C0E; z-index: 1; }
+.sk-keyboard .skin-pv i:nth-child(3) { left: 31%; top: 9%; width: 64%; height: 82%; border-radius: 6px; background: #E2E2DF; box-shadow: 0 2px 4px rgba(0, 0, 0, .25); }
+.sk-keyboard .skin-pv i:nth-child(4) { left: 40%; top: 18%; width: 46%; height: 14%; border-radius: 4px; background: #161616; z-index: 1; }
+
+/* scrollbars: the fader of the pad, a light knob in a black slot, orange under the pointer.
+   Elements that asked for a thin bar get the full one, since Chromium only styles bars of the default width */
+[data-skin="keyboard"] :is(#side, .pbody, .docs.row) { scrollbar-width: auto; }
+[data-skin="keyboard"] ::-webkit-scrollbar { width: 14px; height: 14px; background: transparent; }
+[data-skin="keyboard"] ::-webkit-scrollbar-track { margin: 12px; border-radius: 7px; border: 5px solid transparent; background: #1E1E1E padding-box; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .6); }
+[data-skin="keyboard"] ::-webkit-scrollbar-thumb { min-height: 44px; border-radius: 7px; border: 2px solid transparent; background: linear-gradient(90deg, #F2F2EF, #CFCFCC) padding-box; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25); }
+[data-skin="keyboard"] ::-webkit-scrollbar-thumb:hover { background: linear-gradient(90deg, #FF7E45, #E44C12) padding-box; }
+[data-skin="keyboard"] ::-webkit-scrollbar-button, [data-skin="keyboard"] ::-webkit-scrollbar-corner { display: none; background: transparent; }
+[data-skin="keyboard"] ::selection { background: rgba(242, 89, 30, .26); color: inherit; }
+
+/* window buttons: the three LEDs of the kit's window header (graphite reduces, orange enlarges, red closes) */
+[data-skin="keyboard"] #tbar .tb-w { gap: 4px; padding-right: 10px; align-items: center; }
+[data-skin="keyboard"] #tbar .tb-w button { position: relative; width: 26px; height: 26px; border-radius: 50%; color: rgba(255, 255, 255, 0); transition: color .12s; }
+[data-skin="keyboard"] #tbar .tb-w button::before { content: ""; position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 32%, var(--lt-hi), var(--lt) 60%, var(--lt-lo)); box-shadow: 0 0 0 2.5px #1E1E1E, 0 1px 0 2.5px rgba(255, 255, 255, .5); }
+[data-skin="keyboard"] #tbar .tb-w svg { position: relative; width: 8px; height: 8px; stroke-width: 1.8; }
+[data-skin="keyboard"] #tbar .tb-w-min { --lt-hi: #9A9A97; --lt: #6E6E6B; --lt-lo: #4A4A48; }
+[data-skin="keyboard"] #tbar .tb-w-max { --lt-hi: #FFB27A; --lt: #F2891E; --lt-lo: #B85E0E; }
+[data-skin="keyboard"] #tbar .tb-w-close { --lt-hi: #FF8A70; --lt: #E5341A; --lt-lo: #A01E0A; }
+[data-skin="keyboard"] #tbar .tb-w button:hover, [data-skin="keyboard"] #tbar .tb-w .tb-w-close:hover { background: none; color: rgba(255, 255, 255, .95); }
+[data-skin="keyboard"] #tbar .tb-w button:hover::before { box-shadow: 0 0 0 2.5px #1E1E1E, 0 0 9px 1px var(--lt); }
+[data-skin="keyboard"] #tbar .tb-w button:active, [data-skin="keyboard"] #tbar .tb-w .tb-w-close:active { background: none; }
+[data-skin="keyboard"] #tbar .tb-w button:focus-visible { outline: 2px solid var(--kb-orange); outline-offset: -1px; }
+
+/* filter chips (tasks, lists) are small keys; the chosen one is orange */
+[data-skin="keyboard"] .fchip { border: 0; border-radius: 9px; color: var(--kb-legend); background: var(--kc-l); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .08), 0 2px 0 #B5B5B2, 0 4px 8px -4px rgba(0, 0, 0, .3); }
+[data-skin="keyboard"] .fchip:hover { color: var(--ink); }
+[data-skin="keyboard"] .fchip[aria-pressed="true"] { background: var(--kc-o); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 220, 190, .6), 0 0 0 1px rgba(150, 40, 0, .3), 0 2px 0 #B83C0E, 0 4px 8px -4px rgba(200, 70, 20, .45); }
+[data-skin="keyboard"] .fchip span { font-family: var(--font-key); font-size: 10.5px; }
