@@ -1,11 +1,12 @@
 /* ================= Minimal (id "minimal", the default theme) =================
    Quiet and airy, in the spirit of Evernote: flat surfaces, hairlines rather than boxes and shadows, small dense
-   navigation, the content in the middle with room around it. Instrument Sans for the interface, Instrument Serif for
-   the titles (pages, notes, cards' headings stay sans). Icons are fine lines with a soft second tone (MIN_D in theme.js, coloured by --i-d / --i-dk)
+   navigation, the content in the middle with room around it. Instrument Sans for the interface, Manrope light for the
+   page titles, Instrument Serif for the note titles. Icons are fine lines with a soft second tone (MIN_D in theme.js, coloured by --i-d / --i-dk)
    which takes the accent on the open page. Greys are oklch(L, chroma, hue) with the hue and chroma of the "Couleur du
    thème" (--th-h, --th-c); the accent is Émeraude or the "Couleur d'accent" (--accent-c). The note editor is notes.css. */
 @font-face { font-family: "Instrument Sans"; font-style: normal; font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; src: url("asset:fonts/instrument-sans.woff2") format("woff2"); }
 @font-face { font-family: "Instrument Sans"; font-style: italic; font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; src: url("asset:fonts/instrument-sans-italic.woff2") format("woff2"); }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("asset:fonts/manrope.woff2") format("woff2"); }
 @font-face { font-family: "Instrument Serif"; font-style: normal; font-weight: 400; font-display: swap; src: url("asset:fonts/instrument-serif.woff2") format("woff2"); }
 @font-face { font-family: "Instrument Serif"; font-style: italic; font-weight: 400; font-display: swap; src: url("asset:fonts/instrument-serif-italic.woff2") format("woff2"); }
 
@@ -13,6 +14,7 @@
   --th-h: 80; --th-c: .003;
   --mn: var(--th-c); --mn-lo: calc(var(--th-c) * .5); --mn-hi: calc(var(--th-c) * 1.4);
   --font-ui: "Instrument Sans", "Segoe UI Variable Text", "Segoe UI", -apple-system, system-ui, sans-serif;
+  --font-head: "Manrope", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --font-title: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --r-sm: 5px; --r-md: 7px; --r-lg: 10px; --r-xl: 14px;
   --ok: #2FA96A; --warn: #E09A2E; --err: #E5564B; --info: #3E7BFA; --pink: #E5579A;
@@ -61,10 +63,9 @@
 
 /* ---------- sidebar: small dense rows, no boxes; the open page gets a faint tile and its icon's tone in the accent ---------- */
 [data-skin="minimal"] #side { border-right: 1px solid var(--side-line); }
-[data-skin="minimal"] .brand { padding-bottom: 14px; }
-[data-skin="minimal"] .brand .pill { height: 36px; border-radius: 9px; padding: 0 13px 0 9px; gap: 7px; background: none; box-shadow: none; }
-[data-skin="minimal"] .brand .mark, [data-skin="minimal"] .brand .mark svg { width: 22px; height: 22px; }
-[data-skin="minimal"] .brand b { font: 400 25px/1 var(--font-title); letter-spacing: 0; color: var(--side-text); }
+/* the usual PLUM pill (style.css), a little smaller, in the theme's greys with the accent on the leaves */
+[data-skin="minimal"] .brand .pill { height: 40px; padding: 0 16px 0 11px; box-shadow: inset 0 0 0 1px var(--br-rim), inset 0 1px rgb(255 255 255 / .05), 0 2px 8px rgb(0 0 0 / .25); }
+[data-skin="minimal"] .brand b { font-size: 19.5px; }
 [data-skin="minimal"] .sbox { height: 32px; border-radius: 8px; background: var(--side-2); box-shadow: none; color: var(--side-mute); }
 [data-skin="minimal"] .sbox kbd { border: 0; opacity: .7; font-weight: 500; }
 [data-skin="minimal"] .nv { height: 30px; border-radius: 6px; font-size: 13px; font-weight: 450; color: color-mix(in oklab, var(--side-text) 86%, var(--side)); gap: 10px; }
@@ -94,7 +95,7 @@
 [data-skin="minimal"] .tb.pri:hover { background: var(--accent-2); color: var(--on-accent); }
 
 /* ---------- pages: serif titles, cards as quiet panels ---------- */
-[data-skin="minimal"] .ph h1 { font: 400 40px/1.08 var(--font-title); letter-spacing: -.005em; color: var(--strong); }
+[data-skin="minimal"] .ph h1 { font: 300 38px/1.1 var(--font-head); letter-spacing: -.035em; color: var(--strong); }
 [data-skin="minimal"] .ph .acts { border: 0; padding: 0; align-self: center; }
 [data-skin="minimal"] .ph .sub { font-size: 13px; color: var(--ink-3); }
 [data-skin="minimal"] .card, [data-skin="minimal"] .tlist { background: var(--card); border-color: var(--line); border-radius: 10px; box-shadow: none; }
@@ -139,7 +140,7 @@
 [data-skin="minimal"] .mi:hover { background: var(--raise); }
 [data-skin="minimal"][data-resolved="light"] .mi:hover { background: var(--sunk); }
 [data-skin="minimal"] .sheet-m { background: var(--menu); border-radius: 12px; box-shadow: var(--shadow-2); }
-[data-skin="minimal"] .sheet-m h2 { font: 400 26px/1.1 var(--font-title); color: var(--strong); }
+[data-skin="minimal"] .sheet-m h2 { font: 400 22px/1.15 var(--font-head); letter-spacing: -.025em; color: var(--strong); }
 [data-skin="minimal"] .sheet-m h5 { font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12.5px; color: var(--ink-2); }
 [data-skin="minimal"] .skin-c { border-radius: 9px; background: var(--card); border-color: var(--line-2); }
 
