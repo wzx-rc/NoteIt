@@ -446,8 +446,14 @@ const Board = (() => {
       <div class="mgrid">${media.map(tile).join('')}</div>
       ${media.length ? `<div class="pbtns"><button class="pb" data-mall="1">${icon('masonry')}<span>Tout placer sur le board</span></button></div>` : '<div class="pp-hint">Tout ce qui est déposé dans cet espace (notes, boards et ici) apparaît dans ce moodboard. Glissez une vignette sur le board pour l’y placer.</div>'}`;
   }
+  /* a new selection always shows its attributes: it lifts a hold left by a pen setting dragged and not released here,
+     and leaves the Moodboard tab for Style */
+  let propSelKey = '';
   function renderProps(force) {
-    if (!propsOpen() || propsHold) return;
+    if (!propsOpen()) return;
+    const sk = [...sel].join(',');
+    if (sk !== propSelKey) { propSelKey = sk; propsHold = false; if (sk && propsTab === 'media') propsTab = 'style'; }
+    if (propsHold) return;
     const list = selItems();
     const sig = [propsTab, tool, penKind, shapeKind, noteColor, editing, D.bg, JSON.stringify(S.prefs.bd), JSON.stringify(S.prefs.pens[penKind] || {}), S.prefs.pressure, theme(), skin(),
       propsTab === 'layers' ? items.map(i => i.id + (i.hid ? '!' : '') + (i.k === 'mind' ? i.parent : '')).join(',') + '|' + [...sel].join(',') + '|' + items.map(i => (itemText(i) || '').slice(0, 20)).join('') : propsTab === 'media' ? spaceMedia(D.sp).map(m => m.asset || m.url || m.doc).join(',') + '|' + items.map(i => i.url || i.asset || i.doc || '').join('') + Assets.blobs.size : list.map(i => i.id + ':' + sigOf(i) + '|' + (i.op ?? 1) + (i.k === 'conn' ? i.route + i.h0 + i.h1 + i.sty + i.sw + i.dash + i.sc : '')).join(',')].join('#');

@@ -43,7 +43,7 @@ function renderWelcome(v) {
 
 /* ---------- moodboard ---------- */
 const Mood = (() => {
-  let drawer = null, open = false, dragging = 0;
+  let drawer = null, open = false, dragging = 0, dragItem = null, drawerFolder = '';
   const FILE_C = { PDF: '#E5484D', DOC: '#3D7BD9', DOCX: '#3D7BD9', XLS: '#2E9E6A', XLSX: '#2E9E6A', CSV: '#2E9E6A', PPT: '#F2A33A', PPTX: '#F2A33A', ZIP: '#8B5E3C', PSD: '#22A6B3', AI: '#F2A33A', BLEN: '#F5A524', FBX: '#6E56F0', OBJ: '#6E56F0', GLB: '#6E56F0', MP3: '#22A6B3', WAV: '#22A6B3', MP4: '#8B76FF', MOV: '#8B76FF' };
   const domain = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u || ''; } };
   const extOf = n => (/\.([a-z0-9]{1,5})$/i.exec(n || '') || [, 'fichier'])[1].slice(0, 4).toUpperCase();
@@ -52,6 +52,47 @@ const Mood = (() => {
   /* what the notes and boards of the space hold, shown apart */
   const found = sp => sp ? spaceMedia(sp.id).filter(m => m.type !== 'doc' && m.type !== 'text' && !(sp.media || []).includes(m)) : [];
   const docOpen = () => R.name === 'doc' && docById(R.id);
+  /* simple folders: sp.folders = [{ id, name }], an element's m.folder; no folder (or a removed one) = the root */
+  const folders = sp => (sp && sp.folders) || [];
+  const folderOf = (sp, m) => m.folder && folders(sp).some(f => f.id === m.folder) ? m.folder : '';
+  const inFolder = (sp, fid) => own(sp).filter(m => folderOf(sp, m) === (fid || ''));
+  const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
+  function moveTo(sp, m, fid) {
+    if (!m || folderOf(sp, m) === (fid || '')) return;
+    const was = m.folder; if (fid) m.folder = fid; else delete m.folder; save();
+    const f = folders(sp).find(x => x.id === fid);
+    toast(f ? `Rangé dans « ${f.name} »` : 'Sorti du dossier', { label: 'Annuler', run: () => { if (was) m.folder = was; else delete m.folder; save(); refresh(); } });
+    refresh();
+  }
+  function askName(title, value, done) {
+    openModal(`<div class="mhd"><h2>${esc(title)}</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
+      <input id="mwName" class="mw-name" value="${esc(value || '')}" placeholder="Nom du dossier" maxlength="60" autocomplete="off" aria-label="Nom du dossier">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn ghost" data-close>Annuler</button><button class="btn pri" id="mwNameOk">OK</button></div>`,
+      md => { const i = $('#mwName', md), ok = () => { if (i.value.trim()) { closeModal(); done(i.value.trim().slice(0, 60)); } else i.focus(); }; i.focus(); i.select(); i.onkeydown = e => { if (e.key === 'Enter') ok(); }; $('#mwNameOk', md).onclick = ok; });
+  }
+  function newFolder(sp, after) {
+    askName('Nouveau dossier', '', name => { const f = { id: uid('f'), name }; (sp.folders = sp.folders || []).push(f); save(); after ? after(f) : refresh(); });
+  }
+  function folderMenu(anchor, sp, f) {
+    openPop(anchor, [
+      { label: 'Ouvrir', icon: 'folder', run: () => go('mood:' + f.id) },
+      { label: 'Renommer', icon: 'text', run: () => askName('Renommer le dossier', f.name, n => { f.name = n; save(); refresh(); }) },
+      '-',
+      { label: 'Supprimer le dossier', icon: 'trash', danger: true, run: () => {
+        const k = sp.folders.indexOf(f), moved = own(sp).filter(m => m.folder === f.id);
+        sp.folders.splice(k, 1); moved.forEach(m => delete m.folder); save();
+        if (R.name === 'mood' && R.id === f.id) go('mood'); else refresh();
+        toast(moved.length ? `Dossier supprimé, ${plural(moved.length, 'élément')} remis à la racine` : 'Dossier supprimé', { label: 'Annuler', run: () => { sp.folders.splice(k, 0, f); moved.forEach(m => { m.folder = f.id; }); save(); refresh(); } });
+      } }
+    ], { align: 'right' });
+  }
+  function folderCard(sp, f) {
+    const items = inFolder(sp, f.id), imgs = items.filter(m => m.type === 'image').slice(0, 3);
+    return `<div class="mw-fold" data-fold="${f.id}" data-fdrop="${f.id}" tabindex="0" role="button" aria-label="Dossier ${esc(f.name)}">
+      <span class="mw-fthumbs">${imgs.map(m => `<img src="${Assets.url(m.asset)}" alt="" draggable="false">`).join('') || `<span class="mw-fi">${icon('folder')}</span>`}</span>
+      <span class="mw-ft"><b>${esc(f.name)}</b><small>${items.length ? plural(items.length, 'élément') : 'Vide'}</small></span>
+      <button class="mw-more" data-fm="${f.id}" aria-label="Options du dossier" title="Options">${icon('dots', 'sm')}</button></div>`;
+  }
 
   function tile(m, i) {
     const a = `data-mi="${i}" draggable="true" tabindex="0"`;
@@ -70,23 +111,23 @@ const Mood = (() => {
     if (open) renderDrawer();
     if (R.name === 'doc' && Board.mounted && Board.refreshProps) Board.refreshProps();
   }
-  async function drop(dt, sp) {
+  async function drop(dt, sp, fid) {
     if (!sp || dragging) return 0;
     let files = [...(dt.files || [])];
     if (!files.length && dt.items) files = [...dt.items].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
     let n = 0;
-    if (files.length) n = (await addMedia(sp.id, files)).length;
-    else if (!dt.getData('application/x-notely')) n = addMediaItems(sp.id, mediaFromData(dt));
+    if (files.length) n = (await addMedia(sp.id, files, fid)).length;
+    else if (!dt.getData('application/x-notely')) n = addMediaItems(sp.id, mediaFromData(dt), fid);
     if (n) { toast(`${n} élément${n > 1 ? 's' : ''} ajouté${n > 1 ? 's' : ''} au moodboard de ${sp.name}`); refresh(); }
     return n;
   }
-  function addFromField(inp, sp) {
+  function addFromField(inp, sp, fid) {
     const v = inp.value.trim(); if (!v) return;
     const list = /^(https?:\/\/|www\.)\S+$/i.test(v) ? [{ type: 'link', url: /^www\./i.test(v) ? 'https://' + v : v }] : [{ type: 'text', txt: v }];
-    const n = addMediaItems(sp.id, list); inp.value = '';
+    const n = addMediaItems(sp.id, list, fid); inp.value = '';
     if (n) { refresh(); const again = $('#' + inp.id); if (again) again.focus(); } else toast('Ce lien est déjà dans le moodboard');
   }
-  function pickFiles(sp) { const i = $('#fileIn'); i.accept = ''; i.onchange = async () => { const f = [...i.files]; i.value = ''; if (!f.length) return; const n = await addMedia(sp.id, f); if (n.length) { toast(`${n.length} élément${n.length > 1 ? 's' : ''} ajouté${n.length > 1 ? 's' : ''}`); refresh(); } }; i.click(); }
+  function pickFiles(sp, fid) { const i = $('#fileIn'); i.accept = ''; i.onchange = async () => { const f = [...i.files]; i.value = ''; if (!f.length) return; const n = await addMedia(sp.id, f, fid); if (n.length) { toast(`${n.length} élément${n.length > 1 ? 's' : ''} ajouté${n.length > 1 ? 's' : ''}`); refresh(); } }; i.click(); }
   function view(m) {
     if (m.type === 'image') { showImage(m.asset); return; }
     if (m.type === 'link') { const a = document.createElement('a'); a.href = m.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.append(a); a.click(); a.remove(); return; }
@@ -118,6 +159,8 @@ const Mood = (() => {
       ...(d ? [{ label: `Placer dans « ${d.title} »`, icon: d.type === 'board' ? 'board' : 'note', run: () => place(m) }, '-'] : []),
       { label, icon: m.type === 'text' ? 'text' : m.type === 'link' ? 'ext' : m.type === 'file' ? 'download' : 'focus', run: () => view(m) },
       ...(m.type === 'link' ? [{ label: 'Copier le lien', icon: 'link', run: () => { try { navigator.clipboard.writeText(m.url); toast('Lien copié'); } catch (e) {} } }] : []),
+      ...(mine && folders(sp).length ? [{ head: 'Ranger dans' }, ...(folderOf(sp, m) ? [{ label: 'Racine du moodboard', icon: 'image', run: () => moveTo(sp, m, '') }] : []), ...folders(sp).filter(f => f.id !== folderOf(sp, m)).map(f => ({ label: f.name, icon: 'folder', run: () => moveTo(sp, m, f.id) }))] : []),
+      ...(mine ? [{ label: 'Nouveau dossier…', icon: 'plus', run: () => newFolder(sp, f => moveTo(sp, m, f.id)) }] : []),
       { head: 'Placer sur un board' },
       ...boards.map(b => ({ label: b.title, icon: 'board', run: () => toBoard(m, sp, b) })),
       { label: 'Nouveau board', icon: 'plus', run: () => toBoard(m, sp) },
@@ -130,10 +173,15 @@ const Mood = (() => {
     const L = () => typeof list0 === 'function' ? list0() : list0;
     let list = L(), sp = typeof sp0 === 'function' ? sp0() : sp0;
     const fresh = () => { list = L(); sp = typeof sp0 === 'function' ? sp0() : sp0; };
+    const fid = () => typeof o.folder === 'function' ? o.folder() : o.folder || '';
     root.addEventListener('pointerdown', fresh, true);
     root.addEventListener('dragenter', fresh, true);
     root.addEventListener('click', e => {
-      if (e.target.closest('[data-madd]')) { pickFiles(sp); return; }
+      if (e.target.closest('[data-madd]')) { pickFiles(sp, fid()); return; }
+      if (e.target.closest('[data-fadd]')) { newFolder(sp); return; }
+      const fm = e.target.closest('[data-fm]'); if (fm) { e.stopPropagation(); const f = folders(sp).find(x => x.id === fm.dataset.fm); if (f) folderMenu(fm, sp, f); return; }
+      const fo = e.target.closest('[data-fold]'); if (fo) { go('mood:' + fo.dataset.fold); return; }
+      const df = e.target.closest('[data-dfold]'); if (df) { drawerFolder = df.dataset.dfold; renderDrawer(); return; }
       const mm = e.target.closest('[data-mm]'); if (mm) { e.stopPropagation(); const m = list[+mm.dataset.mm]; if (m) menu(mm, m, sp); return; }
       const t = e.target.closest('[data-mi]'); if (!t) return;
       const m = list[+t.dataset.mi]; if (!m) return;
@@ -141,41 +189,66 @@ const Mood = (() => {
       view(m);
     });
     root.addEventListener('keydown', e => {
-      if (e.target.matches && e.target.matches('.mw-in input')) { if (e.key === 'Enter') { e.preventDefault(); fresh(); addFromField(e.target, sp); } return; }
-      const t = e.target.closest && e.target.closest('[data-mi]'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); t.click(); }
+      if (e.target.matches && e.target.matches('.mw-in input')) { if (e.key === 'Enter') { e.preventDefault(); fresh(); addFromField(e.target, sp, fid()); } return; }
+      const t = e.target.closest && e.target.closest('[data-mi], [data-fold]'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); t.click(); }
     });
-    root.addEventListener('contextmenu', e => { fresh(); const t = e.target.closest('[data-mi]'); if (!t) return; const m = list[+t.dataset.mi]; if (!m) return; e.preventDefault(); menu({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }, m, sp); });
+    root.addEventListener('contextmenu', e => {
+      fresh(); const fo = e.target.closest('[data-fold]');
+      if (fo) { const f = folders(sp).find(x => x.id === fo.dataset.fold); if (f) { e.preventDefault(); folderMenu({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }, sp, f); } return; }
+      const t = e.target.closest('[data-mi]'); if (!t) return; const m = list[+t.dataset.mi]; if (!m) return; e.preventDefault(); menu({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }, m, sp); });
     root.addEventListener('dragstart', e => {
       const t = e.target.closest('[data-mi]'); if (!t) return; const m = list[+t.dataset.mi]; if (!m) return;
-      dragging = Date.now();
+      dragging = Date.now(); dragItem = m;
       e.dataTransfer.setData('application/x-notely', JSON.stringify(m));
       if (m.type === 'link') e.dataTransfer.setData('text/uri-list', m.url);
       e.dataTransfer.setData('text/plain', m.type === 'text' ? m.txt : m.url || m.name || '');
-      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.effectAllowed = 'copyMove';
       t.classList.add('dragging');
     });
-    root.addEventListener('dragend', e => { dragging = 0; const t = e.target.closest && e.target.closest('[data-mi]'); if (t) t.classList.remove('dragging'); });
+    root.addEventListener('dragend', e => { dragging = 0; dragItem = null; $$('[data-fdrop].over', root).forEach(x => x.classList.remove('over')); const t = e.target.closest && e.target.closest('[data-mi]'); if (t) t.classList.remove('dragging'); });
     const zone = o.zone || root, types = e => [...(e.dataTransfer.types || [])];
     const can = e => !dragging && types(e).some(t => t === 'Files' || t === 'text/uri-list' || t === 'text/plain');
+    /* a folder (card, chip or the « Moodboard » crumb) takes an element dragged from the moodboard, or new files */
+    const fdropAt = e => e.target.closest && e.target.closest('[data-fdrop]');
+    root.addEventListener('dragover', e => {
+      const f = fdropAt(e); $$('[data-fdrop].over', root).forEach(x => { if (x !== f) x.classList.remove('over'); });
+      if (!f || !(dragItem || can(e))) return;
+      e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = dragItem ? 'move' : 'copy'; f.classList.add('over'); zone.classList.remove('over');
+    });
+    root.addEventListener('drop', e => {
+      const f = fdropAt(e); if (!f) return;
+      e.preventDefault(); e.stopPropagation(); f.classList.remove('over'); zone.classList.remove('over'); fresh();
+      if (dragItem) { const m = dragItem; dragItem = null; dragging = 0; moveTo(sp, m, f.dataset.fdrop); } else if (can(e)) drop(e.dataTransfer, sp, f.dataset.fdrop);
+    });
     zone.addEventListener('dragover', e => { if (!can(e)) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; zone.classList.add('over'); });
     zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('over'); });
-    zone.addEventListener('drop', e => { zone.classList.remove('over'); if (!can(e)) return; e.preventDefault(); e.stopPropagation(); fresh(); drop(e.dataTransfer, sp); });
+    zone.addEventListener('drop', e => { zone.classList.remove('over'); if (!can(e)) return; e.preventDefault(); e.stopPropagation(); fresh(); drop(e.dataTransfer, sp, fid()); });
   }
 
-  /* ---- the page ---- */
+  /* ---- the page: the folders, then what is at the root (or in the open folder) ---- */
   function renderPage(v) {
-    const sp = curSpace(), mine = own(sp), other = found(sp), list = mine.concat(other);
+    const sp = curSpace(), fs = folders(sp), cur = fs.find(f => f.id === R.id) || null, fid = cur ? cur.id : '';
+    const mine = inFolder(sp, fid), other = cur ? [] : found(sp), list = mine.concat(other);
     const counts = ['image', 'link', 'file', 'text'].map(k => [k, mine.filter(m => m.type === k).length]).filter(x => x[1]);
     const names = { image: ['image', 'images'], link: ['lien', 'liens'], file: ['fichier', 'fichiers'], text: ['texte', 'textes'] };
-    v.innerHTML = `<div class="page moodpage"><div class="ph"><div><h1>Moodboard</h1><div class="sub">${esc(sp.name)}${counts.length ? ' · ' + counts.map(([k, n]) => `${n} ${names[k][n > 1 ? 1 : 0]}`).join(' · ') : ''}</div></div></div>
+    const sub = `${esc(sp.name)}${counts.length ? ' · ' + counts.map(([k, n]) => `${n} ${names[k][n > 1 ? 1 : 0]}`).join(' · ') : ''}`;
+    const head = cur
+      ? `<div class="ph mw-ph"><div><div class="mw-crumbs"><button class="mw-cr" data-go="mood" data-fdrop="" title="Déposez ici pour sortir un élément du dossier">${icon('image', 'sm')}Moodboard</button>${icon('chev', 'sm')}</div><h1>${icon('folder')}${esc(cur.name)}</h1><div class="sub">${sub}</div></div>
+          <div class="acts"><button class="btn" data-fm="${cur.id}">${icon('dots', 'sm')}Dossier</button></div></div>`
+      : `<div class="ph mw-ph"><div><h1>Moodboard</h1><div class="sub">${sub}</div></div><div class="acts"><button class="btn" data-fadd>${icon('folder', 'sm')}Nouveau dossier</button></div></div>`;
+    const empty = cur
+      ? `<div class="mw-empty sm" data-madd role="button" tabindex="0"><span class="mw-empty-i">${icon('folder')}</span><b>Dossier vide</b><small>Glissez ici des éléments du moodboard (sur « Moodboard » pour les ressortir), ou déposez des fichiers.</small></div>`
+      : `<button class="mw-empty" data-madd><span class="mw-empty-i">${icon('image')}</span><b>Le bac à sable de ${esc(sp.name)}</b><small>Glissez ici des images, des liens, des fichiers ou du texte, ou collez-les (Ctrl V).<br>Ils vous suivent dans les boards, les notes et le dessin de cet espace.</small></button>`;
+    v.innerHTML = `<div class="page moodpage">${head}
       ${addBar('mwAdd')}
-      ${mine.length ? `<div class="mwall">${mine.map((m, i) => tile(m, i)).join('')}</div>` : `<button class="mw-empty" data-madd><span class="mw-empty-i">${icon('image')}</span><b>Le bac à sable de ${esc(sp.name)}</b><small>Glissez ici des images, des liens, des fichiers ou du texte, ou collez-les (Ctrl V).<br>Ils vous suivent dans les boards, les notes et le dessin de cet espace.</small></button>`}
+      ${!cur && fs.length ? `<div class="mw-folders">${fs.map(f => folderCard(sp, f)).join('')}</div>` : ''}
+      ${mine.length ? `<div class="mwall">${mine.map((m, i) => tile(m, i)).join('')}</div>` : (!cur && fs.length ? '' : empty)}
       ${other.length ? `<details class="mw-found" open><summary>${icon('chev', 'sm')}Dans vos pages <span>${other.length}</span></summary><div class="mwall sm">${other.map((m, i) => tile(m, mine.length + i)).join('')}</div></details>` : ''}
-      <div class="mw-over" aria-hidden="true"><div>${icon('upload')}Déposez pour ajouter au moodboard de ${esc(sp.name)}</div></div>
+      <div class="mw-over" aria-hidden="true"><div>${icon('upload')}Déposez pour ajouter ${cur ? `au dossier « ${esc(cur.name)} »` : `au moodboard de ${esc(sp.name)}`}</div></div>
     </div>`;
     const pg = $('.moodpage', v);
-    bindList(pg, list, sp, { zone: pg });
-    setTimeout(() => { const i = $('#mwAdd'); if (i && innerWidth > 760 && !mine.length) i.focus({ preventScroll: true }); }, 0);
+    bindList(pg, list, sp, { zone: pg, folder: fid });
+    setTimeout(() => { const i = $('#mwAdd'); if (i && innerWidth > 760 && !mine.length && !fs.length) i.focus({ preventScroll: true }); }, 0);
   }
   /* the card on the space's home: the latest elements and a drop zone */
   function preview(sp) {
@@ -190,14 +263,17 @@ const Mood = (() => {
     if (drawer) return;
     drawer = document.createElement('aside'); drawer.id = 'moodDrawer'; drawer.className = 'mdr'; drawer.hidden = true; drawer.setAttribute('aria-label', 'Moodboard');
     $('#main').append(drawer);
-    bindList(drawer, () => own(curSpace()), curSpace, { drawer: true, zone: drawer });
+    bindList(drawer, () => drawerList(curSpace()), curSpace, { drawer: true, zone: drawer, folder: () => drawerFolder });
   }
+  /* the drawer shows everything, or one folder */
+  function drawerList(sp) { if (drawerFolder && !folders(sp).some(f => f.id === drawerFolder)) drawerFolder = ''; return drawerFolder ? inFolder(sp, drawerFolder) : own(sp); }
   function renderDrawer() {
     if (!drawer) return;
-    const sp = curSpace(), mine = own(sp), d = docOpen();
+    const sp = curSpace(), mine = drawerList(sp), d = docOpen(), fs = folders(sp);
     drawer.innerHTML = `<div class="mdr-hd"><div class="mdr-t">${icon('image')}<span><b>Moodboard</b><small><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</small></span></div>
         <button class="tb" data-go="mood" title="Ouvrir en grand" aria-label="Ouvrir en grand">${icon('ext')}</button><button class="tb" data-mclose title="Fermer (Échap)" aria-label="Fermer">${icon('x')}</button></div>
       ${addBar('mdrAdd', 'Lien ou idée, puis Entrée')}
+      ${fs.length ? `<div class="mdr-folds"><button class="mdr-fc" data-dfold="" data-fdrop="" aria-pressed="${!drawerFolder}">Tout</button>${fs.map(f => `<button class="mdr-fc" data-dfold="${f.id}" data-fdrop="${f.id}" aria-pressed="${drawerFolder === f.id}">${icon('folder', 'sm')}${esc(f.name)}<small>${inFolder(sp, f.id).length || ''}</small></button>`).join('')}</div>` : ''}
       <div class="mdr-body">${mine.length ? `<div class="mwall dr">${mine.map((m, i) => tile(m, i)).join('')}</div>` : `<div class="mdr-empty">${icon('upload')}<div>Glissez ici des images, des liens ou des fichiers. Ils restent dans le moodboard de ${esc(sp.name)}.</div></div>`}</div>
       <div class="mdr-ft">${d ? `Cliquez pour placer dans « ${esc(d.title)} », ou glissez où vous voulez.` : 'Glissez un élément sur un board ou dans une note.'}</div>`;
   }

@@ -76,12 +76,12 @@ function spaceMedia(spId) {
   return out;
 }
 /* links and bits of text dropped or pasted into a moodboard: { type: 'link', url, title } or { type: 'text', txt } */
-function addMediaItems(spId, list) {
+function addMediaItems(spId, list, folder) {
   const sp = spaceById(spId); if (!sp) return 0;
   sp.media = sp.media || []; let n = 0;
   for (const m of list) {
-    if (m.type === 'link' && m.url && !sp.media.some(x => x.url === m.url)) { sp.media.unshift({ id: uid('m'), type: 'link', url: m.url, title: m.title || '', added: Date.now() }); n++; }
-    else if (m.type === 'text' && String(m.txt || '').trim()) { sp.media.unshift({ id: uid('m'), type: 'text', txt: String(m.txt).trim().slice(0, 4000), added: Date.now() }); n++; }
+    if (m.type === 'link' && m.url && !sp.media.some(x => x.url === m.url)) { sp.media.unshift({ id: uid('m'), type: 'link', url: m.url, title: m.title || '', added: Date.now(), ...(folder ? { folder } : {}) }); n++; }
+    else if (m.type === 'text' && String(m.txt || '').trim()) { sp.media.unshift({ id: uid('m'), type: 'text', txt: String(m.txt).trim().slice(0, 4000), added: Date.now(), ...(folder ? { folder } : {}) }); n++; }
   }
   if (n) save(); return n;
 }
@@ -94,13 +94,13 @@ function mediaFromData(dt) {
   if (urls.length && urls.join(' ').length >= txt.replace(/\s+/g, ' ').length - 2) return urls.map(url => ({ type: 'link', url }));
   return [{ type: 'text', txt }];
 }
-async function addMedia(spId, files) {
+async function addMedia(spId, files, folder) {
   const sp = spaceById(spId); if (!sp) { toast('Ce board n’a pas d’espace'); return []; }
   sp.media = sp.media || []; const added = [];
   for (const f of files) {
     try {
-      if (/^image\//.test(f.type)) { const im = await importImage(f); sp.media.unshift({ id: uid('m'), type: 'image', asset: im.id, name: f.name.replace(/\.[a-z0-9]{2,4}$/i, ''), w: im.w, h: im.h, added: Date.now() }); }
-      else { if (f.size > 80e6) { toast(`« ${f.name} » dépasse 80 Mo`); continue; } const id = await Assets.put(f); sp.media.unshift({ id: uid('m'), type: 'file', asset: id, name: f.name, size: f.size, mime: f.type, added: Date.now() }); }
+      if (/^image\//.test(f.type)) { const im = await importImage(f); sp.media.unshift({ id: uid('m'), type: 'image', asset: im.id, name: f.name.replace(/\.[a-z0-9]{2,4}$/i, ''), w: im.w, h: im.h, added: Date.now(), ...(folder ? { folder } : {}) }); }
+      else { if (f.size > 80e6) { toast(`« ${f.name} » dépasse 80 Mo`); continue; } const id = await Assets.put(f); sp.media.unshift({ id: uid('m'), type: 'file', asset: id, name: f.name, size: f.size, mime: f.type, added: Date.now(), ...(folder ? { folder } : {}) }); }
       added.push(f.name);
     } catch (e) { toast(`« ${f.name} » n'a pas pu être lu`); }
   }
@@ -285,6 +285,7 @@ function taskRow(t, o = {}) {
     ${sc ? `<button class="chip subc${t.open ? ' on' : ''}" data-subs="${t.id}" aria-expanded="${!!t.open}" title="Sous-tâches">${icon('chk')}${sc}</button>` : ''}
     ${nimg ? `<button class="chip imgc" data-edit="${t.id}" title="Images">${icon('image')}${nimg}</button>` : ''}
     ${t.note && t.note.trim() ? `<span class="tnote" title="${esc(t.note.slice(0, 200))}">${icon('note', 'sm')}</span>` : ''}
+    ${t.done ? '' : `<button class="tb addsub" data-addsub="${t.id}" aria-label="Ajouter une sous-tâche" title="Ajouter une sous-tâche">${icon('plus', 'sm')}</button>`}
     <button class="tb" data-edit="${t.id}" aria-label="Modifier" style="height:28px;min-width:28px;padding:0">${icon('chev', 'sm')}</button>
   </div>${open}</div>`;
 }
@@ -299,6 +300,7 @@ function bindTaskList(root, rerender) {
       if (!t.done && tw && !reduceMotion()) { dn.setAttribute('aria-checked', 'true'); tw.classList.add('completing'); setTimeout(() => { smoothTasks(() => setTaskDone(t, true)); toast('Tâche terminée', { label: 'Annuler', run: undo }); }, 300); return; }
       smoothTasks(() => setTaskDone(t, !t.done)); if (t.done) toast('Tâche terminée', { label: 'Annuler', run: undo }); return;
     }
+    const as = e.target.closest('[data-addsub]'); if (as) { quickSub(as.closest('.tw'), taskById(as.dataset.addsub)); return; }
     const sb = e.target.closest('[data-subs]'); if (sb) { const t = taskById(sb.dataset.subs); if (t) { t.open = !t.open; save(); re(); if (t.open) $$(`.tw[data-tw="${t.id}"] .tsubs`).forEach(x => x.classList.add('enter')); } return; }
     const ck = e.target.closest('[data-subck]'); if (ck) { const t = taskById(ck.closest('.tw').dataset.tw), k = +ck.dataset.subck, x = t && subsOf(t)[k]; if (x) { x[1] = !x[1]; save(); refreshTask(t, k); } return; }
     const ed = e.target.closest('[data-edit]'); if (ed) toggleTaskEdit(ed.closest('.tw'), taskById(ed.dataset.edit), re);
@@ -313,6 +315,22 @@ function bindTaskList(root, rerender) {
     if (from && to && from !== to) moveSub(from, +el.dataset.subck, to, [...list.children].filter(c => c.matches('.tsub')).indexOf(el));
     else reorderSubs(from, list, '.tsub', 'subck');
   } });
+}
+/* the + of a task: a field under it to type sub-tasks one after the other (Enter adds and keeps the field) */
+function quickSub(tw, t) {
+  if (!tw || !t) return;
+  let box = tw.querySelector(':scope > .tsubs');
+  if (!box) { box = document.createElement('div'); box.className = 'tsubs'; tw.querySelector(':scope > .trow').after(box); }
+  let row = box.querySelector('.tsub-add');
+  if (!row) { row = document.createElement('label'); row.className = 'tsub-add'; row.innerHTML = `<span class="cb sm" aria-hidden="true">${icon('plus')}</span><input placeholder="Nouvelle sous-tâche, puis Entrée" aria-label="Nouvelle sous-tâche" autocomplete="off">`; box.append(row); }
+  const i = row.querySelector('input'); i.focus();
+  i.onkeydown = e => {
+    if (e.key === 'Escape') { e.stopPropagation(); i.blur(); return; }
+    if (e.key !== 'Enter' || !i.value.trim()) return;
+    e.preventDefault(); subsOf(t).push([i.value.trim(), false]); t.open = true; save(); refreshTask(t);
+    const nw = $(`.tw[data-tw="${t.id}"]`); if (nw) { const l = $$('.tsubs .tsub', nw).pop(); if (l) l.classList.add('pop-in'); quickSub(nw, t); }
+  };
+  i.onblur = () => setTimeout(() => { if (row.contains(document.activeElement)) return; row.remove(); if (!box.querySelector('.tsub')) box.remove(); }, 150);
 }
 function dropTask(el, list) {
   const t = taskById(el.dataset.tw); if (!t) return;
@@ -601,7 +619,7 @@ function renderSpace(v) {
   const isDef = sp.id === DEF_SPACE;
   v.innerHTML = `<div class="page sphome">
     <div class="ph sp-ph"><div class="sp-hd"><div class="sp-kick"><span class="sdot" style="background:${sp.color}"></span>${isDef ? 'Espace par défaut' : 'Espace'}</div>
-      ${isDef ? `<h1>${esc(sp.name)}</h1>` : `<input class="sp-title" id="spTitle" value="${esc(sp.name)}" aria-label="Nom de l'espace" spellcheck="false">`}
+      <input class="sp-title" id="spTitle" value="${esc(sp.name)}" aria-label="Nom de l'espace" spellcheck="false"${isDef ? ' readonly tabindex="-1"' : ''}>
       <div class="sub">${isDef ? 'Pour les notes et les tâches rapides, sans créer d’espace. ' : ''}${[pl(open.length, 'tâche') + ' à faire', nb ? pl(nb, 'board') : '', nn ? pl(nn, 'note') : '', nm ? pl(nm, 'élément') + ' au moodboard' : ''].filter(Boolean).join(' · ')}</div></div>
       <div class="acts"><button class="btn" data-new="note">${icon('note')}Note</button><button class="btn pri" data-new="board">${icon('board')}Board</button></div></div>
     <div class="sp-grid">
@@ -617,7 +635,7 @@ function renderSpace(v) {
   bindQuickAdd($('#sAdd'), () => go(R));
   Mood.bindPreview($('#spMood', v), sp);
   const ti = $('#spTitle', v);
-  if (ti) {
+  if (ti && !isDef) {
     ti.onkeydown = e => { if (e.key === 'Enter') ti.blur(); if (e.key === 'Escape') { ti.value = sp.name; ti.blur(); } };
     ti.oninput = () => { const n = ti.value.trim(); if (n) { sp.name = n.slice(0, 60); save(); renderSide(); const c = $('#top .crumbs .cur'); if (c) c.textContent = sp.name; } };
     ti.onblur = () => { if (!ti.value.trim()) ti.value = sp.name; };
@@ -842,6 +860,7 @@ function openSettings(section) {
     <div class="srow"><div class="l"><b>Sauvegarde</b><small>${DB.ok() ? 'Enregistré dans ce navigateur, sur cet appareil.' : "Ce navigateur refuse l'enregistrement : exportez avant de fermer."}</small></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="stExp">${icon('download', 'sm')}Exporter</button><button class="btn sm" id="stImp">${icon('upload', 'sm')}Importer</button></div></div>
     ${LEGACY ? `<div class="srow"><div class="l"><b>Données d’avant la 0.2</b><small>${esc(legacyInfo())}. Mises de côté au passage à la 0.2, rien n’a été effacé.</small></div><button class="btn sm" id="stLegacy">${icon('restore', 'sm')}Récupérer</button></div>` : ''}
+    <div class="srow"><div class="l"><b>Mes réglages</b><small>Couleurs du thème, styles des éléments du board, stylets et atelier, dans un fichier (sans tes notes ni tes tâches).</small></div><button class="btn sm" id="stPrefs">${icon('download', 'sm')}Exporter mes réglages</button></div>
     <div class="srow"><div class="l"><b>Repartir de zéro</b><small>Efface les espaces, notes, boards et tâches de la 0.2 sur cet appareil, puis rouvre l’accueil.</small></div><button class="btn sm ghost danger" id="stReset">Tout effacer</button></div>
     <div id="stConfirm"></div>
     </div>`, m => {
@@ -864,6 +883,7 @@ function openSettings(section) {
     $('#stKey', m).onclick = () => { closeModal(); AI.setup(); };
     $('#stExp', m).onclick = () => exportJSON(S, 'PLUM-espace.json');
     $('#stImp', m).onclick = () => $('#importIn').click();
+    $('#stPrefs', m).onclick = () => exportPrefs();
     $('#stReset', m).onclick = () => {
       $('#stConfirm', m).innerHTML = `<div class="confirm" style="margin-top:12px"><span>Effacer toutes les notes, boards et tâches de cet appareil ?</span><button class="btn sm" id="rsNo">Annuler</button><button class="btn sm pri" id="rsYes" style="background:var(--err);border-color:var(--err)">Tout effacer</button></div>`;
       $('#rsNo', m).onclick = () => $('#stConfirm', m).innerHTML = '';
@@ -933,6 +953,14 @@ async function exportJSON(data, filename) {
   } catch (e) { if (e && e.code === 'declined') return; }
   try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([payload], { type: 'application/json' })); a.download = filename; document.body.append(a); a.click(); a.remove(); }
   catch (e) { toast("L'export n'est pas possible ici"); }
+}
+/* the settings alone (no content), to turn them into the defaults of the app */
+async function exportPrefs() {
+  const p = JSON.parse(JSON.stringify(S.prefs)); ['last', 'recent', 'cur', 'welcomed', 'name', 'taskOrder'].forEach(k => delete p[k]);
+  const payload = JSON.stringify({ plum: 'reglages', v: APP_VERSION, exported: new Date().toISOString(), skin: S.prefs.skin, prefs: p }, null, 1);
+  const filename = 'plum-reglages.json';
+  if (DESKTOP && window.notely.saveFile) { const r = await window.notely.saveFile({ name: filename, kind: 'json', data: new TextEncoder().encode(payload) }); if (r && r.ok) toast('Réglages enregistrés'); return; }
+  try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([payload], { type: 'application/json' })); a.download = filename; document.body.append(a); a.click(); a.remove(); } catch (e) { toast("L'export n'est pas possible ici"); }
 }
 function dataURLToBlob(u) {
   const m = /^data:([^;,]*)(;base64)?,(.*)$/s.exec(String(u)); if (!m) throw new Error('not a data URL');
