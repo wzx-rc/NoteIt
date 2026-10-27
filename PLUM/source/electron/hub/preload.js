@@ -1,5 +1,5 @@
-// Native file dialogs, Wintab pen samples and the assistant's OpenAI requests; nothing else from Node is exposed.
-const { contextBridge, ipcRenderer } = require('electron');
+// Native file dialogs, Wintab pen samples, the assistant's OpenAI requests and the page zoom; nothing else from Node is exposed.
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 contextBridge.exposeInMainWorld('notely', {
   platform: 'desktop',
   saveFile: req => ipcRenderer.invoke('save-file', req),
@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('notely', {
   fetchUrl: req => ipcRenderer.invoke('fetch-url', req),
   // { mode: 'light' | 'dark' | 'system' }: native theme
   setTheme: t => ipcRenderer.send('set-theme', t),
+  // the size of the interface (Réglages > UI): 0.5 to 1.25, like the browser zoom
+  setZoom: f => webFrame.setZoomFactor(Math.min(2, Math.max(.25, +f || 1))),
   // window buttons: 'min' | 'max' (maximise or restore) | 'close'; onWinState(cb({ max, full })) returns an unsubscribe function
   win: a => ipcRenderer.send('win', a),
   onWinState: cb => { const h = (e, d) => cb(d); ipcRenderer.on('win-state', h); return () => ipcRenderer.removeListener('win-state', h); },

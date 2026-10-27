@@ -718,6 +718,15 @@ function placeDecor(th) {
   $$('.th-decor').forEach(d => d.remove());
   for (const d of th.decor || []) $$(d.at).forEach(host => { const el = document.createElement('div'); el.className = 'th-decor ' + (d.cls || ''); el.setAttribute('aria-hidden', 'true'); host.appendChild(el); });
 }
+/* the size of the whole interface (Réglages > UI): the desktop app zooms its page like the browser zoom, so the
+   pointer and the pen still land where they should; a browser gets CSS zoom */
+const UI_SCALES = ['50', '75', '100', '125'];
+function applyUiScale() {
+  const v = UI_SCALES.includes(String(S.prefs.uiScale)) ? +S.prefs.uiScale : 100;
+  if (window.notely && window.notely.setZoom) window.notely.setZoom(v / 100);
+  else document.documentElement.style.zoom = v === 100 ? '' : v / 100;
+  if (typeof Board !== 'undefined' && Board.mounted) Board.layoutChanged();
+}
 function applyTheme() {
   const sk = S && THEMES[S.prefs.skin] ? S.prefs.skin : 'minimal', th = THEMES[sk] || THEME_BASE, r = document.documentElement;
   const t = th.mode === 'user' ? (S ? S.prefs.theme : 'auto') : th.mode;
@@ -841,6 +850,7 @@ function openSettings(section) {
     <div class="srow skinrow"><div class="l"><b>Thème</b><small>Couleurs, icônes et habillage de l’interface. Tes données ne changent pas.</small></div>
       <div class="skins" id="stSkin">${themeList().map(t => `<button class="skin-c sk-${t.id}" data-v="${t.id}" aria-pressed="${theme().id === t.id}"><span class="skin-pv" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>${esc(t.label)}</b><small>${esc(t.desc || '')}</small></button>`).join('')}</div></div>
     <div class="srow" id="stThemeRow"${theme().mode !== 'user' ? ' hidden' : ''}><div class="l"><b>Clair ou sombre</b></div>${seg('stTheme', p.theme, [['auto', 'Système'], ['light', 'Clair'], ['dark', 'Sombre']])}</div>
+    <div class="srow"><div class="l"><b>Taille de l’interface</b><small>Agrandit ou réduit tout PLUM : textes, boutons et panneaux.</small></div>${seg('stScale', UI_SCALES.includes(String(p.uiScale)) ? String(p.uiScale) : '100', UI_SCALES.map(v => [v, v + ' %']))}</div>
     <div id="stLook">${lookRows(theme())}</div>
     </div>
     <div class="spane" data-pane="board"${tab === 'board' ? '' : ' hidden'}>
@@ -869,6 +879,7 @@ function openSettings(section) {
     $('#stName', m).oninput = e => { p.name = e.target.value.trim(); save(); renderSide(); };
     const segBind = (id, key, after) => { const el = $('#' + id, m); if (!el) return; el.onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; p[key] = b.dataset.v; save(); $$('button', el).forEach(x => x.setAttribute('aria-pressed', x === b)); after && after(); }; };
     segBind('stTheme', 'theme', applyTheme);
+    segBind('stScale', 'uiScale', applyUiScale);
     $('#stSkin', m).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; switchTheme(b.dataset.v); $$('[data-v]', $('#stSkin', m)).forEach(x => x.setAttribute('aria-pressed', x === b)); $('#stThemeRow', m).hidden = THEMES[b.dataset.v].mode !== 'user'; $('#stLook', m).innerHTML = lookRows(THEMES[b.dataset.v]); };
     const lookEl = $('#stLook', m), relook = () => { lookEl.innerHTML = lookRows(theme()); };
     // buttons only: <html> carries data-tint too
