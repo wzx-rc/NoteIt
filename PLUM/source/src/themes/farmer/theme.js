@@ -3,7 +3,7 @@
    logo, wooden tabs on the panel titles, sticky notes in yellow / green / blue / peach, the forest green of the
    "Share" button as the accent, vines and leaves around the edges, and the painted isometric farm on the welcome.
    Icons are the kit's painted ones (Gemini extractions of the boards, in assets/): game-asset pictures for the
-   sidebar (barn, notebook, clipboard, cork board, sunflower, bucket…), cream glyphs for the board tools on the wood.
+   sidebar (barn, notebook, clipboard, cork board, sunflower, bucket…); the board keeps fine brown line icons, as on the concept.
    Kalam (felt pen) for titles and handwriting, Nunito for the interface. Always light. */
 const FM_IMG = f => ({ vb: '0 0 24 24', svg: `<image href="${f}" width="24" height="24"/>` });
 defineTheme({
@@ -40,15 +40,8 @@ defineTheme({
     spark: FM_IMG('asset:ic-spark.webp'),
     cal: FM_IMG('asset:ic-cal.webp'),
     clock: FM_IMG('asset:ic-clock.webp'),
-    /* board tools: the cream glyphs of the wooden rail */
-    cursor: FM_IMG('asset:ic-cursor.webp'),
-    pen: FM_IMG('asset:ic-pencil.webp'),
-    pencil: FM_IMG('asset:ic-pencil.webp'),
-    text: FM_IMG('asset:ic-text.webp'),
-    rect: FM_IMG('asset:ic-shape.webp'),
-    sticky: FM_IMG('asset:ic-sticky.webp'),
-    conn: FM_IMG('asset:ic-conn.webp'),
-    dots: FM_IMG('asset:ic-dots.webp'),
+    /* board tools: the concept's fine brown line icons (base set), the sticky as a yellow square */
+    sticky: '<path d="M5.5 4.5h13a1 1 0 0 1 1 1V14l-6 6h-8a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1z" fill="#F4CE5B" stroke="#B98A2A" stroke-width="1.3"/><path d="M19.5 14h-5a1 1 0 0 0-1 1v5z" fill="#E2B23F" stroke="#B98A2A" stroke-width="1.3"/>',
     plus: '<path d="M12 5v14M5 12h14" stroke-width="2.3"/>'
   },
   /* a vine hanging over the top right corner, a sprig at the bottom left of the page */
