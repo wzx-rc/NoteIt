@@ -41,13 +41,19 @@ const THEME_BASE = {
   tasks: null,               // function ({ open, done, filters, filter, today }) giving parts of the task page: { head, tabs, before, after } (HTML; a missing part keeps the default)
   taskIcon: null,            // function (task) giving markup shown before the task's title
   docAttrs: null,            // function (doc, space) giving extra attributes for a document card (e.g. data-tint)
+  tints: null,               // "Couleur du thème" in Réglages: [{ id, name, h, c }], the hue and chroma of the neutrals, set on <html> as --th-h / --th-c (the first is the default)
+  accents: null,             // "Couleur d'accent" in Réglages: [{ name, value }] (the first is the theme's own); another colour sets <html data-accent="custom"> with --accent-c / --on-accent-c
   apply: null                // function (on) called when the theme is put on (true) or taken off (false)
 };
 function defineTheme(t) { THEMES[t.id] = Object.assign({}, THEME_BASE, t, { colors: Object.assign({}, t.colors) }); }
 const themeList = () => Object.values(THEMES).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
-/* the skin id is kept in S.prefs.skin and on <html data-skin>; 'notely' (Papier) is the base theme */
+/* the skin id is kept in S.prefs.skin and on <html data-skin>; 'notely' (now Nuit) is the base theme */
 const skin = () => document.documentElement.dataset.skin || 'notely';
 const theme = () => THEMES[skin()] || THEMES.notely || THEME_BASE;
+/* what the user chose for a theme with tints / accents: S.prefs.look[id] = { tint, accent } */
+const themeLook = (id, prefs) => (prefs && prefs.look && prefs.look[id]) || {};
+/* text colour on an accent: dark on bright colours (yellow, cyan, green), white otherwise */
+const onAccent = hex => lum(hex) > .36 ? '#0B0D12' : '#FFFFFF';
 /* a swatch set of the current theme, else the base one */
 const themeColors = (k, base) => theme().colors[k] || base;
 /* near-black ink reads as chalk on a dark sheet */

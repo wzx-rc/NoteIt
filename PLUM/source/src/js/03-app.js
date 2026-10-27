@@ -732,10 +732,27 @@ function applyTheme() {
   if (t === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t);
   r.dataset.resolved = t === 'auto' ? (mqDark.matches ? 'dark' : 'light') : t;
   if (prev !== th) { swapIcons(th); placeDecor(th); if (th.apply) th.apply(true); }
+  applyLook(th, r);
   syncTitleBar(t);
   const tb = $('#themeBtn'); if (tb) tb.hidden = th.mode !== 'user';
   const tc = $('meta[name="theme-color"]'); if (tc) tc.content = th.meta || '';
   if (S) { renderSide(); if (R.name === 'doc' && typeof Board !== 'undefined') { Board.retheme(); Note.retheme(); } }
+}
+/* the theme's colour and accent chosen in Réglages (themes with tints / accents): the theme's CSS reads them */
+function applyLook(th, r) {
+  const lk = themeLook(th.id, S && S.prefs), st = r.style;
+  const tint = th.tints && (th.tints.find(x => x.id === lk.tint) || th.tints[0]);
+  if (tint) { st.setProperty('--th-h', tint.h); st.setProperty('--th-c', tint.c); r.dataset.tint = tint.id; }
+  else { st.removeProperty('--th-h'); st.removeProperty('--th-c'); delete r.dataset.tint; }
+  const a = th.accents && /^#[0-9a-f]{6}$/i.test(lk.accent || '') && lk.accent.toLowerCase() !== th.accents[0].value.toLowerCase() ? lk.accent : null;
+  if (a) { st.setProperty('--accent-c', a); st.setProperty('--on-accent-c', onAccent(a)); r.dataset.accent = 'custom'; }
+  else { st.removeProperty('--accent-c'); st.removeProperty('--on-accent-c'); delete r.dataset.accent; }
+}
+/* live = while the colour picker is dragged: only the colours change, nothing is saved or redrawn */
+function setLook(patch, live) {
+  const th = theme(), look = S.prefs.look || (S.prefs.look = {});
+  look[th.id] = Object.assign({}, look[th.id], patch);
+  if (live) applyLook(th, document.documentElement); else { save(); applyTheme(); }
 }
 /* changing theme from Réglages: the old look fades into the new one */
 function switchTheme(id) {
@@ -785,6 +802,20 @@ function setFocus(on) {
   if (typeof Board !== 'undefined') Board.layoutChanged();
 }
 
+/* Réglages > UI: the theme's colour (tint of the neutrals) and accent colour, for themes that offer them */
+function lookRows(th) {
+  const lk = themeLook(th.id, S.prefs), out = [];
+  if (th.tints) {
+    const cur = (th.tints.find(x => x.id === lk.tint) || th.tints[0]).id;
+    out.push(`<div class="srow"><div class="l"><b>Couleur du thème</b><small>La teinte des fonds et des panneaux.</small></div><div class="looks">${th.tints.map((x, i) => `<button class="lk-tint" data-tint="${x.id}" style="--h:${x.h};--cc:${x.c}" aria-pressed="${x.id === cur}" title="${esc(x.name)}${i ? '' : ' (par défaut)'}" aria-label="${esc(x.name)}"></button>`).join('')}</div></div>`);
+  }
+  if (th.accents) {
+    const own = th.accents[0].value.toLowerCase(), cur = (lk.accent || own).toLowerCase(), named = th.accents.find(a => a.value.toLowerCase() === cur);
+    out.push(`<div class="srow"><div class="l"><b>Couleur d’accent</b><small>${named ? esc(named.name) : 'Couleur choisie'}${cur === own ? ', la couleur du thème' : ''}.</small></div><div class="looks">${th.accents.map(a => `<button class="lk-acc" data-acc="${a.value}" style="--c:${a.value}" aria-pressed="${a.value.toLowerCase() === cur}" title="${esc(a.name)}" aria-label="${esc(a.name)}"></button>`).join('')}<label class="lk-acc any" style="${named ? '' : `--c:${cur}`}" aria-pressed="${!named}" title="Autre couleur…"><input type="color" value="${cur}" aria-label="Autre couleur"></label></div></div>`);
+  }
+  return out.join('');
+}
+
 /* Réglages in four tabs; the last one used opens again */
 const SET_TABS = [['account', 'Compte'], ['ui', 'UI'], ['board', 'Board'], ['other', 'Autres']];
 let settingsTab = 'account';
@@ -803,6 +834,7 @@ function openSettings(section) {
     <div class="srow skinrow"><div class="l"><b>Thème</b><small>Couleurs, icônes et habillage de l’interface. Tes données ne changent pas.</small></div>
       <div class="skins" id="stSkin">${themeList().map(t => `<button class="skin-c sk-${t.id}" data-v="${t.id}" aria-pressed="${theme().id === t.id}"><span class="skin-pv" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>${esc(t.label)}</b><small>${esc(t.desc || '')}</small></button>`).join('')}</div></div>
     <div class="srow" id="stThemeRow"${theme().mode !== 'user' ? ' hidden' : ''}><div class="l"><b>Clair ou sombre</b></div>${seg('stTheme', p.theme, [['auto', 'Système'], ['light', 'Clair'], ['dark', 'Sombre']])}</div>
+    <div id="stLook">${lookRows(theme())}</div>
     </div>
     <div class="spane" data-pane="board"${tab === 'board' ? '' : ' hidden'}>
     <h5 id="stPenSec" style="margin-top:4px">Stylet et dessin</h5>
@@ -828,7 +860,11 @@ function openSettings(section) {
     $('#stName', m).oninput = e => { p.name = e.target.value.trim(); save(); renderSide(); };
     const segBind = (id, key, after) => { const el = $('#' + id, m); if (!el) return; el.onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; p[key] = b.dataset.v; save(); $$('button', el).forEach(x => x.setAttribute('aria-pressed', x === b)); after && after(); }; };
     segBind('stTheme', 'theme', applyTheme);
-    $('#stSkin', m).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; switchTheme(b.dataset.v); $$('[data-v]', $('#stSkin', m)).forEach(x => x.setAttribute('aria-pressed', x === b)); $('#stThemeRow', m).hidden = THEMES[b.dataset.v].mode !== 'user'; }; segBind('stPress', 'pressure'); segBind('stSrc', 'source'); segBind('stWheel', 'wheel');
+    $('#stSkin', m).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; switchTheme(b.dataset.v); $$('[data-v]', $('#stSkin', m)).forEach(x => x.setAttribute('aria-pressed', x === b)); $('#stThemeRow', m).hidden = THEMES[b.dataset.v].mode !== 'user'; $('#stLook', m).innerHTML = lookRows(THEMES[b.dataset.v]); };
+    const lookEl = $('#stLook', m), relook = () => { lookEl.innerHTML = lookRows(theme()); };
+    lookEl.onclick = e => { const b = e.target.closest('[data-tint], [data-acc]'); if (!b) return; setLook(b.dataset.tint ? { tint: b.dataset.tint } : { accent: b.dataset.acc }); relook(); };
+    lookEl.oninput = e => { if (e.target.matches('input[type="color"]')) setLook({ accent: e.target.value }, true); };
+    lookEl.onchange = e => { if (e.target.matches('input[type="color"]')) { setLook({ accent: e.target.value }); relook(); } }; segBind('stPress', 'pressure'); segBind('stSrc', 'source'); segBind('stWheel', 'wheel');
     $('#stPen', m).onchange = e => { p.autoPen = e.target.checked; save(); };
     $('#stAi', m).onchange = e => { p.aiOn = e.target.checked; save(); applyAi(); };
     $('#stSens', m).oninput = e => { p.sens = +e.target.value; $('#stSensV', m).textContent = Math.round(p.sens * 100) + ' %'; save(); };

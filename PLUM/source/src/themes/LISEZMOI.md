@@ -6,8 +6,8 @@ et le passage d'un thème à l'autre se fait en fondu, sans recharger l'app.
 
 ```
 src/themes/
-  notely/      Papier (le style de base ; l'id "notely" est gardé pour les données existantes)
-  inkspace/    Inkspace
+  notely/      Nuit, d'après le thème Nuit de WZX Web (l'id "notely" est gardé pour les données existantes ; ses couleurs de base restent dans style.css)
+  inkspace/    Éclipse, d'après le thème Éclipse de WZX Web (id "inkspace" gardé)
   nature/      Nature
   pokedex/     Pokédex (éléments peints du kit : boîtiers en neuf-tranches, rail anthracite, icônes stickers, roue peinte, mascotte ; polices Nunito et Kalam intégrées)
   _modele/     modèle à copier (un dossier qui commence par _ n'est pas inclus dans l'app)
@@ -67,7 +67,9 @@ Règles :
 | `icons` | `{}` | icônes redessinées |
 | `decor` | `[]` | calques d'habillage |
 | `ring` | `'grain'` | roue de l'atelier : `'grain'` ou `'patches'` (touches posées à la main) |
-| `mindTags` | `false` | mindmaps à la façon Inkspace |
+| `mindTags` | `false` | mindmaps à la façon de l'ancien Inkspace |
+| `tints` | `null` | « Couleur du thème » dans Réglages : `[{ id, name, h, c }]`, teinte et chroma des gris, posés sur `<html>` en `--th-h` / `--th-c` (le premier est celui par défaut). Le `theme.css` écrit ses gris en `oklch(L var(--th-c) var(--th-h))` (exemple : `notely/theme.css`) |
+| `accents` | `null` | « Couleur d'accent » dans Réglages : `[{ name, value }]`, la première est celle du thème. Une autre couleur pose `<html data-accent="custom">` avec `--accent-c` et `--on-accent-c` (texte lisible dessus), que le `theme.css` reprend dans `--accent` |
 | `apply(on)` | | code lancé à la mise en place (`true`) et au retrait (`false`) du thème |
 
 Le code de l'app lit le thème par `theme()` (fiche du thème courant) et `themeColors(clé, base)`

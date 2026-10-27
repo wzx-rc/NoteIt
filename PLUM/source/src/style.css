@@ -876,6 +876,16 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .skin-c small { font-size: 11.5px; color: var(--ink-3); }
 .skin-pv { position: relative; height: 62px; border-radius: 8px; margin-bottom: 4px; overflow: hidden; }
 .skin-pv i { position: absolute; border-radius: 4px; }
+/* theme colour and accent swatches (lookRows): a tint shows its dark and light sheet, an accent its colour */
+.looks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lk-tint, .lk-acc { width: 28px; height: 28px; border-radius: 50%; position: relative; flex: none; cursor: pointer; box-shadow: inset 0 0 0 1px rgb(127 127 127 / .35); }
+.lk-tint { background: linear-gradient(135deg, oklch(.3 calc(var(--cc) * 2.4) var(--h)) 50%, oklch(.93 calc(var(--cc) * 1.6) var(--h)) 50%); }
+.lk-acc { background: var(--c); }
+.lk-acc.any { background: conic-gradient(#FF5F5F, #F5A524, #2FBF71, #22C3E6, #4B8DF8, #8C7BFF, #F0549B, #FF5F5F); }
+.lk-acc.any[style*="--c"] { background: var(--c); }
+.lk-acc.any::after { content: "+"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 15px/1 var(--font-ui); color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / .5); }
+.lk-acc.any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.lk-tint[aria-pressed="true"], .lk-acc[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
 /* decoration layers a theme adds (decor in its theme.js): they never catch the pointer; the theme's CSS draws them */
 .th-decor { position: absolute; pointer-events: none; z-index: 0; }
 /* switching theme: a short crossfade (document.startViewTransition in switchTheme) */

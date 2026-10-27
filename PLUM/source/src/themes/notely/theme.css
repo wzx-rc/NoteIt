@@ -1,10 +1,155 @@
-/* ================= Papier (id "notely") =================
-   The base look: its colours are the defaults in style.css (:root, light and dark). This file only adds what is
-   specific to it. */
+/* ================= Nuit (id "notely") =================
+   The "Nuit" look of WZX Web (its styles/tokens.css): net and dense, blue-grey neutrals, Inter, an accent colour for
+   what is active. Every neutral is oklch(L, chroma, hue) where the hue and the chroma come from the "Couleur du thème"
+   chosen in Réglages (--th-h, --th-c set on <html> by applyLook); the L values are those of WZX Web, so the default
+   tint (Ardoise) gives its colours. The accent is the theme's blue, or the "Couleur d'accent" (--accent-c).
+   Inter is declared here and used by Éclipse too (an @font-face is global, whatever the theme). */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("asset:fonts/inter-latin.woff2") format("woff2"); }
 
-/* preview card in Réglages > UI */
-.sk-notely .skin-pv { background: #F5F3EE radial-gradient(rgba(30,29,27,.18) 1px, transparent 1.4px) 0 0 / 10px 10px; box-shadow: inset 0 0 0 1px #E4E0D7; }
-.sk-notely .skin-pv i:nth-child(1) { left: 12%; top: 22%; width: 26%; height: 44%; background: #FFE58F; }
-.sk-notely .skin-pv i:nth-child(2) { left: 46%; top: 30%; width: 22%; height: 28%; border: 2px solid #1E1E1E; border-radius: 3px; }
-.sk-notely .skin-pv i:nth-child(3) { left: 74%; top: 18%; width: 16%; height: 22%; background: #BFDBF7; }
-.sk-notely .skin-pv i:nth-child(4) { left: 74%; top: 52%; width: 16%; height: 22%; background: #C3E8C1; }
+:root[data-skin="notely"] {
+  --th-h: 250; --th-c: .015;
+  --nt: calc(var(--th-c) * 1); --nt-lo: calc(var(--th-c) * .5); --nt-hi: calc(var(--th-c) * 1.35);
+  --font-ui: "Inter", "Segoe UI Variable Text", "Segoe UI", -apple-system, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px;
+  --ok: #3FBF7F; --warn: #F0B44C; --err: #F05D5D; --info: #4B8DF8; --pink: #FF4F9A;
+}
+/* ---- dark: rail #12171D, top bar #161C22, panels #141A1F, tiles #1C2228, canvas #2F363E ---- */
+:root[data-skin="notely"][data-resolved="dark"] {
+  --side: oklch(.202 var(--nt) var(--th-h)); --side-2: oklch(.249 var(--nt) var(--th-h)); --side-3: oklch(.297 var(--nt-hi) var(--th-h)); --side-line: oklch(.262 var(--nt) var(--th-h));
+  --side-text: oklch(.941 var(--nt-lo) var(--th-h)); --side-mute: oklch(.66 var(--nt-hi) var(--th-h));
+  --top: oklch(.223 var(--nt) var(--th-h));
+  --paper: oklch(.229 var(--nt) var(--th-h)); --card: oklch(.252 var(--nt) var(--th-h)); --sunk: oklch(.214 var(--nt) var(--th-h)); --raise: oklch(.281 var(--nt) var(--th-h));
+  --menu: oklch(.245 var(--nt) var(--th-h)); --canvas: oklch(.3 var(--nt) var(--th-h));
+  --line: oklch(.3 var(--nt) var(--th-h)); --line-2: oklch(.36 var(--nt-hi) var(--th-h));
+  --ink: oklch(.941 var(--nt-lo) var(--th-h)); --ink-2: oklch(.744 var(--nt) var(--th-h)); --ink-3: oklch(.58 var(--nt-hi) var(--th-h));
+  --strong: #FFFFFF; --contrast: #F5F7FA; --on-contrast: #0E1217;
+  --dot: rgb(255 255 255 / .05);
+  --accent: #4B8DF8; --accent-2: #5B98FA; --on-accent: #FFFFFF;
+  --shadow-1: none;
+  --shadow-2: 0 18px 50px rgb(0 0 0 / .45), 0 2px 8px rgb(0 0 0 / .3);
+  --shadow-note: 0 1px 1px rgb(0 0 0 / .3), 0 8px 16px -8px rgb(0 0 0 / .6);
+  --br-a: oklch(.3 var(--nt-hi) var(--th-h)); --br-b: oklch(.25 var(--nt) var(--th-h)); --br-rim: rgb(255 255 255 / .08); --br-l1: #FFFFFF; --br-l2: var(--accent); --br-vein: oklch(.25 var(--nt) var(--th-h)); --br-text: #FFFFFF;
+  color-scheme: dark;
+}
+/* ---- light: white panels, rail #F5F6F8, canvas #E6E9ED, ink #1A1F26 ---- */
+:root[data-skin="notely"][data-resolved="light"] {
+  --side: oklch(.968 calc(var(--th-c) * .3) var(--th-h)); --side-2: oklch(.94 calc(var(--th-c) * .45) var(--th-h)); --side-3: oklch(.915 calc(var(--th-c) * .6) var(--th-h)); --side-line: oklch(.915 calc(var(--th-c) * .45) var(--th-h));
+  --side-text: oklch(.237 var(--nt) var(--th-h)); --side-mute: oklch(.53 var(--nt-hi) var(--th-h));
+  --top: #FFFFFF;
+  --paper: oklch(.976 calc(var(--th-c) * .25) var(--th-h)); --card: #FFFFFF; --sunk: oklch(.953 calc(var(--th-c) * .35) var(--th-h)); --raise: oklch(.962 calc(var(--th-c) * .3) var(--th-h));
+  --menu: #FFFFFF; --canvas: oklch(.933 calc(var(--th-c) * .42) var(--th-h));
+  --line: oklch(.924 calc(var(--th-c) * .42) var(--th-h)); --line-2: oklch(.87 calc(var(--th-c) * .6) var(--th-h));
+  --ink: oklch(.237 var(--nt) var(--th-h)); --ink-2: oklch(.5 var(--nt-hi) var(--th-h)); --ink-3: oklch(.657 var(--nt-hi) var(--th-h));
+  --strong: #0F1318; --contrast: #16191E; --on-contrast: #FFFFFF;
+  --dot: oklch(.3 var(--nt-hi) var(--th-h) / .13);
+  --accent: #3A7EF2; --accent-2: #2F72E6; --on-accent: #FFFFFF;
+  --shadow-1: 0 1px 2px rgb(22 30 44 / .06);
+  --shadow-2: 0 18px 50px rgb(22 30 44 / .14), 0 2px 8px rgb(22 30 44 / .1);
+  --shadow-note: 0 1px 1px rgb(22 30 44 / .08), 0 6px 14px -6px rgb(22 30 44 / .28);
+  --br-a: #2A2F37; --br-b: #16191E; --br-rim: rgb(255 255 255 / .1); --br-l1: #FFFFFF; --br-l2: var(--accent); --br-vein: #16191E; --br-text: #FFFFFF;
+  color-scheme: light;
+}
+/* any accent colour: the rest follows it */
+:root[data-skin="notely"][data-accent="custom"] { --accent: var(--accent-c); --on-accent: var(--on-accent-c); --accent-2: color-mix(in oklab, var(--accent) 88%, white); }
+:root[data-skin="notely"][data-accent="custom"][data-resolved="light"] { --accent-2: color-mix(in oklab, var(--accent) 88%, black); }
+:root[data-skin="notely"] { --tb-l: var(--side); --tb-r: var(--top); --tb-sym: var(--ink); --tb-text: var(--side-mute); }
+
+[data-skin="notely"] ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* ---------- sidebar: the rail of WZX Web, dense rows, the open page in a raised tile with an accent icon ---------- */
+[data-skin="notely"] #side { border-right: 1px solid var(--side-line); }
+[data-skin="notely"] .brand .pill { height: 40px; border-radius: 10px; padding: 0 15px 0 11px; }
+[data-skin="notely"] .sbox { height: 32px; border-radius: 8px; background: var(--side-2); box-shadow: inset 0 0 0 1px var(--side-line); }
+[data-skin="notely"] .nv { height: 32px; border-radius: 8px; font-size: 13px; font-weight: 500; color: color-mix(in oklab, var(--side-text) 82%, var(--side)); }
+[data-skin="notely"] .nv:hover { background: var(--side-2); color: var(--side-text); }
+[data-skin="notely"] .nv[aria-current="page"] { background: var(--side-3); color: var(--side-text); }
+[data-skin="notely"] #nav .nv[aria-current="page"] .i { color: var(--accent); }
+[data-skin="notely"] .nv .ct { color: var(--side-mute); }
+/* group titles in sentence case, like "Mise en page" in WZX Web */
+[data-skin="notely"] .sec { margin: 20px 10px 4px; font-size: 12.5px; font-weight: 600; letter-spacing: 0; color: color-mix(in oklab, var(--side-text) 80%, var(--side)); }
+[data-skin="notely"] .sec span { display: inline-block; text-transform: lowercase; }
+[data-skin="notely"] .sec span::first-letter { text-transform: uppercase; }
+[data-skin="notely"] .me { color: var(--side-text); }
+[data-skin="notely"] .av { background: linear-gradient(135deg, #6C8CFF, #B07CFF); }
+
+/* ---------- top bar ---------- */
+[data-skin="notely"] #top { background: var(--top); border-bottom-color: var(--line); height: 52px; }
+[data-skin="notely"] #top .crumbs .cur { color: var(--strong); }
+[data-skin="notely"] .tb { border-radius: 8px; height: 32px; }
+[data-skin="notely"] .tb:hover { background: var(--raise); }
+/* the high-contrast button ("Publier" in WZX Web): light on dark, ink on light */
+[data-skin="notely"] .tb.pri { background: var(--contrast); color: var(--on-contrast); border-radius: 8px; }
+[data-skin="notely"] .tb.pri:hover { background: color-mix(in oklab, var(--contrast) 90%, var(--on-contrast)); color: var(--on-contrast); }
+[data-skin="notely"] .tb.ai { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
+[data-skin="notely"] .tb.ai .i { color: var(--accent); }
+
+/* ---------- pages ---------- */
+[data-skin="notely"] .ph h1 { font: 650 32px/1.12 var(--font-ui); letter-spacing: -.025em; color: var(--strong); }
+[data-skin="notely"] .card, [data-skin="notely"] .tlist { background: var(--card); border-color: var(--line); border-radius: 12px; box-shadow: var(--shadow-1); }
+[data-skin="notely"] .card > h2 { font-size: 14px; font-weight: 600; color: var(--strong); }
+[data-skin="notely"] .card > h2 .more { color: var(--accent); font-weight: 500; }
+[data-skin="notely"] .dcard .th { border-radius: 10px; border-color: var(--line); background: var(--sunk); }
+[data-skin="notely"] .dcard:hover .th { transform: none; border-color: var(--line-2); box-shadow: none; }
+[data-skin="notely"] .dcard .kind { border-radius: 6px; }
+[data-skin="notely"] .trow { border-radius: 8px; }
+[data-skin="notely"] .trow:hover, [data-skin="notely"] .sprow:hover { background: var(--raise); }
+[data-skin="notely"] .sprow .bar { height: 4px; }
+[data-skin="notely"] .chip { border-radius: 6px; font-weight: 500; }
+[data-skin="notely"] .cb { border-radius: 5px; background: transparent; }
+[data-skin="notely"] .cb[aria-checked="true"] { color: var(--on-accent); }
+[data-skin="notely"] .focuscard { background: linear-gradient(120deg, var(--raise), color-mix(in oklab, var(--accent) 22%, var(--card))); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+[data-skin="notely"] .focuscard p { color: var(--ink-2); }
+[data-skin="notely"] .focuscard .btn { background: var(--contrast); color: var(--on-contrast); }
+[data-skin="notely"] .fab { background: var(--contrast); color: var(--on-contrast); box-shadow: var(--shadow-2); }
+
+/* ---------- controls ---------- */
+[data-skin="notely"] .btn { height: 34px; border-radius: 8px; font-weight: 500; background: var(--card); border-color: var(--line-2); }
+[data-skin="notely"] .btn:hover { border-color: color-mix(in oklab, var(--line-2) 60%, var(--ink-3)); background: var(--raise); }
+[data-skin="notely"] .btn.pri { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+[data-skin="notely"] .btn.pri:hover { background: var(--accent-2); border-color: var(--accent-2); }
+[data-skin="notely"] .btn.ghost { background: none; }
+[data-skin="notely"] .btn.sm { height: 30px; border-radius: 7px; }
+[data-skin="notely"] .seg, [data-skin="notely"] .stabs { background: var(--sunk); border-radius: 9px; }
+[data-skin="notely"] .stabs { border-color: var(--line); }
+[data-skin="notely"] .seg button, [data-skin="notely"] .stabs button { border-radius: 7px; font-weight: 500; }
+[data-skin="notely"] .seg button[aria-pressed="true"], [data-skin="notely"] .stabs button[aria-selected="true"] { background: var(--raise); color: var(--strong); box-shadow: none; }
+[data-skin="notely"][data-resolved="light"] .seg button[aria-pressed="true"], [data-skin="notely"][data-resolved="light"] .stabs button[aria-selected="true"] { background: #FFFFFF; box-shadow: 0 1px 2px rgb(22 30 44 / .14), 0 0 0 1px rgb(22 30 44 / .05); }
+[data-skin="notely"] .tg input:checked + span { background: var(--accent); }
+[data-skin="notely"] .srow input[type="text"] { border-radius: 7px; background: var(--sunk); border-color: var(--line); }
+[data-skin="notely"] .pop, [data-skin="notely"] .qbar { background: var(--menu); border-color: var(--line-2); border-radius: 10px; }
+[data-skin="notely"] .mi { border-radius: 6px; }
+[data-skin="notely"] .mi:hover { background: var(--raise); }
+[data-skin="notely"] .sheet-m { background: var(--menu); border-radius: 14px; box-shadow: var(--shadow-2), 0 0 0 1px var(--line); }
+[data-skin="notely"] .sheet-m h2 { font-weight: 600; color: var(--strong); }
+[data-skin="notely"] .sheet-m h5 { font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12.5px; color: var(--ink-2); }
+[data-skin="notely"] .skin-c { border-radius: 10px; background: var(--card); border-color: var(--line-2); }
+
+/* ---------- board: the canvas of WZX Web, a lighter grey with faint dots, tool islands floating on it ---------- */
+[data-skin="notely"] .bhost { background-color: var(--canvas); }
+[data-skin="notely"] .isl { background: color-mix(in oklab, var(--menu) 95%, transparent); border-color: var(--line-2); border-radius: 10px; box-shadow: var(--shadow-2); }
+[data-skin="notely"] .tl { border-radius: 7px; }
+[data-skin="notely"] .tl:hover { background: var(--raise); }
+[data-skin="notely"] .tl[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+[data-skin="notely"] .props { background: var(--card); border-color: var(--line); border-radius: 12px; }
+[data-skin="notely"] .ptab[aria-pressed="true"] { color: var(--strong); }
+[data-skin="notely"] .ps-l { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+
+/* ---------- note editor: the page on the canvas ---------- */
+[data-skin="notely"] .nwrap { background: var(--canvas); }
+[data-skin="notely"] .sheet { border-radius: 8px; box-shadow: 0 0 0 1px var(--line), var(--shadow-2); }
+[data-skin="notely"] .ntool { border-radius: 10px; background: color-mix(in oklab, var(--menu) 95%, transparent); border-color: var(--line-2); }
+
+/* ---------- scrollbars ---------- */
+[data-skin="notely"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+[data-skin="notely"] ::-webkit-scrollbar-track { background: transparent; }
+[data-skin="notely"] ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+[data-skin="notely"] ::-webkit-scrollbar-thumb:hover { background-color: var(--ink-3); }
+
+/* preview card in Réglages > UI: a small Nuit editor (rail, top bar, panel, page on the canvas) */
+.sk-notely .skin-pv { background: #2F363E; }
+.sk-notely .skin-pv::before { content: ""; position: absolute; inset: 0; background: linear-gradient(#161C22 0 0) 0 0 / 100% 18% no-repeat, linear-gradient(#12171D 0 0) 0 0 / 11% 100% no-repeat, linear-gradient(#141A1F 0 0) 11% 0 / 24% 100% no-repeat; }
+.sk-notely .skin-pv i:nth-child(1) { left: 44%; top: 30%; width: 46%; height: 56%; background: #E8ECF1; border-radius: 3px; }
+.sk-notely .skin-pv i:nth-child(2) { left: 3%; top: 26%; width: 5%; height: 9%; background: #4B8DF8; border-radius: 2px; }
+.sk-notely .skin-pv i:nth-child(3) { left: 14%; top: 30%; width: 17%; height: 8%; background: #232A31; border-radius: 2px; }
+.sk-notely .skin-pv i:nth-child(4) { left: 50%; top: 40%; width: 24%; height: 7%; background: #1A1F26; border-radius: 2px; }
