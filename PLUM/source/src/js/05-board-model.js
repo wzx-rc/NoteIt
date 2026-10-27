@@ -2,7 +2,7 @@
    A board is a list of plain items, drawn in list order (frames always under the rest).
    note {txt,c,fs,font,al} · text {txt,fs,font,color,bold,fw} · shape {sh,sc,fc,sw,sty,dash,fill,txt,fs}
    image {asset,frm,cap} · file {asset,name,size,mime} · link {url,title} · ink {p,t,c,s,o,w0,h0}
-   mind {txt,root,parent,side,c,ord} · frame {title} · task {task} · doc {doc} · todo {title,tasks[],c,font} · sheet {title,cols,rows,cells{A1:raw},fs}
+   mind {txt,root,parent,side,c,ord} · frame {title} · task {task} · doc {doc} · todo {title,tasks[],c,font} · sheet {title,cols,rows,cells{A1:raw},fs,cw?[],rh?[]}
    conn {a:{id|x,y}, b:{id|x,y}, pts:[[x,y]], route, sc, sw, sty, dash, h0, h1, txt}
    Every item may carry op (opacity 0..1) and hid (hidden from the Layers tab).
    Items are never mutated: an edit makes a new object, which keeps undo cheap. */
@@ -27,8 +27,54 @@ const mkTodo = (x, y, title, tasks = [], o = {}) => ({ id: uid('o'), k: 'todo', 
 const colName = i => { let s = ''; for (i++; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
 const colIndex = s => { let n = 0; for (const ch of s.toUpperCase()) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
 /* sizes follow the text size: row height, the width of the row numbers, the title band and the add buttons */
-function sheetGeom(it) { const fs = it.fs || 14, rh = Math.round(fs * 2.1), hw = Math.round(fs * 2.6), th = Math.round(fs * 2.7), add = Math.round(fs * 2.3); return { fs, rh, hw, th, add, cw: (it.w - hw) / it.cols, h: th + rh * (it.rows + 1) + add }; }
+/* sizes follow the text size: row height, the width of the row numbers, the title band and the add buttons.
+   Columns and rows resized by hand keep their size in cw / rh (in units of the text size, so they scale with it); the others share the width. */
+function sheetGeom(it) {
+  const fs = it.fs || 14, rh = Math.round(fs * 2.1), hw = Math.round(fs * 2.6), th = Math.round(fs * 2.7), add = Math.round(fs * 2.3);
+  const eq = (it.w - hw) / it.cols;
+  const cws = Array.from({ length: it.cols }, (_, i) => it.cw ? (it.cw[i] || 7) * fs : eq);
+  const rhs = Array.from({ length: it.rows }, (_, i) => it.rh && it.rh[i] ? it.rh[i] * fs : rh);
+  return { fs, rh, hw, th, add, cw: eq, cws, rhs, w: hw + cws.reduce((s, v) => s + v, 0), h: th + rh + rhs.reduce((s, v) => s + v, 0) + add };
+}
 const mkSheet = (x, y, o = {}) => { const it = { id: uid('g'), k: 'sheet', x, y, w: 0, h: 0, title: o.title || 'Tableau', cols: o.cols || 4, rows: o.rows || 6, cells: Object.assign({}, o.cells), fs: o.fs || 14 }; const g = sheetGeom(it); it.w = o.w || g.hw + it.cols * Math.round(it.fs * 7); it.h = sheetGeom(it).h; return it; };
+/* "B3" -> [1, 2] (column, row from 0) and back */
+const cellRC = ref => { const m = /^([A-Z]+)(\d+)$/.exec(ref || ''); return m ? [colIndex(m[1]), +m[2] - 1] : null; };
+const cellRef = (c, r) => colName(c) + (r + 1);
+/* rows or columns inserted (n > 0) or removed (n < 0) at index `at`: the cells move and the formulas follow them, as in a spreadsheet;
+   a reference to a removed cell becomes #REF!, a range loses the removed part */
+function sheetShift(cells, axis, at, n) {
+  const out = {}, mv = i => i < at ? i : n < 0 && i < at - n ? null : i + n;
+  for (const [k, raw] of Object.entries(cells)) {
+    const rc = cellRC(k); if (!rc) continue;
+    const c = axis === 'col' ? mv(rc[0]) : rc[0], r = axis === 'row' ? mv(rc[1]) : rc[1];
+    if (c == null || r == null) continue;
+    out[cellRef(c, r)] = typeof raw === 'string' && raw[0] === '=' ? sheetShiftF(raw, axis, at, n) : raw;
+  }
+  return out;
+}
+function sheetShiftF(f, axis, at, n) {
+  const idx = (c, r) => axis === 'col' ? colIndex(c) : +r - 1;
+  const put = (c, r, i) => axis === 'col' ? [colName(i), r] : [c, String(i + 1)];
+  return f.split(/("(?:[^"]|"")*")/).map((part, k) => k % 2 ? part : part.replace(/(?<![A-Za-z0-9_.])(\$?)([A-Za-z]{1,2})(\$?)(\d+)(?::(\$?)([A-Za-z]{1,2})(\$?)(\d+))?(?![A-Za-z0-9_(])/g, (all, d1, c1, d2, r1, d3, c2, d4, r2) => {
+    c1 = c1.toUpperCase();
+    if (!c2) { const i = idx(c1, r1), j = i < at ? i : n < 0 && i < at - n ? null : i + n; if (j == null) return '#REF!'; const [c, r] = put(c1, r1, j); return d1 + c + d2 + r; }
+    c2 = c2.toUpperCase();
+    let s = idx(c1, r1), e = idx(c2, r2); if (s > e) [s, e] = [e, s];
+    if (n < 0) { const cnt = -n; s = s >= at + cnt ? s - cnt : s >= at ? at : s; e = e >= at + cnt ? e - cnt : e >= at ? at - 1 : e; if (e < s) return '#REF!'; }
+    else { if (s >= at) s += n; if (e >= at) e += n; }
+    const [a, b] = put(c1, r1, s), [x, y] = put(c2, r2, e);
+    return d1 + a + d2 + b + ':' + d3 + x + d4 + y;
+  })).join('');
+}
+/* the functions offered while a formula is typed */
+const SHEET_HELP = [
+  ['SOMME', 'SOMME(valeur1; [valeur2; …])', 'Additionne des nombres ou une plage'], ['MOYENNE', 'MOYENNE(valeur1; [valeur2; …])', 'Moyenne des nombres'],
+  ['MIN', 'MIN(valeur1; [valeur2; …])', 'Plus petite valeur'], ['MAX', 'MAX(valeur1; [valeur2; …])', 'Plus grande valeur'],
+  ['NB', 'NB(valeur1; [valeur2; …])', 'Compte les nombres'], ['NBVAL', 'NBVAL(valeur1; [valeur2; …])', 'Compte les cellules non vides'],
+  ['PRODUIT', 'PRODUIT(valeur1; [valeur2; …])', 'Multiplie les nombres'], ['ARRONDI', 'ARRONDI(valeur; [chiffres])', 'Arrondit à un nombre de décimales'],
+  ['ABS', 'ABS(valeur)', 'Valeur absolue'], ['SI', 'SI(condition; si_vrai; [si_faux])', 'Une valeur ou une autre selon une condition'],
+  ['SUM', 'SUM(valeur1; …)', 'SOMME en anglais'], ['AVERAGE', 'AVERAGE(valeur1; …)', 'MOYENNE en anglais'], ['COUNT', 'COUNT(valeur1; …)', 'NB en anglais'],
+  ['COUNTA', 'COUNTA(valeur1; …)', 'NBVAL en anglais'], ['PRODUCT', 'PRODUCT(valeur1; …)', 'PRODUIT en anglais'], ['ROUND', 'ROUND(valeur; [chiffres])', 'ARRONDI en anglais'], ['IF', 'IF(condition; si_vrai; [si_faux])', 'SI en anglais']];
 /* a number typed in a cell: "12", "3,5", "1 200", "15 %" */
 const sheetLit = raw => { const t = String(raw).trim().replace(/[\s  ]/g, ''), m = /^(-?\d+(?:[.,]\d+)?)(%?)$/.exec(t); if (!m) return String(raw); const n = parseFloat(m[1].replace(',', '.')); return m[2] ? n / 100 : n; };
 const sheetErr = m => { const e = new Error(m); e.sheet = m; return e; };
@@ -59,6 +105,7 @@ function sheetEval(cells) {
     if (busy.has(ref)) return { err: '#CYCLE' };
     const raw = cells[ref]; let v;
     if (raw == null || raw === '') v = null;
+    else if (raw[0] === '=' && raw.includes('#REF!')) v = { err: '#REF!' };
     else if (raw[0] === '=') { busy.add(ref); try { v = formula(raw.slice(1)); if (Array.isArray(v)) v = v.flat(Infinity)[0] ?? null; } catch (e) { v = { err: e.sheet || '#ERREUR' }; } busy.delete(ref); }
     else v = sheetLit(raw);
     memo.set(ref, v); return v;

@@ -1318,3 +1318,29 @@ html[data-focus] #tbar .tb-f + .tb-w { margin-left: 0; }
 #tbar .tb-f .i { width: 13px; height: 13px; fill: none; stroke: currentColor; }
 #tbar .tb-f #focusAi { padding: 0 10px; }
 html.tbar[data-focus] .focuspill { display: none; }
+
+/* tableur, Google Sheets way: selection frame, lit headers, header edges to resize, the cells a formula points to, function help */
+.it.tsheet .shg { position: relative; }
+.it.tsheet .shh, .it.tsheet .shr { position: relative; cursor: default; }
+.it.tsheet .shh.on, .it.tsheet .shr.on { background: color-mix(in oklab, var(--accent) 22%, var(--sunk)); color: var(--ink); }
+.it.tsheet .shcz, .it.tsheet .shrz { position: absolute; z-index: 3; }
+.it.tsheet .shcz { top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; }
+.it.tsheet .shrz { left: 0; right: 0; bottom: -4px; height: 8px; cursor: row-resize; }
+.it.tsheet .shcz::after, .it.tsheet .shrz::after { content: ""; position: absolute; background: var(--accent); opacity: 0; transition: opacity .1s; }
+.it.tsheet .shcz::after { top: 15%; bottom: 15%; left: 3px; width: 2px; border-radius: 1px; }
+.it.tsheet .shrz::after { left: 15%; right: 15%; top: 3px; height: 2px; border-radius: 1px; }
+.it.tsheet .shcz:hover::after, .it.tsheet .shrz:hover::after, .sh-cz .it.tsheet .shcz::after, .sh-rz .it.tsheet .shrz::after { opacity: 1; }
+.bhost.sh-cz, .bhost.sh-cz * { cursor: col-resize !important; }
+.bhost.sh-rz, .bhost.sh-rz * { cursor: row-resize !important; }
+.it.tsheet .shov { position: absolute; inset: 0; pointer-events: none; z-index: 2; border: 0 !important; }
+.it.tsheet .shsel { position: absolute; box-sizing: border-box; border: 2px solid var(--accent); border-radius: 2px; }
+.it.tsheet .shsel.many { background: color-mix(in oklab, var(--accent) 10%, transparent); }
+.it.tsheet .shref { position: absolute; box-sizing: border-box; border: 2px dashed var(--rc); background: color-mix(in oklab, var(--rc) 9%, transparent); border-radius: 2px; }
+.shpop { position: fixed; z-index: 1200; min-width: 230px; max-width: 340px; padding: 5px; border-radius: 10px; background: var(--menu, var(--card)); border: 1px solid var(--line-2); box-shadow: var(--shadow-2); font: 400 12.5px/1.3 var(--font-ui); color: var(--ink); }
+.shpop .shpo { display: flex; align-items: baseline; gap: 10px; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
+.shpop .shpo b { font: 600 12px/1.2 var(--font-mono, ui-monospace, monospace); min-width: 64px; }
+.shpop .shpo small { color: var(--ink-3); font-size: 11.5px; }
+.shpop .shpo.on, .shpop .shpo:hover { background: color-mix(in oklab, var(--accent) 16%, transparent); }
+.shpop .shpsig { padding: 6px 8px 4px; font: 500 11.5px/1.3 var(--font-mono, ui-monospace, monospace); color: var(--ink-2); }
+.shpop .shpo + .shpsig { margin-top: 3px; border-top: 1px solid var(--line); }
+.shpop .shpdesc { padding: 0 8px 5px; color: var(--ink-3); font-size: 11.5px; }

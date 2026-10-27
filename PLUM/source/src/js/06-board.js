@@ -106,7 +106,7 @@ const Board = (() => {
       case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}`;
       case 'task': { const t = taskById(it.task) || {}; return `T${t.t}|${t.done}|${t.due}|${t.time}|${t.sp}`; }
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
-      case 'sheet': return `g${it.w}|${it.h}|${it.cols}|${it.rows}|${it.fs}|${it.title}|${JSON.stringify(it.cells)}|${theme()}`;
+      case 'sheet': return `g${it.w}|${it.h}|${it.cols}|${it.rows}|${it.fs}|${it.title}|${JSON.stringify(it.cells)}|${JSON.stringify(it.cw || 0)}|${JSON.stringify(it.rh || 0)}|${theme()}`;
       case 'todo': return `o${it.w}|${it.c}|${it.font}|${it.fs}|${it.title}|${it.tasks.map(id => { const t = taskById(id); return t ? `${t.id}:${t.done ? 1 : 0}:${t.t}` : ''; }).join('§')}|${theme()}`;
     }
     return it.k;
@@ -185,14 +185,14 @@ const Board = (() => {
         const g = sheetGeom(it), val = sheetEval(it.cells);
         n.className = 'it tsheet';
         s.setProperty('--sfs', g.fs + 'px'); s.setProperty('--srh', g.rh + 'px'); s.setProperty('--sth', g.th + 'px'); s.setProperty('--sadd', g.add + 'px');
-        let h = `<div class="sht"><b data-cell="title">${esc(it.title) || '&nbsp;'}</b><span class="shfx"></span></div><div class="shg" style="grid-template-columns:${g.hw}px repeat(${it.cols},minmax(0,1fr))"><i class="shc"></i>`;
-        for (let c = 0; c < it.cols; c++) h += `<i class="shh">${colName(c)}</i>`;
+        let h = `<div class="sht"><b data-cell="title">${esc(it.title) || '&nbsp;'}</b><span class="shfx"></span></div><div class="shg" style="grid-template-columns:${g.hw}px ${g.cws.map(v => v.toFixed(2) + 'px').join(' ')};grid-template-rows:${g.rh}px ${g.rhs.map(v => v.toFixed(2) + 'px').join(' ')}"><i class="shc" title="Tout sélectionner"></i>`;
+        for (let c = 0; c < it.cols; c++) h += `<i class="shh" data-col="${c}">${colName(c)}<b class="shcz" data-cz="${c}"></b></i>`;
         for (let r = 0; r < it.rows; r++) {
-          h += `<i class="shr">${r + 1}</i>`;
+          h += `<i class="shr" data-row="${r}">${r + 1}<b class="shrz" data-rz="${r}"></b></i>`;
           for (let c = 0; c < it.cols; c++) { const ref = colName(c) + (r + 1), raw = it.cells[ref], v = raw ? val(ref) : null; h += `<div class="cell${typeof v === 'number' ? ' num' : v && v.err ? ' er' : ''}${raw && raw[0] === '=' ? ' fx' : ''}" data-cell="${ref}"${v && v.err ? ` title="${esc(raw)}"` : ''}>${esc(sheetShow(v))}</div>`; }
         }
         n.innerHTML = h + `</div><div class="shadd"><button data-sadd="row">${icon('plus', 'sm')}<span>Ligne</span></button><button data-sadd="col">${icon('plus', 'sm')}<span>Colonne</span></button></div>`;
-        if (Math.abs(g.h - it.h) > .5) { const nx = Object.assign({}, it, { h: g.h }); n._it = nx; items = items.map(x => x.id === it.id ? nx : x); reindex(); D.items = items; save(); s.height = g.h + 'px'; n._sig = sigOf(nx); }
+        if (Math.abs(g.h - it.h) > .5 || (it.cw && Math.abs(g.w - it.w) > .5)) { const nx = Object.assign({}, it, { h: g.h }, it.cw ? { w: g.w } : {}); n._it = nx; items = items.map(x => x.id === it.id ? nx : x); reindex(); D.items = items; save(); s.height = g.h + 'px'; s.width = nx.w + 'px'; n._sig = sigOf(nx); }
         break;
       }
       case 'todo': {
@@ -288,6 +288,7 @@ const Board = (() => {
 
   /* ---------- overlay: selection, handles, guides ---------- */
   function renderOverlay() {
+    sheetSelPaint();
     let h = '';
     if (marquee) { const a = toS(marquee[0], marquee[1]), b = toS(marquee[2], marquee[3]); h += `<div class="marquee" style="left:${Math.min(a.x, b.x)}px;top:${Math.min(a.y, b.y)}px;width:${Math.abs(b.x - a.x)}px;height:${Math.abs(b.y - a.y)}px"></div>`; }
     if (guides) for (const g of guides) { if (g.v != null) { const p = toS(g.v, 0); h += `<div class="guide v" style="left:${p.x}px;top:0;bottom:0"></div>`; } else { const p = toS(0, g.h); h += `<div class="guide h" style="top:${p.y}px;left:0;right:0"></div>`; } }
@@ -553,7 +554,8 @@ const Board = (() => {
   function helpModal() {
     const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O · D', 'Rectangle · Ellipse · Losange'], ['A', 'Flèche'], ['L', 'Ligne'], ['P', 'Stylo'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
       ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Maj + glisser', 'Dupliquer et déplacer la copie'], ['Page ↑ / ↓', 'Avancer / reculer d’un plan'], ['Ctrl + Page ↑ / ↓', 'Tout devant / tout au fond'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
-      ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]]];
+      ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]],
+      ['Tableur', [['Clic · glisser', 'Choisir des cellules'], ['Maj + clic', 'Étendre la sélection'], ['En-tête', 'Ligne ou colonne entière'], ['Entrée · F2', 'Modifier la cellule'], ['Suppr', 'Vider les cellules'], ['Ctrl − / Ctrl +', 'Supprimer / insérer des lignes'], ['Ctrl C / V', 'Copier / coller des cellules'], ['Bord d’en-tête', 'Glisser pour redimensionner']]]];
     openModal(`<div class="mhd"><h2>Raccourcis du board</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div><div class="keys">${K.map(([t, rows]) => `<div><h5>${t}</h5>${rows.map(([k, l]) => `<div class="krow"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`);
   }
 
@@ -669,7 +671,7 @@ const Board = (() => {
     editing = id; editSub = sub || null; sel = new Set([id]);
     const n = nodes.get(id); if (n) n.classList.add('editing');
     const cur = it.k === 'todo' ? (sub === 'title' ? it.title : ((taskById(sub) || {}).t || '')) : it.k === 'sheet' ? (sub === 'title' ? it.title : (it.cells[sub] || '')) : it.k === 'frame' ? it.title : (it.txt || '');
-    if (it.k === 'sheet' && sub !== 'title') sheetAt.set(id, sub);
+    if (it.k === 'sheet' && sub !== 'title') { sheetAt.set(id, sub); const rc = cellRC(sub); if (rc) sheetSel = { id, a: rc, b: rc }; fxRefs = []; fxIns = null; }
     el.textContent = char != null ? char : cur;
     try { el.contentEditable = 'plaintext-only'; } catch (e) { el.contentEditable = 'true'; }
     if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
@@ -685,7 +687,7 @@ const Board = (() => {
       const c0 = byId.get(id);
       if (ev.key === 'Escape') { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); return; }
       if (c0 && c0.k === 'todo') { todoKey(ev, c0, sub, el); return; }
-      if (c0 && c0.k === 'sheet') { sheetKey(ev, c0, sub); return; }
+      if (c0 && c0.k === 'sheet') { if (sheetAssistKey(ev, el)) return; sheetKey(ev, c0, sub); return; }
       if (c0 && c0.k === 'mind' && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); return; }
       if ((c0 && (c0.k === 'frame' || c0.k === 'conn') && ev.key === 'Enter') || (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey))) { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); }
     };
@@ -708,10 +710,10 @@ const Board = (() => {
     const tasks = it.tasks.slice(); tasks.splice(after + 1, 0, t.id);
     commit(replace(items, it, { tasks })); render(); startEdit(id, null, t.id);
   }
-  /* sheet keys: Enter / Tab go to the next cell (Shift: back), the arrows up and down change row; a new row comes when Enter leaves the last one */
+  /* keys while a cell is typed in: Enter / Tab keep it and select the next cell (Shift: back), the arrows up and down too; a new row comes when Enter leaves the last one */
   let sheetTab = null;
   function sheetKey(ev, it, sub) {
-    if (sub === 'title') { if (ev.key === 'Enter' || ev.key === 'Tab') { ev.preventDefault(); finishEdit(); startEdit(it.id, null, 'A1'); } return; }
+    if (sub === 'title') { if (ev.key === 'Enter' || ev.key === 'Tab') { ev.preventDefault(); finishEdit(); sheetSelect(byId.get(it.id) || it, [0, 0]); host.focus({ preventScroll: true }); } return; }
     const m = /^([A-Z]+)(\d+)$/.exec(sub); if (!m) return;
     let c = colIndex(m[1]), r = +m[2] - 1;
     const mv = { Enter: [0, ev.shiftKey ? -1 : 1], Tab: [ev.shiftKey ? -1 : 1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
@@ -726,18 +728,12 @@ const Board = (() => {
     sheetTab = ev.key === 'Tab' && !ev.shiftKey && c > 0 ? { id: it.id, col: run != null ? run : c - 1, at: colName(c) + (r + 1) } : null;
     if (r < 0) { startEdit(cur.id, null, 'title'); return; }
     if (r >= cur.rows) { if (ev.key !== 'Enter' && ev.key !== 'Tab') { r = cur.rows - 1; } else { sheetResize(cur, { rows: cur.rows + 1 }); cur = byId.get(it.id); } }
-    render(); startEdit(cur.id, null, colName(c) + (r + 1));
+    render(); sheetSelect(cur, [c, r]); host.focus({ preventScroll: true });
   }
-  /* the formula bar in the title band: the cell being typed in and what it holds */
-  function sheetFx(id, el) { const n = nodes.get(id), fx = n && n.querySelector('.shfx'); if (!fx) return; const ref = editSub && editSub !== 'title' ? editSub : ''; fx.innerHTML = ref ? `<em>${ref}</em>${esc(el.textContent)}` : ''; }
   function sheetResize(it, o) {
-    const p = Object.assign({}, o);
-    if (o.cols != null) { const g = sheetGeom(it); p.w = g.hw + (it.w - g.hw) / it.cols * o.cols; }
-    const nx = Object.assign({}, it, p); p.h = sheetGeom(nx).h;
-    if (o.rows != null && o.rows < it.rows || o.cols != null && o.cols < it.cols) { const cells = {}; for (const [k, v] of Object.entries(it.cells)) { const m = /^([A-Z]+)(\d+)$/.exec(k); if (m && colIndex(m[1]) < nx.cols && +m[2] <= nx.rows) cells[k] = v; } p.cells = cells; }
-    commit(replace(items, it, p));
+    if (o.rows != null && o.rows !== it.rows) sheetInsert(it, 'row', Math.min(it.rows, o.rows), o.rows - it.rows);
+    else if (o.cols != null && o.cols !== it.cols) sheetInsert(it, 'col', Math.min(it.cols, o.cols), o.cols - it.cols);
   }
-  /* a last row adding up each column that holds numbers */
   function sheetTotal(it) {
     // the total goes just under the last filled row (into an empty row if there is one), summing everything above it
     const val = sheetEval(it.cells), cells = Object.assign({}, it.cells);
@@ -748,7 +744,282 @@ const Board = (() => {
     if (!any) { toast('Aucune colonne de nombres à additionner'); return; }
     if (!cells['A' + r]) cells['A' + r] = 'Total';
     const nx = Object.assign({}, it, { rows, cells }); commit(replace(items, it, { rows, cells, h: sheetGeom(nx).h }));
+  }  /* ---------- tableur as in Google Sheets: a cell or a range is selected (click, drag across the cells, Shift + click, the headers for whole
+     rows / columns, the corner for everything); typing replaces the cell, Enter edits it, Suppr empties the range. Rows and columns are inserted or
+     removed with the formulas following, the header edges resize them, and a formula being typed gets help and takes cells by click. ---------- */
+  let sheetSel = null;   // { id, a: [col, row] anchor, b: [col, row] moving end }
+  let fxRefs = [], fxIns = null, fxPop = null, fxPicking = false, sheetClip = null;
+  const SH_COLORS = ['#4285F4', '#EA4335', '#E09A00', '#34A853', '#A142F4', '#12A4C4'];
+  function sheetSelOf() { if (!sheetSel || sel.size !== 1 || !sel.has(sheetSel.id) || editing) return null; const it = byId.get(sheetSel.id); return it && it.k === 'sheet' ? it : null; }
+  function sheetRange(it) {
+    const s = sheetSel && sheetSel.id === it.id ? sheetSel : (() => { const rc = cellRC(sheetAt.get(it.id)) || [0, 0]; return { a: rc, b: rc }; })();
+    const cl = (v, n) => clamp(v, 0, n - 1);
+    return { c0: cl(Math.min(s.a[0], s.b[0]), it.cols), c1: cl(Math.max(s.a[0], s.b[0]), it.cols), r0: cl(Math.min(s.a[1], s.b[1]), it.rows), r1: cl(Math.max(s.a[1], s.b[1]), it.rows) };
   }
+  function sheetSelect(it, a, b) { sheetSel = { id: it.id, a, b: b || a }; sheetAt.set(it.id, cellRef(a[0], a[1])); if (!sel.has(it.id) || sel.size !== 1) sel = new Set([it.id]); schedule(); }
+  /* the selection frame and the lit headers; while a formula is typed, the cells it points to, each in its colour */
+  function sheetSelPaint() {
+    for (const [id, n] of nodes) {
+      const it = byId.get(id); if (!it || it.k !== 'sheet') continue;
+      const grid = n.querySelector('.shg'); if (!grid) continue;
+      const g = sheetGeom(it), typing = editing === id && editSub && editSub !== 'title';
+      const R = sheetSelOf() === it || typing ? sheetRange(it) : null;
+      const box = (c0, r0, c1, r1) => {
+        c0 = clamp(c0, 0, it.cols - 1); c1 = clamp(c1, 0, it.cols - 1); r0 = clamp(r0, 0, it.rows - 1); r1 = clamp(r1, 0, it.rows - 1);
+        let x = g.hw, y = g.rh, w = 0, h = 0;
+        for (let i = 0; i < c0; i++) x += g.cws[i]; for (let i = 0; i < r0; i++) y += g.rhs[i];
+        for (let i = c0; i <= c1; i++) w += g.cws[i]; for (let i = r0; i <= r1; i++) h += g.rhs[i];
+        return `left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${w.toFixed(1)}px;height:${h.toFixed(1)}px`;
+      };
+      let html = '';
+      if (R && !typing) html += `<div class="shsel${R.c0 === R.c1 && R.r0 === R.r1 ? '' : ' many'}" style="${box(R.c0, R.r0, R.c1, R.r1)}"></div>`;
+      if (typing) html += fxRefs.filter(f => f.c0 < it.cols && f.r0 < it.rows).map(f => `<div class="shref" style="${box(f.c0, f.r0, f.c1, f.r1)};--rc:${f.color}"></div>`).join('');
+      let ov = grid.querySelector('.shov'); if (!ov) { ov = document.createElement('div'); ov.className = 'shov'; grid.append(ov); ov._h = ''; }
+      if (ov._h !== html) { ov.innerHTML = html; ov._h = html; }
+      const lit = R && !typing;
+      grid.querySelectorAll('.shh').forEach((h, i) => h.classList.toggle('on', !!lit && i >= R.c0 && i <= R.c1));
+      grid.querySelectorAll('.shr').forEach((h, i) => h.classList.toggle('on', !!lit && i >= R.r0 && i <= R.r1));
+    }
+  }
+  /* the cell under the pointer ([col, -1] on a column header, [-1, row] on a row number) */
+  function sheetCellAt(it, cx, cy) {
+    const n = nodes.get(it.id); if (!n) return null;
+    for (const el of document.elementsFromPoint(cx, cy)) {
+      if (!n.contains(el)) continue;
+      const c = el.closest('[data-cell]'); if (c && c.dataset.cell !== 'title') return cellRC(c.dataset.cell);
+      const h = el.closest('[data-col]'); if (h) return [+h.dataset.col, -1];
+      const r = el.closest('[data-row]'); if (r) return [-1, +r.dataset.row];
+    }
+    return null;
+  }
+  function sheetPick(e, it, t) {
+    const last = [it.cols - 1, it.rows - 1], cell = t.closest('[data-cell]'), hc = t.closest('[data-col]'), hr = t.closest('[data-row]');
+    if (t.closest('.shc')) { sheetSelect(it, [0, 0], last); return; }
+    const mode = hc ? 'col' : hr ? 'row' : 'cell';
+    let a = hc ? [+hc.dataset.col, 0] : hr ? [0, +hr.dataset.row] : cellRC(cell.dataset.cell);
+    let b = hc ? [a[0], last[1]] : hr ? [last[0], a[1]] : a;
+    if (e.shiftKey && sheetSel && sheetSel.id === it.id) { const o = sheetSel.a; a = mode === 'col' ? [o[0], 0] : mode === 'row' ? [0, o[1]] : o; }
+    sheetSelect(it, a, b);
+    const pid = e.pointerId;
+    const move = ev => {
+      if (ev.pointerId !== pid || !sheetSel) return;
+      const p = sheetCellAt(it, ev.clientX, ev.clientY), cur = byId.get(it.id); if (!p || !cur) return;
+      const ob = sheetSel.b, nb = mode === 'col' ? [p[0] < 0 ? ob[0] : p[0], cur.rows - 1] : mode === 'row' ? [cur.cols - 1, p[1] < 0 ? ob[1] : p[1]] : [p[0] < 0 ? ob[0] : p[0], p[1] < 0 ? ob[1] : p[1]];
+      if (nb[0] !== ob[0] || nb[1] !== ob[1]) { sheetSel.b = nb; schedule(); }
+    };
+    const up = ev => { if (ev.pointerId !== pid) return; removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); };
+    addEventListener('pointermove', move, true); addEventListener('pointerup', up, true);
+  }
+  /* right click: the cell or header under the pointer becomes the selection, unless it is already in it */
+  function sheetCtx(t, it) {
+    if (!it || it.k !== 'sheet') return;
+    const c = t.closest('[data-cell]'), hc = t.closest('[data-col]'), hr = t.closest('[data-row]'), on = sheetSelOf() === it, R = sheetRange(it);
+    if (c && c.dataset.cell !== 'title') { const rc = cellRC(c.dataset.cell); if (!on || rc[0] < R.c0 || rc[0] > R.c1 || rc[1] < R.r0 || rc[1] > R.r1) sheetSelect(it, rc); }
+    else if (hc) { const i = +hc.dataset.col; if (!on || i < R.c0 || i > R.c1 || R.r0 || R.r1 !== it.rows - 1) sheetSelect(it, [i, 0], [i, it.rows - 1]); }
+    else if (hr) { const i = +hr.dataset.row; if (!on || i < R.r0 || i > R.r1 || R.c0 || R.c1 !== it.cols - 1) sheetSelect(it, [0, i], [it.cols - 1, i]); }
+  }
+  /* drag a header edge: that column (row) takes its own size */
+  function sheetSizeDrag(e, it, axis, i) {
+    const before = items, g = sheetGeom(it), x0 = axis === 'col' ? e.clientX : e.clientY, pid = e.pointerId;
+    const base = (axis === 'col' ? g.cws : g.rhs).map(v => v / g.fs);
+    host.classList.add(axis === 'col' ? 'sh-cz' : 'sh-rz');
+    const move = ev => {
+      if (ev.pointerId !== pid) return;
+      const d = ((axis === 'col' ? ev.clientX : ev.clientY) - x0) / view.k / g.fs, arr = base.slice();
+      arr[i] = Math.max(axis === 'col' ? 2.2 : 1.4, base[i] + d);
+      const p = axis === 'col' ? { cw: arr } : { rh: arr }, ng = sheetGeom(Object.assign({}, it, p)); p.w = ng.w; p.h = ng.h;
+      setLive(replace(before, it, p));
+    };
+    const up = ev => { if (ev.pointerId !== pid) return; removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); host.classList.remove('sh-cz', 'sh-rz'); if (items !== before) commit(items, { before }); };
+    addEventListener('pointermove', move, true); addEventListener('pointerup', up, true);
+  }
+  /* n rows / columns inserted at `at` (n < 0: removed from `at`) */
+  function sheetInsert(it, axis, at, n) {
+    const cnt = axis === 'col' ? it.cols : it.rows;
+    if (n < 0) { at = clamp(at, 0, cnt - 1); n = Math.max(n, -(cnt - at)); if (-n >= cnt) { toast(axis === 'col' ? 'Le tableau garde au moins une colonne' : 'Le tableau garde au moins une ligne'); return; } }
+    if (!n) return;
+    const g = sheetGeom(it), p = { cells: sheetShift(it.cells, axis, at, n) };
+    if (axis === 'col') {
+      p.cols = it.cols + n;
+      if (it.cw) { const cw = g.cws.map(v => v / g.fs); if (n > 0) cw.splice(at, 0, ...Array(n).fill(cw[Math.min(at, cw.length - 1)] || 7)); else cw.splice(at, -n); p.cw = cw; }
+      else p.w = it.w + g.cw * n;
+    } else {
+      p.rows = it.rows + n;
+      if (it.rh) { const rh = Array.from({ length: it.rows }, (_, i) => it.rh[i] || null); if (n > 0) rh.splice(at, 0, ...Array(n).fill(null)); else rh.splice(at, -n); p.rh = rh; }
+    }
+    const ng = sheetGeom(Object.assign({}, it, p)); if (p.cw) p.w = ng.w; p.h = ng.h;
+    commit(replace(items, it, p));
+    const cur = byId.get(it.id);
+    if (cur && sheetSel && sheetSel.id === it.id) { const cl = ([c, r]) => [clamp(c, 0, cur.cols - 1), clamp(r, 0, cur.rows - 1)]; sheetSel.a = cl(sheetSel.a); sheetSel.b = cl(sheetSel.b); }
+  }
+  function sheetClear(it, R) {
+    const cells = Object.assign({}, it.cells); let any = false;
+    for (let c = R.c0; c <= R.c1; c++) for (let r = R.r0; r <= R.r1; r++) { const k = cellRef(c, r); if (k in cells) { delete cells[k]; any = true; } }
+    if (any) commit(replace(items, it, { cells }));
+  }
+  /* copy: the shown values as tab-separated text (for any other app), and the formulas for a paste back into a tableur */
+  function sheetCopy(it, R, cut) {
+    const val = sheetEval(it.cells), lines = [], raws = [];
+    for (let r = R.r0; r <= R.r1; r++) {
+      const line = [], raw = [];
+      for (let c = R.c0; c <= R.c1; c++) { const k = cellRef(c, r), v = it.cells[k] || ''; raw.push(v); line.push(v[0] === '=' ? sheetShow(val(k)) : v); }
+      lines.push(line.join('\t')); raws.push(raw);
+    }
+    const text = lines.join('\n'); sheetClip = { text, raws, from: [R.c0, R.r0] };
+    try { navigator.clipboard.writeText(text).catch(() => {}); } catch (e) {}
+    toast(cut ? 'Cellules coupées' : 'Cellules copiées');
+    if (cut) sheetClear(it, R);
+  }
+  /* references move with a pasted formula, except the ones fixed with $ */
+  const sheetMoveF = (f, dc, dr) => f.split(/("(?:[^"]|"")*")/).map((part, k) => k % 2 ? part : part.replace(/(?<![A-Za-z0-9_.])(\$?)([A-Za-z]{1,2})(\$?)(\d+)(?![A-Za-z0-9_(])/g, (all, d1, c, d2, r) => {
+    const ci = d1 ? colIndex(c) : colIndex(c) + dc, ri = d2 ? +r - 1 : +r - 1 + dr; return ci < 0 || ri < 0 ? '#REF!' : d1 + colName(ci) + d2 + (ri + 1);
+  })).join('');
+  function sheetPaste(it, txt) {
+    const R = sheetRange(it), mine = sheetClip && sheetClip.text === txt.replace(/\r/g, '').replace(/\n$/, '');
+    const rows = mine ? sheetClip.raws : txt.replace(/\r/g, '').replace(/\n$/, '').split('\n').map(l => l.split('\t'));
+    const h = rows.length, w = Math.max(...rows.map(r => r.length));
+    const p = { cells: Object.assign({}, it.cells) };
+    const addC = R.c0 + w - it.cols, addR = R.r0 + h - it.rows, g = sheetGeom(it);
+    if (addC > 0) { p.cols = it.cols + addC; if (it.cw) p.cw = g.cws.map(v => v / g.fs).concat(Array(addC).fill(7)); else p.w = it.w + g.cw * addC; }
+    if (addR > 0) p.rows = it.rows + addR;
+    rows.forEach((row, r) => row.forEach((v, c) => {
+      const k = cellRef(R.c0 + c, R.r0 + r); v = String(v).trim();
+      if (mine && v[0] === '=') v = sheetMoveF(v, R.c0 - sheetClip.from[0], R.r0 - sheetClip.from[1]);
+      if (v) p.cells[k] = v; else delete p.cells[k];
+    }));
+    const ng = sheetGeom(Object.assign({}, it, p)); if (p.cw) p.w = ng.w; p.h = ng.h;
+    commit(replace(items, it, p));
+    sheetSelect(byId.get(it.id), [R.c0, R.r0], [R.c0 + w - 1, R.r0 + h - 1]);
+  }
+  function sheetSelKey(e, it) {
+    const k = e.key, mod = e.ctrlKey || e.metaKey, s = sheetSel, R = sheetRange(it);
+    const go = (dc, dr, ext) => {
+      const from = ext ? s.b : s.a, nb = [clamp(from[0] + dc, 0, it.cols - 1), clamp(from[1] + dr, 0, it.rows - 1)];
+      if (ext) s.b = nb; else { s.a = nb; s.b = nb; sheetAt.set(it.id, cellRef(nb[0], nb[1])); }
+      schedule();
+    };
+    if (k.startsWith('Arrow')) { e.preventDefault(); const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k]; const far = mod ? Math.max(it.cols, it.rows) : 1; go(d[0] * far, d[1] * far, e.shiftKey); return true; }
+    if (k === 'Tab') { e.preventDefault(); go(e.shiftKey ? -1 : 1, 0); return true; }
+    if ((k === 'Enter' || k === 'F2') && !mod) { e.preventDefault(); startEdit(it.id, null, cellRef(s.a[0], s.a[1])); return true; }
+    if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); sheetClear(it, R); return true; }
+    if (k === 'Escape') { e.preventDefault(); sheetSel = null; schedule(); return true; }
+    if (mod && /^[cx]$/i.test(k) && !e.shiftKey) { e.preventDefault(); sheetCopy(it, R, k.toLowerCase() === 'x'); return true; }
+    if (mod && /^a$/i.test(k)) { e.preventDefault(); s.a = [0, 0]; s.b = [it.cols - 1, it.rows - 1]; schedule(); return true; }
+    // Ctrl - removes the selected rows (or columns), Ctrl + inserts one, as in Google Sheets
+    if (mod && (k === '-' || k === '+' || k === '=')) {
+      e.preventDefault();
+      const rowsAll = R.c0 === 0 && R.c1 === it.cols - 1, colsAll = R.r0 === 0 && R.r1 === it.rows - 1;
+      if (k === '-') { if (colsAll && !rowsAll) sheetInsert(it, 'col', R.c0, -(R.c1 - R.c0 + 1)); else sheetInsert(it, 'row', R.r0, -(R.r1 - R.r0 + 1)); }
+      else if (colsAll && !rowsAll) sheetInsert(it, 'col', R.c0, 1); else sheetInsert(it, 'row', R.r0, 1);
+      return true;
+    }
+    if (k.length === 1 && !mod && !e.altKey) { e.preventDefault(); startEdit(it.id, k, cellRef(s.a[0], s.a[1])); return true; }
+    return false;
+  }
+  /* ---------- formula help ---------- */
+  function caretOf(el) {
+    const s = getSelection(); if (!s.rangeCount || !el.contains(s.anchorNode)) return el.textContent.length;
+    const r = s.getRangeAt(0), pre = document.createRange(); pre.selectNodeContents(el); pre.setEnd(r.endContainer, r.endOffset); return pre.toString().length;
+  }
+  function setCellText(el, txt, caret) {
+    el.textContent = txt;
+    const node = el.firstChild, r = document.createRange();
+    if (node && node.nodeType === 3) r.setStart(node, clamp(caret, 0, node.length)); else r.setStart(el, 0);
+    r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+  const fxNorm = t => t.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  /* the references of a formula, outside its quoted text, one colour per reference */
+  function fxScan(txt) {
+    const out = [], col = new Map(); let i = 0;
+    txt.split(/("(?:[^"]|"")*")/).forEach((part, k) => {
+      if (!(k % 2)) for (const m of part.matchAll(/(?<![A-Za-z0-9_.])\$?([A-Za-z]{1,2})\$?(\d+)(?::\$?([A-Za-z]{1,2})\$?(\d+))?(?![A-Za-z0-9_(])/g)) {
+        const key = m[0].toUpperCase().replace(/\$/g, ''); if (!col.has(key)) col.set(key, SH_COLORS[col.size % SH_COLORS.length]);
+        const a = [colIndex(m[1]), +m[2] - 1], b = m[3] ? [colIndex(m[3]), +m[4] - 1] : a;
+        out.push({ s: i + m.index, e: i + m.index + m[0].length, c0: Math.min(a[0], b[0]), c1: Math.max(a[0], b[0]), r0: Math.min(a[1], b[1]), r1: Math.max(a[1], b[1]), color: col.get(key) });
+      }
+      i += part.length;
+    });
+    return out;
+  }
+  /* the formula bar in the title band: the cell being typed in and what it holds, references in their colours */
+  function sheetFx(id, el) {
+    const n = nodes.get(id), fx = n && n.querySelector('.shfx'); if (!fx) return;
+    const ref = editSub && editSub !== 'title' ? editSub : ''; if (!ref) { fx.innerHTML = ''; return; }
+    const txt = el.textContent; let h = '', p = 0;
+    if (txt[0] === '=') for (const f of fxRefs) { h += esc(txt.slice(p, f.s)) + `<span style="color:${f.color}">${esc(txt.slice(f.s, f.e))}</span>`; p = f.e; }
+    fx.innerHTML = `<em>${ref}</em>` + h + esc(txt.slice(p));
+  }
+  function sheetAssist(it, el) {
+    const txt = el.textContent, isF = txt[0] === '=';
+    fxRefs = isF ? fxScan(txt) : [];
+    sheetFx(it.id, el); sheetSelPaint(); closeFxPop();
+    if (!isF) return;
+    const pos = caretOf(el), before = txt.slice(0, pos);
+    const m = /(^=|[(;,+\-*/^&<>=\s])([A-Za-zÀ-ÿ]+)$/.exec(before);
+    if (m) {
+      const q = fxNorm(m[2]), list = SHEET_HELP.filter(h => h[0].startsWith(q) && h[0] !== q);
+      if (list.length) { openFxPop(el, list.slice(0, 7), { from: pos - m[2].length, to: pos }); return; }
+    }
+    // inside a function's brackets: what it expects
+    let depth = 0;
+    for (let i = before.length - 1; i >= 0; i--) {
+      const ch = before[i];
+      if (ch === '"') break;
+      if (ch === ')') depth++;
+      else if (ch === '(') { if (depth) { depth--; continue; } const f = /([A-Za-zÀ-ÿ]+)\s*$/.exec(before.slice(0, i)), h = f && SHEET_HELP.find(x => x[0] === fxNorm(f[1])); if (h) openFxPop(el, null, null, h); break; }
+    }
+  }
+  function openFxPop(el, list, span, hint) {
+    const r = el.getBoundingClientRect(), p = document.createElement('div');
+    p.className = 'shpop';
+    p.innerHTML = list ? list.map((h, i) => `<div class="shpo${i ? '' : ' on'}" data-fn="${h[0]}"><b>${h[0]}</b><small>${esc(h[2])}</small></div>`).join('') + `<div class="shpsig">${esc(list[0][1])}</div>`
+      : `<div class="shpsig">${esc(hint[1])}</div><div class="shpdesc">${esc(hint[2])}</div>`;
+    p.style.left = Math.round(r.left) + 'px'; p.style.top = Math.round(r.bottom + 4) + 'px';
+    p.addEventListener('pointerdown', ev => { ev.preventDefault(); ev.stopPropagation(); const o = ev.target.closest('[data-fn]'); if (o) fxAccept(el, o.dataset.fn); });
+    p.addEventListener('mousedown', ev => ev.preventDefault());
+    document.body.append(p); fxPop = { el: p, list, span, i: 0 };
+    const pr = p.getBoundingClientRect(); if (pr.bottom > innerHeight - 8) p.style.top = Math.round(r.top - pr.height - 4) + 'px';
+  }
+  function closeFxPop() { if (fxPop) { fxPop.el.remove(); fxPop = null; } }
+  function fxAccept(el, name) {
+    const txt = el.textContent, sp = fxPop.span, ins = name + '(';
+    closeFxPop(); setCellText(el, txt.slice(0, sp.from) + ins + txt.slice(sp.to), sp.from + ins.length);
+    if (editing) editInput(editing, el);
+  }
+  function sheetAssistKey(ev, el) {
+    if (!fxPop) return false;
+    if (ev.key === 'Escape') { ev.preventDefault(); closeFxPop(); return true; }
+    if (!fxPop.list) return false;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+      ev.preventDefault(); const L = fxPop.list.length; fxPop.i = (fxPop.i + (ev.key === 'ArrowDown' ? 1 : L - 1)) % L;
+      fxPop.el.querySelectorAll('.shpo').forEach((o, i) => o.classList.toggle('on', i === fxPop.i)); fxPop.el.querySelector('.shpsig').textContent = fxPop.list[fxPop.i][1]; return true;
+    }
+    if (ev.key === 'Tab' || ev.key === 'Enter') { ev.preventDefault(); fxAccept(el, fxPop.list[fxPop.i][0]); return true; }
+    return false;
+  }
+  /* a click on a cell while a formula waits for a value (after =, an operator, ( or ;) puts its reference in; dragging makes it a range;
+     clicking again right after replaces it, as in Google Sheets */
+  function fxCanRef(el) {
+    const t = el.textContent; if (t[0] !== '=') return false;
+    const pos = caretOf(el); if (fxIns && fxIns.el === el && pos === fxIns.e) return true;
+    return /[=(;,+\-*/^&<>:]\s*$/.test(t.slice(0, pos));
+  }
+  function fxPick(e, it, ref) {
+    const el = editEl(it, editSub); if (!el) return;
+    const a = cellRC(ref), pid = e.pointerId;
+    const put = b => {
+      const txt = el.textContent, pos = caretOf(el), again = fxIns && fxIns.el === el && pos === fxIns.e, s0 = again ? fxIns.s : pos, e0 = again ? fxIns.e : pos;
+      const r = cellRef(Math.min(a[0], b[0]), Math.min(a[1], b[1])) + (a[0] === b[0] && a[1] === b[1] ? '' : ':' + cellRef(Math.max(a[0], b[0]), Math.max(a[1], b[1])));
+      setCellText(el, txt.slice(0, s0) + r + txt.slice(e0), s0 + r.length);
+      fxIns = { el, s: s0, e: s0 + r.length };
+      editInput(it.id, el);
+    };
+    put(a); fxPicking = true;
+    const move = ev => { if (ev.pointerId !== pid) return; const p = sheetCellAt(byId.get(it.id) || it, ev.clientX, ev.clientY); if (p && p[0] >= 0 && p[1] >= 0) put(p); };
+    const up = ev => { if (ev.pointerId !== pid) return; fxPicking = false; removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); el.focus({ preventScroll: true }); };
+    addEventListener('pointermove', move, true); addEventListener('pointerup', up, true);
+  }
+
   function editInput(id, el) {
     const it = byId.get(id); if (!it) return;
     if (it.k === 'note') { const t = el; t.style.fontSize = it.fs + 'px'; let lo = 9, hi = it.fs; if (t.scrollHeight > it.h - 27 || t.scrollWidth > it.w - 31) { for (let i = 0; i < 7; i++) { const m = (lo + hi) / 2; t.style.fontSize = m + 'px'; if (t.scrollHeight > it.h - 27 || t.scrollWidth > it.w - 31) hi = m; else lo = m; } t.style.fontSize = lo + 'px'; } }
@@ -756,7 +1027,7 @@ const Board = (() => {
     if (it.k === 'mind') { setLive(relayout(items)); }
     if (it.k === 'conn') renderOverlay();
     if (it.k === 'todo') { const n = nodes.get(id); if (n) measureTodo(n, byId.get(id)); renderOverlay(); }
-    if (it.k === 'sheet') sheetFx(id, el);
+    if (it.k === 'sheet') sheetAssist(it, el);
   }
   function finishEdit() {
     const id = editing, sub = editSub; if (!id) return;
@@ -777,6 +1048,7 @@ const Board = (() => {
       n && (n._it = null); schedule(); return;
     }
     if (it.k === 'sheet') {
+      closeFxPop(); fxRefs = []; fxIns = null;
       if (sub === 'title') { const v = raw.trim() || 'Tableau'; if (v !== it.title) commit(replace(items, it, { title: v }), { before }); else schedule(); return; }
       const cells = Object.assign({}, it.cells), v = raw.trim() ? raw.replace(/\n/g, ' ').trim() : '';
       if (v) cells[sub] = v; else delete cells[sub];
@@ -862,6 +1134,10 @@ const Board = (() => {
     if (e.pointerType === 'touch') { touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (touches.size === 2) { cancelOp(); startPinch(); return; } if (touches.size > 2) return; }
     if (e.pointerType === 'pen') penSeen = true;
     const t = e.target;
+    if (editing && editSub && editSub !== 'title' && e.button === 0) {   // typing a formula: a click on a cell puts its reference in
+      const it = byId.get(editing), el = it && it.k === 'sheet' && editEl(it, editSub), ce = t.closest && t.closest('[data-cell]'), nd = it && nodes.get(it.id);
+      if (el && ce && nd && nd.contains(ce) && ce !== el && ce.dataset.cell !== 'title' && fxCanRef(el)) { e.preventDefault(); fxPick(e, it, ce.dataset.cell); return; }
+    }
     if (editing) { const it = byId.get(editing), el = it && editEl(it, editSub); if (el && el.contains(t)) return; finishEdit(); }
     if (document.activeElement && document.activeElement !== host && !host.contains(document.activeElement)) document.activeElement.blur();
     if (!editing) host.focus({ preventScroll: true });
@@ -882,9 +1158,13 @@ const Board = (() => {
       const td = t.closest('[data-tdone]'); if (td && hit) { e.preventDefault(); const tk = taskById(byId.get(hit).task); if (tk) { setTaskDone(tk, !tk.done); } return; }
       const tck = t.closest('[data-tck]'); if (tck && hit) { e.preventDefault(); const tk = taskById(tck.dataset.tck); if (tk) setTaskDone(tk, !tk.done); return; }
       const scell = t.closest('[data-cell]'), sadd = t.closest('[data-sadd]'), sit = hit && byId.get(hit);
-      if (sit && sit.k === 'sheet' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        if (sadd) { e.preventDefault(); sel = new Set([hit]); sheetResize(sit, sadd.dataset.sadd === 'row' ? { rows: sit.rows + 1 } : { cols: sit.cols + 1 }); return; }
-        if (scell && sel.has(hit) && sel.size === 1) { e.preventDefault(); startEdit(hit, null, scell.dataset.cell); return; }
+      if (sit && sit.k === 'sheet' && !e.ctrlKey && !e.metaKey) {
+        const one = sel.has(hit) && sel.size === 1;
+        if (!one) sheetSel = null;
+        if (sadd && !e.shiftKey) { e.preventDefault(); sel = new Set([hit]); sheetResize(sit, sadd.dataset.sadd === 'row' ? { rows: sit.rows + 1 } : { cols: sit.cols + 1 }); return; }
+        const cz = t.closest('[data-cz]'), rz = t.closest('[data-rz]');
+        if (one && (cz || rz)) { e.preventDefault(); sheetSizeDrag(e, sit, cz ? 'col' : 'row', +(cz ? cz.dataset.cz : rz.dataset.rz)); return; }
+        if (one && ((scell && scell.dataset.cell !== 'title') || t.closest('[data-col],[data-row],.shc'))) { e.preventDefault(); sheetPick(e, sit, t); return; }
       }
       const tadd = t.closest('[data-tadd]'); if (tadd && hit) { e.preventDefault(); const it = byId.get(hit); sel = new Set([hit]); todoAddRow(hit, it.tasks.length - 1); return; }
       if (hit) {
@@ -1020,7 +1300,7 @@ const Board = (() => {
           if (o.k === 'text') { if (one && h.length === 1) { n.fw = 1; n.h = o.h; n.y = o.y; } else { n.fs = Math.max(6, Math.round(o.fs * sy)); if (o.fw) n.w = o.w * sx; } }
           if (o.k === 'note' && !one) n.fs = Math.max(8, Math.round(o.fs * Math.min(sx, sy)));
           if (o.k === 'todo') { n.h = o.h; n.y = o.y; n.w = Math.max(160, n.w); }
-          if (o.k === 'sheet') { const g = sheetGeom(o); if (one) { n.h = o.h; n.y = o.y; n.w = Math.max(g.hw + o.cols * (o.fs || 14) * 2.5, n.w); } else { n.fs = Math.max(8, Math.round((o.fs || 14) * sx)); n.h = sheetGeom(n).h; } }
+          if (o.k === 'sheet') { const g = sheetGeom(o); if (one) { n.h = o.h; n.y = o.y; n.w = Math.max(g.hw + o.cols * (o.fs || 14) * 2.5, n.w); if (o.cw) { const kx = (n.w - g.hw) / (g.w - g.hw); n.cw = g.cws.map(v => v / g.fs * kx); } } else { n.fs = Math.max(8, Math.round((o.fs || 14) * sx)); n.h = sheetGeom(n).h; } }
           return n;
         }));
       },
@@ -1545,6 +1825,7 @@ const Board = (() => {
     if (editing) return;
     const dt = e.clipboardData; if (!dt) return;
     const txt = dt.getData('text/plain'), hasFile = (dt.files && dt.files.length) || [...(dt.items || [])].some(i => i.kind === 'file');
+    { const sh = sheetSelOf(); if (sh && txt && !hasFile) { e.preventDefault(); sheetPaste(sh, txt); return; } }
     if (!hasFile && clip && (!txt || txt === clip.text)) { e.preventDefault(); pasteClip(); return; }
     e.preventDefault(); await ingest(dt, centerW());
   }
@@ -1556,6 +1837,7 @@ const Board = (() => {
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
     const mod = e.ctrlKey || e.metaKey, k = e.key;
     if (op && op.keep) { if (k === 'Enter') { op.finish(); e.preventDefault(); return true; } if (k === 'Escape') { cancelOp(); e.preventDefault(); return true; } }
+    { const sh = sheetSelOf(); if (sh && sheetSelKey(e, sh)) return true; }
     /* layer order: Page Up / Down one step, with Ctrl all the way to the front / back */
     if ((k === 'PageUp' || k === 'PageDown') && sel.size) { e.preventDefault(); zMove(k === 'PageUp' ? (mod ? 'front' : 'fwd') : (mod ? 'back' : 'bwd')); return true; }
     if (k === ' ' && !e.repeat) { spaceDown = true; host.classList.add('t-hand'); e.preventDefault(); return true; }
@@ -1706,6 +1988,7 @@ const Board = (() => {
       setColor(c, final) { S.prefs.pens[penKind].c = c; save(); const d = $('[data-tool="pen"] .cdot', toolsEl); if (d) d.style.background = c; if (final) refreshTools(); },
       changed(partial) { propSig = ''; refreshTools(); if (!partial) Studio.sync(); } });
     host.addEventListener('pointerdown', onDown);
+    host.addEventListener('mousedown', e => { if (fxPicking) e.preventDefault(); });
     host.addEventListener('dblclick', onDbl);
     host.addEventListener('wheel', onWheel, { passive: false });
     host.addEventListener('contextmenu', onContext);
@@ -1868,11 +2151,13 @@ const Board = (() => {
       editIt || { label: 'Ajuster', run: () => list.forEach(fitFrame) }, { label: f.nt ? 'Afficher le titre' : 'Masquer le titre', run: () => setProp('ftitle', !!f.nt) },
       { label: 'Taille du titre', run: null, sub: () => around(['S', 'M', 'L', 'XL'].map((l, i) => ({ label: l, on: (f.tfs ?? 1) === i, run: () => setProp('tfs', i) }))) },
       one ? { label: 'Ajuster au contenu', run: () => fitFrame(one) } : null, del, more, dup]); }
-    if (one && one.k === 'sheet') { const sh = one; return around([
-      { label: 'Ajouter une ligne', run: () => sheetResize(sh, { rows: sh.rows + 1 }) }, { label: 'Ajouter une colonne', run: () => sheetResize(sh, { cols: sh.cols + 1 }) },
-      { label: 'Ligne de total', run: () => sheetTotal(sh) }, sizeIt, del,
-      { label: 'Retirer', run: null, sub: () => around([sh.rows > 1 ? { label: 'La dernière ligne', run: () => sheetResize(sh, { rows: sh.rows - 1 }) } : null, sh.cols > 1 ? { label: 'La dernière colonne', run: () => sheetResize(sh, { cols: sh.cols - 1 }) } : null]) },
-      more, { label: 'Modifier le titre', run: () => startEdit(sh.id, null, 'title') }]); }
+    if (one && one.k === 'sheet') { const sh = one, R = sheetRange(sh), nr = R.r1 - R.r0 + 1, nc = R.c1 - R.c0 + 1;
+      const rowsL = nr > 1 ? `Lignes ${R.r0 + 1} à ${R.r1 + 1}` : `Ligne ${R.r0 + 1}`, colsL = nc > 1 ? `Colonnes ${colName(R.c0)} à ${colName(R.c1)}` : `Colonne ${colName(R.c0)}`;
+      return around([
+        { label: 'Insérer', run: null, sub: () => around([{ label: 'Ligne au-dessus', run: () => sheetInsert(sh, 'row', R.r0, 1) }, { label: 'Colonne à droite', run: () => sheetInsert(sh, 'col', R.c1 + 1, 1) }, { label: 'Ligne en dessous', run: () => sheetInsert(sh, 'row', R.r1 + 1, 1) }, { label: 'Colonne à gauche', run: () => sheetInsert(sh, 'col', R.c0, 1) }]) },
+        { label: 'Ligne de total', run: () => sheetTotal(sh) }, { label: 'Effacer les cellules', run: () => sheetClear(sh, R) }, sizeIt,
+        { label: 'Supprimer', run: null, sub: () => around([{ label: rowsL, run: () => sheetInsert(sh, 'row', R.r0, -nr) }, { label: colsL, run: () => sheetInsert(sh, 'col', R.c0, -nc) }, { label: 'Le tableau', run: deleteSel }]) },
+        { label: 'Copier les cellules', run: () => sheetCopy(sh, R) }, more, { label: 'Modifier le titre', run: () => startEdit(sh.id, null, 'title') }]); }
     if (all('note') || all('todo')) return around([editIt, colorIt, sizeIt, alignIt, del, fontIt, more, dup]);
     if (all('shape')) return around([editIt, colorIt, { label: 'Forme', run: null, sub: () => around(Object.entries(SHAPES).slice(0, 8).map(([k, l]) => ({ label: l, on: one && one.sh === k, run: () => setProp('sh', k) }))) }, sizeIt, del, fontIt, more, dup]);
     if (all('conn')) return around([{ label: 'Texte', run: () => one && startEdit(one.id) }, colorIt, { label: 'Tracé', run: null, sub: () => around(Object.entries(ROUTES).map(([k, l]) => ({ label: l, on: one && one.route === k, run: () => setProp('route', k) }))) }, null, del, null, more, dup]);
@@ -1880,8 +2165,9 @@ const Board = (() => {
   }
   function openMarking(e, hit, sticky) {
     closeMarking(); cancelOp();
-    if (hit && !sel.has(hit)) { sel = new Set([hit]); render(); }
+    if (hit && !sel.has(hit)) { sel = new Set([hit]); sheetSel = null; render(); }
     if (!hit && sel.size) { sel.clear(); schedule(); }
+    if (hit && sel.size === 1 && e.target && e.target.closest) sheetCtx(e.target, byId.get(hit));
     const el = document.createElement('div'); el.className = 'mmenu'; wrap.append(el);
     el.addEventListener('pointerdown', e => mm && mmDown(e)); el.addEventListener('contextmenu', e => e.preventDefault());
     const items1 = hit ? mmItemItems(hit) : mmToolItems(toW(e.clientX, e.clientY));
