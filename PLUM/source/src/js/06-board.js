@@ -106,6 +106,7 @@ const Board = (() => {
       case 'frame': return `r${it.title}`;
       case 'task': { const t = taskById(it.task) || {}; return `T${t.t}|${t.done}|${t.due}|${t.time}|${t.sp}`; }
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
+      case 'sheet': return `g${it.w}|${it.h}|${it.cols}|${it.rows}|${it.fs}|${it.title}|${JSON.stringify(it.cells)}|${theme()}`;
       case 'todo': return `o${it.w}|${it.c}|${it.font}|${it.fs}|${it.title}|${it.tasks.map(id => { const t = taskById(id); return t ? `${t.id}:${t.done ? 1 : 0}:${t.t}` : ''; }).join('§')}|${theme()}`;
     }
     return it.k;
@@ -178,6 +179,20 @@ const Board = (() => {
         const d = docById(it.doc);
         n.className = 'it card-it docref';
         n.innerHTML = d && !d.trash ? `<div class="th">${Thumbs.svg(d)}</div><div class="fi">${icon(d.type === 'board' ? 'board' : 'note', 'sm')}<b>${esc(d.title)}</b></div>` : `<div class="fi"><small>Document introuvable</small></div>`;
+        break;
+      }
+      case 'sheet': {
+        const g = sheetGeom(it), val = sheetEval(it.cells);
+        n.className = 'it tsheet';
+        s.setProperty('--sfs', g.fs + 'px'); s.setProperty('--srh', g.rh + 'px'); s.setProperty('--sth', g.th + 'px'); s.setProperty('--sadd', g.add + 'px');
+        let h = `<div class="sht"><b data-cell="title">${esc(it.title) || '&nbsp;'}</b><span class="shfx"></span></div><div class="shg" style="grid-template-columns:${g.hw}px repeat(${it.cols},minmax(0,1fr))"><i class="shc"></i>`;
+        for (let c = 0; c < it.cols; c++) h += `<i class="shh">${colName(c)}</i>`;
+        for (let r = 0; r < it.rows; r++) {
+          h += `<i class="shr">${r + 1}</i>`;
+          for (let c = 0; c < it.cols; c++) { const ref = colName(c) + (r + 1), raw = it.cells[ref], v = raw ? val(ref) : null; h += `<div class="cell${typeof v === 'number' ? ' num' : v && v.err ? ' er' : ''}${raw && raw[0] === '=' ? ' fx' : ''}" data-cell="${ref}"${v && v.err ? ` title="${esc(raw)}"` : ''}>${esc(sheetShow(v))}</div>`; }
+        }
+        n.innerHTML = h + `</div><div class="shadd"><button data-sadd="row">${icon('plus', 'sm')}<span>Ligne</span></button><button data-sadd="col">${icon('plus', 'sm')}<span>Colonne</span></button></div>`;
+        if (Math.abs(g.h - it.h) > .5) { const nx = Object.assign({}, it, { h: g.h }); n._it = nx; items = items.map(x => x.id === it.id ? nx : x); reindex(); D.items = items; save(); s.height = g.h + 'px'; n._sig = sigOf(nx); }
         break;
       }
       case 'todo': {
@@ -298,7 +313,7 @@ const Board = (() => {
         h += `<div class="selbox${list.length > 1 ? ' multi' : ''}" style="left:${a.x - 3}px;top:${a.y - 3}px;width:${b.x - a.x + 6}px;height:${b.y - a.y + 6}px"></div>`;
         const one = list.length === 1 ? list[0] : null;
         if (!dragging && !editing && !(one && one.k === 'mind')) {
-          const sides = one && (one.k === 'image' || one.k === 'ink' || one.k === 'doc') ? ['nw', 'ne', 'se', 'sw'] : one && one.k === 'text' ? ['nw', 'ne', 'se', 'sw', 'e', 'w'] : one && one.k === 'todo' ? ['e', 'w'] : ['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'];
+          const sides = one && (one.k === 'image' || one.k === 'ink' || one.k === 'doc') ? ['nw', 'ne', 'se', 'sw'] : one && one.k === 'text' ? ['nw', 'ne', 'se', 'sw', 'e', 'w'] : one && (one.k === 'todo' || one.k === 'sheet') ? ['e', 'w'] : ['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'];
           const P = { nw: [a.x, a.y], ne: [b.x, a.y], se: [b.x, b.y], sw: [a.x, b.y], n: [(a.x + b.x) / 2, a.y], s: [(a.x + b.x) / 2, b.y], e: [b.x, (a.y + b.y) / 2], w: [a.x, (a.y + b.y) / 2] };
           for (const k of sides) h += `<div class="hdl ${k}" data-h="${k}" style="left:${P[k][0] + (k.includes('e') ? 3 : k.includes('w') ? -3 : 0)}px;top:${P[k][1] + (k.includes('s') ? 3 : k.includes('n') ? -3 : 0)}px"></div>`;
           // Excalidraw/Miro-like: a dot on each side, drag it to another item to link them, click it to add a linked item
@@ -347,7 +362,7 @@ const Board = (() => {
   const propsOpen = () => propsEl && !propsEl.hidden && !wrap.classList.contains('drawing');
   function setProps(on) { S.prefs.props = on; save(); propsEl.hidden = !on; wrap.classList.toggle('props-open', on); $('[data-a="props"]', trEl).setAttribute('aria-pressed', on); propSig = ''; renderOverlay(); layoutChanged(); }
   const SW_OPTS = [[1, 'Fin'], [2, 'Moyen'], [4, 'Épais']];
-  const FS_TABLE = { note: [22, 30, 40, 54], text: [20, 28, 40, 64], shape: [18, 26, 34, 46], todo: [18, 24, 30, 38] };
+  const FS_TABLE = { note: [22, 30, 40, 54], text: [20, 28, 40, 64], shape: [18, 26, 34, 46], todo: [18, 24, 30, 38], sheet: [12, 14, 17, 21] };
   const fsLevel = it => { const T = FS_TABLE[it.k] || FS_TABLE.text; let b = 0; for (let i = 0; i < T.length; i++) if (Math.abs(T[i] - it.fs) < Math.abs(T[b] - it.fs)) b = i; return b; };
   const sec = (l, body, cls = '') => `<div class="ps ${cls}"><div class="ps-l">${l}</div>${body}</div>`;
   const seg = (prop, cur, opts, cls = '') => `<div class="seg sm ${cls}" data-set="${prop}">${opts.map(([v, l, t]) => `<button data-v="${v}" aria-pressed="${String(cur) === String(v)}" title="${esc(t || l)}">${l}</button>`).join('')}</div>`;
@@ -371,7 +386,7 @@ const Board = (() => {
     }
     /* which properties apply: from the selection, or from the tool about to draw */
     const want = td ? { sc: ['shape', 'conn', 'line', 'text'].includes(T), fc: ['shape', 'note', 'todo'].includes(T), fill: T === 'shape', sw: ['shape', 'conn', 'line'].includes(T), dash: ['shape', 'conn', 'line'].includes(T), sty: ['shape', 'conn', 'line'].includes(T), sh: T === 'shape', heads: T === 'conn', route: T === 'conn', font: ['text', 'note', 'todo', 'shape'].includes(T) }
-      : { sc: has('shape', 'conn', 'text', 'ink', 'mind'), fc: has('shape', 'note', 'todo'), fill: has('shape') && list.some(i => i.k === 'shape' && i.fc), sw: has('shape', 'conn'), dash: has('shape', 'conn'), sty: has('shape', 'conn'), sh: only('shape'), heads: only('conn'), route: only('conn'), font: has('note', 'text', 'shape', 'todo'), fs: has('note', 'text', 'shape', 'todo'), al: has('note', 'text'), bold: only('text'), op: true };
+      : { sc: has('shape', 'conn', 'text', 'ink', 'mind'), fc: has('shape', 'note', 'todo'), fill: has('shape') && list.some(i => i.k === 'shape' && i.fc), sw: has('shape', 'conn'), dash: has('shape', 'conn'), sty: has('shape', 'conn'), sh: only('shape'), heads: only('conn'), route: only('conn'), font: has('note', 'text', 'shape', 'todo'), fs: has('note', 'text', 'shape', 'todo', 'sheet'), al: has('note', 'text'), bold: only('text'), op: true };
     const val = (prop, def) => { if (td) return def; const it = first(); return propValue(list.find(i => propValue(i, prop) !== undefined) || it, prop) ?? def; };
     const scCur = td ? bd.sc : (list.some(i => ['shape', 'conn', 'text', 'ink', 'mind'].includes(i.k)) ? propValue(list.find(i => ['shape', 'conn', 'text', 'ink', 'mind'].includes(i.k)), 'sc') : bd.sc);
     const fcCur = td ? (T === 'note' ? noteColor : T === 'todo' ? '#FFFFFF' : bd.fc) : propValue(list.find(i => ['shape', 'note', 'todo'].includes(i.k)) || list[0], 'fc');
@@ -403,7 +418,7 @@ const Board = (() => {
     }
     return out.join('');
   }
-  const ZICON = { note: 'sticky', text: 'text', shape: 'rect', image: 'image', file: 'file', link: 'link', ink: 'pen', mind: 'mind', frame: 'frame', task: 'tasks', doc: 'note', todo: 'todo', conn: 'conn' };
+  const ZICON = { note: 'sticky', text: 'text', shape: 'rect', image: 'image', file: 'file', link: 'link', ink: 'pen', mind: 'mind', frame: 'frame', task: 'tasks', doc: 'note', todo: 'todo', sheet: 'sheet', conn: 'conn' };
   function layersHTML() {
     const rows = [];
     for (let i = items.length - 1; i >= 0; i--) {
@@ -532,7 +547,7 @@ const Board = (() => {
     ], { align: 'right' });
   }
   function helpModal() {
-    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O · D', 'Rectangle · Ellipse · Losange'], ['A', 'Flèche'], ['L', 'Ligne'], ['P', 'Stylo'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['F', 'Cadre'], ['I', 'Image ou fichier']]],
+    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O · D', 'Rectangle · Ellipse · Losange'], ['A', 'Flèche'], ['L', 'Ligne'], ['P', 'Stylo'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Cadre'], ['I', 'Image ou fichier']]],
       ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Maj + glisser', 'Dupliquer et déplacer la copie'], ['Page ↑ / ↓', 'Avancer / reculer d’un plan'], ['Ctrl + Page ↑ / ↓', 'Tout devant / tout au fond'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
       ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]]];
     openModal(`<div class="mhd"><h2>Raccourcis du board</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div><div class="keys">${K.map(([t, rows]) => `<div><h5>${t}</h5>${rows.map(([k, l]) => `<div class="krow"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`);
@@ -635,18 +650,22 @@ const Board = (() => {
     if (it.k === 'conn') { let el = labelsL.querySelector(`[data-l="${it.id}"]`); if (!el) { const g = connGeom(it, byId); el = document.createElement('div'); el.className = 'clabel'; el.dataset.l = it.id; el.dataset.id = it.id; el.style.left = g.mid[0] + 'px'; el.style.top = g.mid[1] + 'px'; labelsL.append(el); } return el; }
     const n = nodes.get(it.id); if (!n) return null;
     if (it.k === 'todo') return n.querySelector(`[data-sub="${sub || 'title'}"]`);
+    if (it.k === 'sheet') return n.querySelector(`[data-cell="${sub || 'A1'}"]`);
     return it.k === 'frame' ? n.querySelector('.ftitle') : n.querySelector('.txt');
   }
-  const EDITABLE = ['note', 'text', 'shape', 'mind', 'frame', 'conn', 'todo'];
+  const EDITABLE = ['note', 'text', 'shape', 'mind', 'frame', 'conn', 'todo', 'sheet'];
+  const sheetAt = new Map();   // the last cell edited in each sheet, where typing starts
   function startEdit(id, char, sub) {
     const it = byId.get(id); if (!it || !EDITABLE.includes(it.k)) return;
     if (editing && (editing !== id || editSub !== (sub || null))) finishEdit();
     render();
     if (it.k === 'todo' && !sub) sub = 'title';
+    if (it.k === 'sheet' && !sub) sub = sheetAt.get(id) || 'A1';
     const el = editEl(it, sub); if (!el) return;
     editing = id; editSub = sub || null; sel = new Set([id]);
     const n = nodes.get(id); if (n) n.classList.add('editing');
-    const cur = it.k === 'todo' ? (sub === 'title' ? it.title : ((taskById(sub) || {}).t || '')) : it.k === 'frame' ? it.title : (it.txt || '');
+    const cur = it.k === 'todo' ? (sub === 'title' ? it.title : ((taskById(sub) || {}).t || '')) : it.k === 'sheet' ? (sub === 'title' ? it.title : (it.cells[sub] || '')) : it.k === 'frame' ? it.title : (it.txt || '');
+    if (it.k === 'sheet' && sub !== 'title') sheetAt.set(id, sub);
     el.textContent = char != null ? char : cur;
     try { el.contentEditable = 'plaintext-only'; } catch (e) { el.contentEditable = 'true'; }
     if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
@@ -655,12 +674,14 @@ const Board = (() => {
     const r = document.createRange(); r.selectNodeContents(el); if (char != null || (it.k !== 'mind' && !(it.k === 'todo' && sub === 'title' && !char))) r.collapse(false);
     const s = getSelection(); s.removeAllRanges(); s.addRange(r);
     editStart = { id, items };
+    if (it.k === 'sheet') sheetFx(id, el);
     el.oninput = () => editInput(it.id, el);
     el.onkeydown = ev => {
       ev.stopPropagation();
       const c0 = byId.get(id);
       if (ev.key === 'Escape') { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); return; }
       if (c0 && c0.k === 'todo') { todoKey(ev, c0, sub, el); return; }
+      if (c0 && c0.k === 'sheet') { sheetKey(ev, c0, sub); return; }
       if (c0 && c0.k === 'mind' && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); return; }
       if ((c0 && (c0.k === 'frame' || c0.k === 'conn') && ev.key === 'Enter') || (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey))) { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); }
     };
@@ -683,6 +704,47 @@ const Board = (() => {
     const tasks = it.tasks.slice(); tasks.splice(after + 1, 0, t.id);
     commit(replace(items, it, { tasks })); render(); startEdit(id, null, t.id);
   }
+  /* sheet keys: Enter / Tab go to the next cell (Shift: back), the arrows up and down change row; a new row comes when Enter leaves the last one */
+  let sheetTab = null;
+  function sheetKey(ev, it, sub) {
+    if (sub === 'title') { if (ev.key === 'Enter' || ev.key === 'Tab') { ev.preventDefault(); finishEdit(); startEdit(it.id, null, 'A1'); } return; }
+    const m = /^([A-Z]+)(\d+)$/.exec(sub); if (!m) return;
+    let c = colIndex(m[1]), r = +m[2] - 1;
+    const mv = { Enter: [0, ev.shiftKey ? -1 : 1], Tab: [ev.shiftKey ? -1 : 1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+    if (!mv || (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey))) return;
+    ev.preventDefault(); finishEdit();
+    let cur = byId.get(it.id); if (!cur) return;
+    // as in Google Sheets, Enter after a run of Tabs goes back to the column the run started from
+    const run = sheetTab && sheetTab.id === it.id && sheetTab.at === sub ? sheetTab.col : null;
+    if (ev.key === 'Enter' && !ev.shiftKey && run != null) c = run; else c += mv[0];
+    r += mv[1];
+    if (c >= cur.cols) { c = 0; r++; } if (c < 0) { c = cur.cols - 1; r--; }
+    sheetTab = ev.key === 'Tab' && !ev.shiftKey && c > 0 ? { id: it.id, col: run != null ? run : c - 1, at: colName(c) + (r + 1) } : null;
+    if (r < 0) { startEdit(cur.id, null, 'title'); return; }
+    if (r >= cur.rows) { if (ev.key !== 'Enter' && ev.key !== 'Tab') { r = cur.rows - 1; } else { sheetResize(cur, { rows: cur.rows + 1 }); cur = byId.get(it.id); } }
+    render(); startEdit(cur.id, null, colName(c) + (r + 1));
+  }
+  /* the formula bar in the title band: the cell being typed in and what it holds */
+  function sheetFx(id, el) { const n = nodes.get(id), fx = n && n.querySelector('.shfx'); if (!fx) return; const ref = editSub && editSub !== 'title' ? editSub : ''; fx.innerHTML = ref ? `<em>${ref}</em>${esc(el.textContent)}` : ''; }
+  function sheetResize(it, o) {
+    const p = Object.assign({}, o);
+    if (o.cols != null) { const g = sheetGeom(it); p.w = g.hw + (it.w - g.hw) / it.cols * o.cols; }
+    const nx = Object.assign({}, it, p); p.h = sheetGeom(nx).h;
+    if (o.rows != null && o.rows < it.rows || o.cols != null && o.cols < it.cols) { const cells = {}; for (const [k, v] of Object.entries(it.cells)) { const m = /^([A-Z]+)(\d+)$/.exec(k); if (m && colIndex(m[1]) < nx.cols && +m[2] <= nx.rows) cells[k] = v; } p.cells = cells; }
+    commit(replace(items, it, p));
+  }
+  /* a last row adding up each column that holds numbers */
+  function sheetTotal(it) {
+    // the total goes just under the last filled row (into an empty row if there is one), summing everything above it
+    const val = sheetEval(it.cells), cells = Object.assign({}, it.cells);
+    const last = Object.keys(it.cells).reduce((m, k) => { const x = /^[A-Z]+(\d+)$/.exec(k); return x && String(it.cells[k]).trim() ? Math.max(m, +x[1]) : m; }, 0);
+    const r = last + 1, rows = Math.max(it.rows, r);
+    let any = false;
+    for (let c = 0; c < it.cols; c++) { const L = colName(c), has = Array.from({ length: last }, (_, i) => val(L + (i + 1))).some(v => typeof v === 'number'); if (has) { cells[L + r] = `=SOMME(${L}1:${L}${last})`; any = true; } }
+    if (!any) { toast('Aucune colonne de nombres à additionner'); return; }
+    if (!cells['A' + r]) cells['A' + r] = 'Total';
+    const nx = Object.assign({}, it, { rows, cells }); commit(replace(items, it, { rows, cells, h: sheetGeom(nx).h }));
+  }
   function editInput(id, el) {
     const it = byId.get(id); if (!it) return;
     if (it.k === 'note') { const t = el; t.style.fontSize = it.fs + 'px'; let lo = 9, hi = it.fs; if (t.scrollHeight > it.h - 27 || t.scrollWidth > it.w - 31) { for (let i = 0; i < 7; i++) { const m = (lo + hi) / 2; t.style.fontSize = m + 'px'; if (t.scrollHeight > it.h - 27 || t.scrollWidth > it.w - 31) hi = m; else lo = m; } t.style.fontSize = lo + 'px'; } }
@@ -690,6 +752,7 @@ const Board = (() => {
     if (it.k === 'mind') { setLive(relayout(items)); }
     if (it.k === 'conn') renderOverlay();
     if (it.k === 'todo') { const n = nodes.get(id); if (n) measureTodo(n, byId.get(id)); renderOverlay(); }
+    if (it.k === 'sheet') sheetFx(id, el);
   }
   function finishEdit() {
     const id = editing, sub = editSub; if (!id) return;
@@ -709,6 +772,13 @@ const Board = (() => {
       if (t.t !== raw.trim()) { t.t = raw.trim(); save(); renderSide(); }
       n && (n._it = null); schedule(); return;
     }
+    if (it.k === 'sheet') {
+      if (sub === 'title') { const v = raw.trim() || 'Tableau'; if (v !== it.title) commit(replace(items, it, { title: v }), { before }); else schedule(); return; }
+      const cells = Object.assign({}, it.cells), v = raw.trim() ? raw.replace(/\n/g, ' ').trim() : '';
+      if (v) cells[sub] = v; else delete cells[sub];
+      if ((it.cells[sub] || '') !== v) commit(replace(items, it, { cells }), { before }); else schedule();
+      return;
+    }
     if (it.k === 'text' && !raw.trim()) { commit(items.filter(i => i.id !== id && !(i.k === 'conn' && (i.a.id === id || i.b.id === id)))); sel.delete(id); return; }
     if (it.k === 'mind' && !raw.trim() && it.parent && !mindKids(id).length) { commit(items.filter(i => i.id !== id)); sel = new Set([it.parent]); return; }
     const key = it.k === 'frame' ? 'title' : 'txt';
@@ -723,9 +793,12 @@ const Board = (() => {
     let it;
     const k = view.k, s = clamp(1 / k, .5, 4);
     if (kind === 'note') it = mkNote(w.x - 110 * s, w.y - 110 * s, '', noteColor, { w: 220 * s, h: 220 * s, fs: Math.round(30 * s) });
-    if (kind === 'text') it = mkText(w.x, w.y - 16 * s, '', { fs: Math.round(28 * s) });
+    if (kind === 'text') it = mkText(w.x, w.y - 16 * s, 'Texte', { fs: Math.round(28 * s) });
+    if (kind === 'sheet') { it = mkSheet(0, 0, { fs: Math.round(14 * s) }); it.x = w.x - it.w / 2; it.y = w.y - 40 * s; commit(items.concat(it)); sel = new Set([it.id]); setTool('select'); render(); startEdit(it.id, null, 'A1'); return; }
     if (kind === 'todo') it = mkTodo(w.x - 145 * s, w.y - 60 * s, 'À faire', [], { w: 290 * s, fs: Math.round(24 * s) });
     commit(items.concat(it)); sel = new Set([it.id]); setTool('select'); render(); startEdit(it.id);
+    // a new text block starts with "Texte" selected, so typing replaces it
+    if (kind === 'text' && editing === it.id) { const el = editEl(it); if (el) { const r = document.createRange(); r.selectNodeContents(el); const g = getSelection(); g.removeAllRanges(); g.addRange(r); } }
   }
   function freeSpot(w, h) {
     const content = items.filter(i => i.k !== 'conn'), bb = unionBox(content);
@@ -804,6 +877,11 @@ const Board = (() => {
       const ck = t.closest('.ck > i'); if (ck && hit) { e.preventDefault(); toggleCheck(hit, +ck.parentElement.dataset.line); return; }
       const td = t.closest('[data-tdone]'); if (td && hit) { e.preventDefault(); const tk = taskById(byId.get(hit).task); if (tk) { setTaskDone(tk, !tk.done); } return; }
       const tck = t.closest('[data-tck]'); if (tck && hit) { e.preventDefault(); const tk = taskById(tck.dataset.tck); if (tk) setTaskDone(tk, !tk.done); return; }
+      const scell = t.closest('[data-cell]'), sadd = t.closest('[data-sadd]'), sit = hit && byId.get(hit);
+      if (sit && sit.k === 'sheet' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (sadd) { e.preventDefault(); sel = new Set([hit]); sheetResize(sit, sadd.dataset.sadd === 'row' ? { rows: sit.rows + 1 } : { cols: sit.cols + 1 }); return; }
+        if (scell && sel.has(hit) && sel.size === 1) { e.preventDefault(); startEdit(hit, null, scell.dataset.cell); return; }
+      }
       const tadd = t.closest('[data-tadd]'); if (tadd && hit) { e.preventDefault(); const it = byId.get(hit); sel = new Set([hit]); todoAddRow(hit, it.tasks.length - 1); return; }
       if (hit) {
         const was = sel.has(hit) && sel.size === 1;
@@ -817,7 +895,7 @@ const Board = (() => {
       schedule(); return;
     }
     e.preventDefault();
-    if (tool === 'note' || tool === 'text' || tool === 'mind' || tool === 'todo') { createAt(tool, w); return; }
+    if (tool === 'note' || tool === 'text' || tool === 'mind' || tool === 'todo' || tool === 'sheet') { createAt(tool, w); return; }
     if (tool === 'shape' || tool === 'frame') { startRect(e, w); return; }
     if (tool === 'conn' || tool === 'line') { startConn(e, w, hit); return; }
   }
@@ -938,6 +1016,7 @@ const Board = (() => {
           if (o.k === 'text') { if (one && h.length === 1) { n.fw = 1; n.h = o.h; n.y = o.y; } else { n.fs = Math.max(6, Math.round(o.fs * sy)); if (o.fw) n.w = o.w * sx; } }
           if (o.k === 'note' && !one) n.fs = Math.max(8, Math.round(o.fs * Math.min(sx, sy)));
           if (o.k === 'todo') { n.h = o.h; n.y = o.y; n.w = Math.max(160, n.w); }
+          if (o.k === 'sheet') { const g = sheetGeom(o); if (one) { n.h = o.h; n.y = o.y; n.w = Math.max(g.hw + o.cols * (o.fs || 14) * 2.5, n.w); } else { n.fs = Math.max(8, Math.round((o.fs || 14) * sx)); n.h = sheetGeom(n).h; } }
           return n;
         }));
       },
@@ -1213,7 +1292,7 @@ const Board = (() => {
     const hit = hitAt(e);
     if (!hit) { const w = toW(e.clientX, e.clientY); createAt('note', w); return; }
     const it = byId.get(hit);
-    if (EDITABLE.includes(it.k)) { if (e.target.closest('.ck,[data-tck],[data-tadd]')) return; const sub = e.target.closest('[data-sub]'); startEdit(hit, null, it.k === 'todo' ? (sub ? sub.dataset.sub : 'title') : undefined); }
+    if (EDITABLE.includes(it.k)) { if (e.target.closest('.ck,[data-tck],[data-tadd]')) return; const sub = e.target.closest('[data-sub]'); startEdit(hit, null, it.k === 'todo' ? (sub ? sub.dataset.sub : 'title') : it.k === 'sheet' ? ((e.target.closest('[data-cell]') || {}).dataset || {}).cell : undefined); }
     else openItem(it);
   }
   function onWheel(e) {
@@ -1467,7 +1546,7 @@ const Board = (() => {
   }
 
   /* ---------- keyboard ---------- */
-  const TOOL_KEYS = { v: 'select', h: 'hand', p: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', d: 'shape', a: 'conn', l: 'line', f: 'frame', c: 'todo', k: 'pick', b: 'pen' };
+  const TOOL_KEYS = { v: 'select', h: 'hand', p: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', d: 'shape', a: 'conn', l: 'line', f: 'frame', c: 'todo', g: 'sheet', k: 'pick', b: 'pen' };
   function key(e) {
     if (!mounted || editing) return false;
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
@@ -1497,7 +1576,7 @@ const Board = (() => {
     if (k === '?' || (e.shiftKey && k === '/')) { helpModal(); return true; }
     if ((k === 'Enter' || k === 'F2') && one) { e.preventDefault(); startEdit(one.id); return true; }
     if (k.startsWith('Arrow') && sel.size) { e.preventDefault(); const d = e.shiftKey ? 10 : 1, dx = k === 'ArrowLeft' ? -d : k === 'ArrowRight' ? d : 0, dy = k === 'ArrowUp' ? -d : k === 'ArrowDown' ? d : 0; const ids = moveSet(); commit(items.map(i => ids.has(i.id) && i.k !== 'conn' ? Object.assign({}, i, { x: i.x + dx, y: i.y + dy }) : i)); return true; }
-    if (one && k.length === 1 && !e.altKey && ['note', 'shape', 'mind', 'text'].includes(one.k)) { e.preventDefault(); startEdit(one.id, k); return true; }
+    if (one && k.length === 1 && !e.altKey && ['note', 'shape', 'mind', 'text', 'sheet'].includes(one.k)) { e.preventDefault(); startEdit(one.id, k); return true; }
     if (k === '0' || (e.shiftKey && k === '!')) { fitAll(); return true; }
     if (k === '+' || k === '=') { zoomCenter(1.25); return true; }
     if (k === '-') { zoomCenter(.8); return true; }
@@ -1524,7 +1603,7 @@ const Board = (() => {
     if (was !== drawingTool()) layoutChanged();
   }
   const drawingTool = () => !!(PENS[tool] || tool === 'eraser' || tool === 'pick');
-  const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Stylo', 'P'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['frame', 'frame', 'Cadre', 'F'], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
+  const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Stylo', 'P'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['sheet', 'sheet', 'Tableur', 'G'], ['frame', 'frame', 'Cadre', 'F'], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
   function refreshTools() {
     toolsEl.innerHTML = TOOLS.map(d => d === '|' ? '<span class="vs"></span>' : (() => {
       const [id, ic, title, k] = d, on = id === 'pen' ? !!PENS[tool] : tool === id;
@@ -1681,7 +1760,7 @@ const Board = (() => {
   }
 
   /* ---------- drag a tool from the dock onto the board: the item lands where it is let go ---------- */
-  const DRAG_TOOLS = { shape: 1, note: 1, text: 1, todo: 1, frame: 1 };
+  const DRAG_TOOLS = { shape: 1, note: 1, text: 1, todo: 1, frame: 1, sheet: 1 };
   let dragClick = false;
   /* what will land, at its real size on screen */
   function dragGhost(kind) {
@@ -1690,6 +1769,7 @@ const Board = (() => {
     if (kind === 'note') return { w: 220 * s, h: 220 * s, html: `<i style="background:${noteColor}"></i>` };
     if (kind === 'todo') return { w: 290 * s, h: 110 * s, html: `<i><b>À faire</b><u></u><u></u></i>` };
     if (kind === 'frame') return { w: 480 * k, h: 320 * k, html: `<i><b>Cadre</b></i>` };
+    if (kind === 'sheet') { const g = mkSheet(0, 0, { fs: Math.round(14 * clamp(1 / k, .5, 4)) }); return { w: g.w * k, h: g.h * k, html: `<i class="sgh"><b>Tableau</b></i>` }; }
     return { w: 120 * s, h: 40 * s, html: `<i><b>Texte</b></i>` };
   }
   function toolDragStart(e) {
@@ -1719,7 +1799,7 @@ const Board = (() => {
     addEventListener('pointermove', move); addEventListener('pointerup', end); addEventListener('pointercancel', end);
   }
   function dropTool(kind, w) {
-    if (kind === 'note' || kind === 'text' || kind === 'todo') { createAt(kind, w); return; }
+    if (kind === 'note' || kind === 'text' || kind === 'todo' || kind === 'sheet') { createAt(kind, w); return; }
     const s = clamp(1 / view.k, .5, 4);
     if (kind === 'frame') { const it = mkFrame(w.x - 240, w.y - 160, 480, 320, 'Cadre'); commit([it].concat(items)); sel = new Set([it.id]); setTool('select'); render(); startEdit(it.id); return; }
     const W = 180 * s, H = (shapeKind === 'pill' ? 70 : 120) * s, it = mkShape(w.x - W / 2, w.y - H / 2, W, H, shapeKind, { fs: Math.round(26 * s) });
@@ -1741,7 +1821,7 @@ const Board = (() => {
     if (t === 'shape') return SHAPES[shapeKind] || 'Forme';
     if (PENS[t]) return PENS[t].name;
     if (t === 'conn') return 'Flèche ' + (ROUTES[BD().route || 'curve'] || '').toLowerCase();
-    return { text: 'Texte', note: 'Post-it', todo: 'Liste à faire', frame: 'Cadre', line: 'Ligne', eraser: 'Gomme', mind: 'Mindmap' }[t] || t;
+    return { text: 'Texte', note: 'Post-it', todo: 'Liste à faire', sheet: 'Tableur', frame: 'Cadre', line: 'Ligne', eraser: 'Gomme', mind: 'Mindmap' }[t] || t;
   }
   /* new items take the board defaults: an option chosen here becomes that default, then the tool is picked */
   const pickOpt = (t, prop, v) => () => { if (prop) setProp(prop, v); setTool(t); };
@@ -1756,7 +1836,7 @@ const Board = (() => {
       { label: 'Flèche', run: () => setTool('conn'), sub: () => around([...Object.entries(ROUTES).map(([k, l]) => ({ label: l, on: tool === 'conn' && (BD().route || 'curve') === k, run: pickOpt('conn', 'route', k) })), { label: 'Ligne', on: tool === 'line', run: () => setTool('line') }]) },
       { label: 'Sélection', run: () => setTool('select') },
       { label: 'Plus', run: null, sub: () => around([
-        { label: 'Liste à faire', run: () => setTool('todo') }, { label: 'Cadre', run: () => setTool('frame') }, { label: 'Gomme', run: () => setTool('eraser') }, { label: 'Main', run: () => setTool('hand') },
+        { label: 'Liste à faire', run: () => setTool('todo') }, { label: 'Tableur', run: () => setTool('sheet') }, { label: 'Cadre', run: () => setTool('frame') }, { label: 'Gomme', run: () => setTool('eraser') }, { label: 'Main', run: () => setTool('hand') },
         { label: 'Image ou fichier…', run: pickFiles }, canPaste ? { label: 'Coller ici', run: () => clip ? pasteClip(w) : pasteSystem(w) } : null, { label: 'Tout voir', run: fitAll }]) }
     ]);
   }
@@ -1765,7 +1845,12 @@ const Board = (() => {
     const texty = list.some(i => ['note', 'shape', 'text', 'todo', 'frame', 'mind'].includes(i.k)), isText = list.some(i => i.k === 'text');
     const sized = list.find(i => FS_TABLE[i.k]);
     const colors = list.every(i => i.k === 'note' || i.k === 'todo') ? ['fc', NOTE_COLORS] : list.some(i => propPatch(i, 'sc', '#000')) ? ['sc', themeColors('stroke', STROKE_COLORS)] : null;
+    const sheet = one && one.k === 'sheet' ? one : null;
     return around([
+      sheet ? { label: 'Tableau', run: () => startEdit(sheet.id), sub: () => around([
+        { label: 'Ajouter une ligne', run: () => sheetResize(sheet, { rows: sheet.rows + 1 }) }, { label: 'Ajouter une colonne', run: () => sheetResize(sheet, { cols: sheet.cols + 1 }) },
+        { label: 'Ligne de total', run: () => sheetTotal(sheet) }, sheet.rows > 1 ? { label: 'Retirer la dernière ligne', run: () => sheetResize(sheet, { rows: sheet.rows - 1 }) } : null,
+        sheet.cols > 1 ? { label: 'Retirer la dernière colonne', run: () => sheetResize(sheet, { cols: sheet.cols - 1 }) } : null, { label: 'Modifier le titre', run: () => startEdit(sheet.id, null, 'title') }]) } :
       texty ? { label: 'Texte', run: one ? () => startEdit(one.id) : null, sub: () => around([
         one ? { label: 'Modifier', run: () => startEdit(one.id) } : null,
         isText ? { label: 'Gras', on: !!(one && one.bold), run: () => setProp('bold', !(one && one.bold)) } : null,
