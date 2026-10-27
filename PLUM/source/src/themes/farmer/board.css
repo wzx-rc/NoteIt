@@ -89,6 +89,45 @@
 [data-skin="farmer"] .props .seg { background: #EEE4CF; }
 [data-skin="farmer"] .props .seg button[aria-pressed="true"] { background: #FFFDF7; color: var(--strong); box-shadow: 0 0 0 1.5px var(--accent); }
 
-/* sticky notes: square paper, the corner lifted */
-[data-skin="farmer"] .it.note { border-radius: 2px; box-shadow: 0 1px 1px rgb(62 38 21 / .12), 0 12px 16px -12px rgb(62 38 21 / .55); color: #3B2A1C; }
-[data-skin="farmer"] .it.note::after { width: 26px; height: 26px; background: linear-gradient(135deg, transparent 48%, rgb(62 38 21 / .14) 50%, rgb(255 255 255 / .45) 70%, rgb(255 255 255 / .15)); border-radius: 0 0 2px 0; }
+/* sticky notes as on the concept close-up: paper with its grain in the note's colour, a bold felt-pen title underlined
+   by hand, diamond-arrow bullets, and the bottom right corner peeled up to show the paler back of the sheet.
+   The sheet is painted by ::before (clipped round the peeled corner), the peeled flap by ::after. */
+[data-skin="farmer"] .it.note { background: none !important; border-radius: 0; box-shadow: none; overflow: visible; isolation: isolate; color: #3B2A1C; padding: 16px 18px 18px; filter: drop-shadow(0 1px 1px rgb(62 38 21 / .2)) drop-shadow(0 9px 9px rgb(62 38 21 / .2)); }
+[data-skin="farmer"] .it.note::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 8px; pointer-events: none;
+  background: radial-gradient(50px 50px at calc(100% - 22px) calc(100% - 22px), rgb(62 38 21 / .26), transparent 75%), linear-gradient(color-mix(in srgb, var(--tc) 80%, transparent), color-mix(in srgb, var(--tc) 80%, transparent)), var(--fm-img-paper) 0 0 / 512px 512px, var(--tc);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 52px), calc(100% - 4px) calc(100% - 33px), calc(100% - 12px) calc(100% - 17px), calc(100% - 27px) calc(100% - 6px), calc(100% - 50px) 100%, 0 100%);
+}
+[data-skin="farmer"] .it.note::after {
+  width: 52px; height: 52px; right: 0; bottom: 0; border-radius: 0; pointer-events: none;
+  background: linear-gradient(135deg, #F1E6CC 0%, #FFFCF3 32%, #EFE3C7 58%, #D2BD93 86%, #B9A27A 100%);
+  clip-path: path('M2 52L25 46L40 35L48 19L52 0C42 9 27 12 12 12C10 26 7 40 2 52Z');
+}
+[data-skin="farmer"] .it.note .txt > div:first-child:not(:only-child):not(.bl):not(.ck) { font-weight: 700; font-size: 1.16em; width: fit-content; padding-bottom: .2em; margin-bottom: .2em; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 8' preserveAspectRatio='none'%3E%3Cpath d='M2 5.6C38 3.4 84 4.6 126 3.6S182 2.6 198 3.2' stroke='%233B2A1C' stroke-width='3.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") left bottom / 100% .24em no-repeat; }
+[data-skin="farmer"] .it.note .txt.l-center > div:first-child { margin-inline: auto; }
+[data-skin="farmer"] .it.note .txt .bl { padding-left: 1.15em; }
+[data-skin="farmer"] .it.note .txt .bl::before { left: .05em; top: .38em; width: .72em; height: .52em; border-radius: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 10'%3E%3Cpath d='M1.2 5h3.4M4.6 5 8.2 1.4 12.6 5 8.2 8.6Z' stroke='%233B2A1C' stroke-width='1.7' fill='none' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+
+/* arrows: the dark brown felt-pen curve of the concept with a solid barbed head (manifest headSolid) */
+[data-skin="farmer"] .edges .hf.hs { stroke-width: 1px; }
+
+/* mind maps as on the concept: the centre idea on a wooden sign with vines (mind-sign.webp nine-slice) in cream felt
+   pen, the branches as soft coloured pills, their sub-ideas a handwritten list on a bracket line (drawn with the
+   branches, manifest mindList), and a painted picture beside each branch whose words match (manifest mindArt) */
+[data-skin="farmer"] .it.mind.l0 {
+  background: none; box-shadow: none; border-radius: 0; padding: 0 6px; color: #FFF4DE;
+  border: solid transparent; border-width: 44px 54px 48px 58px; border-image: url("asset:mind-sign.webp") 88 108 96 116 fill / 44px 54px 48px 58px stretch;
+  filter: drop-shadow(0 10px 10px rgb(62 38 21 / .32));
+}
+[data-skin="farmer"] .it.mind.l0 .txt { font: 700 36px/1.02 var(--font-hand); text-shadow: 0 2px 0 rgb(70 36 12 / .6), 0 0 10px rgb(70 36 12 / .35); }
+[data-skin="farmer"] .it.mind.l1 {
+  border: 0; border-radius: 14px; padding: 0 22px; background: color-mix(in oklab, var(--mc) 40%, #FFF8E8);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .65), inset 0 -2px 0 color-mix(in oklab, var(--mc) 35%, transparent), 0 6px 12px -7px rgb(62 38 21 / .45);
+}
+[data-skin="farmer"] .it.mind.l1 .txt { font: 700 25px/1.1 var(--font-hand); color: #3B2A1C; }
+[data-skin="farmer"] .it.mind.l2 { padding: 0 6px; place-items: center start; }
+[data-skin="farmer"] .it.mind.l2::after { display: none; }
+[data-skin="farmer"] .it.mind.l2 .txt { font: 400 21px/1.15 var(--font-hand); color: #4A3726; text-align: left; }
+[data-skin="farmer"] .it.mind .mart { position: absolute; top: 26px; width: 92px; height: 92px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 4px 4px rgb(62 38 21 / .22)); }
+[data-skin="farmer"] .it.mind.s-l .mart { right: calc(100% + 14px); }
+[data-skin="farmer"] .it.mind.s-r .mart { left: calc(100% + var(--ao, 0px) + 18px); top: 18px; }

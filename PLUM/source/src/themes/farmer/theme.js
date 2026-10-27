@@ -19,6 +19,7 @@ defineTheme({
     stroke: ['#3B2A1C', '#5B8A3C', '#B5452F', '#4F8FB8', '#D9A441'],
     fill: ['#F8E7A8', '#D9E8B6', '#C4DFF0', '#F7C7A6', '#FBF5E8'],
     note: ['#F8E7A8', '#D9E8B6', '#C4DFF0', '#F7C7A6', '#E6DAF0', '#FBF5E8', '#EAD9BF'],
+    mind: ['#E9B949', '#E8876A', '#4FA88E', '#5E9BD6', '#8A74B8', '#7FA55A', '#C9704F', '#8C7B62'],
     space: ['#5B8A3C', '#B5452F', '#D9A441', '#E08A4F', '#4F8FB8', '#7A4E2D', '#8A74B8', '#6E9E8A', '#C9704F', '#8C7B62']
   },
   palettes: [
@@ -50,8 +51,24 @@ defineTheme({
     sticky: FM_IMG('asset:ic-sticky.webp'),
     conn: FM_IMG('asset:ic-conn.webp'),
     dots: FM_IMG('asset:ic-dots.webp'),
+    mind: FM_IMG('asset:ic-mind.webp'),
     plus: '<path d="M12 5v14M5 12h14" stroke-width="2.3"/>'
   },
+  /* mind maps as on the concept close-up: the centre idea on a wooden sign (minimum width, height, vertical room,
+     maximum text width), sub-ideas listed under their branch, a painted picture beside each branch whose words match */
+  headSolid: true,
+  mindList: true,
+  mindRoot: [300, 150, 104, 300],
+  mindArt: [
+    [/product|cultur|r[ée]colte|crop|bl[ée]|c[ée]r[ée]ale|agri|champ|moisson|farm/i, 'asset:ma-ble.webp'],
+    [/objectif|\bbuts?\b|goal|vision|cible|ambition|mission|priorit/i, 'asset:ma-cible.webp'],
+    [/infra|b[âa]timent|stock|mat[ée]riel|outil|logisti|construct|[ée]quipement|grange|hangar/i, 'asset:ma-caisse.webp'],
+    [/recherche|research|[ée]tude|savoir|apprendre|formation|lecture|livre|biblio|documentation/i, 'asset:ma-livre.webp'],
+    [/\beau\b|water|irrigation|arros|potager|jardin/i, 'asset:ma-arrosoir.webp'],
+    [/animal|animaux|[ée]levage|poule|volaille|b[ée]tail|ferme/i, 'asset:ma-poule.webp'],
+    [/croissance|grow|plante|semence|semis|nature|[ée]colo|durable|\bbio/i, 'asset:ma-pousse.webp'],
+    [/budget|financ|vente|argent|march[ée]|prix|co[ûu]t|revenu|money|sales/i, 'asset:ma-sac.webp']
+  ],
   /* a vine hanging over the top right corner, a sprig at the bottom left of the page */
   decor: [{ at: '#main', cls: 'fm-vine' }, { at: '#main', cls: 'fm-leaf' }],
   apply: on => { if (on) setTimeout(fmDemo, 800); }

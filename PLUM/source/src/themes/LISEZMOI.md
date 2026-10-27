@@ -73,6 +73,11 @@ Règles :
 | `tints` | `null` | « Couleur du thème » dans Réglages : `[{ id, name, h, c }]`, teinte et chroma des gris, posés sur `<html>` en `--th-h` / `--th-c` (le premier est celui par défaut). Le `theme.css` écrit ses gris en `oklch(L var(--th-c) var(--th-h))` (exemple : `notely/theme.css`) |
 | `accents` | `null` | « Couleur d'accent » dans Réglages : `[{ name, value }]`, la première est celle du thème. Une autre couleur pose `<html data-accent="custom">` avec `--accent-c` et `--on-accent-c` (texte lisible dessus), que le `theme.css` reprend dans `--accent` |
 | `boardInset` | `0` | place (px) que prend à gauche du board un rail d’outils du thème : « Tout voir » cadre le contenu à côté (Farmer : 150) |
+| `headSolid` | `false` | les pointes de flèche « Flèche » deviennent pleines et barbelées (Farmer) |
+| `mindList` | `false` | mind map : les sous-idées en liste sous leur branche, sur une ligne-crochet avec puces (Farmer) |
+| `mindRoot` | — | mind map : `[largeur min, hauteur min, marge verticale, largeur max du texte]` de l’idée centrale |
+| `mindArt` | — | mind map : `[[regex, 'asset:…'], …]` image peinte à côté d’une branche dont les mots correspondent |
+| `colors.mind` | couleurs PLUM | couleurs des branches du mind map, dans l’ordre |
 | `apply(on)` | | code lancé à la mise en place (`true`) et au retrait (`false`) du thème |
 
 Le code de l'app lit le thème par `theme()` (fiche du thème courant) et `themeColors(clé, base)`

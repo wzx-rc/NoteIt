@@ -38,15 +38,20 @@ const Board = (() => {
   /* ---------- mind map layout ---------- */
   function measureMind(txt, lv) {
     const key = skin() + lv + '|' + txt; let m = measCache.get(key); if (m) return m;
-    const maxW = lv === 0 ? 320 : lv === 1 ? 240 : 220;
+    const mr = lv === 0 && MT().mindRoot, maxW = mr ? mr[3] : lv === 0 ? 320 : lv === 1 ? 240 : 220;
     meas.className = 'it mind l' + Math.min(lv, 2); meas.style.cssText = 'left:-99999px;top:0;visibility:hidden;width:max-content;height:auto;--mc:#888';
     meas.innerHTML = mindIcon(txt, lv) + `<div class="txt" style="max-width:${maxW}px">${fmtText(txt || ' ')}</div>`;
-    const t = meas.firstChild, vp = lv === 0 ? 36 : lv === 1 ? 20 : 12, minH = lv === 0 ? 64 : lv === 1 ? 42 : 32;
-    m = { w: Math.ceil(Math.max(lv === 0 ? 140 : 48, meas.offsetWidth + 2)), h: Math.ceil(Math.max(minH, t.offsetHeight + vp)) };
+    const t = meas.firstChild, vp = mr ? mr[2] : lv === 0 ? 36 : lv === 1 ? 20 : 12, minH = mr ? mr[1] : lv === 0 ? 64 : lv === 1 ? 42 : 32;
+    m = { w: Math.ceil(Math.max(mr ? mr[0] : lv === 0 ? 140 : 48, meas.offsetWidth + 2)), h: Math.ceil(Math.max(minH, t.offsetHeight + vp)) };
     if (measCache.size > 2000) measCache.clear(); measCache.set(key, m); return m;
   }
   /* Inkspace: first-level branches carry a pictogram picked from their words */
   const MIND_ICONS = [[/r[ée]gion|lieu|monde|carte|map|territ|zone/i, 'compass'], [/faction|clan|guilde|royaume|alliance|camp/i, 'flag'], [/qu[êe]te|mission|histoire|sc[ée]nario|r[ée]cit|objectif/i, 'scroll'], [/gameplay|m[ée]cani|jeu|game|syst[èe]me/i, 'gamepad'], [/ressource|mat[ée]ri|nature|[ée]conomie|budget/i, 'leaf'], [/visuel|image|art|ambiance|moodboard|design|r[ée]f[ée]rence/i, 'image'], [/personnage|perso|h[ée]ros|pnj|[ée]quipe|people|client/i, 'users'], [/lore|chronique|mythe|croyance|biblio|wiki|savoir/i, 'book'], [/id[ée]e|question|brainstorm/i, 'spark'], [/t[âa]che|todo|planning|[ée]tape|court terme|long terme/i, 'tasks']];
+  /* the theme manifest can lay sub-ideas out as a list under their branch (mindList) and give first-level branches
+     a picture picked from their words (mindArt: [[regex, url]…]) */
+  const MT = () => THEMES[skin()] || {};
+  const mindArt = txt => { const a = MT().mindArt, hit = a && a.find(([re]) => re.test(txt || '')); return hit ? hit[1] : ''; };
+  const ART = 124, IND = 34, LG = 4;
   const mindIcon = (txt, lv) => { if (lv !== 1 || !(THEMES[skin()] || {}).mindTags) return ''; const hit = MIND_ICONS.find(([re]) => re.test(txt || '')); return `<span class="mic">${icon(hit ? hit[1] : 'spark')}</span>`; };
   function relayout(arr) {
     const minds = arr.filter(i => i.k === 'mind'); if (!minds.length) return arr;
@@ -62,18 +67,30 @@ const Board = (() => {
       const lv = new Map(), sz = new Map(), sub = new Map();
       const walk = (n, l) => { lv.set(n.id, l); sz.set(n.id, measureMind(editing === n.id ? liveText(n) : n.txt, l)); for (const c of kids.get(n.id) || []) walk(c, l + 1); };
       walk(r, 0);
-      const VG = l => l <= 1 ? 18 : 8, HG = l => l === 0 ? 70 : 46;
-      const subH = n => { const ch = kids.get(n.id) || [], own = sz.get(n.id).h; let s = 0; ch.forEach((c, i) => { s += subH(c) + (i ? VG(lv.get(c.id)) : 0); }); const v = Math.max(own, s); sub.set(n.id, v); return v; };
+      const LIST = !!MT().mindList, listed = n => LIST && lv.get(n.id) >= 1;
+      const VG = l => l <= 1 ? (LIST ? 34 : 18) : 8, HG = l => l === 0 ? (LIST ? 96 : 70) : 46;
+      const subH = n => {
+        const ch = kids.get(n.id) || [], own = sz.get(n.id).h; let s = 0, v;
+        if (listed(n)) { v = own; for (const c of ch) v += LG + subH(c); if (lv.get(n.id) === 1 && mindArt(n.txt)) v = Math.max(v, ART); }
+        else { ch.forEach((c, i) => { s += subH(c) + (i ? VG(lv.get(c.id)) : 0); }); v = Math.max(own, s); }
+        sub.set(n.id, v); return v;
+      };
+      const subW = n => { let w = sz.get(n.id).w; if (listed(n)) for (const c of kids.get(n.id) || []) w = Math.max(w, IND + subW(c)); return w; };
       subH(r);
       const rs = sz.get(r.id), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
       out.set(r.id, { x: Math.round(cx - rs.w / 2), y: Math.round(cy - rs.h / 2), w: rs.w, h: rs.h, lv: 0, parent: null, root: r.id });
       const place = (n, list, side) => {
         const np = out.get(n.id); let total = 0;
+        if (listed(n)) {   // sub-ideas one under the other below their branch, a little indented
+          let y = np.y + np.h + LG;
+          for (const c of list) { const cs = sz.get(c.id); out.set(c.id, { x: np.x + IND, y: Math.round(y), w: cs.w, h: cs.h, lv: lv.get(c.id), side, root: r.id }); place(c, kids.get(c.id) || [], side); y += sub.get(c.id) + LG; }
+          return;
+        }
         list.forEach((c, i) => { total += sub.get(c.id) + (i ? VG(lv.get(c.id)) : 0); });
         let y = np.y + np.h / 2 - total / 2;
         for (const c of list) {
-          const cs = sz.get(c.id), hh = sub.get(c.id), ccy = y + hh / 2, gap = HG(lv.get(n.id));
-          out.set(c.id, { x: Math.round(side > 0 ? np.x + np.w + gap : np.x - gap - cs.w), y: Math.round(ccy - cs.h / 2), w: cs.w, h: cs.h, lv: lv.get(c.id), side, root: r.id });
+          const cs = sz.get(c.id), hh = sub.get(c.id), ccy = y + hh / 2, gap = HG(lv.get(n.id)), top = listed(c);
+          out.set(c.id, { x: Math.round(side > 0 ? np.x + np.w + gap : np.x - gap - (top ? subW(c) : cs.w)), y: Math.round(top ? y : ccy - cs.h / 2), w: cs.w, h: cs.h, lv: lv.get(c.id), side, root: r.id });
           place(c, kids.get(c.id) || [], side);
           y += hh + VG(lv.get(c.id));
         }
@@ -83,6 +100,8 @@ const Board = (() => {
     }
     return arr.map(i => { const p = out.get(i.id); if (!p) return i; let same = true; for (const k in p) if (i[k] !== p[k]) { same = false; break; } return same ? i : Object.assign({}, i, p); });
   }
+  /* how far a branch's list of sub-ideas reaches past its right edge: the picture goes beyond it */
+  const artOff = it => { let r = it.x + it.w; for (const id of mindDesc(it.id)) { const c = byId.get(id); if (c) r = Math.max(r, c.x + c.w); } return Math.round(r - it.x - it.w); };
   const liveText = n => { const el = nodes.get(n.id); const t = el && el.querySelector('.txt'); return t ? t.innerText.replace(/\n$/, '') : n.txt; };
   const mindKids = id => items.filter(i => i.k === 'mind' && i.parent === id).sort((a, b) => a.ord - b.ord);
   function mindDesc(id, acc = new Set()) { for (const c of items) if (c.k === 'mind' && c.parent === id && !acc.has(c.id)) { acc.add(c.id); mindDesc(c.id, acc); } return acc; }
@@ -102,7 +121,7 @@ const Board = (() => {
       case 'file': return `f${it.asset}|${it.name}|${it.mime}`;
       case 'link': return `l${Math.round(it.w)}|${Math.round(it.h)}|${it.url}|${it.title}|${it.asset || it.pic || ''}|${Assets.has(it.asset)}`;
       case 'ink': return `k${pv(it.p)}|${it.c}|${it.o}|${it.t}|${it.w0}|${it.h0}|${theme()}|${it.b ? JSON.stringify(it.b) : ''}`;
-      case 'mind': return `m${it.lv}|${it.c}|${it.txt}|${skin()}`;
+      case 'mind': return `m${it.lv}|${it.c}|${it.txt}|${skin()}|${it.side}|${it.lv === 1 && MT().mindArt ? artOff(it) : ''}`;
       case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}`;
       case 'task': { const t = taskById(it.task) || {}; return `T${t.t}|${t.done}|${t.due}|${t.time}|${t.sp}`; }
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
@@ -162,9 +181,12 @@ const Board = (() => {
         n.innerHTML = `<svg viewBox="0 0 ${it.w0} ${it.h0}" preserveAspectRatio="none">${inkSVG(it, '', { blend: false })}</svg>`;
         break;
       }
-      case 'mind':
-        n.className = 'it mind l' + Math.min(it.lv || 0, 2); n.style.setProperty('--mc', it.c);
-        n.innerHTML = mindIcon(it.txt, it.lv || 0) + `<div class="txt">${fmtText(it.txt) || '<div><br></div>'}</div>`; break;
+      case 'mind': {
+        n.className = 'it mind l' + Math.min(it.lv || 0, 2) + (it.side < 0 ? ' s-l' : ' s-r'); n.style.setProperty('--mc', it.c);
+        const art = it.lv === 1 ? mindArt(it.txt) : '';
+        if (art) n.style.setProperty('--ao', artOff(it) + 'px');
+        n.innerHTML = mindIcon(it.txt, it.lv || 0) + `<div class="txt">${fmtText(it.txt) || '<div><br></div>'}</div>` + (art ? `<img class="mart" src="${art}" alt="" draggable="false">` : ''); break;
+      }
       case 'frame':
         n.className = 'frame-it' + (it.nt ? ' nt' : ''); n.innerHTML = `<div class="ftitle" style="font-size:${FRAME_TFS[it.tfs ?? 1]}px">${esc(it.title)}</div>`; break;
       case 'task': {
@@ -265,8 +287,20 @@ const Board = (() => {
   }
   function renderEdges() {
     let s = '', top = '', L = '';
+    const LIST = !!MT().mindList;
     for (const it of items) if (it.k === 'mind' && it.parent && !it.hid) {
       const p = byId.get(it.parent); if (!p || p.hid) continue;
+      if (LIST) {
+        const f = v => v.toFixed(1);
+        if (p.parent) {   // a sub-idea: a bracket line down from its branch, a tick and a dot before the words
+          const bx = p.x + 12, y0 = p.y + p.h - 2, cy = it.y + it.h / 2, ex = it.x - 5;
+          s += `<path d="M${f(bx)} ${f(y0)}V${f(cy - 7)}Q${f(bx)} ${f(cy)} ${f(bx + 7)} ${f(cy)}H${f(ex)}" fill="none" stroke="${it.c}" stroke-width="1.7" stroke-linecap="round" opacity=".85"/><circle cx="${f(ex)}" cy="${f(cy)}" r="3" fill="${it.c}"/>`;
+        } else {          // a branch: a curve from the centre with a dot at the start and a little arrow into the pill
+          const x1 = it.side > 0 ? p.x + p.w - 6 : p.x + 6, y1 = p.y + p.h / 2, x2 = it.side > 0 ? it.x - 3 : it.x + it.w + 3, y2 = it.y + it.h / 2, mx = x1 + (x2 - x1) * .55;
+          s += `<g style="color:${it.c}"><path d="M${f(x1)} ${f(y1)}C${f(mx)} ${f(y1)} ${f(mx)} ${f(y2)} ${f(x2 - it.side * 4)} ${f(y2)}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="${f(x1)}" cy="${f(y1)}" r="4" class="hf"/>${headD([x2, y2], [it.side, 0], 'tri', 1.2)}</g>`;
+        }
+        continue;
+      }
       const x1 = it.side > 0 ? p.x + p.w : p.x, y1 = p.y + p.h / 2, lv = it.lv || 1;
       const tag = THEMES[skin()] && THEMES[skin()].mindTags;
       const x2 = it.side > 0 ? it.x : it.x + it.w, y2 = lv >= 2 && !tag ? it.y + it.h - 1 : it.y + it.h / 2, mx = x1 + (x2 - x1) * .5;
@@ -390,7 +424,8 @@ const Board = (() => {
     const val = (prop, def) => { if (td) return def; const it = first(); return propValue(list.find(i => propValue(i, prop) !== undefined) || it, prop) ?? def; };
     const scCur = td ? bd.sc : (list.some(i => ['shape', 'conn', 'text', 'ink', 'mind'].includes(i.k)) ? propValue(list.find(i => ['shape', 'conn', 'text', 'ink', 'mind'].includes(i.k)), 'sc') : bd.sc);
     const fcCur = td ? (T === 'note' ? noteColor : T === 'todo' ? '#FFFFFF' : bd.fc) : propValue(list.find(i => ['shape', 'note', 'todo'].includes(i.k)) || list[0], 'fc');
-    if (want.sc) out.push(sec(has('ink') && only('ink') ? 'Couleur du trait' : has('text') && only('text') ? 'Couleur' : 'Contour', Colors.row(only('ink') ? themeColors('ink', INK_COLORS).slice(0, 5) : themeColors('stroke', STROKE_COLORS), scCur, 'sc')));
+    if (one && one.k === 'mind') out.push(sec('Branche', Colors.row(themeColors('mind', MIND_COLORS), one.c, 'sc') + btnRow([['mchild', 'plus', 'Idée', 'Ajouter une idée (Tab)'], one.parent ? ['msib', 'plus', 'Voisine', 'Ajouter une idée voisine (Entrée)'] : ['mtidy', 'wand', 'Équilibrer', 'Équilibrer les branches']])));
+    else if (want.sc) out.push(sec(has('ink') && only('ink') ? 'Couleur du trait' : has('text') && only('text') ? 'Couleur' : 'Contour', Colors.row(only('ink') ? themeColors('ink', INK_COLORS).slice(0, 5) : themeColors('stroke', STROKE_COLORS), scCur, 'sc')));
     if (want.fc) out.push(sec(only('note', 'todo') || (td && (T === 'note' || T === 'todo')) ? 'Couleur' : 'Fond', Colors.row(only('note', 'todo') || (td && T === 'note') ? themeColors('note', NOTE_COLORS).slice(0, 5) : themeColors('fill', FILL_COLORS), fcCur, 'fc', { none: !(only('note', 'todo') || (td && (T === 'note' || T === 'todo'))) })));
     if (want.fill && (td ? bd.fc : true)) out.push(sec('Remplissage', seg('fill', val('fill', bd.fill), [['solid', `<svg viewBox="0 0 20 20" class="pl sq"><rect x="3" y="3" width="14" height="14" rx="2" fill="currentColor"/></svg>`, 'Plein'], ['hachure', `<svg viewBox="0 0 20 20" class="pl sq"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor"/><path d="M3 11l8-8M3 17L17 3M9 17l8-8" stroke="currentColor"/></svg>`, 'Hachures'], ['cross', `<svg viewBox="0 0 20 20" class="pl sq"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor"/><path d="M3 11l8-8M9 17l8-8M3 9l8 8M9 3l8 8" stroke="currentColor"/></svg>`, 'Croisillons']], 'ic')));
     if (want.sw) out.push(sec('Épaisseur', seg('sw', val('sw', bd.sw), [[1, pline('M4 8h32', ' stroke-width="1.4"'), 'Fin'], [2, pline('M4 8h32', ' stroke-width="2.6"'), 'Moyen'], [4, pline('M4 8h32', ' stroke-width="4.2"'), 'Épais']], 'ic')));
@@ -537,6 +572,9 @@ const Board = (() => {
       case 'help': helpModal(); return;
       case 'front': case 'back': case 'fwd': case 'bwd': zMove(a); return;
       case 'dup': duplicate(); return;
+      case 'mchild': mindAdd('child'); return;
+      case 'msib': mindAdd('sibling'); return;
+      case 'mtidy': { const r = list[0]; if (!r) return; const ks = mindKids(r.id), half = Math.ceil(ks.length / 2); commit(renumber(items.map(i => { const k = ks.indexOf(i); if (k < 0) return i; const side = k < half ? 1 : -1; return Object.assign({}, i, { side }); }).map(i => { const top = ks.find(k => mindDesc(k.id).has(i.id)); return top ? Object.assign({}, i, { side: ks.indexOf(top) < half ? 1 : -1 }) : i; }), r.id)); return; }
       case 'del': deleteSel(); return;
       case 'open': if (list[0]) openItem(list[0]); return;
       case 'view': if (list[0]) lightbox(list[0]); return;
@@ -655,6 +693,30 @@ const Board = (() => {
   }
   function lightbox(it) { const u = Assets.url(it.asset); if (!u) return; const l = document.createElement('div'); l.className = 'lightbox'; l.innerHTML = `<img src="${u}" alt="${esc(it.cap || 'Image')}">`; l.onclick = () => l.remove(); document.body.append(l); }
 
+  /* ---------- mind map: add an idea under the selected one (Tab) or beside it (Enter), move with the arrows ---------- */
+  function mindAdd(mode) {
+    if (editing) finishEdit();
+    const n = byId.get([...sel][0]); if (!n || n.k !== 'mind') return;
+    let parent, side;
+    if (mode === 'sibling' && n.parent) { parent = byId.get(n.parent); side = n.side; }
+    else { parent = n; side = parent.parent ? parent.side : (mindKids(parent.id).filter(c => c.side > 0).length <= mindKids(parent.id).filter(c => c.side < 0).length ? 1 : -1); }
+    if (!parent) return;
+    const sibs = mindKids(parent.id), cols = themeColors('mind', MIND_COLORS);
+    const ord = mode === 'sibling' ? n.ord + .5 : (sibs.length ? Math.max(...sibs.map(s => s.ord)) + 1 : 0);
+    const c = parent.parent ? parent.c : cols[sibs.length % cols.length];
+    const node = { id: uid('m'), k: 'mind', x: parent.x, y: parent.y, w: 80, h: 32, txt: '', root: parent.root || parent.id, parent: parent.id, side, c, ord, lv: (parent.lv || 0) + 1 };
+    commit(renumber(items.concat(node), parent.id));
+    sel = new Set([node.id]); render(); startEdit(node.id);
+  }
+  function renumber(arr, pid) { const ks = arr.filter(i => i.k === 'mind' && i.parent === pid).sort((a, b) => a.ord - b.ord); const m = new Map(ks.map((k, i) => [k.id, i])); return arr.map(i => m.has(i.id) && i.ord !== m.get(i.id) ? Object.assign({}, i, { ord: m.get(i.id) }) : i); }
+  function mindNav(key) {
+    const n = byId.get([...sel][0]); if (!n) return;
+    let t = null;
+    const ks = mindKids(n.id), dirOut = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : 0;
+    if (dirOut) { if (!n.parent) t = ks.find(k => k.side === dirOut); else if (n.side === dirOut) t = ks[0]; else t = byId.get(n.parent); }
+    else if (n.parent) { const sib = mindKids(n.parent).filter(s => s.side === n.side), i = sib.indexOf(n); t = sib[i + (key === 'ArrowDown' ? 1 : -1)]; if (!t && key === 'ArrowDown' && ks.length) t = ks[0]; }
+    if (t) { sel = new Set([t.id]); schedule(); panInto(t); }
+  }
   function panInto(it) { const r = hostRect(), a = toS(it.x, it.y), b = toS(it.x + it.w, it.y + it.h); const right = propsOpen() ? 330 : 40; let dx = 0, dy = 0; if (a.x < 40) dx = 40 - a.x; if (b.x > r.width - right) dx = r.width - right - b.x; if (a.y < 70) dy = 70 - a.y; if (b.y > r.height - 90) dy = r.height - 90 - b.y; if (dx || dy) { view.x += dx; view.y += dy; viewChanged(); } }
 
   /* ---------- text editing (notes, texts, shapes, mind nodes, frames, labels, todo rows) ---------- */
@@ -694,7 +756,8 @@ const Board = (() => {
       if (ev.key === 'Escape') { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); return; }
       if (c0 && c0.k === 'todo') { todoKey(ev, c0, sub, el); return; }
       if (c0 && c0.k === 'sheet') { if (sheetAssistKey(ev, el)) return; sheetKey(ev, c0, sub); return; }
-      if (c0 && c0.k === 'mind' && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); return; }
+      if (c0 && c0.k === 'mind' && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); if (byId.has(id)) { sel = new Set([id]); mindAdd(c0.parent ? 'sibling' : 'child'); } return; }
+      if (c0 && c0.k === 'mind' && ev.key === 'Tab') { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); if (byId.has(id)) { sel = new Set([id]); mindAdd('child'); } return; }
       if ((c0 && (c0.k === 'frame' || c0.k === 'conn') && ev.key === 'Enter') || (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey))) { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); }
     };
     const mySub = sub || null;
@@ -1077,6 +1140,7 @@ const Board = (() => {
     if (kind === 'note') it = mkNote(w.x - 110 * s, w.y - 110 * s, '', noteColor, { w: 220 * s, h: 220 * s, fs: Math.round(30 * s) });
     if (kind === 'text') it = mkText(w.x, w.y - 16 * s, 'Texte', { fs: Math.round(28 * s) });
     if (kind === 'sheet') { it = mkSheet(0, 0, { fs: Math.round(14 * s) }); it.x = w.x - it.w / 2; it.y = w.y - 40 * s; commit(items.concat(it)); sel = new Set([it.id]); setTool('select'); render(); startEdit(it.id, null, 'A1'); return; }
+    if (kind === 'mind') { const t = mkMind(w.x - 80, w.y - 32, 'Idée centrale'); commit(items.concat(t)); sel = new Set([t[0].id]); setTool('select'); render(); startEdit(t[0].id); const el = editEl(byId.get(t[0].id)); if (el) { const r = document.createRange(); r.selectNodeContents(el); const g = getSelection(); g.removeAllRanges(); g.addRange(r); } return; }
     if (kind === 'todo') it = mkTodo(w.x - 145 * s, w.y - 60 * s, 'À faire', [], { w: 290 * s, fs: Math.round(24 * s) });
     commit(items.concat(it)); sel = new Set([it.id]); setTool('select'); render(); startEdit(it.id);
     // a new text block starts with "Texte" selected, so typing replaces it
@@ -1839,7 +1903,7 @@ const Board = (() => {
   }
 
   /* ---------- keyboard ---------- */
-  const TOOL_KEYS = { v: 'select', h: 'hand', p: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', d: 'shape', a: 'conn', l: 'line', c: 'todo', g: 'sheet', k: 'pick', b: 'pen' };
+  const TOOL_KEYS = { v: 'select', h: 'hand', p: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', d: 'shape', a: 'conn', l: 'line', c: 'todo', g: 'sheet', m: 'mind', k: 'pick', b: 'pen' };
   function key(e) {
     if (!mounted || editing) return false;
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
@@ -1868,6 +1932,11 @@ const Board = (() => {
     if (k === 'Escape') { if (tool === 'pick') setTool(penKind); else if (tool !== 'select') setTool('select'); else if (sel.size) { sel.clear(); schedule(); } else if (document.documentElement.hasAttribute('data-focus')) setFocus(false); return true; }
     if (k === 'Delete' || k === 'Backspace') { deleteSel(); e.preventDefault(); return true; }
     if (k === '?' || (e.shiftKey && k === '/')) { helpModal(); return true; }
+    if (one && one.k === 'mind') {
+      if (k === 'Tab') { e.preventDefault(); mindAdd('child'); return true; }
+      if (k === 'Enter') { e.preventDefault(); one.parent ? mindAdd('sibling') : startEdit(one.id); return true; }
+      if (k.startsWith('Arrow') && !e.shiftKey) { e.preventDefault(); mindNav(k); return true; }
+    }
     if ((k === 'Enter' || k === 'F2') && one) { e.preventDefault(); startEdit(one.id); return true; }
     if (k.startsWith('Arrow') && sel.size) { e.preventDefault(); const d = e.shiftKey ? 10 : 1, dx = k === 'ArrowLeft' ? -d : k === 'ArrowRight' ? d : 0, dy = k === 'ArrowUp' ? -d : k === 'ArrowDown' ? d : 0; const ids = moveSet(); commit(items.map(i => ids.has(i.id) && i.k !== 'conn' ? Object.assign({}, i, { x: i.x + dx, y: i.y + dy }) : i)); return true; }
     if ((k === 'f' || k === 'F') && !mod && !e.altKey) { if (sel.size) fitTo(unionBox(selItems())); else fitAll(); return true; }   // F: frame the selection, or the whole board
@@ -1898,7 +1967,7 @@ const Board = (() => {
     if (was !== drawingTool()) layoutChanged();
   }
   const drawingTool = () => !!(PENS[tool] || tool === 'eraser' || tool === 'pick');
-  const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Stylo', 'P'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['sheet', 'sheet', 'Tableur', 'G'], ['frame', 'frame', 'Cadre', ''], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
+  const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Stylo', 'P'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['sheet', 'sheet', 'Tableur', 'G'], ['mind', 'mind', 'Mind map', 'M'], ['frame', 'frame', 'Cadre', ''], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
   function refreshTools() {
     toolsEl.innerHTML = TOOLS.map(d => d === '|' ? '<span class="vs"></span>' : (() => {
       const [id, ic, title, k] = d, on = id === 'pen' ? !!PENS[tool] : tool === id;
@@ -1988,9 +2057,12 @@ const Board = (() => {
       <div class="isl br"><button class="tl" data-a="fit" title="Tout voir (F ou 0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
     wrap = container.firstElementChild; host = $('.bhost', wrap); world = $('.world', host);
     [framesL, edges, itemsL, edgesTop, labelsL] = world.children; ovl = $('.ovl', host); liveCv = $('.blive', host); meas = $('.measure', host);
+    // mind maps are laid out from the measured size of their words: again once the fonts are in
+    const lay = () => { if (!mounted || D !== doc || !hasMind(items)) return; measCache.clear(); items = relayout(items); reindex(); D.items = items; schedule(); };
     toolsEl = $('.tools', wrap); optsEl = $('.topts', wrap); dockEl = $('.tdock', wrap); trEl = $('.tr', wrap); propsEl = $('.props', wrap); qbarEl = $('.qbar', wrap); zoomEl = $('.isl.zoom', wrap); undoEl = $('.isl.undo', wrap); brEl = $('.isl.br', wrap);
     ink = new InkCapture(liveCv, { toLocal: (x, y) => toW(x, y), xf: () => ({ k: view.k, ox: view.x, oy: view.y }) });
     mounted = true;
+    lay(); if (document.fonts) document.fonts.ready.then(lay);
     Studio.mount(wrap, { drawing: drawingTool, tool: () => tool, pen: () => penKind, setTool, space: () => D && D.sp,
       color: () => penPref(penKind).c,
       setColor(c, final) { S.prefs.pens[penKind].c = c; save(); const d = $('[data-tool="pen"] .cdot', toolsEl); if (d) d.style.background = c; if (final) refreshTools(); },
@@ -2117,7 +2189,7 @@ const Board = (() => {
     if (t === 'shape') return SHAPES[shapeKind] || 'Forme';
     if (PENS[t]) return PENS[t].name;
     if (t === 'conn') return 'Flèche ' + (ROUTES[BD().route || 'curve'] || '').toLowerCase();
-    return { text: 'Texte', note: 'Post-it', todo: 'Liste à faire', sheet: 'Tableur', frame: 'Cadre', line: 'Ligne', eraser: 'Gomme', mind: 'Mindmap' }[t] || t;
+    return { text: 'Texte', note: 'Post-it', todo: 'Liste à faire', sheet: 'Tableur', frame: 'Cadre', line: 'Ligne', eraser: 'Gomme', mind: 'Mind map' }[t] || t;
   }
   /* new items take the board defaults: an option chosen here becomes that default, then the tool is picked */
   const pickOpt = (t, prop, v) => () => { if (prop) setProp(prop, v); setTool(t); };

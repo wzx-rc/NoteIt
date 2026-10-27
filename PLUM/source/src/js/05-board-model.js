@@ -2,7 +2,7 @@
    A board is a list of plain items, drawn in list order (frames always under the rest).
    note {txt,c,fs,font,al} · text {txt,fs,font,color,bold,fw} · shape {sh,sc,fc,sw,sty,dash,fill,txt,fs}
    image {asset,frm,cap} · file {asset,name,size,mime} · link {url,title} · ink {p,t,c,s,o,w0,h0}
-   mind {txt,root,parent,side,c,ord} · frame {title} · task {task} · doc {doc} · todo {title,tasks[],c,font} · sheet {title,cols,rows,cells{A1:raw},fs,cw?[],rh?[]}
+   mind {txt,root,parent,side,c,ord,lv} · frame {title} · task {task} · doc {doc} · todo {title,tasks[],c,font} · sheet {title,cols,rows,cells{A1:raw},fs,cw?[],rh?[]}
    conn {a:{id|x,y}, b:{id|x,y}, pts:[[x,y]], route, sc, sw, sty, dash, h0, h1, txt}
    Every item may carry op (opacity 0..1) and hid (hidden from the Layers tab).
    Items are never mutated: an edit makes a new object, which keeps undo cheap. */
@@ -23,6 +23,22 @@ const mkImage = (x, y, w, h, asset, o = {}) => ({ id: uid('i'), k: 'image', x, y
 const mkFrame = (x, y, w, h, title) => ({ id: uid('f'), k: 'frame', x, y, w, h, title: title || 'Cadre' });
 const mkConn = (a, b, o = {}) => ({ id: uid('c'), k: 'conn', a, b, pts: o.pts || [], route: o.route || BD().route || 'curve', sc: o.sc || BD().sc || '#1E1E1E', sw: o.sw || BD().sw || 2, sty: o.sty || BD().sty || 'sketch', h0: o.h0 || 'none', h1: o.h1 === undefined ? 'arrow' : o.h1, txt: o.txt || '', dash: o.dash === true ? 'dash' : (o.dash || ''), sd: Math.random() });
 const mkTodo = (x, y, title, tasks = [], o = {}) => ({ id: uid('o'), k: 'todo', x, y, w: o.w || 290, h: o.h || 160, title: title || 'À faire', tasks: tasks.slice(), c: o.c || '#FFFFFF', font: o.font || HAND, fs: o.fs || 24 });
+/* a mind map: the centre idea and its branches (strings, or {t, c:[…]} for sub-ideas), half on each side;
+   each first-level branch takes the next colour of the theme's mind palette, its sub-ideas share it */
+function mkMind(x, y, title, branches = []) {
+  const root = { id: uid('m'), k: 'mind', x, y, w: 160, h: 64, txt: title, parent: null, side: 1, c: '#1E1D1B', ord: 0, lv: 0 };
+  root.root = root.id;
+  const out = [root], cols = themeColors('mind', MIND_COLORS);
+  const add = (parent, list, side, color, lv) => list.forEach((b, i) => {
+    const node = typeof b === 'string' ? { t: b } : b;
+    const s = parent === root ? (node.side || (i < Math.ceil(list.length / 2) ? 1 : -1)) : side;
+    const c = parent === root ? cols[i % cols.length] : color;
+    const n = { id: uid('m'), k: 'mind', x, y, w: 80, h: 32, txt: node.t, root: root.id, parent: parent.id, side: s, c, ord: i, lv };
+    out.push(n); if (node.c) add(n, node.c, s, c, lv + 1);
+  });
+  add(root, branches, 1, null, 1);
+  return out;
+}
 /* ---------- tableur (sheet): cells A1, B2…, a value or a formula starting with "=" (the essentials of a spreadsheet) ---------- */
 const colName = i => { let s = ''; for (i++; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
 const colIndex = s => { let n = 0; for (const ch of s.toUpperCase()) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
@@ -360,7 +376,10 @@ function headD(p, t, kind, sw) {
     case 'circle': return `<circle cx="${f(p[0] - ux * r)}" cy="${f(p[1] - uy * r)}" r="${f(r)}" class="hs" style="fill:var(--paper)"/>`;
     case 'bar': { const B = 6 + sw * 1.6; return `<path d="M${f(p[0] + nx * B)} ${f(p[1] + ny * B)}L${f(p[0] - nx * B)} ${f(p[1] - ny * B)}" class="hs"/>`; }
     case 'diamond': { const L2 = L * .55, W2 = L * .34, bx = p[0] - ux * L2, by = p[1] - uy * L2, cx = p[0] - ux * L2 * 2, cy = p[1] - uy * L2 * 2; return `<path d="M${f(p[0])} ${f(p[1])}L${f(bx + nx * W2)} ${f(by + ny * W2)}L${f(cx)} ${f(cy)}L${f(bx - nx * W2)} ${f(by - ny * W2)}Z" class="hf"/>`; }
-    default: return `<path d="M${f(lx)} ${f(ly)}L${f(p[0])} ${f(p[1])}L${f(rx)} ${f(ry)}" class="hs"/>`;
+    default:
+      /* a theme can ask for a solid barbed head instead of the open chevron (manifest headSolid) */
+      if (theme().headSolid) { const L3 = L * 1.1, lx2 = p[0] - (ux * Math.cos(a * .9) - uy * Math.sin(a * .9)) * L3, ly2 = p[1] - (uy * Math.cos(a * .9) + ux * Math.sin(a * .9)) * L3, rx2 = p[0] - (ux * Math.cos(-a * .9) - uy * Math.sin(-a * .9)) * L3, ry2 = p[1] - (uy * Math.cos(-a * .9) + ux * Math.sin(-a * .9)) * L3, ix = p[0] - ux * L3 * .62, iy = p[1] - uy * L3 * .62; return `<path d="M${f(p[0])} ${f(p[1])}L${f(lx2)} ${f(ly2)}Q${f(ix)} ${f(iy)} ${f(rx2)} ${f(ry2)}Z" class="hf hs"/>`; }
+      return `<path d="M${f(lx)} ${f(ly)}L${f(p[0])} ${f(p[1])}L${f(rx)} ${f(ry)}" class="hs"/>`;
   }
 }
 function connBox(c, byId) { const g = connGeom(c, byId); const xs = g.pts.map(p => p[0]), ys = g.pts.map(p => p[1]); return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; }
