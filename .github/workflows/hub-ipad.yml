@@ -1,0 +1,64 @@
+name: Build PLUM iPad (.ipa non signé)
+
+# Runs only when NotelyHub/** changes: the iPad app is updated only when the user asks for an .ipa
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['NotelyHub/**']
+  workflow_dispatch:
+
+jobs:
+  build:
+    # GitHub's macOS runners sometimes stay queued until the job is cancelled:
+    # two images in parallel, the first one that gets a machine gives the .ipa
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Choisir Xcode 16
+        run: |
+          X=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
+
+      - name: Installer XcodeGen
+        run: brew install xcodegen
+
+      - name: Générer le projet Xcode
+        run: xcodegen generate
+
+      - name: Compiler pour iPadOS (sans signature)
+        run: |
+          xcodebuild build \
+            -project NoteIt.xcodeproj \
+            -scheme NotelyHub \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            > build.log 2>&1 || { grep -E "error:" build.log | head -60; tail -30 build.log; exit 1; }
+          tail -3 build.log
+
+      - name: Emballer le .ipa
+        run: |
+          mkdir -p out/Payload
+          cp -R build/Build/Products/Release-iphoneos/NotelyHub.app out/Payload/
+          cd out && zip -qry PLUM.ipa Payload && ls -lh PLUM.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PLUM-ipa-${{ matrix.os }}
+          path: out/PLUM.ipa
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-log-${{ matrix.os }}
+          path: build.log
