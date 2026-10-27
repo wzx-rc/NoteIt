@@ -2,7 +2,7 @@
    The page is a light panel lifted off the plate, its toolbar the black well with graphite keys (the orange one is
    the mode or format that is on). Titles in the legend type, ticks orange on graphite. */
 [data-skin="keyboard"] .ntool { border: 0; border-radius: 14px; padding: 6px 7px 8px; gap: 4px; background: linear-gradient(180deg, #1B1B1B, #111); backdrop-filter: none;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), 0 0 0 1px rgba(0, 0, 0, .6), 0 0 0 5px #BDBDBA, 0 0 0 6px rgba(0, 0, 0, .14), 0 14px 24px -12px rgba(0, 0, 0, .5); margin-top: 16px; }
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .8), 0 0 0 1px rgba(0, 0, 0, .6), 0 0 0 5px var(--kb-bezel), 0 0 0 6px rgba(0, 0, 0, .14), 0 14px 24px -12px rgba(0, 0, 0, .5); margin-top: 16px; }
 [data-skin="keyboard"] .ntool .vs { background: rgba(255, 255, 255, .12); }
 [data-skin="keyboard"] .ntool .nb { height: 32px; min-width: 32px; border-radius: 8px; color: #E4E4E1; background: var(--kc-d); box-shadow: var(--kc-d-sh); transition: transform .08s, box-shadow .08s; }
 [data-skin="keyboard"] .ntool .nb:hover { background: linear-gradient(180deg, #4A4A49, #353534 70%, #2D2D2C); color: #fff; }
@@ -10,19 +10,21 @@
 [data-skin="keyboard"] .ntool .nb[aria-pressed="true"] { background: var(--kc-o); box-shadow: var(--kc-o-sh); color: #fff; }
 [data-skin="keyboard"] .ntool .nb:disabled { opacity: .4; }
 [data-skin="keyboard"] .ntool .nb .lbl { font: 600 10px var(--font-key); letter-spacing: .08em; text-transform: uppercase; }
-[data-skin="keyboard"] .ntool .pchip { border: 0; border-radius: 8px; background: #F2F2EF; color: var(--ink); }
+[data-skin="keyboard"] .ntool .pchip { border: 0; border-radius: 8px; background: #E4E4E1; color: var(--ink); }
 [data-skin="keyboard"] .ntool .sw { border-color: #1B1B1B; }
 
-[data-skin="keyboard"] .sheet { border-radius: 16px; background: linear-gradient(180deg, #F5F5F2, #EFEFEC); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .07), 0 3px 0 #C2C2BF, 0 30px 50px -30px rgba(0, 0, 0, .5); }
+[data-skin="keyboard"] .sheet { border-radius: 16px; background: var(--kb-sheet); box-shadow: inset 0 1px 0 var(--kb-hl), 0 0 0 1px rgba(0, 0, 0, .07), 0 3px 0 var(--kb-skirt), 0 30px 50px -30px rgba(0, 0, 0, .5); }
 [data-skin="keyboard"] .sheet.paper-lines { background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgba(0, 0, 0, .08) 31px 32px); }
 [data-skin="keyboard"] .ntitle { font: 700 34px/1.15 var(--font-key); letter-spacing: .03em; color: var(--ink); }
 [data-skin="keyboard"] .nsub .chip { font-weight: 600; }
 [data-skin="keyboard"] .nbody h1, [data-skin="keyboard"] .nbody h2 { font-family: var(--font-key); letter-spacing: .03em; }
 [data-skin="keyboard"] .nbody h1 { font-size: 26px; }
-[data-skin="keyboard"] .nbody ul.chk > li::before { border: 0; border-radius: 5px; background: var(--kc-l); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(0, 0, 0, .18), 0 2px 0 #ADADAA; }
+[data-skin="keyboard"] .nbody ul.chk > li::before { border: 0; border-radius: 5px; background: var(--kc-l); box-shadow: inset 0 1px 0 var(--kb-hl), 0 0 0 1px rgba(0, 0, 0, .18), 0 2px 0 var(--kb-skirt); }
 [data-skin="keyboard"] .nbody ul.chk > li[data-done]::before { background: var(--kb-graphite) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F2591E' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 13px no-repeat; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 0 1px rgba(0, 0, 0, .5), 0 2px 0 #0E0E0E; }
-[data-skin="keyboard"] .nbody blockquote { border: 0; border-radius: 10px; background: linear-gradient(180deg, #FFE1CF, #FFD3BA); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 2px 0 #E6A07D; }
-[data-skin="keyboard"] .nbody mark { background: #FFD2B5; }
+[data-skin="keyboard"] .nbody blockquote { border: 0; border-radius: 10px; background: linear-gradient(180deg, color-mix(in oklab, var(--kb-o) 18%, var(--card)), color-mix(in oklab, var(--kb-o) 26%, var(--card))); box-shadow: inset 0 1px 0 var(--kb-hl), 0 2px 0 color-mix(in oklab, var(--kb-o) 50%, var(--card)); }
+[data-skin="keyboard"] .nbody mark { background: color-mix(in oklab, var(--kb-o) 32%, var(--card)); color: inherit; }
 [data-skin="keyboard"] .nbody a { color: var(--accent-2); }
 [data-skin="keyboard"] .nbody img { border-radius: 10px; }
 [data-skin="keyboard"] .naddpg { border-color: rgba(0, 0, 0, .2); }
+/* another accent: the tick can't follow a colour inside its picture, so the done box becomes the lit key with a white tick */
+[data-skin="keyboard"][data-accent="custom"] .nbody ul.chk > li[data-done]::before { background: var(--kb-o) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 13px no-repeat; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--kb-o-rim) 60%, transparent), 0 2px 0 var(--kb-o-lo); }
