@@ -817,8 +817,8 @@ function lookRows(th) {
 }
 
 /* Réglages in four tabs; the last one used opens again */
-const SET_TABS = [['account', 'Compte'], ['ui', 'UI'], ['board', 'Board'], ['other', 'Autres']];
-let settingsTab = 'account';
+const SET_TABS = [['ui', 'UI'], ['account', 'Compte'], ['board', 'Board'], ['other', 'Autres']];
+let settingsTab = 'ui';
 function openSettings(section) {
   const p = S.prefs;
   if (section === 'pen') settingsTab = 'board';

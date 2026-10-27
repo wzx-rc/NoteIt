@@ -1237,3 +1237,36 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 @keyframes npTurnR { from { opacity: 0; transform: translateX(24px); } }
 @keyframes npTurnL { from { opacity: 0; transform: translateX(-24px); } }
 @media (prefers-reduced-motion: reduce) { .nwrap.turn-r > .sheet.on, .nwrap.turn-l > .sheet.on { animation: none; } }
+
+/* Marking menu of the board, as in WZX Engine: dark pills around the press point, the item in the direction of the pointer lit yellow */
+.mmenu { position: fixed; inset: 0; z-index: 1200; pointer-events: none; font: 500 12.5px/1 var(--font-ui, system-ui), system-ui, sans-serif; }
+.mmenu.sticky { pointer-events: auto; cursor: default; }
+.mmenu .mmg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.mmenu .mmg .ring { fill: none; stroke: rgba(236,236,226,.28); stroke-width: 1; }
+.mmenu .mmg .dot { fill: rgba(236,236,226,.8); }
+.mmenu .mmg line { stroke: rgba(255,226,102,.8); stroke-width: 1.2; }
+.mmenu .mmp { position: absolute; white-space: nowrap; padding: 4px 9px 5px; border-radius: 999px; background: rgba(34,36,42,.92); color: #E4E4E8; box-shadow: inset 0 0 0 1px rgba(110,114,124,.78), 0 4px 14px rgba(0,0,0,.28); letter-spacing: .1px; }
+.mmenu .mmp.hot { background: #FFE266; color: #1C1C1E; box-shadow: inset 0 0 0 1px #FFE266, 0 4px 14px rgba(0,0,0,.28); }
+.mmenu.sticky .mmp { cursor: pointer; }
+.mmenu .mmt { position: absolute; transform: translateX(-50%); color: rgba(236,236,226,.62); font-size: 11px; letter-spacing: .3px; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+:root:not([data-resolved="dark"]) .mmenu .mmt { color: rgba(40,40,44,.6); text-shadow: none; }
+:root:not([data-resolved="dark"]) .mmenu .mmg .ring { stroke: rgba(40,40,44,.25); }
+:root:not([data-resolved="dark"]) .mmenu .mmg .dot { fill: rgba(40,40,44,.7); }
+
+/* a tool dragged from the dock: its button follows the pointer, and over the board the item it will drop, at its real size */
+.tools .tl { touch-action: none; }
+.tdrag { position: fixed; left: 0; top: 0; z-index: 1300; pointer-events: none; }
+.tdrag .tdi { position: absolute; left: -18px; top: -18px; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: var(--card); color: var(--ink); box-shadow: 0 6px 18px rgba(0,0,0,.22), 0 0 0 1px var(--line); }
+.tdrag .tdi kbd, .tdrag .tdi .cdot { display: none; }
+.tdrag .tdp { position: absolute; left: 0; top: 0; transform: translate(-50%,-50%) scale(.6); opacity: 0; transition: opacity .12s, transform .12s; }
+.tdrag.on .tdi { opacity: 0; }
+.tdrag.on .tdp { opacity: .85; transform: translate(-50%,-50%); }
+.tdrag .tdp > i { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; border: 2px solid var(--accent); border-radius: 6px; background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); }
+.tdrag .tdp > i .ic, .tdrag .tdp > i svg { width: 28px; height: 28px; opacity: .7; }
+.tdrag.k-note .tdp > i { border: 0; border-radius: 2px; box-shadow: 0 8px 20px rgba(0,0,0,.18); }
+.tdrag.k-frame .tdp > i { border-style: dashed; border-radius: 4px; place-items: start; padding: 8px 10px; }
+.tdrag.k-text .tdp > i { border-style: dashed; background: none; }
+.tdrag.k-todo .tdp > i { place-items: start stretch; align-content: start; gap: 8px; padding: 12px 14px; background: var(--card); border-color: var(--line-2); color: var(--ink-2); }
+.tdrag.k-todo .tdp u { display: block; height: 8px; border-radius: 4px; background: var(--sunk); }
+.tdrag .tdp b { font: 600 13px/1.2 var(--font-ui, system-ui), system-ui, sans-serif; }
+.tdragging .bhost { cursor: copy; }

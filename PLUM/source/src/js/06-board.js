@@ -532,7 +532,7 @@ const Board = (() => {
   }
   function helpModal() {
     const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O · D', 'Rectangle · Ellipse · Losange'], ['A', 'Flèche'], ['L', 'Ligne'], ['P', 'Stylo'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['F', 'Cadre'], ['I', 'Image ou fichier']]],
-      ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant']]],
+      ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Clic droit maintenu · appui long', 'Marking menu : glisser vers une action'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
       ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]]];
     openModal(`<div class="mhd"><h2>Raccourcis du board</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div><div class="keys">${K.map(([t, rows]) => `<div><h5>${t}</h5>${rows.map(([k, l]) => `<div class="krow"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`);
   }
@@ -777,6 +777,9 @@ const Board = (() => {
   }
   function onDown(e) {
     closePop(); lastClient = { x: e.clientX, y: e.clientY };
+    if (mm) { mmDown(e); return; }
+    if (e.button === 2 && !(op && op.keep) && e.pointerType !== 'touch') { e.preventDefault(); if (editing) finishEdit(); openMarking(e, hitAt(e)); return; }
+    if (e.pointerType === 'touch' && !touches.size && !drawingTool()) holdFor(e);
     if (op && op.keep) { if (e.button === 0) { e.preventDefault(); op.click(e); } else if (e.button === 2) { e.preventDefault(); op.finish(); } return; }
     if (e.pointerType === 'touch') { touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (touches.size === 2) { cancelOp(); startPinch(); return; } if (touches.size > 2) return; }
     if (e.pointerType === 'pen') penSeen = true;
@@ -1607,7 +1610,7 @@ const Board = (() => {
     wrap.addEventListener('dragover', onDragOver); host.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') lastClient = { x: e.clientX, y: e.clientY }; }, { passive: true }); wrap.addEventListener('dragleave', onDragLeave); wrap.addEventListener('drop', onDrop);
     host.addEventListener('pointerleave', () => { if (eraserAt) { eraserAt = null; renderOverlay(); } Studio.hideLoupe(); });
     addEventListener('pointermove', onMove); addEventListener('pointerup', onUp); addEventListener('pointercancel', onCancel);
-    toolsEl.onclick = e => { const b = e.target.closest('[data-tool]'); if (!b) return; const id = b.dataset.tool;
+    toolsEl.onclick = e => { const b = e.target.closest('[data-tool]'); if (!b || dragClick) return; const id = b.dataset.tool;
       if (id === 'upload') return pickFiles(); if (id === 'more') return moreMenu(b);
       if (id === 'pen') { if (PENS[tool]) { setProps(true); propsTab = 'style'; renderProps(true); return; } return setTool(penKind); }
       if (id === 'shape' && tool === 'shape') { const p = openPop(b, `<div class="shapes-pop">${Object.entries(SHAPES).map(([k, l]) => `<button class="db" data-sh="${k}" title="${l}" aria-pressed="${k === shapeKind}">${icon(k)}</button>`).join('')}</div>`, { focus: false }); p.onclick = ev => { const s = ev.target.closest('[data-sh]'); if (s) { shapeKind = s.dataset.sh; closePop(); refreshTools(); propSig = ''; renderProps(); } }; return; }
@@ -1615,6 +1618,7 @@ const Board = (() => {
       setTool(id); };
     toolsEl.addEventListener('contextmenu', e => { const b = e.target.closest('[data-tool="shape"],[data-tool="note"],[data-tool="pen"]'); if (b) { e.preventDefault(); setTool(b.dataset.tool === 'pen' ? penKind : b.dataset.tool); b.click(); } });
     toolsEl.addEventListener('pointerdown', e => e.preventDefault());
+    toolsEl.addEventListener('pointerdown', toolDragStart);
     bindDock();
     trEl.onclick = e => { if (!e.target.closest('[data-a="props"]')) return; if (drawingTool()) { Studio.toggleCard('brush'); return; } setProps(!propsOpen()); };
     propsEl.addEventListener('click', propsClick);
@@ -1642,20 +1646,173 @@ const Board = (() => {
     if (!mounted) return;
     if (editing) finishEdit();
     if (op && op.keep) cancelOp();
-    mounted = false; cancelAnimationFrame(raf); raf = 0; Studio.unmount(); shot = null;
+    closeMarking(); mounted = false; cancelAnimationFrame(raf); raf = 0; Studio.unmount(); shot = null;
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onCancel);
     if (ro) ro.disconnect();
     if (D) { D.view = { x: Math.round(view.x), y: Math.round(view.y), k: +view.k.toFixed(4) }; D.items = items; save(); }
     nodes.clear(); D = null; op = null;
   }
+  /* the browser menu never shows on the board: the right button opens the marking menu (onDown); the menu key opens it at the pointer */
   function onContext(e) {
     e.preventDefault();
-    if (op && op.keep) return;
-    const hit = hitAt(e), w = toW(e.clientX, e.clientY);
-    if (hit) { if (!sel.has(hit)) { sel = new Set([hit]); render(); }
-      openPop({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }, [{ label: 'Style et calques', icon: 'sliders', run: () => { setProps(true); propsTab = 'style'; renderProps(true); } }, { label: 'Dupliquer', icon: 'dup', small: 'Ctrl D', run: duplicate }, { label: 'Copier', icon: 'dup', small: 'Ctrl C', run: () => copy(false) }, { label: 'Premier plan', icon: 'front', run: () => zMove('front') }, { label: 'Arrière-plan', icon: 'back', run: () => zMove('back') }, { label: 'Masquer', icon: 'eye-off', run: () => { const ids = new Set(sel); commit(items.map(i => ids.has(i.id) ? Object.assign({}, i, { hid: true }) : i)); sel.clear(); } }, ...(sel.size > 1 ? [{ label: 'Entourer d’un cadre', icon: 'frame', run: () => frameAround(selItems()) }] : []), '-', { label: 'Supprimer', icon: 'trash', danger: true, small: 'Suppr', run: deleteSel }]);
-      return; }
-    openPop({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }, [{ label: 'Post-it ici', icon: 'sticky', run: () => createAt('note', w) }, { label: 'Texte ici', icon: 'text', run: () => createAt('text', w) }, { label: 'Liste à faire ici', icon: 'todo', run: () => createAt('todo', w) }, ...(clip || (navigator.clipboard && navigator.clipboard.read) ? [{ label: 'Coller', icon: 'dup', small: 'Ctrl V', run: () => clip ? pasteClip(w) : pasteSystem(w) }] : []), '-', { label: 'Image ou fichier…', icon: 'image', run: pickFiles }, { label: 'Tout voir', icon: 'fit', small: '0', run: fitAll }]);
+    if (mm || (op && op.keep) || ['mouse', 'pen', 'touch'].includes(e.pointerType)) return;
+    const r = hostRect(), c = lastClient || { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    openMarking({ clientX: c.x, clientY: c.y, pointerId: -1 }, sel.size ? [...sel][0] : null, true);
+  }
+
+  /* ---------- drag a tool from the dock onto the board: the item lands where it is let go ---------- */
+  const DRAG_TOOLS = { shape: 1, note: 1, text: 1, todo: 1, frame: 1 };
+  let dragClick = false;
+  /* what will land, at its real size on screen */
+  function dragGhost(kind) {
+    const k = view.k, s = clamp(1 / k, .5, 4) * k;
+    if (kind === 'shape') { const W = 180 * s, H = (shapeKind === 'pill' ? 70 : 120) * s, r = shapeKind === 'ellipse' ? '50%' : shapeKind === 'round' || shapeKind === 'pill' ? Math.min(W, H) / 2 + 'px' : '6px'; return { w: W, h: H, html: `<i style="border-radius:${r}">${icon(shapeKind === 'starsh' ? 'starsh' : shapeKind)}</i>` }; }
+    if (kind === 'note') return { w: 220 * s, h: 220 * s, html: `<i style="background:${noteColor}"></i>` };
+    if (kind === 'todo') return { w: 290 * s, h: 110 * s, html: `<i><b>À faire</b><u></u><u></u></i>` };
+    if (kind === 'frame') return { w: 480 * k, h: 320 * k, html: `<i><b>Cadre</b></i>` };
+    return { w: 120 * s, h: 40 * s, html: `<i><b>Texte</b></i>` };
+  }
+  function toolDragStart(e) {
+    const b = e.target.closest('[data-tool]'); if (!b || !DRAG_TOOLS[b.dataset.tool] || e.button !== 0) return;
+    const kind = b.dataset.tool, x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
+    let gh = null;
+    const over = ev => { const el = document.elementFromPoint(ev.clientX, ev.clientY); return !!el && host.contains(el); };
+    const move = ev => {
+      if (ev.pointerId !== pid) return;
+      if (!gh) {
+        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 7) return;
+        const g = dragGhost(kind); gh = document.createElement('div'); gh.className = 'tdrag k-' + kind;
+        gh.innerHTML = `<span class="tdi">${b.innerHTML}</span><span class="tdp" style="width:${g.w}px;height:${g.h}px">${g.html}</span>`;
+        document.body.append(gh); wrap.classList.add('tdragging');
+      }
+      gh.style.transform = `translate(${ev.clientX}px,${ev.clientY}px)`; gh.classList.toggle('on', over(ev));
+    };
+    const end = ev => {
+      if (ev.pointerId !== pid) return;
+      removeEventListener('pointermove', move); removeEventListener('pointerup', end); removeEventListener('pointercancel', end);
+      if (!gh) return;
+      const drop = ev.type === 'pointerup' && over(ev);
+      gh.remove(); gh = null; wrap.classList.remove('tdragging');
+      dragClick = true; setTimeout(() => { dragClick = false; }, 0);
+      if (drop) dropTool(kind, toW(ev.clientX, ev.clientY));
+    };
+    addEventListener('pointermove', move); addEventListener('pointerup', end); addEventListener('pointercancel', end);
+  }
+  function dropTool(kind, w) {
+    if (kind === 'note' || kind === 'text' || kind === 'todo') { createAt(kind, w); return; }
+    const s = clamp(1 / view.k, .5, 4);
+    if (kind === 'frame') { const it = mkFrame(w.x - 240, w.y - 160, 480, 320, 'Cadre'); commit([it].concat(items)); sel = new Set([it.id]); setTool('select'); render(); startEdit(it.id); return; }
+    const W = 180 * s, H = (shapeKind === 'pill' ? 70 : 120) * s, it = mkShape(w.x - W / 2, w.y - H / 2, W, H, shapeKind, { fs: Math.round(26 * s) });
+    commit(items.concat(it)); sel = new Set([it.id]); setTool('select'); render();
+  }
+
+  /* ---------- marking menu, as in WZX Engine (Maya): hold the right button (or press and hold a finger), flick toward an item and let go.
+     A quick flick does the item without waiting for the menu, which then shows that item alone for a moment.
+     A plain right click leaves the menu open: click an item, or anywhere else to close it. ---------- */
+  const MM_DELAY = 200, MM_FLASH = 150, MM_R = 92, MM_DEAD = 22, MM_HOLD = 450;
+  let mm = null;
+  const mmDirOf = (dx, dy) => (Math.round(Math.atan2(dx, -dy) / (Math.PI / 4)) + 8) % 8;   // 0 = up, clockwise
+  function mmItems(hit, w) {
+    if (hit) {
+      const it = byId.get(hit), editable = it && ['note', 'shape', 'text', 'todo', 'frame', 'mind'].includes(it.k);
+      return [
+        { dir: 0, label: 'Dupliquer', run: () => duplicate() },
+        { dir: 1, label: 'Premier plan', run: () => zMove('front') },
+        { dir: 2, label: 'Style et calques', run: () => { setProps(true); propsTab = 'style'; renderProps(true); } },
+        { dir: 3, label: 'Arrière-plan', run: () => zMove('back') },
+        { dir: 4, label: 'Supprimer', run: deleteSel },
+        { dir: 5, label: 'Masquer', run: () => { const ids = new Set(sel); commit(items.map(i => ids.has(i.id) ? Object.assign({}, i, { hid: true }) : i)); sel.clear(); } },
+        { dir: 6, label: 'Copier', run: () => copy(false) },
+        sel.size > 1 ? { dir: 7, label: 'Entourer d’un cadre', run: () => frameAround(selItems()) } : editable ? { dir: 7, label: 'Modifier le texte', run: () => startEdit(hit) } : null
+      ].filter(Boolean);
+    }
+    const canPaste = clip || (navigator.clipboard && navigator.clipboard.read);
+    return [
+      { dir: 0, label: 'Post-it', run: () => createAt('note', w) },
+      { dir: 1, label: 'Texte', run: () => createAt('text', w) },
+      { dir: 2, label: SHAPES[shapeKind] || 'Forme', run: () => dropTool('shape', w) },
+      { dir: 3, label: 'Liste à faire', run: () => createAt('todo', w) },
+      { dir: 4, label: 'Tout voir', run: fitAll },
+      { dir: 5, label: 'Image ou fichier…', run: pickFiles },
+      canPaste ? { dir: 6, label: 'Coller', run: () => clip ? pasteClip(w) : pasteSystem(w) } : null,
+      { dir: 7, label: 'Cadre', run: () => dropTool('frame', w) }
+    ].filter(Boolean);
+  }
+  function openMarking(e, hit, sticky) {
+    closeMarking(); cancelOp();
+    if (hit && !sel.has(hit)) { sel = new Set([hit]); render(); }
+    const el = document.createElement('div'); el.className = 'mmenu'; wrap.append(el);
+    el.addEventListener('pointerdown', e => mm && mmDown(e)); el.addEventListener('contextmenu', e => e.preventDefault());
+    mm = { el, pid: e.pointerId, x: e.clientX, y: e.clientY, mx: e.clientX, my: e.clientY, hover: -1, shown: false, sticky: !!sticky, moved: false,
+      hit, title: hit ? (sel.size > 1 ? sel.size + ' éléments' : 'Élément') : 'Board', items: mmItems(hit, toW(e.clientX, e.clientY)) };
+    addEventListener('pointermove', mmMove, true); addEventListener('pointerup', mmUp, true); addEventListener('keydown', mmKey, true);
+    if (sticky) mmShow(); else mm.t = setTimeout(() => mm && mmShow(), MM_DELAY);
+  }
+  function closeMarking() {
+    if (!mm) return;
+    clearTimeout(mm.t); mm.el.remove(); mm = null;
+    removeEventListener('pointermove', mmMove, true); removeEventListener('pointerup', mmUp, true); removeEventListener('keydown', mmKey, true);
+  }
+  /* the pill of item dir: at MM_R from the centre (flattened vertically); the left and right ones grow away from it */
+  function mmPill(it, hot) {
+    const a = it.dir * Math.PI / 4, sx = Math.sin(a), px = mm.x + sx * MM_R, py = mm.y - Math.cos(a) * MM_R * .82;
+    const tx = sx > .3 ? 'translate(-8px,-50%)' : sx < -.3 ? 'translate(calc(8px - 100%),-50%)' : 'translate(-50%,-50%)';
+    return `<span class="mmp${hot ? ' hot' : ''}" data-dir="${it.dir}" style="left:${px}px;top:${py}px;transform:${tx}">${esc(it.label)}</span>`;
+  }
+  function mmShow() {
+    if (!mm) return; mm.shown = true;
+    const dx = mm.mx - mm.x, dy = mm.my - mm.y;
+    mm.el.classList.toggle('sticky', mm.sticky);
+    mm.el.innerHTML = `<svg class="mmg"><circle cx="${mm.x}" cy="${mm.y}" r="${MM_DEAD}" class="ring"/>${mm.hover >= 0 ? `<line x1="${mm.x}" y1="${mm.y}" x2="${mm.x + dx}" y2="${mm.y + dy}"/>` : ''}<circle cx="${mm.x}" cy="${mm.y}" r="5" class="dot"/></svg>`
+      + `<span class="mmt" style="left:${mm.x}px;top:${mm.y + 26}px">${esc(mm.title)}</span>` + mm.items.map(it => mmPill(it, it.dir === mm.hover)).join('');
+  }
+  function mmTrack(ev) {
+    mm.mx = ev.clientX; mm.my = ev.clientY;
+    const dx = mm.mx - mm.x, dy = mm.my - mm.y, far = Math.hypot(dx, dy) > MM_DEAD;
+    if (far) mm.moved = true;
+    const d = far ? mmDirOf(dx, dy) : -1, h = mm.items.some(it => it.dir === d) ? d : -1;
+    const changed = h !== mm.hover; mm.hover = h;
+    if (mm.shown && (changed || h >= 0)) mmShow();
+  }
+  function mmMove(ev) { if (!mm) return; if (mm.sticky || ev.pointerId === mm.pid) mmTrack(ev); }
+  function mmUp(ev) {
+    if (!mm || mm.sticky || ev.pointerId !== mm.pid) return;
+    ev.preventDefault(); mmTrack(ev);
+    if (mm.hover >= 0) { mmRun(); return; }
+    if (!mm.moved) { mm.sticky = true; clearTimeout(mm.t); mmShow(); return; }   // a plain click: the menu stays
+    closeMarking();
+  }
+  function mmDown(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (!mm.sticky) return;
+    mmTrack(e);
+    const p = e.target.closest && e.target.closest('.mmp');
+    if (p) mm.hover = +p.dataset.dir;
+    if (mm.hover >= 0 && e.button !== 2) mmRun(); else closeMarking();
+  }
+  function mmKey(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMarking(); } }
+  function mmRun() {
+    const it = mm.items.find(i => i.dir === mm.hover); if (!it) { closeMarking(); return; }
+    const flash = !mm.shown && { x: mm.x, y: mm.y, mx: mm.mx, my: mm.my, it };
+    closeMarking();
+    if (flash) mmFlash(flash);
+    it.run(); schedule();
+  }
+  /* after a quick flick: the chosen item alone, lit, fading out */
+  function mmFlash(f) {
+    const el = document.createElement('div'); el.className = 'mmenu flash';
+    const a = f.it.dir * Math.PI / 4, tx = f.x + Math.sin(a) * MM_R, ty = f.y - Math.cos(a) * MM_R * .82;
+    mm = { x: f.x, y: f.y }; const pill = mmPill(f.it, true); mm = null;
+    el.innerHTML = `<svg class="mmg"><line x1="${f.x}" y1="${f.y}" x2="${tx}" y2="${ty}"/><circle cx="${f.x}" cy="${f.y}" r="4" class="dot"/></svg>` + pill;
+    wrap.append(el); el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: MM_FLASH, easing: 'linear' }).onfinish = () => el.remove();
+  }
+  /* a finger held still on the board opens the marking menu; moving it first keeps the usual pan, move or marquee */
+  function holdFor(e) {
+    const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
+    const stop = () => { clearTimeout(t); removeEventListener('pointermove', mv, true); removeEventListener('pointerup', stop, true); removeEventListener('pointercancel', stop, true); };
+    const mv = ev => { if (ev.pointerId === pid && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 8) stop(); };
+    const t = setTimeout(() => { stop(); if (!mounted || touches.size > 1 || editing) return; const hit = hitAt(e); openMarking({ clientX: x0, clientY: y0, pointerId: pid }, hit); if (navigator.vibrate) try { navigator.vibrate(8); } catch (_) {} }, MM_HOLD);
+    addEventListener('pointermove', mv, true); addEventListener('pointerup', stop, true); addEventListener('pointercancel', stop, true);
   }
 
   return {
