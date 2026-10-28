@@ -26,7 +26,32 @@ const inlineAssets = (id, text) => text.replace(/asset:([\w./-]+)/g, (m, f) => {
 });
 /* a theme can bring more js than its theme.js (e.g. its own colour wheel): theme.js first, then the others by name */
 const themeJs = themes.flatMap(id => readdirSync(join(themesDir, id)).filter(f => f.endsWith('.js')).sort((a, b) => (b === 'theme.js') - (a === 'theme.js') || a.localeCompare(b)).map(f => `/* ---- themes/${id}/${f} ---- */\n` + inlineAssets(id, rd(`themes/${id}/${f}`)))).join('\n');
-const themeCss = themes.flatMap(id => readdirSync(join(themesDir, id)).filter(f => f.endsWith('.css')).sort((a, b) => (b === 'theme.css') - (a === 'theme.css') || a.localeCompare(b)).map(f => inlineAssets(id, rd(`themes/${id}/${f}`))));
+/* a theme's css is split in two: the rules every page needs (the theme's card in Réglages, :root images, anything not tied to
+   [data-skin]) stay in the page's style; the rest waits in a <script type="text/css"> and applyTheme puts only the active
+   theme's in a style of its own, so the browser never matches the rules of the eight other themes (0.2.24) */
+function splitCss(text) {
+  const g = [], sc = []; let i = 0, n = text.length;
+  while (i < n) {
+    let j = i, depth = 0, q = null;
+    for (; j < n; j++) {
+      const c = text[j];
+      if (q) { if (c === '\\') j++; else if (c === q) q = null; continue; }
+      if (c === '/' && text[j + 1] === '*') { const e = text.indexOf('*/', j + 2); j = e < 0 ? n : e + 1; continue; }
+      if (c === '"' || c === "'") { q = c; continue; }
+      if (c === '{') depth++;
+      else if (c === '}') { depth--; if (depth === 0) { j++; break; } }
+      else if (c === ';' && depth === 0) { j++; break; }
+    }
+    const block = text.slice(i, j); i = j;
+    const head = block.replace(/\/\*[\s\S]*?\*\//g, '').split('{')[0];
+    if (!block.trim()) continue;
+    (/data-skin/.test(head) || (/^\s*@(media|supports|container)/.test(head) && /data-skin/.test(block)) ? sc : g).push(block);
+  }
+  return { global: g.join('\n'), scoped: sc.join('\n') };
+}
+const themeParts = themes.map(id => { const all = readdirSync(join(themesDir, id)).filter(f => f.endsWith('.css')).sort((a, b) => (b === 'theme.css') - (a === 'theme.css') || a.localeCompare(b)).map(f => splitCss(inlineAssets(id, rd(`themes/${id}/${f}`)))); return { id, global: all.map(x => x.global).join('\n'), scoped: all.map(x => x.scoped).join('\n') }; });
+const themeCss = themeParts.map(t => t.global);
+const themeLazy = themeParts.map(t => `<script type="text/css" id="thcss-${t.id}">\n${t.scoped}\n</script>`).join('\n');
 const jsFiles = readdirSync(join(src, 'js')).filter(f => f.endsWith('.js')).sort();
 const js = `const APP_VERSION = ${JSON.stringify(VERSION)};\n` + jsFiles.map(f => `/* ---- ${f} ---- */\n` + rd('js/' + f) + (f.startsWith('00-') ? '\n' + themeJs : '')).join('\n');
 const css = [rd('style.css'), ...themeCss].join('\n');
@@ -34,7 +59,7 @@ const css = [rd('style.css'), ...themeCss].join('\n');
 const brandUrl = f => `data:${MIME[f.split('.').pop()]};base64,${readFileSync(join(src, 'brand', f)).toString('base64')}`;
 const brandCss = `:root{--plum-mark:url(${brandUrl('plum-mark.png')});--plum-icon:url(${brandUrl('plum-icon.jpg')})}`;
 const head = `<title>PLUM ${VERSION}</title>\n<style>\n${fonts}\n${brandCss}\n${css}\n</style>`;
-const body = `${rd('body.html').replace('{{VERSION}}', VERSION)}\n<script>\n(() => {\n${js}\n})();\n</script>`;
+const body = `${themeLazy}\n${rd('body.html').replace('{{VERSION}}', VERSION)}\n<script>\n(() => {\n${js}\n})();\n</script>`;
 writeFileSync(join(out, 'plum.html'), `${head}\n${body}\n`);
 writeFileSync(join(out, 'plum-standalone.html'), `<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n<link rel="icon" href="${brandUrl('plum-mark.png')}">\n${head}\n</head>\n<body>\n${body}\n</body>\n</html>\n`);
 console.log('built', themes.join(', '), (readFileSync(join(out, 'plum.html')).length / 1024).toFixed(0) + ' KB');

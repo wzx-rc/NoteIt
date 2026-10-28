@@ -798,11 +798,16 @@ function applyUiScale() {
   else document.documentElement.style.zoom = v === 100 ? '' : v / 100;
   if (typeof Board !== 'undefined' && Board.mounted) Board.layoutChanged();
 }
+let themeCssOn = null;
 function applyTheme() {
   const sk = S && THEMES[S.prefs.skin] ? S.prefs.skin : 'minimal', th = THEMES[sk] || THEME_BASE, r = document.documentElement;
   const t = th.mode === 'user' ? (S ? S.prefs.theme : 'auto') : th.mode;
   const prev = themeOn; themeOn = th;
   if (prev && prev !== th && prev.apply) prev.apply(false);
+  if (themeCssOn !== sk) {   // only the active theme's own rules are in the page (build.mjs splitCss)
+    let st = document.getElementById('th-active'); if (!st) { st = document.createElement('style'); st.id = 'th-active'; const main = document.querySelector('style'); main ? main.after(st) : document.head.append(st); }
+    const src = document.getElementById('thcss-' + sk); st.textContent = src ? src.textContent : ''; themeCssOn = sk;
+  }
   r.dataset.skin = sk;
   if (t === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t);
   r.dataset.resolved = t === 'auto' ? (mqDark.matches ? 'dark' : 'light') : t;
