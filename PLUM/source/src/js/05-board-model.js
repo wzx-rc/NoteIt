@@ -207,7 +207,9 @@ const boxHit = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1
 const inBox = (x, y, b) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3];
 
 /* outline of a shape as a polygon (relative to its box) */
-function shapePoly(sh, w, h, n = 56) {
+/* corner radius of a rectangle (rect: 0 unless set, round: 18 unless set), never more than half a side */
+function shapeRad(sh, w, h, rad) { return sh === 'rect' || sh === 'round' ? Math.max(0, Math.min(rad != null ? rad : sh === 'round' ? Math.min(18, w / 4, h / 4) : 0, w / 2, h / 2)) : 0; }
+function shapePoly(sh, w, h, n = 56, rad) {
   const P = [];
   const ell = (cx, cy, rx, ry, a0 = 0, a1 = Math.PI * 2, m = n) => { for (let i = 0; i < m; i++) { const a = a0 + (a1 - a0) * i / m; P.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); } };
   switch (sh) {
@@ -218,7 +220,7 @@ function shapePoly(sh, w, h, n = 56) {
     case 'starsh': for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? .42 : 1; P.push([w / 2 + Math.cos(a) * w / 2 * r, h / 2 + Math.sin(a) * h / 2 * r + h * .04]); } break;
     case 'bubble': { const t = h * .8; P.push([0, 0], [w, 0], [w, t], [w * .42, t], [w * .2, h], [w * .24, t], [0, t]); break; }
     case 'pill': { const r = Math.min(h / 2, w / 2); ell(w - r, h / 2, r, r, -Math.PI / 2, Math.PI / 2, 14); ell(r, h / 2, r, r, Math.PI / 2, Math.PI * 1.5, 14); break; }
-    case 'round': { const r = Math.min(18, w / 4, h / 4); ell(w - r, r, r, r, -Math.PI / 2, 0, 6); ell(w - r, h - r, r, r, 0, Math.PI / 2, 6); ell(r, h - r, r, r, Math.PI / 2, Math.PI, 6); ell(r, r, r, r, Math.PI, Math.PI * 1.5, 6); break; }
+    case 'rect': case 'round': { const r = shapeRad(sh, w, h, rad); if (!r) { P.push([0, 0], [w, 0], [w, h], [0, h]); break; } const m = clamp(Math.ceil(r / 4), 6, 16); ell(w - r, r, r, r, -Math.PI / 2, 0, m); ell(w - r, h - r, r, r, 0, Math.PI / 2, m); ell(r, h - r, r, r, Math.PI / 2, Math.PI, m); ell(r, r, r, r, Math.PI, Math.PI * 1.5, m); break; }
     case 'cloud': { const m = 72; for (let i = 0; i < m; i++) { const a = i / m * Math.PI * 2, bump = 1 + .09 * Math.abs(Math.sin(a * 4.5)); P.push([w / 2 + Math.cos(a) * w / 2 * .9 * bump, h / 2 + Math.sin(a) * h / 2 * .86 * bump]); } break; }
     default: P.push([0, 0], [w, 0], [w, h], [0, h]);
   }
@@ -281,18 +283,20 @@ function fillDefs(it, col) {
   return { defs: `<defs><pattern id="${id}" patternUnits="userSpaceOnUse" width="${g}" height="${g}" patternTransform="rotate(${it.fill === 'cross' ? 0 : -8})">${lines}</pattern></defs>`, fill: `fill="url(#${id})"` };
 }
 function shapeSVG(it) {
-  const P = shapePoly(it.sh, it.w, it.h), sc = inkColor(it.sc || '#1E1E1E'), fd = fillDefs(it, sc), dash = dashAttr(it.dash, it.sw);
+  const P = shapePoly(it.sh, it.w, it.h, 56, it.rad), sc = inkColor(it.sc || '#1E1E1E'), fd = fillDefs(it, sc), dash = dashAttr(it.dash, it.sw), r = shapeRad(it.sh, it.w, it.h, it.rad);
+  // separate opacities for the fill and the outline (0.2.23)
+  const fo = it.fo != null && it.fo < 1 ? ` fill-opacity="${it.fo}"` : '', so = it.so != null && it.so < 1 ? ` stroke-opacity="${it.so}"` : '';
   if (it.sty === 'clean') {
-    const d = it.sh === 'rect' ? `M0 0H${it.w}V${it.h}H0Z` : polyD(P);
-    return `<svg class="sh" viewBox="0 0 ${it.w} ${it.h}">${fd.defs}<path d="${d}" ${fd.fill} stroke="${sc}" stroke-width="${it.sw}" stroke-linejoin="round" stroke-linecap="round"${dash} vector-effect="non-scaling-stroke"/></svg>`;
+    const w = it.w, h = it.h, d = it.sh === 'rect' || it.sh === 'round' ? (r ? `M${r} 0H${w - r}A${r} ${r} 0 0 1 ${w} ${r}V${h - r}A${r} ${r} 0 0 1 ${w - r} ${h}H${r}A${r} ${r} 0 0 1 0 ${h - r}V${r}A${r} ${r} 0 0 1 ${r} 0Z` : `M0 0H${w}V${h}H0Z`) : polyD(P);
+    return `<svg class="sh" viewBox="0 0 ${it.w} ${it.h}">${fd.defs}<path d="${d}" ${fd.fill}${fo} stroke="${sc}"${so} stroke-width="${it.sw}" stroke-linejoin="round" stroke-linecap="round"${dash} vector-effect="non-scaling-stroke"/></svg>`;
   }
-  const rough = roughD(P, SMOOTH_SHAPES.has(it.sh), it.sd, it.sw, it.sty === 'wild' ? 2 : 1);
-  return `<svg class="sh" viewBox="0 0 ${it.w} ${it.h}">${fd.defs}${it.fc ? `<path d="${polyD(P)}" ${fd.fill} stroke="none"/>` : ''}${rough.map((d, i) => `<path d="${d}" fill="none" stroke="${sc}" stroke-width="${it.sw * (i ? .7 : 1)}" stroke-linecap="round" stroke-linejoin="round" opacity="${i ? .75 : 1}"${dash}/>`).join('')}</svg>`;
+  const rough = roughD(P, SMOOTH_SHAPES.has(it.sh) || r > 0, it.sd, it.sw, it.sty === 'wild' ? 2 : 1);
+  return `<svg class="sh" viewBox="0 0 ${it.w} ${it.h}">${fd.defs}${it.fc ? `<path d="${polyD(P)}" ${fd.fill}${fo} stroke="none"/>` : ''}${rough.map((d, i) => `<path d="${d}" fill="none" stroke="${sc}" stroke-width="${it.sw * (i ? .7 : 1)}" stroke-linecap="round" stroke-linejoin="round" opacity="${((i ? .75 : 1) * (it.so ?? 1)).toFixed(2)}"${dash}/>`).join('')}</svg>`;
 }
 /* where the line from an item's centre towards (tx,ty) leaves its outline */
 function borderPoint(it, tx, ty, gap = 6) {
   const cx = it.x + it.w / 2, cy = it.y + it.h / 2, dx = tx - cx, dy = ty - cy, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
-  const P = it.k === 'shape' ? shapePoly(it.sh, it.w, it.h, 40).map(p => [p[0] + it.x, p[1] + it.y]) : it.k === 'mind' && it.parent == null ? shapePoly('pill', it.w, it.h, 24).map(p => [p[0] + it.x, p[1] + it.y]) : [[it.x, it.y], [it.x + it.w, it.y], [it.x + it.w, it.y + it.h], [it.x, it.y + it.h]];
+  const P = it.k === 'shape' ? shapePoly(it.sh, it.w, it.h, 40, it.rad).map(p => [p[0] + it.x, p[1] + it.y]) : it.k === 'mind' && it.parent == null ? shapePoly('pill', it.w, it.h, 24).map(p => [p[0] + it.x, p[1] + it.y]) : [[it.x, it.y], [it.x + it.w, it.y], [it.x + it.w, it.y + it.h], [it.x, it.y + it.h]];
   let best = 0;
   for (let i = 0; i < P.length; i++) {
     const a = P[i], b = P[(i + 1) % P.length], ex = b[0] - a[0], ey = b[1] - a[1], den = ux * ey - uy * ex;

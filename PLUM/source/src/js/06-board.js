@@ -118,7 +118,7 @@ const Board = (() => {
     switch (it.k) {
       case 'note': return `n${it.w}|${it.h}|${it.c}|${it.fs}|${it.font}|${it.al}|${it.txt}|${skin()}`;
       case 'text': return `t${it.fw ? it.w : ''}|${it.fs}|${it.font}|${it.color}|${it.bold}|${it.ital}|${it.al}|${it.txt}|${theme()}`;
-      case 'shape': return `s${it.w}|${it.h}|${it.sh}|${it.sc}|${it.fc}|${it.sw}|${it.sty}|${it.dash}|${it.fill}|${it.txt}|${it.fs}|${it.font}|${it.color}|${theme()}`;
+      case 'shape': return `s${it.w}|${it.h}|${it.sh}|${it.rad}|${it.fo}|${it.so}|${it.sc}|${it.fc}|${it.sw}|${it.sty}|${it.dash}|${it.fill}|${it.txt}|${it.fs}|${it.font}|${it.color}|${theme()}`;
       case 'image': return `i${it.asset}|${it.frm}|${it.cap}|${Assets.has(it.asset)}`;
       case 'file': return `f${it.asset}|${it.name}|${it.mime}`;
       case 'link': return `l${Math.round(it.w)}|${Math.round(it.h)}|${it.url}|${it.title}|${it.asset || it.pic || ''}|${Assets.has(it.asset)}`;
@@ -361,6 +361,12 @@ const Board = (() => {
           // Excalidraw/Miro-like: a dot on each side, drag it to another item to link them, click it to add a linked item
           if (one && LINKABLE(one)) for (const [k, [dx, dy]] of Object.entries(DIRS)) h += `<div class="hdl cdot" data-cd="${k}" title="Glisser vers un élément pour le relier · clic : nouvel élément relié (Ctrl + flèche)" style="left:${P[k][0] + dx * 22}px;top:${P[k][1] + dy * 22}px"></div>`;
         }
+        // a dot inside the top-left corner of a rectangle: drag it to round the corners (0.2.23)
+        if (one && one.k === 'shape' && (one.sh === 'rect' || one.sh === 'round') && !editing && (!dragging || op.kind === 'rad') && one.w * view.k > 56 && one.h * view.k > 56) {
+          const r = shapeRad(one.sh, one.w, one.h, one.rad) * view.k, d = r + RAD_OFF, q = toS(one.x, one.y);
+          h += `<div class="hdl crad" data-rad="1" title="Arrondir les angles · ${Math.round(r / view.k)} px" style="left:${q.x + d}px;top:${q.y + d}px"></div>`;
+          if (op && op.kind === 'rad') h += `<div class="radtip" style="left:${q.x + d + 14}px;top:${q.y + d + 14}px">${Math.round(r / view.k)}</div>`;
+        }
         const tidy = canTidy(boxes) && (!dragging || op.kind === 'tidy') && !editing;
         if (tidy) h += `<div class="hdl tidy" data-tidy="1" title="Réorganiser : glissez à gauche ou à droite pour changer la largeur du bloc, cliquez pour ajuster. Ctrl + poignée d’échelle : le cadre change de ce côté et les images se réorganisent" style="left:${b.x + 20}px;top:${a.y - 20}px"><i></i><i></i><i></i><i></i></div>`;
         if (boxes.length > 1 && !dragging && !editing) h += `<button class="ovl-arr" data-arr="1" title="Ranger, aligner, répartir" style="left:${b.x + 20}px;top:${a.y + (tidy ? 14 : -20)}px">${icon('arrange')}</button>`;
@@ -500,10 +506,11 @@ const Board = (() => {
     const list = selItems(), c = ctxOf(list), { td, val, bd } = c;
     let h = '';
     if (id === 'shape') h = `<div class="shgrid" data-set="sh">${Object.entries(SHAPES).map(([k, l]) => `<button data-v="${k}" aria-pressed="${k === (td ? shapeKind : val('sh', 'rect', 'shape'))}" title="${l}">${icon(k)}</button>`).join('')}</div>`;
-    if (id === 'stroke') h = sec('Épaisseur', seg('sw', val('sw', bd.sw || 2, 'shape', 'conn'), [[1, pline('M4 8h32', ' stroke-width="1.4"'), 'Fin'], [2, pline('M4 8h32', ' stroke-width="2.6"'), 'Moyen'], [4, pline('M4 8h32', ' stroke-width="4.2"'), 'Épais']], 'ic'))
+    if (id === 'stroke') h = sec(swLabel(+val('sw', bd.sw || 2, 'shape', 'conn') || 2), seg('sw', val('sw', bd.sw || 2, 'shape', 'conn'), [[1, pline('M4 8h32', ' stroke-width="1.4"'), 'Fin'], [2, pline('M4 8h32', ' stroke-width="2.6"'), 'Moyen'], [4, pline('M4 8h32', ' stroke-width="4.2"'), 'Épais']], 'ic') + swSlide(+val('sw', bd.sw || 2, 'shape', 'conn') || 2))
       + sec('Style', seg('dash', val('dash', bd.dash || '', 'shape', 'conn') || '', [['', pline('M4 8h32'), 'Continu'], ['dash', pline('M4 8h32', ' stroke-dasharray="6 4"'), 'Tirets'], ['dot', pline('M4 8h32', ' stroke-dasharray="1 4"'), 'Pointillés']], 'ic'))
       + sec('Tracé', seg('sty', val('sty', bd.sty || 'sketch', 'shape', 'conn'), [['clean', pline('M4 8h32'), 'Net'], ['sketch', pline('M4 9c6-3 12 2 18-1s8-2 14 0'), 'Croquis'], ['wild', pline('M4 10c4-6 8 4 12-2s6 6 10-2 6 4 10 0'), 'Fou']], 'ic'))
-      + (c.has('shape') && (td ? bd.fc : list.some(i => i.k === 'shape' && i.fc)) ? sec('Remplissage', seg('fill', val('fill', bd.fill || 'solid', 'shape'), [['solid', 'Plein'], ['hachure', 'Hachures']])) : '');
+      + (c.has('shape') && (td ? bd.fc : list.some(i => i.k === 'shape' && i.fc)) ? sec('Remplissage', seg('fill', val('fill', bd.fill || 'solid', 'shape'), [['solid', 'Plein'], ['hachure', 'Hachures']])) : '')
+      + (!td && c.has('shape') ? opSlides(c.first('shape')) + radSlide(list) : '');
     if (id === 'heads') h = (td ? '' : sec('Départ', seg('h0', val('h0', 'none', 'conn'), Object.keys(HEADS).map(k => [k, headIcon(k), HEADS[k]]), 'ic heads1')) + sec('Arrivée', seg('h1', val('h1', 'arrow', 'conn'), Object.keys(HEADS).map(k => [k, headIcon(k), HEADS[k]]), 'ic heads1')))
       + (td && tool === 'line' ? '' : sec('Tracé', seg('route', td ? bd.route || 'curve' : val('route', 'curve', 'conn'), [['curve', icon('conn'), 'Courbe'], ['straight', icon('line'), 'Droit'], ['elbow', icon('elbow'), 'Coudé']], 'ic')));
     if (id === 'text') {
@@ -518,13 +525,20 @@ const Board = (() => {
     if (id === 'frm') h = seg('frm', val('frm', 'shadow', 'image'), [['shadow', 'Ombre'], ['polaroid', 'Polaroïd'], ['square', 'Carré'], ['none', 'Simple']]);
     if (!h) return;
     const p = openPop(btn, `<div class="qpop-b">${h}</div>`, { cls: 'qpop', focus: false });
+    bindSlides(p);
     p.addEventListener('click', e => {
+      if (e.target.closest('[data-set="sw"] [data-v]')) { const r = $('input[data-prop="sw"]', p), v = +e.target.closest('[data-v]').dataset.v; if (r) { r.value = v; const l = $('b[data-v="sw"]', p); if (l) l.textContent = fmtV(v, 'px'); } }
       const sv = e.target.closest('[data-set] [data-v]'); if (!sv) return;
       const box = sv.closest('[data-set]'), prop = box.dataset.set, v = sv.dataset.v;
       setProp(prop, v === 'true' ? true : v === 'false' ? false : v);
       box.querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', b === sv));
       if (id === 'shape' || id === 'frm') closePop();
     });
+  }
+  const opSlides = it => it ? slide('fo', 'Opacité fond', it.fo ?? 1, 0, 1, .05, '%') + slide('so', 'Opacité contour', it.so ?? 1, 0, 1, .05, '%') : '';
+  function radSlide(list) {
+    const r = list.find(i => i.k === 'shape' && (i.sh === 'rect' || i.sh === 'round')); if (!r) return '';
+    return slide('rad', 'Arrondi', Math.round(shapeRad(r.sh, r.w, r.h, r.rad)), 0, Math.round(Math.min(r.w, r.h) / 2), 1, 'px');
   }
   function ctxMore(btn) {
     const list = selItems(); if (!list.length) return;
@@ -548,6 +562,16 @@ const Board = (() => {
   const FS_TABLE = { note: [22, 30, 40, 54], text: [20, 28, 40, 64], shape: [18, 26, 34, 46], todo: [18, 24, 30, 38], sheet: [12, 14, 17, 21] };
   const fsLevel = it => { const T = FS_TABLE[it.k] || FS_TABLE.text; let b = 0; for (let i = 0; i < T.length; i++) if (Math.abs(T[i] - it.fs) < Math.abs(T[b] - it.fs)) b = i; return b; };
   const sec = (l, body, cls = '') => `<div class="ps ${cls}"><div class="ps-l">${l}</div>${body}</div>`;
+  /* a slider for prop, its value shown in the label: in % (u '%') or in px (0.2.23) */
+  const fmtV = (v, u) => u === '%' ? Math.round(v * 100) + ' %' : (Math.round(v * 10) / 10) + ' px';
+  const slide = (prop, l, v, min, max, step, u, cls = '') => sec(`${l} <b class="pv" data-v="${prop}">${fmtV(v, u)}</b>`, `<input type="range" class="prange" data-prop="${prop}" data-u="${u}" min="${min}" max="${max}" step="${step}" value="${v}" aria-label="${l}">`, cls);
+  const swSlide = v => `<input type="range" class="prange sw" data-prop="sw" data-u="px" min=".5" max="20" step=".5" value="${v}" aria-label="Épaisseur">`;
+  const swLabel = v => `Épaisseur <b class="pv" data-v="sw">${fmtV(v, 'px')}</b>`;
+  /* the sliders of a popover: live while dragging, one undo step at the end */
+  function bindSlides(p) {
+    p.addEventListener('input', e => { const r = e.target; if (r.type !== 'range' || !r.dataset.prop) return; const lab = $(`b.pv[data-v="${r.dataset.prop}"]`, p); if (lab) lab.textContent = fmtV(+r.value, r.dataset.u); setProp(r.dataset.prop, +r.value, true); });
+    p.addEventListener('change', e => { const r = e.target; if (r.type !== 'range' || !r.dataset.prop) return; setProp(r.dataset.prop, +r.value); qSig = ''; });
+  }
   const seg = (prop, cur, opts, cls = '') => `<div class="seg sm ${cls}" data-set="${prop}">${opts.map(([v, l, t]) => `<button data-v="${v}" aria-pressed="${String(cur) === String(v)}" title="${esc(t || l)}">${l}</button>`).join('')}</div>`;
   const pline = (d, extra = '') => `<svg viewBox="0 0 40 16" class="pl"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"${extra}/></svg>`;
   const headIcon = k => { const t = [1, 0]; const p = [34, 8]; return `<svg viewBox="0 0 40 16" class="pl" style="color:currentColor"><path d="M4 8H${k === 'none' ? 34 : 30}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><g stroke="currentColor" fill="currentColor" stroke-width="2">${headD(p, t, k, 1.2).replace(/class="hf"/g, 'fill="currentColor"').replace(/class="hs"/g, 'fill="none"').replace(/style="fill:var\(--paper\)"/g, 'fill="var(--card)"')}</g></svg>`; };
@@ -577,7 +601,7 @@ const Board = (() => {
     else if (want.sc) out.push(sec(has('ink') && only('ink') ? 'Couleur du trait' : has('text') && only('text') ? 'Couleur' : 'Contour', Colors.row(only('ink') ? themeColors('ink', INK_COLORS).slice(0, 5) : themeColors('stroke', STROKE_COLORS), scCur, 'sc')));
     if (want.fc) out.push(sec(only('note', 'todo') || (td && (T === 'note' || T === 'todo')) ? 'Couleur' : 'Fond', Colors.row(only('note', 'todo') || (td && T === 'note') ? themeColors('note', NOTE_COLORS).slice(0, 5) : themeColors('fill', FILL_COLORS), fcCur, 'fc', { none: !(only('note', 'todo') || (td && (T === 'note' || T === 'todo'))) })));
     if (want.fill && (td ? bd.fc : true)) out.push(sec('Remplissage', seg('fill', val('fill', bd.fill), [['solid', `<svg viewBox="0 0 20 20" class="pl sq"><rect x="3" y="3" width="14" height="14" rx="2" fill="currentColor"/></svg>`, 'Plein'], ['hachure', `<svg viewBox="0 0 20 20" class="pl sq"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor"/><path d="M3 11l8-8M3 17L17 3M9 17l8-8" stroke="currentColor"/></svg>`, 'Hachures'], ['cross', `<svg viewBox="0 0 20 20" class="pl sq"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor"/><path d="M3 11l8-8M9 17l8-8M3 9l8 8M9 3l8 8" stroke="currentColor"/></svg>`, 'Croisillons']], 'ic')));
-    if (want.sw) out.push(sec('Épaisseur', seg('sw', val('sw', bd.sw), [[1, pline('M4 8h32', ' stroke-width="1.4"'), 'Fin'], [2, pline('M4 8h32', ' stroke-width="2.6"'), 'Moyen'], [4, pline('M4 8h32', ' stroke-width="4.2"'), 'Épais']], 'ic')));
+    if (want.sw) out.push(sec(swLabel(+val('sw', bd.sw) || 2), seg('sw', val('sw', bd.sw), [[1, pline('M4 8h32', ' stroke-width="1.4"'), 'Fin'], [2, pline('M4 8h32', ' stroke-width="2.6"'), 'Moyen'], [4, pline('M4 8h32', ' stroke-width="4.2"'), 'Épais']], 'ic') + swSlide(+val('sw', bd.sw) || 2)));
     if (want.dash) out.push(sec('Style du trait', seg('dash', val('dash', bd.dash) || '', [['', pline('M4 8h32'), 'Continu'], ['dash', pline('M4 8h32', ' stroke-dasharray="6 4"'), 'Tirets'], ['dot', pline('M4 8h32', ' stroke-dasharray="1 4"'), 'Pointillés']], 'ic')));
     if (want.sty) out.push(sec('Tracé', seg('sty', val('sty', bd.sty), [['clean', pline('M4 8h32'), 'Net'], ['sketch', pline('M4 9c6-3 12 2 18-1s8-2 14 0'), 'Croquis'], ['wild', pline('M4 10c4-6 8 4 12-2s6 6 10-2 6 4 10 0'), 'Fou']], 'ic')));
     if (want.sh) { const cur = td ? shapeKind : one ? one.sh : first('shape').sh; out.push(sec('Forme', `<div class="shgrid" data-set="sh">${Object.entries(SHAPES).map(([k, l]) => `<button data-v="${k}" aria-pressed="${k === cur}" title="${l}">${icon(k)}</button>`).join('')}</div>`)); }
@@ -588,7 +612,8 @@ const Board = (() => {
     if (want.al) out.push(sec('Alignement', seg('al', first().al || 'left', [['left', icon('al-l'), 'À gauche'], ['center', icon('al-c'), 'Centré'], ['right', icon('al-r'), 'À droite']], 'ic')));
     if (want.bold) out.push(sec('Graisse', seg('bold', one ? !!one.bold : false, [[false, 'Normal'], [true, '<b>Gras</b>']])));
     if (one && one.k === 'image') out.push(sec('Image', seg('frm', one.frm || 'shadow', [['shadow', 'Ombre'], ['polaroid', 'Polaroïd'], ['square', 'Carré'], ['none', 'Simple']]) + btnRow([['cap', 'text', 'Légende'], Assets.has(one.asset) ? ['view', 'focus', 'Voir en grand'] : null, one.href ? ['src', 'ext', isInsta(one.href) ? 'Voir sur Instagram' : 'Page d’origine'] : null].filter(Boolean))));
-    if (one && one.k === 'shape') out.push(sec('Angles', seg('corner', one.sh === 'round' ? 'round' : 'sharp', [['sharp', icon('rect'), 'Vifs'], ['round', icon('round'), 'Arrondis']], 'ic')));
+    if (one && one.k === 'shape' && (one.sh === 'rect' || one.sh === 'round')) out.push(sec('Angles', seg('corner', shapeRad(one.sh, one.w, one.h, one.rad) > 0 ? 'round' : 'sharp', [['sharp', icon('rect'), 'Vifs'], ['round', icon('round'), 'Arrondis']], 'ic')), radSlide(list));
+    if (!td && list.some(i => i.k === 'shape')) out.push(opSlides(list.find(i => i.k === 'shape')));
     if (list.length && list.every(i => i.k === 'frame')) { const f = first(); out.push(sec('Titre du cadre', seg('ftitle', !f.nt, [[true, 'Affiché'], [false, 'Masqué']]) + (f.nt ? '' : `<div style="height:8px"></div>` + seg('tfs', f.tfs ?? 1, [[0, 'S'], [1, 'M'], [2, 'L'], [3, 'XL']])))); }
     if (want.op) { const o = one ? (one.op ?? 1) : (first().op ?? 1); out.push(sec(`Opacité <b class="pv" data-v="op">${Math.round(o * 100)} %</b>`, `<input type="range" class="prange" data-prop="op" min=".05" max="1" step=".05" value="${o}" aria-label="Opacité">`)); }
     if (list.length) {
@@ -656,7 +681,7 @@ const Board = (() => {
       case 'fc': return it.k === 'shape' ? { fc: v } : it.k === 'note' || it.k === 'todo' ? { c: v || '#FFFFFF' } : null;
       case 'fill': case 'sw': case 'dash': case 'sty': return it.k === 'shape' || it.k === 'conn' ? { [prop]: v } : null;
       case 'sh': return it.k === 'shape' ? { sh: v } : null;
-      case 'corner': return it.k === 'shape' ? { sh: v === 'round' ? 'round' : 'rect' } : null;
+      case 'corner': return it.k === 'shape' ? { sh: v === 'round' ? 'round' : 'rect', rad: undefined } : null;
       case 'h0': case 'h1': case 'route': return it.k === 'conn' ? { [prop]: v } : null;
       case 'font': return ['note', 'text', 'shape', 'todo'].includes(it.k) ? { font: v } : null;
       case 'fs': { const T = FS_TABLE[it.k]; return T ? { fs: T[clamp(+v, 0, 3)] } : null; }
@@ -664,6 +689,8 @@ const Board = (() => {
       case 'bold': return it.k === 'text' ? { bold: v === true || v === 'true' } : null;
       case 'ital': return it.k === 'text' ? { ital: v === true || v === 'true' } : null;
       case 'op': return { op: +v >= 1 ? undefined : +v };
+      case 'fo': case 'so': return it.k === 'shape' ? { [prop]: +v >= 1 ? undefined : +v } : null;
+      case 'rad': return it.k === 'shape' && (it.sh === 'rect' || it.sh === 'round') ? { sh: 'rect', rad: Math.max(0, Math.round(+v)) } : null;
       case 'frm': return it.k === 'image' ? { frm: v } : null;
       case 'ftitle': return it.k === 'frame' ? { nt: v === false || v === 'false' ? true : undefined } : null;
       case 'tfs': return it.k === 'frame' ? { tfs: clamp(+v, 0, 3) } : null;
@@ -685,7 +712,7 @@ const Board = (() => {
     if (!list.length) { refreshTools(); propSig = ''; renderProps(); return; }
     const ids = new Set(list.map(i => i.id));
     if (prop === 'sc' && list.some(i => i.k === 'mind')) for (const i of list) if (i.k === 'mind') mindDesc(i.id, ids);
-    const next = items.map(i => { if (!ids.has(i.id)) return i; const p = propPatch(i, prop, v); if (!p) return i; const o = Object.assign({}, i, p); if (p.op === undefined && 'op' in p) delete o.op; return o; });
+    const next = items.map(i => { if (!ids.has(i.id)) return i; const p = propPatch(i, prop, v); if (!p) return i; const o = Object.assign({}, i, p); for (const k in p) if (p[k] === undefined) delete o[k]; return o; });
     if (live) { if (!liveBefore) liveBefore = items; setLive(next); return; }
     commit(next, { before: liveBefore || items }); liveBefore = null;
   }
@@ -707,7 +734,7 @@ const Board = (() => {
   }
   function propsInput(e) {
     const r = e.target; if (r.type !== 'range' || !r.dataset.prop) return;
-    if (e.type === 'input') { propsHold = true; const lab = $(`[data-v="${r.dataset.prop}"]`, propsEl); if (lab) lab.textContent = Math.round(r.value * 100) + ' %'; setProp(r.dataset.prop, +r.value, true); }
+    if (e.type === 'input') { propsHold = true; const lab = $(`b.pv[data-v="${r.dataset.prop}"]`, propsEl); if (lab) lab.textContent = fmtV(+r.value, r.dataset.u || '%'); setProp(r.dataset.prop, +r.value, true); }
     else { propsHold = false; setProp(r.dataset.prop, +r.value); propSig = ''; renderProps(); }
   }
   function zMove(how) {
@@ -1377,7 +1404,7 @@ const Board = (() => {
     const ma = t.closest('[data-madd]'); if (ma) { e.preventDefault(); e.stopPropagation(); mindAdd(ma.dataset.madd); return; }
     const hd = t.closest('.hdl');
     if (hd && hd.dataset.msc) { e.preventDefault(); startMindScale(e); return; }
-    if (hd) { e.preventDefault(); if (hd.dataset.ep) startEndpoint(e, hd.dataset.ep); else if ((hd.dataset.pt != null || hd.dataset.add != null) && (e.ctrlKey || e.metaKey)) startBranch(e); else if (hd.dataset.pt != null) { if (e.altKey) removePoint(+hd.dataset.pt); else startPoint(e, +hd.dataset.pt); } else if (hd.dataset.add != null) startPoint(e, +hd.dataset.add, true); else if (hd.dataset.tidy) startTidy(e); else if (hd.dataset.cd) startConn(e, toW(e.clientX, e.clientY), [...sel][0], hd.dataset.cd); else startResize(e, hd.dataset.h); return; }
+    if (hd) { e.preventDefault(); if (hd.dataset.ep) startEndpoint(e, hd.dataset.ep); else if ((hd.dataset.pt != null || hd.dataset.add != null) && (e.ctrlKey || e.metaKey)) startBranch(e); else if (hd.dataset.pt != null) { if (e.altKey) removePoint(+hd.dataset.pt); else startPoint(e, +hd.dataset.pt); } else if (hd.dataset.add != null) startPoint(e, +hd.dataset.add, true); else if (hd.dataset.tidy) startTidy(e); else if (hd.dataset.rad) startRadius(e); else if (hd.dataset.cd) startConn(e, toW(e.clientX, e.clientY), [...sel][0], hd.dataset.cd); else startResize(e, hd.dataset.h); return; }
     const ab = t.closest('[data-arr]'); if (ab) { e.preventDefault(); e.stopPropagation(); setTimeout(() => arrangeMenu(ab, false)); return; }
     if (e.pointerType === 'touch' && penSeen && (PENS[tool] || tool === 'eraser')) { startPan(e); return; }
     if (tool === 'pick' || (PENS[tool] && e.altKey)) { e.preventDefault(); pickAt(e); return; }
@@ -1600,6 +1627,22 @@ const Board = (() => {
     return (x0, y0, W, H) => { const pos = tidyFit(list, x0, y0, Math.max(40, W), H == null ? null : Math.max(40, H), gap, area); return items.map(i => { const p = pos.get(i.id); if (!p) return i; const o = orig.get(i.id), n = Object.assign({}, i, p); if (o.k === 'note') n.fs = Math.max(6, Math.round(o.fs * p.w / o.w)); return n; }); };
   }
   /* the tidy handle moves along x only: the width of the block changes, the rows follow */
+  const RAD_OFF = 12;   // screen px between the corner (radius 0) and the radius dot
+  function startRadius(e) {
+    grab(e);
+    const it0 = selItems()[0]; if (!it0 || it0.k !== 'shape') return;
+    const before = items;
+    op = { id: e.pointerId, kind: 'rad', moved: true,
+      move(ev) {
+        if (ev.pointerId !== this.id) return;
+        const p = toW(ev.clientX, ev.clientY), d = ((p.x - it0.x) + (p.y - it0.y)) / 2 - RAD_OFF / view.k;
+        const rad = Math.round(clamp(d, 0, Math.min(it0.w, it0.h) / 2));
+        setLive(items.map(i => i.id === it0.id ? Object.assign({}, i, { sh: 'rect', rad }) : i));
+      },
+      up() { op = null; commit(items, { before }); },
+      cancel() { setLive(before); } };
+    renderOverlay();
+  }
   function startTidy(e) {
     grab(e);
     const sel0 = selItems().filter(i => i.k !== 'conn'); if (!canTidy(sel0)) return;
