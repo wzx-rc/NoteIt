@@ -1517,7 +1517,7 @@ const Board = (() => {
         const p = toW(ev.clientX, ev.clientY); let dx = p.x - w.x, dy = p.y - w.y;
         if (!this.moved) { if (Math.hypot(dx * view.k, dy * view.k) < 4) return; this.moved = true; cand = snapLines(ids); }
         guides = null;
-        if (bb0 && !ev.altKey && !reparent) { const s = snap(bb0, dx, dy, cand); dx = s.dx; dy = s.dy; guides = s.g; }
+        if (bb0 && !ev.altKey && !reparent && S.prefs.snap !== false) { const s = snap(bb0, dx, dy, cand); dx = s.dx; dy = s.dy; guides = s.g; }
         setLive(items.map(i => { const o = orig.get(i.id); if (!o) return i; if (o.k === 'conn') { const n = Object.assign({}, o); if (!o.a.id && !o.a.on) n.a = { x: o.a.x + dx, y: o.a.y + dy }; if (!o.b.id && !o.b.on) n.b = { x: o.b.x + dx, y: o.b.y + dy }; if (o.pts && o.pts.length && (!o.a.id || ids.has(o.a.id)) && (!o.b.id || ids.has(o.b.id))) n.pts = o.pts.map(q => [q[0] + dx, q[1] + dy]); return n; } return Object.assign({}, o, { x: o.x + dx, y: o.y + dy }); }));
         if (reparent) {
           const under = document.elementsFromPoint(ev.clientX, ev.clientY).map(el => el.closest && el.closest('.it.mind')).find(el => el && !ids.has(el.dataset.id));
@@ -1550,6 +1550,8 @@ const Board = (() => {
     for (const i of items) { if (skip.has(i.id) || i.k === 'conn' || i.k === 'ink' || i.hid || !boxHit(boxOf(i), vb)) continue; xs.push(i.x, i.x + i.w / 2, i.x + i.w); ys.push(i.y, i.y + i.h / 2, i.y + i.h); }
     return { xs, ys };
   }
+  /* the magnet at the bottom right: guides and snapping on or off while moving items (Alt held also skips them) */
+  function syncSnap() { const b = brEl && $('[data-a="snap"]', brEl); if (!b) return; const on = S.prefs.snap !== false; b.setAttribute('aria-pressed', on); b.title = 'Alignement auto (aimant) : ' + (on ? 'activé' : 'coupé'); }
   function snap(bb, dx, dy, c) {
     if (!c) return { dx, dy, g: null };
     const th = 6 / view.k, g = [];
@@ -2297,7 +2299,7 @@ const Board = (() => {
       <aside class="props"${open ? '' : ' hidden'} aria-label="Propriétés"><div class="phead"><button class="ptab" data-tab="style">Style</button><button class="ptab" data-tab="layers">Calques</button><button class="ptab" data-tab="media">Moodboard</button><button class="pclose" data-a="close" aria-label="Fermer">${icon('x', 'sm')}</button></div><div class="pbody"></div></aside>
       <div class="isl bl zoom"><button class="tl" data-a="zout" title="Dézoomer (−)" aria-label="Dézoomer">${icon('zout')}</button><button class="zv" data-a="z100" title="Revenir à 100 %">100 %</button><button class="tl" data-a="zin" title="Zoomer (+)" aria-label="Zoomer">${icon('zin')}</button></div>
       <div class="isl bl undo"><button class="tl" data-a="undo" title="Annuler (Ctrl Z)" aria-label="Annuler">${icon('undo')}</button><button class="tl" data-a="redo" title="Rétablir (Ctrl Y)" aria-label="Rétablir">${icon('redo')}</button></div>
-      <div class="isl br"><button class="tl" data-a="fit" title="Tout voir (F ou 0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
+      <div class="isl br"><button class="tl snapb" data-a="snap" title="Alignement auto (aimant) : activé" aria-label="Alignement automatique" aria-pressed="true">${icon('magnet')}</button><button class="tl" data-a="fit" title="Tout voir (F ou 0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
     wrap = container.firstElementChild; host = $('.bhost', wrap); world = $('.world', host);
     [framesL, edges, itemsL, edgesTop, labelsL] = world.children; ovl = $('.ovl', host); liveCv = $('.blive', host); meas = $('.measure', host);
     // mind maps are laid out from the measured size of their words: again once the fonts are in
@@ -2341,7 +2343,8 @@ const Board = (() => {
     qbarEl.onclick = ctxClick;
     undoEl.onclick = e => { const b = e.target.closest('[data-a]'); if (b) (b.dataset.a === 'undo' ? undo : redo)(); };
     zoomEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a; if (a === 'zin') zoomCenter(1.25); if (a === 'zout') zoomCenter(.8); if (a === 'z100') zoomTo(1); };
-    brEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; if (b.dataset.a === 'fit') fitAll(); if (b.dataset.a === 'help') helpModal(); };
+    brEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; if (b.dataset.a === 'fit') fitAll(); if (b.dataset.a === 'help') helpModal(); if (b.dataset.a === 'snap') { S.prefs.snap = S.prefs.snap === false; save(); syncSnap(); toast(S.prefs.snap ? 'Alignement automatique activé' : 'Alignement automatique coupé (Alt en glissant fait pareil)'); } };
+    syncSnap();
     ro = new ResizeObserver(() => { if (mounted) { ink.resize(); renderOverlay(); placeDock(); } }); ro.observe(host);
     tool = 'select'; setTool('select');
     items = relayout(items); reindex(); D.items = items;
