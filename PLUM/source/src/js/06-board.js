@@ -2140,7 +2140,7 @@ const Board = (() => {
       const dot = id === 'pen' ? `<span class="cdot" style="background:${penPref(penKind).c}"></span>` : id === 'note' ? `<span class="cdot" style="background:${noteColor}"></span>` : '';
       return `<button class="tl" data-tool="${id}" title="${title}${k ? ` (${k})` : ''}" aria-label="${title}" aria-pressed="${on}">${icon(ico)}${dot}${k ? `<kbd>${k}</kbd>` : ''}</button>`;
     })()).join('');
-    renderOpts();
+    renderOpts(); Studio.wheel();
   }
   /* the second bar: the options of the tool chosen in the first one, for what it is about to draw (ctxHTML with no selection) */
   function renderOpts() {
@@ -2207,7 +2207,7 @@ const Board = (() => {
     Studio.mount(wrap, { drawing: drawingTool, tool: () => tool, pen: () => penKind, setTool, space: () => D && D.sp,
       color: () => penPref(penKind).c,
       setColor(c, final) { S.prefs.pens[penKind].c = c; save(); const d = $('[data-tool="pen"] .cdot', toolsEl); if (d) d.style.background = c; if (final) refreshTools(); },
-      changed(partial) { propSig = ''; refreshTools(); if (!partial) Studio.sync(); } });
+      changed(partial) { propSig = ''; refreshTools(); if (!partial) { Studio.sync(); renderProps(); } } });
     host.addEventListener('pointerdown', onDown);
     host.addEventListener('mousedown', e => { if (fxPicking) e.preventDefault(); });
     host.addEventListener('dblclick', onDbl);

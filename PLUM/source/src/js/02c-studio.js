@@ -540,20 +540,33 @@ const Studio = (() => {
     chipEl.addEventListener('click', e => { if (e.target.closest('[data-copy]')) copyHex(chipEl.dataset.c); });
     addEventListener('resize', fit);
   }
-  function unmount() { removeEventListener('resize', fit); document.removeEventListener('keydown', onPlancheKey, true); if (root) root.remove(); root = null; rad = null; api = null; on = false; planche = false; }
+  function unmount() { lw = null; lwEl = null; removeEventListener('resize', fit); document.removeEventListener('keydown', onPlancheKey, true); if (root) root.remove(); root = null; rad = null; api = null; on = false; planche = false; }
   /* called by the board whenever the tool, the pen or its colour changed */
   function sync() {
     if (!root || !api) return;
     const was = on && !lite; on = api.drawing(); root.hidden = !on;
     // the simple mode keeps only the eyedropper's loupe: the brush is in the Style panel and the tool bar
     lite = !atelierFull(); root.classList.toggle('lite', lite);
+    liteWheel();
     if (!on || lite) { if (!on) hideLoupe(); if (planche) setPlanche(false, true); return; }
     renderBar(); renderFavs();
     if (!was || !dockEl.firstChild) renderDock(); else if (rad) rad.update();
     if (!was) renderStack(); else refresh('color');
   }
+  /* the simple mode's wheel (Colors.wheel), bottom left while a pen draws */
+  let lw = null, lwEl = null;
+  function liteWheel() {
+    const show = on && lite && !!PENS[api.tool()];
+    if (!lwEl) { lwEl = document.createElement('div'); lwEl.className = 'lw-dock'; root.append(lwEl); for (const t of ['pointerdown', 'wheel']) lwEl.addEventListener(t, e => e.stopPropagation(), { passive: true }); lwEl.addEventListener('keydown', e => { if (e.target.matches('input')) e.stopPropagation(); }); }
+    lwEl.hidden = !show; if (!show) return;
+    if (!lw) lw = Colors.wheel(lwEl, { get: () => api.color(), set: (c, final) => { api.setColor(c, final); if (final) api.changed(false); },
+      size: () => { const k = api.pen(); if (!PENS[k]) return null; const sz = penPref(k).s; return { t: sizeT(k, sz), label: sizeText(sz) }; },
+      setSize: (t, final) => { const k = api.pen(); if (!PENS[k]) return; if (!S.prefs.pens[k]) S.prefs.pens[k] = {}; S.prefs.pens[k].s = sizeOf(k, t); save(); api.changed(!final); } });
+    else lw.update();
+  }
   /* parts that depend on the colour follow it; harmony and variations keep their base while you pick inside them */
   function refresh(what) {
+    if (lite && lw && on) lw.update();
     if (!root || !on || lite) return;
     if (what === 'favs') { renderFavs(); if (rad) rad.update(); return; }
     if (what === 'palettes') { renderCard('palettes'); return; }
@@ -778,9 +791,9 @@ const Studio = (() => {
   }
 
   /* another theme: the wheel and the cards are built again in its look */
-  function retheme() { if (!root || !on || lite) return; renderBar(); renderFavs(); renderDock(); renderStack(); }
+  function retheme() { if (lite && lw) lw.update(); if (!root || !on || lite) return; renderBar(); renderFavs(); renderDock(); renderStack(); }
 
-  return { mount, unmount, sync, refresh, retheme, showLoupe, hideLoupe, picked, toggleCard, planche: v => { if (on && !lite) setPlanche(v === undefined ? !planche : v); }, get on() { return on; }, get isPlanche() { return planche; } };
+  return { mount, unmount, sync, refresh, retheme, wheel: () => { if (lite && lw && on) lw.update(); }, showLoupe, hideLoupe, picked, toggleCard, planche: v => { if (on && !lite) setPlanche(v === undefined ? !planche : v); }, get on() { return on; }, get isPlanche() { return planche; } };
 })();
 
 /* the radial picker in a popover, for notes */
