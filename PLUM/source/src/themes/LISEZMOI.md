@@ -85,3 +85,8 @@ Règles :
 
 Le code de l'app lit le thème par `theme()` (fiche du thème courant) et `themeColors(clé, base)`
 (un nuancier), définis dans `src/js/00-util.js` ; la mise en place est `applyTheme()` dans `src/js/03-app.js`.
+
+## Chargement du CSS (0.2.24)
+Seules les règles qui contiennent `[data-skin="<id>"]` sont chargées à la demande : la page ne garde que celles du thème actif.
+Une règle sans `data-skin` (aperçu `.sk-<id> .skin-pv`, variables `:root` d'images) reste chargée en permanence pour tous les thèmes.
+Préfixez donc chaque règle propre au thème par `[data-skin="<id>"]`.
