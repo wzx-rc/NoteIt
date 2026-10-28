@@ -29,7 +29,10 @@ const Note = (() => {
     body.innerHTML = html || '';
     for (const im of $$('img[data-asset]', body)) { const u = Assets.url(im.dataset.asset); if (u) im.src = u; else im.closest('figure') ? im.closest('figure').classList.add('missing') : im.remove(); }
     for (const f of $$('figure.ndraw', body)) drawFig(f, data);
+    // a link card left without a picture (preview failed before 0.2.24): asked again once per session
+    for (const f of $$('figure.nlink', body)) { const p = f.querySelector('.nl-pic'), u = f.dataset.url; if (!p || p.children.length || !u || retried.has(u)) continue; retried.add(u); if (!f.dataset.lk) f.dataset.lk = uid('lk'); setTimeout(() => unfurlCard(f.dataset.lk, u), 400); }
   }
+  const retried = new Set();
   function serialize() {
     const c = body.cloneNode(true);
     for (const im of $$('img[data-asset]', c)) im.removeAttribute('src');
@@ -314,16 +317,22 @@ const Note = (() => {
     queueMicrotask(() => unfurlCard(id, url));
     return `<figure class="nlink" contenteditable="false" data-url="${esc(url)}" data-lk="${id}"><span class="nl-pic"></span><span class="nl-t"><b>${esc(title || hostOf(url))}</b><small>${esc(title ? hostOf(url) : url.replace(/^https?:\/\/(www\.)?/i, ''))}</small></span></figure><p><br></p>`;
   }
+  /* the card's picture: the page's preview image, else its icon (site icon, then a favicon service), else its initial */
   async function unfurlCard(id, url) {
-    const m = await Net.meta(url); if (!m) return;
-    let asset = '';
-    if (m.image) { const b = await Net.blob(m.image); if (b && /^image\//.test(b.type)) { try { asset = (await importImage(b, 480)).id; } catch (e) {} } }
-    else if (m.isImage) { const b = await Net.blob(url); if (b && /^image\//.test(b.type)) { try { asset = (await importImage(b, 480)).id; } catch (e) {} } }
+    const m = await Net.meta(url), host = hostOf(url).replace(/^www\./, '');
+    const pic = async (u, max) => { if (!u) return ''; const b = await Net.blob(u); if (!b || !/^image\//.test(b.type) || b.size < 120) return ''; try { const t = await importImage(b, max); return t.w >= 16 ? t.id : ''; } catch (e) { return ''; } };
+    let asset = '', icon = '';
+    if (m && m.isImage) asset = await pic(url, 480);
+    else if (m && m.image) asset = await pic(m.image, 480);
+    if (!asset && Net.native()) icon = (m && await pic(m.icon, 128)) || await pic(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`, 128);
     if (!mounted) return;
     const f = PG.map(g => g.body.querySelector(`figure.nlink[data-lk="${id}"]`)).find(Boolean); if (!f) return;
-    const t = m.title && cleanTitle(m.title, isInsta(url)); if (t) f.querySelector('.nl-t b').textContent = t;
-    f.querySelector('.nl-t small').textContent = m.site || hostOf(url);
-    if (asset) f.querySelector('.nl-pic').innerHTML = `<img data-asset="${asset}" src="${Assets.url(asset)}" alt="">`;
+    const t = m && m.title && cleanTitle(m.title, isInsta(url)); if (t) f.querySelector('.nl-t b').textContent = t;
+    if (m) f.querySelector('.nl-t small').textContent = m.site || hostOf(url);
+    const box = f.querySelector('.nl-pic');
+    if (asset) box.innerHTML = `<img data-asset="${asset}" src="${Assets.url(asset)}" alt="">`;
+    else if (icon) box.innerHTML = `<img class="nl-ico" data-asset="${icon}" src="${Assets.url(icon)}" alt="">`;
+    else box.innerHTML = `<i class="nl-ini" style="background:${SPACE_COLORS[Math.floor(hashStr(host) * SPACE_COLORS.length)]}">${esc((host[0] || '?').toUpperCase())}</i>`;
     const g = PG.find(g => g.body.contains(f)); if (g) { const was = cur; use(g); saveBody(); saveBody.flush(); if (was && was !== g) use(was); }
   }
   /* 0.2.20: while dragging something in, a thin line shows where it will land, between the paragraphs */

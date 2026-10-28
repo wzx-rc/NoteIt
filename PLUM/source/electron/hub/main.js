@@ -126,7 +126,19 @@ ipcMain.handle('ai-transcribe', async (e, req) => {
 // Images and link previews dropped on a board: fetched here, where no CORS applies. Only http(s), images only
 // for bytes, and only the <head> tags for previews; no cookies are sent, so nothing behind a login is reached.
 const PREVIEW_UA = 'PLUM/' + app.getVersion() + ' (link preview)';
+// some sites answer only to a browser (bot walls, script-only pages): the preview is asked again as a browser
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 const MAX_IMAGE = 30 * 1024 * 1024;
+function linkIcon(html, base) {
+  let best = '', bs = -1;
+  for (const m of html.matchAll(/<link\b[^>]*>/gi)) {
+    const t = m[0], rel = /rel\s*=\s*["']([^"']+)["']/i.exec(t), href = /href\s*=\s*["']([^"']+)["']/i.exec(t);
+    if (!rel || !href || !/icon/i.test(rel[1]) || /mask-icon/i.test(rel[1])) continue;
+    const sz = /sizes\s*=\s*["'](\d+)/i.exec(t), sc = (/apple-touch/i.test(rel[1]) ? 1000 : 0) + (sz ? +sz[1] : 16) - (/\.svg(\?|$)/i.test(href[1]) ? 900 : 0);
+    if (sc > bs) { bs = sc; best = href[1]; }
+  }
+  try { return new URL(unEntity(best || '/favicon.ico'), base).href; } catch (err) { return ''; }
+}
 const unEntity = s => String(s).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 function metaTag(html, names) {
   for (const n of names) {
@@ -155,18 +167,23 @@ ipcMain.handle('fetch-url', async (e, req) => {
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
   try {
     if (as === 'meta') {
-      const r = await doFetch(url, { signal: ctl.signal, credentials: 'omit', headers: { 'User-Agent': PREVIEW_UA, Accept: 'text/html,application/xhtml+xml,image/*;q=0.8', 'Accept-Language': 'fr,en;q=0.8' } });
-      const type = (r.headers.get('content-type') || '').toLowerCase();
-      if (r.ok && type.startsWith('image/')) { ctl.abort(); return { ok: true, isImage: true }; }
-      if (!r.ok || !/html|xml/.test(type)) return { ok: false, status: r.status };
-      let html = Buffer.from(await r.arrayBuffer()).subarray(0, 1.5 * 1024 * 1024).toString('utf8');
-      const end = html.search(/<\/head>/i); if (end > 0) html = html.slice(0, end);
-      const t = /<title[^>]*>([^<]*)<\/title>/i.exec(html);
-      let image = metaTag(html, ['og:image:secure_url', 'og:image', 'og:image:url', 'twitter:image', 'twitter:image:src']);
-      try { if (image) image = new URL(image, r.url || url).href; } catch (err) { image = ''; }
-      return { ok: true, url: r.url || url, image: /^https?:/i.test(image) ? image : '', title: metaTag(html, ['og:title', 'twitter:title']) || (t ? unEntity(t[1]).trim() : ''), desc: metaTag(html, ['og:description', 'description', 'twitter:description']), site: metaTag(html, ['og:site_name']) };
+      const ask = async ua => {
+        const r = await doFetch(url, { signal: ctl.signal, credentials: 'omit', headers: { 'User-Agent': ua, Accept: 'text/html,application/xhtml+xml,image/*;q=0.8', 'Accept-Language': 'fr,en;q=0.8' } });
+        const type = (r.headers.get('content-type') || '').toLowerCase();
+        if (r.ok && type.startsWith('image/')) return { ok: true, isImage: true };
+        if (!r.ok || !/html|xml/.test(type)) return { ok: false, status: r.status };
+        let html = Buffer.from(await r.arrayBuffer()).subarray(0, 1.5 * 1024 * 1024).toString('utf8');
+        const end = html.search(/<\/head>/i); if (end > 0) html = html.slice(0, end);
+        const t = /<title[^>]*>([^<]*)<\/title>/i.exec(html), base = r.url || url;
+        let image = metaTag(html, ['og:image:secure_url', 'og:image', 'og:image:url', 'twitter:image', 'twitter:image:src']);
+        try { if (image) image = new URL(image, base).href; } catch (err) { image = ''; }
+        return { ok: true, url: base, image: /^https?:/i.test(image) ? image : '', icon: linkIcon(html, base), title: metaTag(html, ['og:title', 'twitter:title']) || (t ? unEntity(t[1]).trim() : ''), desc: metaTag(html, ['og:description', 'description', 'twitter:description']), site: metaTag(html, ['og:site_name']) };
+      };
+      let m = await ask(PREVIEW_UA).catch(() => null);
+      if (!m || !m.ok || (!m.isImage && !m.image)) { const b = await ask(BROWSER_UA).catch(() => null); if (b && b.ok && (!m || !m.ok || b.image || (b.title && !m.title))) m = b; }
+      return m || { ok: false };
     }
-    const r = await doFetch(url, { signal: ctl.signal, credentials: 'omit', headers: { Accept: 'image/avif,image/webp,image/png,image/*;q=0.9,*/*;q=0.5' } });
+    const r = await doFetch(url, { signal: ctl.signal, credentials: 'omit', headers: { 'User-Agent': BROWSER_UA, Accept: 'image/avif,image/webp,image/png,image/*;q=0.9,*/*;q=0.5' } });
     const type = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
     if (!r.ok || !type.startsWith('image/')) return { ok: false, status: r.status, type };
     if (+r.headers.get('content-length') > MAX_IMAGE) return { ok: false, error: 'size' };

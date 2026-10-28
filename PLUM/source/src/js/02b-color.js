@@ -14,7 +14,8 @@ const Colors = (() => {
   function remember(c) { if (!c) return; c = c.toUpperCase(); const r = recent().filter(x => x !== c); r.unshift(c); S.prefs.recent = r.slice(0, 10); save(); }
   const valid = s => /^#[0-9a-f]{6}$/i.test(s) ? s.toUpperCase() : /^#[0-9a-f]{3}$/i.test(s) ? ('#' + s.slice(1).split('').map(c => c + c).join('')).toUpperCase() : null;
 
-  /* open(anchor, { value, onPick(hex|null, final), none, above, align, keep })
+  /* open(anchor, { value, onPick(hex|null, final), none, noneLabel, above, align, keep, alpha: { value, set(a, final) } })
+     alpha adds an opacity slider under the colours (a shape's fill or outline, 0.2.24).
      The theme's 20 colours first (in the roles of SCHEME_NAMES; their numbers stay internal, 0.2.17), the last free colours used, and under
      "Couleur libre" a saturation / brightness square, a hue bar and the code. Picking a swatch closes it. */
   function open(anchor, o = {}) {
@@ -33,8 +34,11 @@ const Colors = (() => {
         <div class="cp-hue" role="slider" aria-label="Teinte"><i></i></div>
         <div class="cp-row"><span class="cp-cur"></span><input class="cp-hex" maxlength="7" spellcheck="false" aria-label="Code couleur">${typeof hasEyeDropper === 'function' && hasEyeDropper() ? `<button class="cp-ic" data-drop title="Pipette : prendre une couleur à l’écran" aria-label="Pipette">${icon('drop', 'sm')}</button>` : ''}</div>
       </div>
-      ${o.none ? `<button class="cp-none" data-none aria-pressed="${!cur}"><span class="sw fill-none"></span>Aucune couleur</button>` : ''}
+      ${o.none ? `<button class="cp-none" data-none aria-pressed="${!cur}"><span class="sw fill-none"></span>${esc(o.noneLabel || 'Aucune couleur')}</button>` : ''}
+      ${o.alpha ? `<label class="cp-alpha"><span>Opacité</span><input type="range" class="prange" min="0" max="1" step=".05" value="${o.alpha.value}" aria-label="Opacité"><b>${Math.round(o.alpha.value * 100)} %</b></label>` : ''}
     </div>`, { cls: 'cppop', above: o.above, align: o.align, focus: false });
+    const ar = p.querySelector('.cp-alpha input');
+    if (ar) { const lab = p.querySelector('.cp-alpha b'); ar.addEventListener('input', () => { lab.textContent = Math.round(ar.value * 100) + ' %'; o.alpha.set(+ar.value, false); }); ar.addEventListener('change', () => o.alpha.set(+ar.value, true)); }
     const svEl = p.querySelector('.cp-sv'), hueEl = p.querySelector('.cp-hue'), hexIn = p.querySelector('.cp-hex'), curEl = p.querySelector('.cp-cur');
     function paint() {
       svEl.style.setProperty('--h', hsv2hex(h, 1, 1));

@@ -1,7 +1,7 @@
 {
   "name": "notely-hub",
   "productName": "PLUM",
-  "version": "0.2.23-beta",
+  "version": "0.2.24-beta",
   "description": "Notes, tâches, dessin et boards façon Miro, avec pression de stylet",
   "main": "main.js",
   "author": "PLUM",

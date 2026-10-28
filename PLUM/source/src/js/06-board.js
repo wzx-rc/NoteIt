@@ -7,7 +7,7 @@ const Board = (() => {
   let host, world, framesL, edges, edgesTop, itemsL, labelsL, ovl, liveCv, ink, meas, wrap, toolsEl, optsEl, dockEl, trEl, propsEl, qbarEl, zoomEl, undoEl, brEl, hintEl;
   const view = { x: 0, y: 0, k: 1 };
   let tool = 'select', shapeKind = 'rect', penKind = 'pen', noteColor = SCHEME_BASE[14];
-  let sel = new Set(), editing = null, editSub = null, hist = [], fut = [], op = null, guides = null, marquee = null, attachHi = null, eraserAt = null;
+  let sel = new Set(), editing = null, editSub = null, hist = [], fut = [], op = null, guides = null, marquee = null, attachHi = null, attachSock = null, eraserAt = null;
   let spaceDown = false, penSeen = false, clip = null, raf = 0, propSig = '', qSig = '', lastClient = null, mounted = false, propsTab = 'style', propsHold = false, liveBefore = null;
   const touches = new Map(), nodes = new Map(), fitCache = new Map(), measCache = new Map();
   const MINK = .08, MAXK = 8;
@@ -330,7 +330,8 @@ const Board = (() => {
     let h = '';
     if (marquee) { const a = toS(marquee[0], marquee[1]), b = toS(marquee[2], marquee[3]); h += `<div class="marquee" style="left:${Math.min(a.x, b.x)}px;top:${Math.min(a.y, b.y)}px;width:${Math.abs(b.x - a.x)}px;height:${Math.abs(b.y - a.y)}px"></div>`; }
     if (guides) for (const g of guides) { if (g.v != null) { const p = toS(g.v, 0); h += `<div class="guide v" style="left:${p.x}px;top:0;bottom:0"></div>`; } else { const p = toS(0, g.h); h += `<div class="guide h" style="top:${p.y}px;left:0;right:0"></div>`; } }
-    if (attachHi) { const it = byId.get(attachHi); if (it) { const a = toS(it.x, it.y); h += `<div class="attach" style="left:${a.x - 4}px;top:${a.y - 4}px;width:${it.w * view.k + 8}px;height:${it.h * view.k + 8}px"></div>`; } }
+    if (attachHi) { const it = byId.get(attachHi); if (it) { const a = toS(it.x, it.y); h += `<div class="attach" style="left:${a.x - 4}px;top:${a.y - 4}px;width:${it.w * view.k + 8}px;height:${it.h * view.k + 8}px"></div>`;
+      if (op && (op.kind === 'conn' || op.kind === 'ep')) for (const [k, [fx, fy]] of Object.entries(SOCKS)) { const q = toS(it.x + fx * it.w, it.y + fy * it.h); h += `<div class="sock${attachSock === k ? ' on' : ''}" style="left:${q.x}px;top:${q.y}px"></div>`; } } }
     if (eraserAt && tool === 'eraser') { const r = 12; h += `<div class="erasecur" style="left:${eraserAt.x}px;top:${eraserAt.y}px;width:${r * 2}px;height:${r * 2}px"></div>`; }
     const list = selItems(), dragging = op && op.moved;
     if (list.length === 1 && list[0].k === 'conn') {
@@ -363,9 +364,10 @@ const Board = (() => {
         }
         // a dot inside the top-left corner of a rectangle: drag it to round the corners (0.2.23)
         if (one && one.k === 'shape' && (one.sh === 'rect' || one.sh === 'round') && !editing && (!dragging || op.kind === 'rad') && one.w * view.k > 56 && one.h * view.k > 56) {
-          const r = shapeRad(one.sh, one.w, one.h, one.rad) * view.k, d = r + RAD_OFF, q = toS(one.x, one.y);
-          h += `<div class="hdl crad" data-rad="1" title="Arrondir les angles · ${Math.round(r / view.k)} px" style="left:${q.x + d}px;top:${q.y + d}px"></div>`;
-          if (op && op.kind === 'rad') h += `<div class="radtip" style="left:${q.x + d + 14}px;top:${q.y + d + 14}px">${Math.round(r / view.k)}</div>`;
+          /* outside the top right corner, off the resize handles: pull it in towards the shape to round the corners */
+          const r = shapeRad(one.sh, one.w, one.h, one.rad) * view.k, q = toS(one.x + one.w, one.y), hx = q.x + RAD_OFF, hy = q.y - RAD_OFF;
+          h += `<div class="hdl crad" data-rad="1" title="Arrondir les angles · ${Math.round(r / view.k)} px : tirer vers la forme" style="left:${hx}px;top:${hy}px"></div>`;
+          if (op && op.kind === 'rad') h += `<div class="radtip" style="left:${hx + 12}px;top:${hy - 26}px">${Math.round(r / view.k)} px</div>`;
         }
         const tidy = canTidy(boxes) && (!dragging || op.kind === 'tidy') && !editing;
         if (tidy) h += `<div class="hdl tidy" data-tidy="1" title="Réorganiser : glissez à gauche ou à droite pour changer la largeur du bloc, cliquez pour ajuster. Ctrl + poignée d’échelle : le cadre change de ce côté et les images se réorganisent" style="left:${b.x + 20}px;top:${a.y - 20}px"><i></i><i></i><i></i><i></i></div>`;
@@ -500,7 +502,9 @@ const Board = (() => {
     const list = selItems(), notes = list.length ? list.every(i => i.k === 'note' || i.k === 'todo') : tool === 'note' || tool === 'todo';
     const it = list.find(i => (prop === 'fc' ? ['shape', 'note', 'todo'] : SC_KINDS).includes(i.k));
     const cur = it ? propValue(it, prop) : prop === 'fc' ? (tool === 'note' ? noteColor : BD().fc) : tool === 'conn' || tool === 'line' ? BD().csc : BD().sc;
-    Colors.open(btn, { value: cur, none: prop === 'fc' && !notes, onPick: (v, final) => { if (!v && notes) return; setProp(prop, v, !final); if (final) qSig = ''; } });
+    const ap = prop === 'fc' ? 'fo' : 'so', shp = list.find(i => i.k === 'shape');
+    Colors.open(btn, { value: cur, none: prop === 'fc' && !notes, onPick: (v, final) => { if (!v && notes) return; setProp(prop, v, !final); if (final) qSig = ''; },
+      alpha: shp ? { value: shp[ap] ?? 1, set: (a, final) => { setProp(ap, a, !final); if (final) qSig = ''; } } : null });
   }
   function ctxPop(id, btn) {
     const list = selItems(), c = ctxOf(list), { td, val, bd } = c;
@@ -510,7 +514,7 @@ const Board = (() => {
       + sec('Style', seg('dash', val('dash', bd.dash || '', 'shape', 'conn') || '', [['', pline('M4 8h32'), 'Continu'], ['dash', pline('M4 8h32', ' stroke-dasharray="6 4"'), 'Tirets'], ['dot', pline('M4 8h32', ' stroke-dasharray="1 4"'), 'Pointillés']], 'ic'))
       + sec('Tracé', seg('sty', val('sty', bd.sty || 'sketch', 'shape', 'conn'), [['clean', pline('M4 8h32'), 'Net'], ['sketch', pline('M4 9c6-3 12 2 18-1s8-2 14 0'), 'Croquis'], ['wild', pline('M4 10c4-6 8 4 12-2s6 6 10-2 6 4 10 0'), 'Fou']], 'ic'))
       + (c.has('shape') && (td ? bd.fc : list.some(i => i.k === 'shape' && i.fc)) ? sec('Remplissage', seg('fill', val('fill', bd.fill || 'solid', 'shape'), [['solid', 'Plein'], ['hachure', 'Hachures']])) : '')
-      + (!td && c.has('shape') ? opSlides(c.first('shape')) + radSlide(list) : '');
+      + (!td && c.has('shape') ? radSlide(list) : '');
     if (id === 'heads') h = (td ? '' : sec('Départ', seg('h0', val('h0', 'none', 'conn'), Object.keys(HEADS).map(k => [k, headIcon(k), HEADS[k]]), 'ic heads1')) + sec('Arrivée', seg('h1', val('h1', 'arrow', 'conn'), Object.keys(HEADS).map(k => [k, headIcon(k), HEADS[k]]), 'ic heads1')))
       + (td && tool === 'line' ? '' : sec('Tracé', seg('route', td ? bd.route || 'curve' : val('route', 'curve', 'conn'), [['curve', icon('conn'), 'Courbe'], ['straight', icon('line'), 'Droit'], ['elbow', icon('elbow'), 'Coudé']], 'ic')));
     if (id === 'text') {
@@ -535,7 +539,8 @@ const Board = (() => {
       if (id === 'shape' || id === 'frm') closePop();
     });
   }
-  const opSlides = it => it ? slide('fo', 'Opacité fond', it.fo ?? 1, 0, 1, .05, '%') + slide('so', 'Opacité contour', it.so ?? 1, 0, 1, .05, '%') : '';
+  /* the opacity of a shape's fill or outline, one thin line right under its colours (0.2.24) */
+  const opRow = (prop, v) => `<label class="prow"><span>Opacité</span><input type="range" class="prange" data-prop="${prop}" data-u="%" min="0" max="1" step=".05" value="${v}" aria-label="Opacité"><b class="pv" data-v="${prop}">${fmtV(v, '%')}</b></label>`;
   function radSlide(list) {
     const r = list.find(i => i.k === 'shape' && (i.sh === 'rect' || i.sh === 'round')); if (!r) return '';
     return slide('rad', 'Arrondi', Math.round(shapeRad(r.sh, r.w, r.h, r.rad)), 0, Math.round(Math.min(r.w, r.h) / 2), 1, 'px');
@@ -597,9 +602,10 @@ const Board = (() => {
     const val = (prop, def) => { if (td) return def; const it = first(); return propValue(list.find(i => propValue(i, prop) !== undefined) || it, prop) ?? def; };
     const scCur = td ? (T === 'conn' || T === 'line' ? bd.csc : bd.sc) : (list.some(i => ['shape', 'conn', 'text', 'ink', 'mind'].includes(i.k)) ? propValue(list.find(i => ['shape', 'conn', 'text', 'ink', 'mind'].includes(i.k)), 'sc') : bd.sc);
     const fcCur = td ? (T === 'note' ? noteColor : T === 'todo' ? '#FFFFFF' : bd.fc) : propValue(list.find(i => ['shape', 'note', 'todo'].includes(i.k)) || list[0], 'fc');
+    const shp = !td && list.find(i => i.k === 'shape');
     if (one && one.k === 'mind') out.push(sec('Branche', Colors.row(themeColors('mind', MIND_COLORS), one.c, 'sc') + btnRow([['mchild', 'plus', 'Idée', 'Ajouter une idée (Tab)'], one.parent ? ['msib', 'plus', 'Voisine', 'Ajouter une idée voisine (Entrée)'] : ['mtidy', 'wand', 'Équilibrer', 'Équilibrer les branches']])));
-    else if (want.sc) out.push(sec(has('ink') && only('ink') ? 'Couleur du trait' : has('text') && only('text') ? 'Couleur' : 'Contour', Colors.row(only('ink') ? themeColors('ink', INK_COLORS).slice(0, 5) : themeColors('stroke', STROKE_COLORS), scCur, 'sc')));
-    if (want.fc) out.push(sec(only('note', 'todo') || (td && (T === 'note' || T === 'todo')) ? 'Couleur' : 'Fond', Colors.row(only('note', 'todo') || (td && T === 'note') ? themeColors('note', NOTE_COLORS).slice(0, 5) : themeColors('fill', FILL_COLORS), fcCur, 'fc', { none: !(only('note', 'todo') || (td && (T === 'note' || T === 'todo'))) })));
+    else if (want.sc) out.push(sec(has('ink') && only('ink') ? 'Couleur du trait' : has('text') && only('text') ? 'Couleur' : 'Contour', Colors.row(only('ink') ? themeColors('ink', INK_COLORS).slice(0, 5) : themeColors('stroke', STROKE_COLORS), scCur, 'sc') + (shp ? opRow('so', shp.so ?? 1) : '')));
+    if (want.fc) out.push(sec(only('note', 'todo') || (td && (T === 'note' || T === 'todo')) ? 'Couleur' : 'Fond', Colors.row(only('note', 'todo') || (td && T === 'note') ? themeColors('note', NOTE_COLORS).slice(0, 5) : themeColors('fill', FILL_COLORS), fcCur, 'fc', { none: !(only('note', 'todo') || (td && (T === 'note' || T === 'todo'))) }) + (shp && shp.fc ? opRow('fo', shp.fo ?? 1) : '')));
     if (want.fill && (td ? bd.fc : true)) out.push(sec('Remplissage', seg('fill', val('fill', bd.fill), [['solid', `<svg viewBox="0 0 20 20" class="pl sq"><rect x="3" y="3" width="14" height="14" rx="2" fill="currentColor"/></svg>`, 'Plein'], ['hachure', `<svg viewBox="0 0 20 20" class="pl sq"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor"/><path d="M3 11l8-8M3 17L17 3M9 17l8-8" stroke="currentColor"/></svg>`, 'Hachures'], ['cross', `<svg viewBox="0 0 20 20" class="pl sq"><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="currentColor"/><path d="M3 11l8-8M9 17l8-8M3 9l8 8M9 3l8 8" stroke="currentColor"/></svg>`, 'Croisillons']], 'ic')));
     if (want.sw) out.push(sec(swLabel(+val('sw', bd.sw) || 2), seg('sw', val('sw', bd.sw), [[1, pline('M4 8h32', ' stroke-width="1.4"'), 'Fin'], [2, pline('M4 8h32', ' stroke-width="2.6"'), 'Moyen'], [4, pline('M4 8h32', ' stroke-width="4.2"'), 'Épais']], 'ic') + swSlide(+val('sw', bd.sw) || 2)));
     if (want.dash) out.push(sec('Style du trait', seg('dash', val('dash', bd.dash) || '', [['', pline('M4 8h32'), 'Continu'], ['dash', pline('M4 8h32', ' stroke-dasharray="6 4"'), 'Tirets'], ['dot', pline('M4 8h32', ' stroke-dasharray="1 4"'), 'Pointillés']], 'ic')));
@@ -613,7 +619,6 @@ const Board = (() => {
     if (want.bold) out.push(sec('Graisse', seg('bold', one ? !!one.bold : false, [[false, 'Normal'], [true, '<b>Gras</b>']])));
     if (one && one.k === 'image') out.push(sec('Image', seg('frm', one.frm || 'shadow', [['shadow', 'Ombre'], ['polaroid', 'Polaroïd'], ['square', 'Carré'], ['none', 'Simple']]) + btnRow([['cap', 'text', 'Légende'], Assets.has(one.asset) ? ['view', 'focus', 'Voir en grand'] : null, one.href ? ['src', 'ext', isInsta(one.href) ? 'Voir sur Instagram' : 'Page d’origine'] : null].filter(Boolean))));
     if (one && one.k === 'shape' && (one.sh === 'rect' || one.sh === 'round')) out.push(sec('Angles', seg('corner', shapeRad(one.sh, one.w, one.h, one.rad) > 0 ? 'round' : 'sharp', [['sharp', icon('rect'), 'Vifs'], ['round', icon('round'), 'Arrondis']], 'ic')), radSlide(list));
-    if (!td && list.some(i => i.k === 'shape')) out.push(opSlides(list.find(i => i.k === 'shape')));
     if (list.length && list.every(i => i.k === 'frame')) { const f = first(); out.push(sec('Titre du cadre', seg('ftitle', !f.nt, [[true, 'Affiché'], [false, 'Masqué']]) + (f.nt ? '' : `<div style="height:8px"></div>` + seg('tfs', f.tfs ?? 1, [[0, 'S'], [1, 'M'], [2, 'L'], [3, 'XL']])))); }
     if (want.op) { const o = one ? (one.op ?? 1) : (first().op ?? 1); out.push(sec(`Opacité <b class="pv" data-v="op">${Math.round(o * 100)} %</b>`, `<input type="range" class="prange" data-prop="op" min=".05" max="1" step=".05" value="${o}" aria-label="Opacité">`)); }
     if (list.length) {
@@ -1446,7 +1451,7 @@ const Board = (() => {
     if (tool === 'conn' || tool === 'line') { startConn(e, w, hit); return; }
   }
   function grab(e) { try { host.setPointerCapture(e.pointerId); } catch (_) {} }
-  function cancelOp() { if (op && op.cancel) op.cancel(); op = null; marquee = null; guides = null; attachHi = null; host.classList.remove('panning'); schedule(); }
+  function cancelOp() { if (op && op.cancel) op.cancel(); op = null; marquee = null; guides = null; attachHi = null; attachSock = null; host.classList.remove('panning'); schedule(); }
   function startPan(e, tapClear) {
     grab(e); host.classList.add('panning');
     const s = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; let moved = false;
@@ -1627,16 +1632,17 @@ const Board = (() => {
     return (x0, y0, W, H) => { const pos = tidyFit(list, x0, y0, Math.max(40, W), H == null ? null : Math.max(40, H), gap, area); return items.map(i => { const p = pos.get(i.id); if (!p) return i; const o = orig.get(i.id), n = Object.assign({}, i, p); if (o.k === 'note') n.fs = Math.max(6, Math.round(o.fs * p.w / o.w)); return n; }); };
   }
   /* the tidy handle moves along x only: the width of the block changes, the rows follow */
-  const RAD_OFF = 12;   // screen px between the corner (radius 0) and the radius dot
+  const RAD_OFF = 18;   // screen px from the top right corner, outwards, to the radius dot
   function startRadius(e) {
     grab(e);
     const it0 = selItems()[0]; if (!it0 || it0.k !== 'shape') return;
-    const before = items;
+    const before = items, r0 = shapeRad(it0.sh, it0.w, it0.h, it0.rad), x0 = e.clientX, y0 = e.clientY;
     op = { id: e.pointerId, kind: 'rad', moved: true,
       move(ev) {
         if (ev.pointerId !== this.id) return;
-        const p = toW(ev.clientX, ev.clientY), d = ((p.x - it0.x) + (p.y - it0.y)) / 2 - RAD_OFF / view.k;
-        const rad = Math.round(clamp(d, 0, Math.min(it0.w, it0.h) / 2));
+        /* towards the shape (left and down) rounds more, away from it less */
+        const d = ((x0 - ev.clientX) + (ev.clientY - y0)) / 2 / view.k;
+        const rad = Math.round(clamp(r0 + d, 0, Math.min(it0.w, it0.h) / 2));
         setLive(items.map(i => i.id === it0.id ? Object.assign({}, i, { sh: 'rect', rad }) : i));
       },
       up() { op = null; commit(items, { before }); },
@@ -1659,7 +1665,7 @@ const Board = (() => {
     const before = items;
     op = { id: e.pointerId, kind: 'ep', moved: true,
       move(ev) { const g = connGeom(c0, byId), o = end === 'a' ? g.pts[g.pts.length - 1] : g.pts[0]; setLive(replace(items, c0, { [end]: endFor(ev, c0, o, c0.id) })); },
-      up() { attachHi = null; op = null; commit(items, { before }); }, cancel() { attachHi = null; setLive(before); } };
+      up() { attachHi = null; attachSock = null; op = null; commit(items, { before }); }, cancel() { attachHi = null; setLive(before); } };
   }
   /* Ctrl + a handle of the selected connector: a new arrow branching off it at that spot, which stays on the curve */
   function startBranch(e) {
@@ -1713,10 +1719,19 @@ const Board = (() => {
   function endFor(ev, skip, o, own) {
     const p = toW(ev.clientX, ev.clientY);
     if (ev.ctrlKey || ev.metaKey) {
-      const id = underItem(ev, skip); attachHi = id;
+      const id = underItem(ev, skip); attachHi = id; attachSock = null;
       if (id) { const it = byId.get(id); return { id, fx: Math.round(clamp((p.x - it.x) / it.w, 0, 1) * 1000) / 1000, fy: Math.round(clamp((p.y - it.y) / it.h, 0, 1) * 1000) / 1000 }; }
     } else {
-      const id = attachTarget(ev, skip); attachHi = id; if (id) return { id };
+      const id = attachTarget(ev, skip); attachHi = id; attachSock = null;
+      if (id) {
+        /* near one of the four side sockets: the end sticks to that side's middle, else it picks the nearest side itself */
+        const it = byId.get(id); let best = null, bd = 26 / view.k;
+        for (const [k, [fx, fy]] of Object.entries(SOCKS)) { const d = Math.hypot(it.x + fx * it.w - p.x, it.y + fy * it.h - p.y); if (d < bd) { bd = d; best = k; } }
+        // or along a side, close to its edge: that side
+        if (!best) { const e = { n: Math.abs(p.y - it.y), s: Math.abs(p.y - it.y - it.h), w: Math.abs(p.x - it.x), e: Math.abs(p.x - it.x - it.w) }, k = Object.keys(e).reduce((a, b) => e[a] <= e[b] ? a : b); if (e[k] < 14 / view.k) best = k; }
+        if (best) { attachSock = best; return { id, fx: SOCKS[best][0], fy: SOCKS[best][1] }; }
+        return { id };
+      }
       // dropped on another arrow: a branch of it, at that spot of its curve
       const cid = underConn(ev, own);
       if (cid) { const cc = byId.get(cid), t = Math.round(connTOf(cc, byId, p.x, p.y) * 1000) / 1000, at = connPointAt(cc, byId, t); return { on: cid, t, x: at[0], y: at[1] }; }
@@ -1735,6 +1750,7 @@ const Board = (() => {
   /* Shift: a free end snaps to 15° steps around the other end */
   const snapAng = (o, p, on) => { if (!on) return p; const dx = p.x - o[0], dy = p.y - o[1], L = Math.hypot(dx, dy), a = Math.round(Math.atan2(dy, dx) / (Math.PI / 12)) * Math.PI / 12; return { x: o[0] + Math.cos(a) * L, y: o[1] + Math.sin(a) * L }; };
   const DIRS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
+  const SOCKS = { n: [.5, 0], e: [1, .5], s: [.5, 1], w: [0, .5] };
   const LINKABLE = it => it && !['conn', 'ink', 'mind'].includes(it.k);
   /* a new item next to this one, in that direction, linked by an arrow (Excalidraw's flowchart: Ctrl + arrow keys) */
   function quickNode(src, side) {
@@ -1758,12 +1774,12 @@ const Board = (() => {
     grab(e);
     if (!hit && !side) hit = attachTarget(e);
     const h = hit && byId.get(hit), pin = !side && (e.ctrlKey || e.metaKey) && h && bindable(h);
-    const from = pin ? { id: hit, fx: clamp((w.x - h.x) / h.w, 0, 1), fy: clamp((w.y - h.y) / h.h, 0, 1) } : h && h.k !== 'conn' && h.k !== 'ink' ? { id: hit } : { x: w.x, y: w.y };
+    const from = pin ? { id: hit, fx: clamp((w.x - h.x) / h.w, 0, 1), fy: clamp((w.y - h.y) / h.h, 0, 1) } : side && h && SOCKS[side] ? { id: hit, fx: SOCKS[side][0], fy: SOCKS[side][1] } : h && h.k !== 'conn' && h.k !== 'ink' ? { id: hit } : { x: w.x, y: w.y };
     const before = items, c = mkConn(from, { x: w.x, y: w.y }, connOpts()), o = h ? [h.x + h.w / 2, h.y + h.h / 2] : [w.x, w.y];
     let moved = false;
     op = { id: e.pointerId, kind: 'conn', moved: false,
       move(ev) { const p = toW(ev.clientX, ev.clientY); if (!moved && Math.hypot((p.x - w.x) * view.k, (p.y - w.y) * view.k) < 6) return; moved = true; setLive(before.concat(Object.assign({}, c, { b: endFor(ev, from.id ? { id: from.id } : null, o, c.id) }))); },
-      up() { attachHi = null; if (!moved) { if (side && h) { op = null; setLive(before); quickNode(h, side); return; } startPoly(c, from, before); return; } op = null; const last = items[items.length - 1]; commit(items, { before }); sel = new Set([last.id]); setTool('select'); },
+      up() { attachHi = null; attachSock = null; if (!moved) { if (side && h) { op = null; setLive(before); quickNode(h, side); return; } startPoly(c, from, before); return; } op = null; const last = items[items.length - 1]; commit(items, { before }); sel = new Set([last.id]); setTool('select'); },
       cancel() { attachHi = null; setLive(before); } };
   }
   /* point-by-point: each click adds a corner, a click on an item binds the end, Enter or double-click finishes, Escape cancels */
