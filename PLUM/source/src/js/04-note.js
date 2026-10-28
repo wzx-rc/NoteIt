@@ -160,8 +160,8 @@ const Note = (() => {
     if (y < 52) y = r.bottom + 10 - m.top;
     bub.style.left = clamp(x, 8, m.width - w - 8) + 'px'; bub.style.top = y + 'px';
   }
-  /* the marking menu of the selected text (right button): pressed, flick toward an item and let go; a plain right click
-     leaves it open to click. Up is always the last colour. Same look as the board's (.mmenu). */
+  /* the marking menu of the selected text (right button): pressed, flick toward an item and let go; a quick right click
+     opens a classic list instead (0.2.22). Up is always the last colour. Same look as the board's (.mmenu). */
   const MM_R = 64, MM_DEAD = 16;
   let mm = null;
   // four arms only (0.2.18): up the last colour, right bold, down italic, left underline
@@ -182,7 +182,7 @@ const Note = (() => {
   function closeMM() {
     if (!mm) return; mm.el.remove(); mm = null;
     removeEventListener('pointermove', mmMove, true); removeEventListener('pointerup', mmUp, true); removeEventListener('keydown', mmKey, true);
-    setTimeout(() => removeEventListener('contextmenu', mmCtx, true), 0);
+    setTimeout(() => removeEventListener('contextmenu', mmCtx, true), 250);
     bubQueue();
   }
   const mmCtx = ev => ev.preventDefault();
@@ -209,10 +209,16 @@ const Note = (() => {
     if (!mm || mm.sticky) return;
     mmTrack(ev);
     if (mm.hover >= 0) { ev.preventDefault(); mmRun(); return; }
-    if (!mm.moved) { mm.sticky = true; mmShow(); return; }   // a plain right click: the menu stays for a click
+    if (!mm.moved) { const items = mm.items, x = mm.mx, y = mm.my; closeMM(); mmList(items, x, y); return; }   // a quick right click: a classic menu (0.2.22)
     closeMM();
   }
   function mmKey(ev) { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closeMM(); } }
+  function mmList(items, x, y) {
+    const sel = getSelection(), rg = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+    if (bub) bub.hidden = true;
+    openPop({ left: x, right: x, top: y, bottom: y, width: 0, height: 0 }, items.map(it => ({ label: it.label, dot: it.sw,
+      run: () => { body.focus({ preventScroll: true }); if (rg) { sel.removeAllRanges(); sel.addRange(rg); } it.run(); } })), { cls: 'mmlist', focus: false });
+  }
   function mmRun() { const it = mm.items.find(i => i.dir === mm.hover); closeMM(); if (it) { body.focus({ preventScroll: true }); it.run(); } }
   /* « # », « ## », « - », « [] », « > » and « 1. » at the start of a line */
   function onKey(e) {

@@ -1386,16 +1386,13 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .mmenu { position: fixed; inset: 0; z-index: 1200; pointer-events: none; font: 500 12.5px/1 var(--font-ui, system-ui), system-ui, sans-serif; }
 .mmenu.sticky { pointer-events: auto; cursor: default; }
 .mmenu .mmg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.mmenu .mmg .ring { fill: none; stroke: rgba(236,236,226,.28); stroke-width: 1; }
-.mmenu .mmg .dot { fill: rgba(236,236,226,.8); }
-.mmenu .mmg line { stroke: rgba(255,226,102,.8); stroke-width: 1.2; }
-.mmenu .mmp { position: absolute; white-space: nowrap; padding: 4px 9px 5px; border-radius: 999px; background: rgba(34,36,42,.92); color: #E4E4E8; box-shadow: inset 0 0 0 1px rgba(110,114,124,.78), 0 4px 14px rgba(0,0,0,.28); letter-spacing: .1px; }
-.mmenu .mmp.hot { background: #FFE266; color: #1C1C1E; box-shadow: inset 0 0 0 1px #FFE266, 0 4px 14px rgba(0,0,0,.28); }
+.mmenu .mmg .ring { stroke: var(--line); stroke-width: 1.2; fill: color-mix(in oklab, var(--card) 60%, transparent); }
+.mmenu .mmg .dot { fill: var(--ink-3); }
+.mmenu .mmg line { stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; }
+.mmenu .mmp { position: absolute; white-space: nowrap; padding: 7px 11px; border-radius: 9px; background: var(--card); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow-2); transition: background .1s, color .1s; }
+.mmenu .mmp.hot { background: var(--accent); color: var(--on-accent, #fff); border-color: var(--accent); }
 .mmenu.sticky .mmp { cursor: pointer; }
-.mmenu .mmt { position: absolute; transform: translateX(-50%); color: rgba(236,236,226,.62); font-size: 11px; letter-spacing: .3px; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
-:root:not([data-resolved="dark"]) .mmenu .mmt { color: rgba(40,40,44,.6); text-shadow: none; }
-:root:not([data-resolved="dark"]) .mmenu .mmg .ring { stroke: rgba(40,40,44,.25); }
-:root:not([data-resolved="dark"]) .mmenu .mmg .dot { fill: rgba(40,40,44,.7); }
+.mmenu .mmt { position: absolute; transform: translateX(-50%); color: var(--ink-3); font-size: 11px; letter-spacing: .3px; padding: 2px 7px; border-radius: 6px; background: color-mix(in oklab, var(--card) 80%, transparent); }
 
 /* a tool dragged from the dock: its button follows the pointer, and over the board the item it will drop, at its real size */
 .tools .tl { touch-action: none; }
@@ -1415,13 +1412,13 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .tdrag .tdp b { font: 600 13px/1.2 var(--font-ui, system-ui), system-ui, sans-serif; }
 .tdragging .bhost { cursor: copy; }
 .mmenu .mmp { display: inline-flex; align-items: center; gap: 6px; }
-.mmenu .mmp i { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); flex: none; }
+.mmenu .mmp i { width: 11px; height: 11px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--card), 0 0 0 2.5px var(--line); flex: none; }
+.mmenu .mmp.hot i { box-shadow: 0 0 0 1.5px var(--on-accent, #fff); }
 .mmenu .mmp em { font-style: normal; opacity: .55; margin-left: 1px; font-size: 10px; }
 .mmenu .mmp.dim { opacity: .38; }
 .mmenu .mmp.dim.hot { opacity: .9; }
-.mmenu .mmg line.lv { stroke: rgba(255,226,102,.45); stroke-dasharray: 3 3; }
-.mmenu .mmt.sub { color: #FFE266; font-weight: 600; }
-:root:not([data-resolved="dark"]) .mmenu .mmt.sub { color: #9A7B00; }
+.mmenu .mmg line.lv { stroke: color-mix(in oklab, var(--accent) 50%, transparent); stroke-dasharray: 3 3; }
+.mmenu .mmt.sub { color: var(--accent); font-weight: 600; }
 
 /* Tableur on the board: a card of the theme (card, lines, ink, accent), its UI type, numbers in tabular figures on the right */
 .it.tsheet { display: flex; flex-direction: column; background: var(--card); border-radius: 10px; box-shadow: 0 0 0 1px var(--line), 0 6px 18px rgba(0,0,0,.06); overflow: hidden; font: 400 var(--sfs)/1 var(--font-ui); color: var(--ink); }
@@ -1848,13 +1845,6 @@ figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
 /* 0.2.17: check boxes follow the colour of their text, like bullets */
 .nbody ul.chk > li[style*="color"]:not([data-done])::before { border-color: currentColor; }
 /* 0.2.18: the note's marking menu in the theme's colours (the board keeps its own) */
-.nmm .mmg .ring { stroke: var(--line); stroke-width: 1.2; fill: color-mix(in oklab, var(--card) 60%, transparent); }
-.nmm .mmg .dot { fill: var(--ink-3); }
-.nmm .mmg line { stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; }
-.nmm .mmp { background: var(--card); color: var(--ink); font: 500 12.5px/1 var(--font-ui); padding: 7px 11px; border-radius: 9px; border: 1px solid var(--line); box-shadow: var(--shadow-2); transition: background .1s, color .1s; }
-.nmm .mmp i { width: 11px; height: 11px; box-shadow: 0 0 0 1.5px var(--card), 0 0 0 2.5px var(--line); }
-.nmm .mmp.hot { background: var(--accent); color: var(--on-accent, #fff); border-color: var(--accent); box-shadow: var(--shadow-2); }
-.nmm .mmp.hot i { box-shadow: 0 0 0 1.5px var(--on-accent, #fff); }
 /* 0.2.20: a link dropped in a note, as a small card (picture, page title, site) */
 .nbody figure.nlink { display: flex; align-items: stretch; gap: 0; width: min(100%, 440px); min-height: 64px; margin: 8px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--card); overflow: hidden; cursor: pointer; user-select: none; -webkit-user-select: none; transition: border-color .15s, box-shadow .15s; }
 .nbody figure.nlink:hover { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); box-shadow: var(--shadow-1); }
@@ -1881,3 +1871,7 @@ figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
 .mdr-pin[aria-pressed="true"] { color: var(--accent); }
 .mdr-pin[aria-pressed="true"] .i { transform: rotate(-30deg); }
 .mdr-pin .i { transition: transform .15s; }
+
+/* 0.2.22 quick right click: the marking menu items as a classic list */
+.pop.mmlist { min-width: 180px; }
+.pop.mmlist .mi small { margin-left: auto; color: var(--ink-3); }

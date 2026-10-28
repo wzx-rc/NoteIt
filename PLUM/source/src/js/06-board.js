@@ -454,17 +454,30 @@ const Board = (() => {
     g.push(ac.join(''));
     return g.join('<span class="vs"></span>');
   }
+  let connMeas = null;
+  function connBox(c) {
+    const g = connGeom(c, byId), pad = 10 + (c.sw || 2) * 2;
+    let x0 = Math.min(g.a[0], g.b[0]), y0 = Math.min(g.a[1], g.b[1]), x1 = Math.max(g.a[0], g.b[0]), y1 = Math.max(g.a[1], g.b[1]);
+    for (const p of g.pts || []) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+    try {
+      if (!connMeas) { const sv = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); sv.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden;visibility:hidden'); connMeas = document.createElementNS('http://www.w3.org/2000/svg', 'path'); sv.append(connMeas); document.body.append(sv); }
+      connMeas.setAttribute('d', g.d); const k = connMeas.getBBox(); if (k.width || k.height) { x0 = Math.min(x0, k.x); y0 = Math.min(y0, k.y); x1 = Math.max(x1, k.x + k.width); y1 = Math.max(y1, k.y + k.height); }
+    } catch (e) {}
+    return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
+  }
   function renderQuick(list, dragging) {
     const show = list.length && !dragging && !(op && op.kind === 'marquee') && !editing && !wrap.classList.contains('drawing');
     if (!show) { qbarEl.hidden = true; qSig = ''; return; }
     const html = ctxHTML(list);
     if (html !== qSig) { qSig = html; qbarEl.innerHTML = html; }
     qbarEl.hidden = false;
-    const bb = unionBox(list.filter(i => i.k !== 'conn')) || (() => { const g = connGeom(list[0], byId); return [Math.min(g.a[0], g.b[0]), Math.min(g.a[1], g.b[1]), Math.max(g.a[0], g.b[0]), Math.max(g.a[1], g.b[1])]; })();
-    const a = toS(bb[0], bb[1]), b = toS(bb[2], bb[3]), r = hostRect(), w = qbarEl.offsetWidth, hh = qbarEl.offsetHeight;
-    let x = (a.x + b.x) / 2 - w / 2, y = a.y - hh - 16;
-    if (y < 64) y = b.y + 16;
-    if (y + hh > r.height - 70) y = Math.max(64, a.y - hh - 16);
+    // the box of everything selected, arrows included with their curve, head and end handles (0.2.22)
+    let bb = unionBox(list.filter(i => i.k !== 'conn'));
+    for (const c of list.filter(i => i.k === 'conn')) { const q = connBox(c); bb = bb ? [Math.min(bb[0], q[0]), Math.min(bb[1], q[1]), Math.max(bb[2], q[2]), Math.max(bb[3], q[3])] : q; }
+    const a = toS(bb[0], bb[1]), b = toS(bb[2], bb[3]), r = hostRect(), w = qbarEl.offsetWidth, hh = qbarEl.offsetHeight, GAP = 26;
+    let x = (a.x + b.x) / 2 - w / 2, y = a.y - hh - GAP;
+    if (y < 64) y = b.y + GAP;
+    if (y + hh > r.height - 70) y = Math.max(64, a.y - hh - GAP);
     qbarEl.style.left = clamp(x, 8, Math.max(8, r.width - w - 8)) + 'px'; qbarEl.style.top = clamp(y, 8, Math.max(8, r.height - hh - 8)) + 'px';
   }
   /* a click in either bar */
@@ -2408,7 +2421,7 @@ const Board = (() => {
     el.addEventListener('pointerdown', e => mm && mmDown(e)); el.addEventListener('contextmenu', e => e.preventDefault());
     const items1 = hit ? mmItemItems(hit) : mmToolItems(toW(e.clientX, e.clientY));
     mm = { el, pid: e.pointerId, x: e.clientX, y: e.clientY, mx: e.clientX, my: e.clientY, hover: -1, shown: false, sticky: !!sticky, moved: false,
-      title: hit ? (sel.size > 1 ? sel.size + ' éléments' : KIND_NAMES[(byId.get(hit) || {}).k] || 'Élément') : 'Outils', items: items1, lvl1: null };
+      title: hit ? (sel.size > 1 ? sel.size + ' éléments' : KIND_NAMES[(byId.get(hit) || {}).k] || 'Élément') : 'Outils', items: items1, lvl1: null, quick: e.button === 2 };
     addEventListener('pointermove', mmMove, true); addEventListener('pointerup', mmUp, true); addEventListener('keydown', mmKey, true);
     if (sticky) mmShow(); else mm.t = setTimeout(() => mm && mmShow(), MM_DELAY);
   }
@@ -2460,7 +2473,14 @@ const Board = (() => {
     ev.preventDefault(); mmTrack(ev); if (!mm) return;
     if (mm.hover >= 0) { mmRun(); return; }
     if (mm.lvl1) { const p = mm.lvl1.parent; closeMarking(); if (p.run) { p.run(); schedule(); } return; }   // let go at the centre of level 2: the tool itself
+    if (mm.quick && !mm.moved) { const { items, mx, my } = mm; closeMarking(); mmList(items, mx, my); return; }   // a quick right click: a classic menu (0.2.22)
     closeMarking();
+  }
+  /* the same items as a plain drop-down list at (x, y); an item with options opens them as a second list */
+  function mmList(items, x, y) {
+    const at = { left: x, right: x, top: y, bottom: y, width: 0, height: 0 };
+    openPop(at, items.map(it => ({ label: it.label, dot: it.sw, small: it.sub ? '›' : it.on ? '•' : '',
+      run: () => { if (it.sub) { const sub = it.sub(); setTimeout(() => mmList(it.run ? [{ label: it.label, run: it.run }, ...sub] : sub, x, y), 0); return; } it.run && it.run(); schedule(); } })), { cls: 'mmlist', focus: false });
   }
   function mmDown(e) {
     e.preventDefault(); e.stopPropagation();
