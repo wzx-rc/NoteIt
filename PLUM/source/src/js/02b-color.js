@@ -15,12 +15,12 @@ const Colors = (() => {
   const valid = s => /^#[0-9a-f]{6}$/i.test(s) ? s.toUpperCase() : /^#[0-9a-f]{3}$/i.test(s) ? ('#' + s.slice(1).split('').map(c => c + c).join('')).toUpperCase() : null;
 
   /* open(anchor, { value, onPick(hex|null, final), none, above, align, keep })
-     The theme's 20 colours first (numbered, in the roles of SCHEME_NAMES), the last free colours used, and under
+     The theme's 20 colours first (in the roles of SCHEME_NAMES; their numbers stay internal, 0.2.17), the last free colours used, and under
      "Couleur libre" a saturation / brightness square, a hue bar and the code. Picking a swatch closes it. */
   function open(anchor, o = {}) {
     let cur = valid(o.value) || null, [h, s, v] = hex2hsv(cur || schemeHex(5) || '#4A72E8');
     const sch = scheme(), same = c => !!cur && c.toUpperCase() === cur;
-    const sw = (c, no) => `<button class="sw" data-c="${c}" style="--c:${c}" aria-pressed="${same(c)}" title="${no ? no + ' · ' + SCHEME_NAMES[no - 1] : c}" aria-label="${no ? 'Couleur ' + no + ', ' + SCHEME_NAMES[no - 1] : c}">${no ? `<i>${no}</i>` : ''}</button>`;
+    const sw = (c, no) => `<button class="sw" data-c="${c}" style="--c:${c}" aria-pressed="${same(c)}" title="${no ? SCHEME_NAMES[no - 1] : c}" aria-label="${no ? SCHEME_NAMES[no - 1] : c}"></button>`;
     const rec = recent().filter(c => !schemeNo(c)).slice(0, 10);
     const free = !!S.prefs.cpFree;
     const p = openPop(anchor, `<div class="cp">

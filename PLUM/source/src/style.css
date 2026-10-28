@@ -1840,3 +1840,5 @@ figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
 .bsz { position: absolute; z-index: 40; pointer-events: none; width: 0; height: 0; }
 .bsz i { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); border-radius: 50%; border: 1.5px solid; box-shadow: 0 0 0 1px rgb(255 255 255 / .8), inset 0 0 0 1px rgb(255 255 255 / .6); }
 .bsz b { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); font: 600 11px var(--font-ui); color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; box-shadow: var(--shadow-1, none); white-space: nowrap; }
+/* 0.2.17: check boxes follow the colour of their text, like bullets */
+.nbody ul.chk > li[style*="color"]:not([data-done])::before { border-color: currentColor; }

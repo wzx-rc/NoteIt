@@ -75,13 +75,43 @@ const Note = (() => {
   const TFONTS = [['pf-ui', 'Par défaut', 'var(--font-ui)'], ['pf-serif', 'Serif', '"Instrument Serif", "Iowan Old Style", Georgia, serif'], ['pf-mono', 'Mono', 'var(--font-mono)'], ['pf-hand', 'Manuscrite', 'var(--font-hand)']];
   const TSIZES = [['2', 'Petit', 13], ['3', 'Normal', 15], ['4', 'Grand', 18], ['5', 'Très grand', 22], ['6', 'Titre', 27]];
   const NOCOLOR = '#010203';
+  /* 0.2.17: the colour of the selection in one gesture (the last colour used), list bullets follow the text colour */
+  function colorSel(c) {
+    if (!selInBody()) ensureFocus();
+    try { document.execCommand('styleWithCSS', false, false); } catch (e) {}
+    document.execCommand('foreColor', false, c || NOCOLOR);
+    if (!c) for (const el of $$('font[color]', body)) if (el.getAttribute('color').toLowerCase() === NOCOLOR) { el.removeAttribute('color'); if (!el.attributes.length) el.replaceWith(...el.childNodes); }
+    afterColor(c); saveBody(); renderTool();
+  }
+  function afterColor(c) { if (c) { S.prefs.noteColor = c; save(); renderToolbar(); } if (bub) bub.innerHTML = ''; syncMarkers(); }
+  const lastColor = () => S.prefs.noteColor || schemeHex(6) || '#E5484D';
+  /* a bullet (or a check box) takes the colour its text starts with; an empty item the colour of the one above */
+  function syncMarkers(root = body) {
+    if (!root) return;
+    for (const li of $$('li', root)) {
+      const f = [...li.querySelectorAll('font[color]')].find(x => x.textContent.trim()), txt = li.textContent.trim();
+      let c = f && li.textContent.trim().startsWith(f.textContent.trim()) ? f.getAttribute('color') : '';
+      if (!txt) { const prev = li.previousElementSibling; c = (prev && prev.style.color) || ''; const ff = li.querySelector('font[color]'); if (ff) c = ff.getAttribute('color'); }
+      if (c) li.style.color = c; else li.style.removeProperty('color');
+      if (!li.getAttribute('style')) li.removeAttribute('style');
+    }
+  }
+  /* the colour buttons: a click applies the last colour, holding opens the colours */
+  function colorPress(btn, e) {
+    if (e.button > 0) return;
+    e.preventDefault();
+    let done = false;
+    const t = setTimeout(() => { done = true; textPop(btn); }, 380);
+    const up = ev => { removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); clearTimeout(t); if (done || ev.type === 'pointercancel' || !btn.contains(ev.target)) return; colorSel(lastColor()); };
+    addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+  }
   function textPop(btn) {
     const s0 = selInBody(), range = s0 && s0.rangeCount ? s0.getRangeAt(0).cloneRange() : null, k = btn.dataset.tx;
     const apply = f => { body.focus(); const sel = getSelection(); if (range) { sel.removeAllRanges(); sel.addRange(range); } else ensureFocus(); try { document.execCommand('styleWithCSS', false, false); } catch (e) {} f(); saveBody(); renderTool(); };
     const color = c => apply(() => {
       document.execCommand('foreColor', false, c || NOCOLOR);
       if (!c) for (const el of $$('font[color]', body)) if (el.getAttribute('color').toLowerCase() === NOCOLOR) { el.removeAttribute('color'); if (!el.attributes.length) el.replaceWith(...el.childNodes); }
-      if (c) { S.prefs.noteColor = c; save(); renderToolbar(); } if (bub) bub.innerHTML = '';
+      afterColor(c);
     });
     /* 0.2.16: the theme's 20 colours (n°1, the ink, is the default text colour), free colours kept on the « Récentes » line */
     if (k === 'color') { Colors.open(btn, { value: S.prefs.noteColor, none: true, onPick: (c, final) => { if (final) color(c && schemeNo(c) === 1 ? null : c); } }); return; }
@@ -101,16 +131,16 @@ const Note = (() => {
   let bub = null, bubDown = false, bubRaf = 0;
   const BUB = [['bold', 'B', 'Gras (Ctrl B)'], ['italic', '<i>I</i>', 'Italique (Ctrl I)'], ['underline', '<u>U</u>', 'Souligné (Ctrl U)'], ['strikeThrough', '<s>S</s>', 'Barré'], '|', 'color', '|', ['h2', 'T2', 'Titre'], ['mark', '#hl', 'Surligner'], '|', ['ul', '#list', 'Liste'], ['chk', '#chk', 'Cases à cocher']];
   function bubHTML() {
-    return BUB.map(x => x === '|' ? '<span class="vs"></span>' : x === 'color' ? `<button class="nb bc" data-tx="color" title="Couleur du texte" aria-label="Couleur du texte"><i style="--c:${S.prefs.noteColor || 'currentColor'}"></i></button>`
+    return BUB.map(x => x === '|' ? '<span class="vs"></span>' : x === 'color' ? `<button class="nb bc" data-tx="color" title="Couleur du texte : clic = dernière couleur, maintenir = choisir" aria-label="Couleur du texte"><i style="--c:${lastColor()}"></i></button>`
       : `<button class="nb" data-bc="${x[0]}" title="${x[2]}" aria-label="${x[2].replace(/ \(.*/, '')}">${x[1][0] === '#' ? icon(x[1].slice(1)) : `<span class="bt">${x[1]}</span>`}</button>`).join('');
   }
   function bubMount() {
     bub = document.createElement('div'); bub.className = 'nbub'; bub.setAttribute('role', 'toolbar'); bub.setAttribute('aria-label', 'Mise en forme de la sélection'); bub.hidden = true;
     $('#main').append(bub);
-    bub.addEventListener('pointerdown', e => e.preventDefault());
+    bub.addEventListener('pointerdown', e => { e.preventDefault(); const c = e.target.closest('[data-tx="color"]'); if (c) colorPress(c, e); });
     bub.addEventListener('click', e => {
       const b = e.target.closest('[data-bc]'); if (b) { cmd(b.dataset.bc); bubPlace(); return; }
-      const t = e.target.closest('[data-tx]'); if (t) textPop(t);
+      const t = e.target.closest('[data-tx]'); if (t && !e.detail) colorSel(lastColor());
     });
     document.addEventListener('selectionchange', bubQueue);
     addEventListener('pointerdown', bubPress, true); addEventListener('pointerup', bubRelease, true);
@@ -139,6 +169,61 @@ const Note = (() => {
     if (y < 52) y = r.bottom + 10 - m.top;
     bub.style.left = clamp(x, 8, m.width - w - 8) + 'px'; bub.style.top = y + 'px';
   }
+  /* the marking menu of the selected text (right button): pressed, flick toward an item and let go; a plain right click
+     leaves it open to click. Up is always the last colour. Same look as the board's (.mmenu). */
+  const MM_R = 86, MM_DEAD = 18;
+  let mm = null;
+  function mmItems() {
+    return [{ dir: 0, label: 'Dernière couleur', sw: lastColor(), run: () => colorSel(lastColor()) }, { dir: 1, label: 'Gras', run: () => cmd('bold') },
+      { dir: 2, label: 'Italique', run: () => cmd('italic') }, { dir: 3, label: 'Souligné', run: () => cmd('underline') }, { dir: 4, label: 'Surligner', run: () => cmd('mark') },
+      { dir: 5, label: 'Liste', run: () => cmd('ul') }, { dir: 6, label: 'Titre', run: () => cmd('h2') },
+      { dir: 7, label: 'Couleurs…', run: () => { const a = bub && !bub.hidden && $('.bc', bub) || $('[data-tx="color"]', tool); if (a) textPop(a); } }];
+  }
+  function openMM(e) {
+    closeMM();
+    const el = document.createElement('div'); el.className = 'mmenu nmm'; document.body.append(el);
+    el.addEventListener('contextmenu', ev => ev.preventDefault());
+    el.addEventListener('pointerdown', ev => { ev.preventDefault(); ev.stopPropagation(); if (!mm || !mm.sticky) return; mmTrack(ev); const p = ev.target.closest('.mmp'); if (p) mm.hover = +p.dataset.dir; if (mm.hover >= 0 && ev.button === 0) mmRun(); else closeMM(); });
+    mm = { el, x: clamp(e.clientX, 130, innerWidth - 130), y: clamp(e.clientY, MM_R, innerHeight - MM_R), mx: e.clientX, my: e.clientY, hover: -1, sticky: false, moved: false, items: mmItems() };
+    if (bub) bub.hidden = true;
+    addEventListener('pointermove', mmMove, true); addEventListener('pointerup', mmUp, true); addEventListener('keydown', mmKey, true); addEventListener('contextmenu', mmCtx, true);
+    mmShow();
+  }
+  function closeMM() {
+    if (!mm) return; mm.el.remove(); mm = null;
+    removeEventListener('pointermove', mmMove, true); removeEventListener('pointerup', mmUp, true); removeEventListener('keydown', mmKey, true);
+    setTimeout(() => removeEventListener('contextmenu', mmCtx, true), 0);
+    bubQueue();
+  }
+  const mmCtx = ev => ev.preventDefault();
+  function mmShow() {
+    const dx = mm.mx - mm.x, dy = mm.my - mm.y;
+    mm.el.classList.toggle('sticky', mm.sticky);
+    let h = `<svg class="mmg"><circle cx="${mm.x}" cy="${mm.y}" r="${MM_DEAD}" class="ring"/>${mm.hover >= 0 ? `<line x1="${mm.x}" y1="${mm.y}" x2="${mm.x + dx}" y2="${mm.y + dy}"/>` : ''}<circle cx="${mm.x}" cy="${mm.y}" r="5" class="dot"/></svg><span class="mmt" style="left:${mm.x}px;top:${mm.y + 26}px">Texte</span>`;
+    for (const it of mm.items) {
+      const a = it.dir * Math.PI / 4, sx = Math.sin(a), px = mm.x + sx * MM_R, py = mm.y - Math.cos(a) * MM_R * .82;
+      const tx = sx > .3 ? 'translate(-8px,-50%)' : sx < -.3 ? 'translate(calc(8px - 100%),-50%)' : 'translate(-50%,-50%)';
+      h += `<span class="mmp${it.dir === mm.hover ? ' hot' : ''}" data-dir="${it.dir}" style="left:${px}px;top:${py}px;transform:${tx}">${it.sw ? `<i style="background:${it.sw}"></i>` : ''}${esc(it.label)}</span>`;
+    }
+    mm.el.innerHTML = h;
+  }
+  function mmTrack(ev) {
+    mm.mx = ev.clientX; mm.my = ev.clientY;
+    const dx = mm.mx - mm.x, dy = mm.my - mm.y, far = Math.hypot(dx, dy) > MM_DEAD;
+    if (far) mm.moved = true;
+    const h = far ? (Math.round(Math.atan2(dx, -dy / .82) / (Math.PI / 4)) + 8) % 8 : -1;
+    if (h !== mm.hover) { mm.hover = h; mmShow(); } else if (h >= 0 && !mm.sticky) mmShow();   // the line follows the pointer while flicking
+  }
+  function mmMove(ev) { if (mm) mmTrack(ev); }
+  function mmUp(ev) {
+    if (!mm || mm.sticky) return;
+    mmTrack(ev);
+    if (mm.hover >= 0) { ev.preventDefault(); mmRun(); return; }
+    if (!mm.moved) { mm.sticky = true; mmShow(); return; }   // a plain right click: the menu stays for a click
+    closeMM();
+  }
+  function mmKey(ev) { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closeMM(); } }
+  function mmRun() { const it = mm.items.find(i => i.dir === mm.hover); closeMM(); if (it) { body.focus({ preventScroll: true }); it.run(); } }
   /* « # », « ## », « - », « [] », « > » and « 1. » at the start of a line */
   function onKey(e) {
     if (ndSel && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); ndAction(cur, ndSel, 'del'); return; }
@@ -451,7 +536,7 @@ const Note = (() => {
   function onToolClick(e) {
     const m = e.target.closest('[data-mode]'); if (m) { setMode(m.dataset.mode); return; }
     const c = e.target.closest('[data-cmd]'); if (c) { if (c.dataset.cmd === 'dictate') dictateHere(c); else cmd(c.dataset.cmd); return; }
-    const tx = e.target.closest('[data-tx]'); if (tx) { textPop(tx); return; }
+    const tx = e.target.closest('[data-tx]'); if (tx) { if (tx.dataset.tx !== 'color') textPop(tx); else if (!e.detail) colorSel(lastColor()); return; }
     const p = e.target.closest('[data-pen]'); if (p) { pen = p.dataset.pen; if (mode !== 'draw') setMode('draw'); else renderToolbar(); return; }
     const sw = e.target.closest('[data-col]'); if (sw) { S.prefs.pens[pen].c = sw.dataset.col; save(); renderToolbar(); return; }
     const wh = e.target.closest('[data-wheel]'); if (wh) { radialPop(wh, { get: () => penPref(pen).c, set: (v, final) => { S.prefs.pens[pen].c = v; save(); const cur = $('[data-wheel]', tool); if (cur) cur.style.background = v; } }); return; }
@@ -489,7 +574,7 @@ const Note = (() => {
     g.data = pageData(g.i);
     const b = g.body;
     b.addEventListener('focusin', () => use(g));
-    b.addEventListener('input', () => { use(g); saveBody(); wrap.classList.add('typing'); });
+    b.addEventListener('input', () => { use(g); syncMarkers(b); saveBody(); wrap.classList.add('typing'); });
     b.addEventListener('keydown', onKey);
     b.addEventListener('keyup', renderTool); b.addEventListener('mouseup', renderTool);
     b.addEventListener('paste', onPaste);
@@ -500,6 +585,7 @@ const Note = (() => {
     });
     b.addEventListener('dblclick', e => { const im = e.target.closest('figure img'); if (im && im.src) { const lb = document.createElement('div'); lb.className = 'lightbox'; lb.innerHTML = `<img src="${im.src}" alt="">`; lb.onclick = () => lb.remove(); document.body.append(lb); } });
     b.addEventListener('pointerdown', e => {
+      if (mode === 'text' && e.pointerType === 'mouse' && e.button === 2) { const s = getSelection(); if (s.rangeCount && !s.isCollapsed && b.contains(s.anchorNode) && s.toString().trim()) { e.preventDefault(); use(g); openMM(e); } return; }
       if (mode !== 'text' || (e.pointerType === 'mouse' && e.button > 0)) return;
       const f = e.target.closest('figure.ndraw'); if (!f) { if (ndSel) ndPick(null); return; }
       e.preventDefault(); use(g);
@@ -603,7 +689,7 @@ const Note = (() => {
     use(PG[0]);
     renderSub(); renderToolbar();
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
-    tool.addEventListener('pointerdown', e => { if (e.target.closest('[data-cmd],[data-tx]')) e.preventDefault(); });
+    tool.addEventListener('pointerdown', e => { const c = e.target.closest('[data-tx="color"]'); if (c) { colorPress(c, e); return; } if (e.target.closest('[data-cmd],[data-tx]')) e.preventDefault(); });
     tool.addEventListener('click', onToolClick);
     bubMount();
     wrap.addEventListener('click', e => {
@@ -629,7 +715,7 @@ const Note = (() => {
   function flush() { if (!mounted) return; saveBody.flush(); }
   function unmount() {
     if (!mounted) return;
-    finalizeDrawing(); flush(); mounted = false; bubUnmount();
+    closeMM(); finalizeDrawing(); flush(); mounted = false; bubUnmount();
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onCancel);
     if (ro) ro.disconnect(); if (liveBox) liveBox.remove(); if (view) view.removeEventListener('scroll', onScroll);
     D = null; PG = []; cur = null; P = null; view = null;
