@@ -51,7 +51,7 @@ const Note = (() => {
     switch (c) {
       case 'h1': case 'h2': case 'h3': document.execCommand('formatBlock', false, blk && blk.tagName === c.toUpperCase() ? 'p' : c); break;
       case 'p': document.execCommand('formatBlock', false, 'p'); break;
-      case 'bold': case 'italic': document.execCommand(c); break;
+      case 'bold': case 'italic': case 'underline': case 'strikeThrough': document.execCommand(c); break;
       case 'ul': { const ul = s && s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentNode).closest('ul'); if (ul && ul.classList.contains('chk')) { ul.classList.remove('chk'); break; } document.execCommand('insertUnorderedList'); break; }
       case 'chk': {
         const el = s && s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentNode), ul = el && el.closest('ul');
@@ -81,21 +81,63 @@ const Note = (() => {
     const color = c => apply(() => {
       document.execCommand('foreColor', false, c || NOCOLOR);
       if (!c) for (const el of $$('font[color]', body)) if (el.getAttribute('color').toLowerCase() === NOCOLOR) { el.removeAttribute('color'); if (!el.attributes.length) el.replaceWith(...el.childNodes); }
-      if (c) { S.prefs.noteColor = c; save(); renderToolbar(); }
+      if (c) { S.prefs.noteColor = c; save(); renderToolbar(); } if (bub) bub.innerHTML = '';
     });
-    if (k === 'color' && btn.dataset.wheel) { radialPop(btn, { get: () => S.prefs.noteColor || '#E03131', set: (c, final) => { if (final) color(c); } }); return; }
+    /* 0.2.16: the theme's 20 colours (n°1, the ink, is the default text colour), free colours kept on the « Récentes » line */
+    if (k === 'color') { Colors.open(btn, { value: S.prefs.noteColor, none: true, onPick: (c, final) => { if (final) color(c && schemeNo(c) === 1 ? null : c); } }); return; }
     const html = k === 'font' ? TFONTS.map(([v, l, ff]) => `<button class="mi" data-v="${v}"><span style="font-family:${ff};font-size:16px">${l}</span></button>`).join('')
       : k === 'size' ? TSIZES.map(([v, l, px]) => `<button class="mi" data-v="${v}"><span style="font-size:${px}px">${l}</span></button>`).join('')
-      : `<div class="tc-grid">${themeColors('ink', INK_COLORS).slice(0, 8).map(c => `<button class="sw" data-v="${c}" style="background:${c}" aria-label="Couleur ${c}"></button>`).join('')}</div><div class="msep"></div><button class="mi" data-v="">${icon('x', 'sm')}<span>Couleur par défaut</span></button><button class="mi" data-v="wheel">${icon('wheel', 'sm')}<span>Autre couleur…</span></button>`;
+      : '';
     const pop = openPop(btn, html, { cls: 'tpop', focus: false });
     pop.addEventListener('pointerdown', e => e.preventDefault());
     pop.addEventListener('click', e => {
       const b = e.target.closest('[data-v]'); if (!b) return; const v = b.dataset.v; closePop();
       if (k === 'font') apply(() => document.execCommand('fontName', false, v));
       else if (k === 'size') apply(() => document.execCommand('fontSize', false, v));
-      else if (v === 'wheel') { btn.dataset.wheel = '1'; textPop(btn); delete btn.dataset.wheel; }
       else color(v);
     });
+  }
+  /* the selection bar: a small toolbar over the selected text, gone as soon as the selection is (like Notion or Miro) */
+  let bub = null, bubDown = false, bubRaf = 0;
+  const BUB = [['bold', 'B', 'Gras (Ctrl B)'], ['italic', '<i>I</i>', 'Italique (Ctrl I)'], ['underline', '<u>U</u>', 'Souligné (Ctrl U)'], ['strikeThrough', '<s>S</s>', 'Barré'], '|', 'color', '|', ['h2', 'T2', 'Titre'], ['mark', '#hl', 'Surligner'], '|', ['ul', '#list', 'Liste'], ['chk', '#chk', 'Cases à cocher']];
+  function bubHTML() {
+    return BUB.map(x => x === '|' ? '<span class="vs"></span>' : x === 'color' ? `<button class="nb bc" data-tx="color" title="Couleur du texte" aria-label="Couleur du texte"><i style="--c:${S.prefs.noteColor || 'currentColor'}"></i></button>`
+      : `<button class="nb" data-bc="${x[0]}" title="${x[2]}" aria-label="${x[2].replace(/ \(.*/, '')}">${x[1][0] === '#' ? icon(x[1].slice(1)) : `<span class="bt">${x[1]}</span>`}</button>`).join('');
+  }
+  function bubMount() {
+    bub = document.createElement('div'); bub.className = 'nbub'; bub.setAttribute('role', 'toolbar'); bub.setAttribute('aria-label', 'Mise en forme de la sélection'); bub.hidden = true;
+    $('#main').append(bub);
+    bub.addEventListener('pointerdown', e => e.preventDefault());
+    bub.addEventListener('click', e => {
+      const b = e.target.closest('[data-bc]'); if (b) { cmd(b.dataset.bc); bubPlace(); return; }
+      const t = e.target.closest('[data-tx]'); if (t) textPop(t);
+    });
+    document.addEventListener('selectionchange', bubQueue);
+    addEventListener('pointerdown', bubPress, true); addEventListener('pointerup', bubRelease, true);
+  }
+  function bubUnmount() {
+    document.removeEventListener('selectionchange', bubQueue);
+    removeEventListener('pointerdown', bubPress, true); removeEventListener('pointerup', bubRelease, true);
+    if (bub) bub.remove(); bub = null;
+  }
+  // while the mouse is selecting, the bar waits for the release
+  function bubPress(e) { if (bub && !bub.contains(e.target) && !(e.target.closest && e.target.closest('.pop'))) { bubDown = true; bub.hidden = true; } }
+  function bubRelease() { if (bubDown) { bubDown = false; bubQueue(); } }
+  function bubQueue() { cancelAnimationFrame(bubRaf); bubRaf = requestAnimationFrame(bubPlace); }
+  function bubPlace() {
+    if (!bub || !mounted) return;
+    const s = getSelection(), g = s.rangeCount && !s.isCollapsed && PG.find(g => g.body.contains(s.anchorNode) && g.body.contains(s.focusNode));
+    if (!g || mode !== 'text' || bubDown || !s.toString().trim()) { if (!(popEl && popEl.classList.contains('cppop'))) bub.hidden = true; return; }
+    if (g !== cur) use(g);
+    const r = s.getRangeAt(0).getBoundingClientRect(), m = $('#main').getBoundingClientRect();
+    if (!r.width && !r.height) { bub.hidden = true; return; }
+    if (bub.hidden || !bub.childElementCount) bub.innerHTML = bubHTML();
+    bub.hidden = false;
+    for (const b of $$('[data-bc]', bub)) { let on = false; try { on = ['bold', 'italic', 'underline', 'strikeThrough'].includes(b.dataset.bc) && document.queryCommandState(b.dataset.bc); } catch (e) {} b.setAttribute('aria-pressed', on); }
+    const w = bub.offsetWidth, h = bub.offsetHeight;
+    let x = r.left + r.width / 2 - w / 2 - m.left, y = r.top - h - 10 - m.top;
+    if (y < 52) y = r.bottom + 10 - m.top;
+    bub.style.left = clamp(x, 8, m.width - w - 8) + 'px'; bub.style.top = y + 'px';
   }
   /* « # », « ## », « - », « [] », « > » and « 1. » at the start of a line */
   function onKey(e) {
@@ -563,6 +605,7 @@ const Note = (() => {
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
     tool.addEventListener('pointerdown', e => { if (e.target.closest('[data-cmd],[data-tx]')) e.preventDefault(); });
     tool.addEventListener('click', onToolClick);
+    bubMount();
     wrap.addEventListener('click', e => {
       const a = e.target.closest('[data-pga]'); if (!a) return;
       const k = a.dataset.pga;
@@ -582,11 +625,11 @@ const Note = (() => {
     if (old) { finalizeDrawing(); use(PG[0]); }
   }
   /* themes can mark the toolbar once the note scrolls under it (.scrolled) and dim it while typing (.typing, cleared by a mouse move) */
-  function onScroll() { if (mounted) wrap.classList.toggle('scrolled', view.scrollTop > 4); }
+  function onScroll() { if (mounted) { wrap.classList.toggle('scrolled', view.scrollTop > 4); if (bub && !bub.hidden) bubQueue(); } }
   function flush() { if (!mounted) return; saveBody.flush(); }
   function unmount() {
     if (!mounted) return;
-    finalizeDrawing(); flush(); mounted = false;
+    finalizeDrawing(); flush(); mounted = false; bubUnmount();
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onCancel);
     if (ro) ro.disconnect(); if (liveBox) liveBox.remove(); if (view) view.removeEventListener('scroll', onScroll);
     D = null; PG = []; cur = null; P = null; view = null;

@@ -1801,3 +1801,18 @@ figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
 .dcard .meta.where { flex-wrap: wrap; row-gap: 4px; }
 .dcard .meta.where b { flex: 1; }
 .dcard .meta.where small { flex-basis: 100%; margin-left: 15px; display: flex; align-items: center; }
+
+/* ---------- 0.2.16: the selection bar of notes ---------- */
+.nbub { position: absolute; z-index: 60; display: flex; align-items: center; gap: 1px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-2); animation: nbubIn .12s ease-out; }
+.nbub[hidden] { display: none; }
+.nbub .nb { height: 30px; min-width: 30px; padding: 0 6px; border-radius: 8px; }
+.nbub .nb:hover { background: var(--sunk); color: var(--ink); }
+.nbub .nb[aria-pressed="true"] { background: color-mix(in oklab, var(--accent) 16%, transparent); color: var(--accent); }
+.nbub .nb .i { width: 17px; height: 17px; }
+.nbub .bt { font-size: 14.5px; font-weight: 700; font-family: var(--font-ui); line-height: 1; }
+.nbub .bt i, .nbub .bt u, .nbub .bt s { font-weight: 600; }
+.nbub .bc i { width: 17px; height: 17px; border-radius: 50%; background: conic-gradient(from 0deg, #E5484D, #F5A524, #F2D23D, #2E9E6A, #22A6B3, #5B7CFA, #8B76FF, #EC6A9C, #E5484D); display: grid; place-items: center; }
+.nbub .bc i::after { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1.5px var(--card); }
+.nbub .vs { width: 1px; height: 18px; margin: 0 4px; background: var(--line); }
+@keyframes nbubIn { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { .nbub { animation: none; } }
