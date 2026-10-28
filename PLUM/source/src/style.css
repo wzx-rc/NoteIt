@@ -1794,6 +1794,11 @@ figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
 #spaces .nv.sub .i { opacity: .85; }
 #spaces #pages:not(:empty) { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--side-line, rgba(127,127,127,.2)); }
 #spaces .pempty { line-height: 1.45; padding: 4px 10px 2px; }
+/* the space's pages: history under the creation links, one step in (a tab), smaller and in a dimmer grey */
+#spaces #pages { margin-left: 18px; }
+#spaces #pages .nv.pg { height: 26px; font-size: 12px; gap: 6px; color: color-mix(in oklab, var(--side-mute) 75%, var(--side-text)); }
+#spaces #pages .nv.pg .i { width: 15px; height: 15px; opacity: .65; }
+#spaces #pages .nv.pg:hover, #spaces #pages .nv.pg[aria-current="page"] { color: var(--side-text); }
 .filing [data-spdrop] { outline: 1px dashed color-mix(in oklab, var(--accent) 45%, transparent); outline-offset: -2px; }
 .filing [data-spdrop].spdrop-on { outline: 2px solid var(--accent); background: color-mix(in oklab, var(--accent) 16%, transparent); }
 .dcard[draggable="true"] { -webkit-user-drag: element; }
