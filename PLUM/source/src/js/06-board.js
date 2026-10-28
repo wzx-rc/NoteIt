@@ -482,7 +482,7 @@ const Board = (() => {
     // the box of everything selected, arrows included with their curve, head and end handles (0.2.22)
     let bb = unionBox(list.filter(i => i.k !== 'conn'));
     for (const c of list.filter(i => i.k === 'conn')) { const q = connBox(c); bb = bb ? [Math.min(bb[0], q[0]), Math.min(bb[1], q[1]), Math.max(bb[2], q[2]), Math.max(bb[3], q[3])] : q; }
-    const a = toS(bb[0], bb[1]), b = toS(bb[2], bb[3]), r = hostRect(), w = qbarEl.offsetWidth, hh = qbarEl.offsetHeight, GAP = 26;
+    const a = toS(bb[0], bb[1]), b = toS(bb[2], bb[3]), r = hostRect(), w = qbarEl.offsetWidth, hh = qbarEl.offsetHeight, GAP = 42;   // clears the side dots and the radius handle above the selection
     let x = (a.x + b.x) / 2 - w / 2, y = a.y - hh - GAP;
     if (y < 64) y = b.y + GAP;
     if (y + hh > r.height - 70) y = Math.max(64, a.y - hh - GAP);
