@@ -786,7 +786,7 @@ const Board = (() => {
     ], { align: 'right' });
   }
   function helpModal() {
-    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O', 'Rectangle · Ellipse'], ['A', 'Flèche'], ['L', 'Ligne'], ['D ou P', 'Dessin'], ['Alt + clic droit glissé', 'Taille du pinceau (en dessin)'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K · Alt maintenu', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
+    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O', 'Rectangle · Ellipse'], ['A', 'Flèche'], ['L', 'Ligne'], ['D ou P', 'Dessin'], ['Ctrl + glisser (clic ou molette)', 'Taille du pinceau (en dessin)'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K · Alt maintenu', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
       ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl G', 'Grouper (Alt + clic : un seul élément du groupe)'], ['Ctrl Alt G', 'Dégrouper'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Maj + glisser', 'Dupliquer et déplacer la copie'], ['Page ↑ / ↓', 'Avancer / reculer d’un plan'], ['Ctrl + Page ↑ / ↓', 'Tout devant / tout au fond'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
       ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]],
       ['Tableur', [['Clic · glisser', 'Choisir des cellules'], ['Maj + clic', 'Étendre la sélection'], ['En-tête', 'Ligne ou colonne entière'], ['Entrée · F2', 'Modifier la cellule'], ['Suppr', 'Vider les cellules'], ['Ctrl − / Ctrl +', 'Supprimer / insérer des lignes'], ['Ctrl C / V', 'Copier / coller des cellules'], ['Bord d’en-tête', 'Glisser pour redimensionner']]]];
@@ -1390,7 +1390,8 @@ const Board = (() => {
   function onDown(e) {
     closePop(); lastClient = { x: e.clientX, y: e.clientY };
     if (mm) { mmDown(e); return; }
-    if (e.button === 2 && e.altKey && !op && (PENS[tool] || tool === 'pick' || tool === 'eraser')) { e.preventDefault(); Studio.hideLoupe(); startSize(e); return; }
+    // Ctrl + left or middle drag with a brush: its size (Photoshop, Substance)
+    if ((e.ctrlKey || e.metaKey) && (e.button === 0 || e.button === 1) && !op && (PENS[tool] || tool === 'pick' || tool === 'eraser')) { e.preventDefault(); Studio.hideLoupe(); startSize(e); return; }
     if (e.button === 2 && !(op && op.keep) && e.pointerType !== 'touch') { e.preventDefault(); if (editing) finishEdit(); openMarking(e, hitAt(e)); return; }
     if (e.pointerType === 'touch' && !touches.size && !drawingTool()) holdFor(e);
     if (op && op.keep) { if (e.button === 0) { e.preventDefault(); op.click(e); } else if (e.button === 2) { e.preventDefault(); op.finish(); } return; }
@@ -1825,7 +1826,7 @@ const Board = (() => {
       up() { op = null; const st = ink.end(); if (st && st.p.length >= 3) { if (st.p.length === 3) st.p.push(st.p[0] + .4 / view.k, st.p[1] + .2 / view.k, st.p[2]); commit(items.concat(mkInk(st))); useColor(st.c); if (Studio.on) Studio.refresh('history'); } },
       cancel() { ink.cancel(); } };
   }
-  /* Alt + right drag left or right: the brush size, a ring at the press point and the value beside it (as in Photoshop) */
+  /* Ctrl + left or middle drag, left or right: the brush size, a ring at the press point and the value beside it (as in Photoshop) */
   function startSize(e) {
     grab(e);
     const k = penKind, t0 = sizeT(k, penPref(k).s), x0 = e.clientX, r = wrap.getBoundingClientRect();
@@ -2156,7 +2157,7 @@ const Board = (() => {
     if (!mounted || editing) return false;
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
     const mod = e.ctrlKey || e.metaKey, k = e.key;
-    // Alt held alone with a brush: the pipette while it is held (Photoshop); Alt + right drag sizes the brush
+    // Alt held alone with a brush: the pipette while it is held (Photoshop)
     if (k === 'Alt' && !mod && !e.shiftKey && !op && (PENS[tool] || tool === 'eraser')) { e.preventDefault(); altPick = true; setTool('pick'); return true; }
     if (op && op.keep) { if (k === 'Enter') { op.finish(); e.preventDefault(); return true; } if (k === 'Escape') { cancelOp(); e.preventDefault(); return true; } }
     { const sh = sheetSelOf(); if (sh && sheetSelKey(e, sh)) return true; }

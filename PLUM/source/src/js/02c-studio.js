@@ -799,9 +799,8 @@ const Studio = (() => {
     if (!loupeEl.hidden) { try { pickImg = $('canvas', loupeEl).toDataURL('image/jpeg', .85); } catch (e) { pickImg = ''; } } else pickImg = '';
     P().pick = { c }; pick(c);
     const r = root.getBoundingClientRect();
-    chipEl.hidden = false; chipEl.dataset.c = c; chipEl.style.left = clamp(cx - r.left, 90, r.width - 90) + 'px'; chipEl.style.top = clamp(cy - r.top + 34, 10, r.height - 60) + 'px';
-    chipEl.innerHTML = `<span class="sw" style="background:${c}"></span><b>${c}</b><button data-copy="1" title="Copier le code" aria-label="Copier">${icon('dup', 'sm')}</button>`;
-    clearTimeout(chipEl._t); chipEl._t = setTimeout(() => { chipEl.hidden = true; }, 4500);
+    // no chip left on the board after a pick: the brush's colour shows the result (0.2.24)
+    clearTimeout(chipEl._t); chipEl.hidden = true;
   }
 
   /* another theme: the wheel and the cards are built again in its look */
