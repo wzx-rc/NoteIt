@@ -7,7 +7,7 @@ const Board = (() => {
   let host, world, framesL, edges, edgesTop, itemsL, labelsL, ovl, liveCv, ink, meas, wrap, toolsEl, optsEl, dockEl, trEl, propsEl, qbarEl, zoomEl, undoEl, brEl, hintEl;
   const view = { x: 0, y: 0, k: 1 };
   let tool = 'select', shapeKind = 'rect', penKind = 'pen', noteColor = SCHEME_BASE[14];
-  let sel = new Set(), editing = null, editSub = null, hist = [], fut = [], op = null, guides = null, marquee = null, attachHi = null, attachSock = null, eraserAt = null;
+  let sel = new Set(), editing = null, editSub = null, hist = [], fut = [], op = null, guides = null, marquee = null, attachHi = null, attachSock = null, eraserAt = null, eraseAll = true;
   let spaceDown = false, penSeen = false, clip = null, raf = 0, propSig = '', qSig = '', lastClient = null, mounted = false, propsTab = 'style', propsHold = false, liveBefore = null;
   const touches = new Map(), nodes = new Map(), fitCache = new Map(), measCache = new Map();
   const MINK = .08, MAXK = 8;
@@ -428,7 +428,7 @@ const Board = (() => {
     const c = ctxOf(list), { td, T, has, only, first, val, one, bd } = c, g = [];
     if (td && (PENS[tool] || tool === 'eraser')) {
       const pr = penPref(penKind);
-      g.push(`<div class="seg sm ic qpens">${PEN_ORDER.slice(0, 8).map(k => `<button data-tool="${k}" title="${PENS[k].name} (${PEN_ORDER.indexOf(k) + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme (E)" aria-pressed="${tool === 'eraser'}">${icon('eraser')}</button></div>`);
+      g.push(`<div class="seg sm ic qpens">${PEN_ORDER.slice(0, 8).map(k => `<button data-tool="${k}" title="${PENS[k].name} (${PEN_ORDER.indexOf(k) + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme à traits : n’efface que le dessin" aria-pressed="${tool === 'eraser' && !eraseAll}">${icon('eraser')}</button></div>`);
       if (tool !== 'eraser') g.push(`<button class="qb pchip" data-opp="1" title="${PENS[penKind].name} : taille, opacité, forme, texture">${brushPreview(penKind, Object.assign({}, pr, { s: Math.min(pr.s, 10) }), 64, 20, isDarkTheme())}<span>${sizeText(pr.s)}</span></button>` + qsw('pen', pr.c, 'Couleur du stylo'));
       return g.join('<span class="vs"></span>');
     }
@@ -491,7 +491,7 @@ const Board = (() => {
   /* a click in either bar */
   function ctxClick(e) {
     const t = e.target;
-    const tb = t.closest('[data-tool]'); if (tb) { setTool(tb.dataset.tool); return; }
+    const tb = t.closest('[data-tool]'); if (tb) { setTool(tb.dataset.tool); if (tb.dataset.tool === 'eraser') { eraseAll = false; refreshTools(); } return; }
     const qc = t.closest('[data-qc]'); if (qc) { ctxColor(qc.dataset.qc, qc); return; }
     const qp = t.closest('[data-qp]'); if (qp) { ctxPop(qp.dataset.qp, qp); return; }
     const qa = t.closest('[data-qa]'); if (qa) { if (qa.dataset.qa === 'more') ctxMore(qa); else action(qa.dataset.qa, qa); return; }
@@ -786,7 +786,7 @@ const Board = (() => {
     ], { align: 'right' });
   }
   function helpModal() {
-    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O', 'Rectangle · Ellipse'], ['A', 'Flèche'], ['L', 'Ligne'], ['D ou P', 'Dessin'], ['Ctrl + glisser (clic ou molette)', 'Taille du pinceau (en dessin)'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K · Alt maintenu', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
+    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O', 'Rectangle · Ellipse'], ['A', 'Flèche'], ['L', 'Ligne'], ['D ou P', 'Dessin'], ['Ctrl + glisser (clic ou molette)', 'Taille du pinceau (en dessin)'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K · Alt maintenu', 'Pipette sur le board'], ['E', 'Gomme : efface tout élément touché (celle du dessin : les traits seulement)'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
       ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl G', 'Grouper (Alt + clic : un seul élément du groupe)'], ['Ctrl Alt G', 'Dégrouper'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Maj + glisser', 'Dupliquer et déplacer la copie'], ['Page ↑ / ↓', 'Avancer / reculer d’un plan'], ['Ctrl + Page ↑ / ↓', 'Tout devant / tout au fond'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
       ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]],
       ['Tableur', [['Clic · glisser', 'Choisir des cellules'], ['Maj + clic', 'Étendre la sélection'], ['En-tête', 'Ligne ou colonne entière'], ['Entrée · F2', 'Modifier la cellule'], ['Suppr', 'Vider les cellules'], ['Ctrl − / Ctrl +', 'Supprimer / insérer des lignes'], ['Ctrl C / V', 'Copier / coller des cellules'], ['Bord d’en-tête', 'Glisser pour redimensionner']]]];
@@ -1416,7 +1416,7 @@ const Board = (() => {
     if (e.pointerType === 'touch' && penSeen && (PENS[tool] || tool === 'eraser')) { startPan(e); return; }
     if (tool === 'pick' || (PENS[tool] && e.altKey)) { e.preventDefault(); pickAt(e); return; }
     if (PENS[tool]) { e.preventDefault(); startInk(e); return; }
-    if (tool === 'eraser') { e.preventDefault(); startErase(e); return; }
+    if (tool === 'eraser') { e.preventDefault(); startErase(e, eraseAll); return; }
     const w = toW(e.clientX, e.clientY), hit = hitAt(e);
     if (tool === 'select') {
       if (t.closest('a[href]') || t.closest('video,audio')) return;
@@ -1837,12 +1837,22 @@ const Board = (() => {
     op = { id: e.pointerId, kind: 'size', move(ev) { if (ev.pointerId !== this.id) return; if (!S.prefs.pens[k]) S.prefs.pens[k] = {}; const sz = sizeOf(k, clamp(t0 + (ev.clientX - x0) / 480, 0, 1)); S.prefs.pens[k].s = sz; show(sz); },
       up() { op = null; ring.remove(); save(); propSig = ''; refreshTools(); renderProps(); Studio.sync(); }, cancel() { ring.remove(); } };
   }
-  function startErase(e) {
+  /* E (or the tool bar) erases any element it touches; the eraser of the drawing bar, or a stylus's eraser end, only strokes */
+  function startErase(e, all) {
     grab(e);
     const before = items; let gone = new Set();
+    const wipe = ev => {
+      let hit = false;
+      for (const el of document.elementsFromPoint(ev.clientX, ev.clientY)) {
+        const n = el.closest && el.closest('[data-id],[data-conn]'); if (!n || !world.contains(n)) continue;
+        const it = byId.get(n.dataset.id || n.dataset.conn); if (!it || it.hid || it.k === 'frame' || gone.has(it.id)) continue;
+        gone.add(it.id); if (it.k === 'mind') mindDesc(it.id, gone); hit = true;
+      }
+      if (hit) { if (editing && gone.has(editing)) { editing = null; editSub = null; } setLive(items.filter(i => !gone.has(i.id) && !(i.k === 'conn' && (gone.has(i.a.id) || gone.has(i.b.id))))); }
+    };
     const at = ev => { const p = toW(ev.clientX, ev.clientY), r = 12 / view.k; const hit = items.filter(i => i.k === 'ink' && !i.hid && !gone.has(i.id) && inBox(p.x, p.y, [i.x - r, i.y - r, i.x + i.w + r, i.y + i.h + r]) && inkHit(i.p, i.s, (p.x - i.x) * i.w0 / i.w, (p.y - i.y) * i.h0 / i.h, r * i.w0 / i.w)); if (hit.length) { hit.forEach(i => gone.add(i.id)); setLive(items.filter(i => !gone.has(i.id))); } };
-    at(e);
-    op = { id: e.pointerId, kind: 'erase', move(ev) { if (ev.pointerId !== this.id) return; const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev]; for (const x of evs.length ? evs : [ev]) at(x); eraserAt = clientToHost(ev); renderOverlay(); },
+    at(e); if (all) wipe(e);
+    op = { id: e.pointerId, kind: 'erase', move(ev) { if (ev.pointerId !== this.id) return; const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev]; for (const x of evs.length ? evs : [ev]) at(x); if (all) wipe(ev); eraserAt = clientToHost(ev); renderOverlay(); },
       up() { op = null; if (gone.size) commit(items, { before }); }, cancel() { setLive(before); } };
   }
   const clientToHost = ev => { const r = hostRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
@@ -2208,6 +2218,7 @@ const Board = (() => {
 
   /* ---------- tools and islands ---------- */
   function setTool(t) {
+    if (t === 'eraser' && tool !== 'pick') eraseAll = true;   // E and the tool bar: everything; the drawing bar's eraser sets it back to strokes only
     if (editing) finishEdit();
     if (op && op.keep) cancelOp();
     attachHi = null;

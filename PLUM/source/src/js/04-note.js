@@ -228,6 +228,14 @@ const Note = (() => {
     if (ndSel && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); ndAction(cur, ndSel, 'del'); return; }
     if (ndSel && e.key === 'Escape') { ndPick(null); return; }
     if (ndSel) ndPick(null);
+    // Tab / Shift + Tab: a list item goes one level down or back up, as deep as wanted
+    if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const s = selInBody(); if (!s) return; e.preventDefault();
+      const an = s.anchorNode, el = an && (an.nodeType === 1 ? an : an.parentNode), inList = el && el.closest('li');
+      if (inList) { document.execCommand(e.shiftKey ? 'outdent' : 'indent'); saveBody(); renderTool(); }
+      else if (!e.shiftKey) document.execCommand('insertText', false, '\u2003');
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       const s = selInBody(); if (!s || !s.isCollapsed) return;
       const blk = blockOf(s.anchorNode); if (!blk || blk.tagName !== 'BLOCKQUOTE') return;
