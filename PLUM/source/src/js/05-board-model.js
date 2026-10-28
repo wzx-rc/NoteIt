@@ -332,8 +332,11 @@ function polyMid(P) { let L = 0; const seg = []; for (let i = 0; i < P.length - 
 function connGeom(c, byId, depth = 0) {
   const A = c.a.id ? byId.get(c.a.id) : null, B = c.b.id ? byId.get(c.b.id) : null;
   const fa = pinPoint(A, c.a), fb = pinPoint(B, c.b);
-  const loose = e => e.on && depth < 4 && byId.get(e.on) && byId.get(e.on).k === 'conn' ? connPointAt(byId.get(e.on), byId, e.t, depth + 1) : [e.x, e.y];
-  const ac = fa ? [fa.x, fa.y] : A ? [A.x + A.w / 2, A.y + A.h / 2] : loose(c.a), bc = fb ? [fb.x, fb.y] : B ? [B.x + B.w / 2, B.y + B.h / 2] : loose(c.b);
+  // an end bound to an item that no longer exists, without a point of its own: it stays on the other end instead of breaking the board (0.2.24)
+  const ok2 = q => q && isFinite(q[0]) && isFinite(q[1]) ? q : null;
+  const loose = e => ok2(e.on && depth < 4 && byId.get(e.on) && byId.get(e.on).k === 'conn' ? connPointAt(byId.get(e.on), byId, e.t, depth + 1) : [e.x, e.y]);
+  let ac = fa ? [fa.x, fa.y] : A ? [A.x + A.w / 2, A.y + A.h / 2] : loose(c.a), bc = fb ? [fb.x, fb.y] : B ? [B.x + B.w / 2, B.y + B.h / 2] : loose(c.b);
+  if (!ac) ac = bc ? [bc[0] - 40, bc[1]] : [0, 0]; if (!bc) bc = [ac[0] + 40, ac[1]];
   const mids = (c.pts || []).map(p => [p[0], p[1]]);
   const aimA = mids.length ? mids[0] : bc, aimB = mids.length ? mids[mids.length - 1] : ac;
   let a, b, d, ta, tb, mid;

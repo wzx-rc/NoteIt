@@ -4,8 +4,8 @@
    Items are DOM nodes under one transformed world; connectors and mind-map branches are one SVG. */
 const Board = (() => {
   let D = null, items = [], byId = new Map();
-  let host, world, framesL, edges, edgesTop, itemsL, labelsL, ovl, liveCv, ink, meas, wrap, toolsEl, optsEl, dockEl, trEl, propsEl, qbarEl, zoomEl, undoEl, brEl, hintEl;
-  const view = { x: 0, y: 0, k: 1 };
+  let stage = null, bgrid = null, host, world, framesL, edges, edgesTop, itemsL, labelsL, ovl, liveCv, ink, meas, wrap, toolsEl, optsEl, dockEl, trEl, propsEl, qbarEl, zoomEl, undoEl, brEl, hintEl;
+  const view = { x: 0, y: 0, k: 1, r: 0 };   // r: the board turned by two fingers, in degrees (iPad, as in Concepts)
   let tool = 'select', shapeKind = 'rect', penKind = 'pen', noteColor = SCHEME_BASE[14];
   let sel = new Set(), editing = null, editSub = null, hist = [], fut = [], op = null, guides = null, marquee = null, attachHi = null, attachSock = null, eraserAt = null, eraseAll = true;
   let spaceDown = false, penSeen = false, clip = null, raf = 0, propSig = '', qSig = '', lastClient = null, mounted = false, propsTab = 'style', propsHold = false, liveBefore = null;
@@ -14,7 +14,14 @@ const Board = (() => {
 
   /* ---------- coordinates ---------- */
   const hostRect = () => host.getBoundingClientRect();
-  function toW(cx, cy) { const r = hostRect(); return { x: (cx - r.left - view.x) / view.k, y: (cy - r.top - view.y) / view.k }; }
+  /* the stage (world, live ink, overlay) turns by view.r around the board's centre: a screen point back to the stage's own frame */
+  function unrot(cx, cy) {
+    const r = hostRect(); let x = cx - r.left, y = cy - r.top; if (!view.r) return { x, y };
+    const a = -view.r * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a), W = r.width / 2, H = r.height / 2; x -= W; y -= H;
+    return { x: x * c - y * sn + W, y: x * sn + y * c + H };
+  }
+  const rotD = (dx, dy) => { if (!view.r) return [dx, dy]; const a = -view.r * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a); return [dx * c - dy * sn, dx * sn + dy * c]; };
+  function toW(cx, cy) { const p = unrot(cx, cy); return { x: (p.x - view.x) / view.k, y: (p.y - view.y) / view.k }; }
   const toS = (x, y) => ({ x: x * view.k + view.x, y: y * view.k + view.y });
   const reindex = () => { byId = new Map(items.map(i => [i.id, i])); };
   const selItems = () => [...sel].map(id => byId.get(id)).filter(Boolean);
@@ -482,7 +489,8 @@ const Board = (() => {
     // the box of everything selected, arrows included with their curve, head and end handles (0.2.22)
     let bb = unionBox(list.filter(i => i.k !== 'conn'));
     for (const c of list.filter(i => i.k === 'conn')) { const q = connBox(c); bb = bb ? [Math.min(bb[0], q[0]), Math.min(bb[1], q[1]), Math.max(bb[2], q[2]), Math.max(bb[3], q[3])] : q; }
-    const a = toS(bb[0], bb[1]), b = toS(bb[2], bb[3]), r = hostRect(), w = qbarEl.offsetWidth, hh = qbarEl.offsetHeight, GAP = 42;   // clears the side dots and the radius handle above the selection
+    let a = toS(bb[0], bb[1]), b = toS(bb[2], bb[3]); const r = hostRect(), w = qbarEl.offsetWidth, hh = qbarEl.offsetHeight, GAP = 42;
+    if (view.r) { const q = [[a.x, a.y], [b.x, a.y], [a.x, b.y], [b.x, b.y]].map(([x, y]) => { const t = view.r * Math.PI / 180, c = Math.cos(t), sn = Math.sin(t), W = r.width / 2, H = r.height / 2; return [(x - W) * c - (y - H) * sn + W, (x - W) * sn + (y - H) * c + H]; }); a = { x: Math.min(...q.map(p => p[0])), y: Math.min(...q.map(p => p[1])) }; b = { x: Math.max(...q.map(p => p[0])), y: Math.max(...q.map(p => p[1])) }; }   // clears the side dots and the radius handle above the selection
     let x = (a.x + b.x) / 2 - w / 2, y = a.y - hh - GAP;
     if (y < 64) y = b.y + GAP;
     if (y + hh > r.height - 70) y = Math.max(64, a.y - hh - GAP);
@@ -1362,20 +1370,26 @@ const Board = (() => {
     const k = clamp(Math.min(W / Math.max(1, bb[2] - bb[0]), H / Math.max(1, bb[3] - bb[1]), maxK), MINK, MAXK);
     view.k = k; view.x = left + (r.width - right) / 2 - (bb[0] + bb[2]) / 2 * k; view.y = (r.height + 30) / 2 - (bb[1] + bb[3]) / 2 * k; viewChanged();
   }
-  function fitAll() { const bb = unionBox(items.filter(i => i.k !== 'conn' && !i.hid)); if (bb) fitTo(bb); else { view.x = hostRect().width / 2; view.y = hostRect().height / 2; view.k = 1; viewChanged(); } }
+  function fitAll() { view.r = 0; const bb = unionBox(items.filter(i => i.k !== 'conn' && !i.hid)); if (bb) fitTo(bb); else { view.x = hostRect().width / 2; view.y = hostRect().height / 2; view.k = 1; viewChanged(); } }
 
   /* ---------- view ---------- */
   let viewT = 0;
   function viewChanged() {
     drawn++;
     world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`;
+    if (stage) { stage.style.transform = view.r ? `rotate(${view.r}deg)` : ''; wrap.classList.toggle('turned', !!view.r); }
     world.style.setProperty('--iz', (1 / view.k).toFixed(4));
     let g = 24 * view.k; while (g < 12) g *= 4; while (g > 96) g /= 4;
     host.style.backgroundSize = `${g}px ${g}px`; host.style.backgroundPosition = `${view.x}px ${view.y}px`;
+    // turned: the paper's dots turn with the stage, on a layer three times the board's size so no corner shows bare
+    if (bgrid) { if (view.r) { const r = hostRect(); if (bgrid._bg !== host.className) { bgrid._bg = host.className; host.style.backgroundImage = ''; bgrid.style.backgroundImage = getComputedStyle(host).backgroundImage; } host.style.backgroundImage = 'none'; bgrid.hidden = false; bgrid.style.backgroundSize = `${g}px ${g}px`; bgrid.style.backgroundPosition = `${view.x + r.width}px ${view.y + r.height}px`; } else if (!bgrid.hidden) { bgrid.hidden = true; host.style.backgroundImage = ''; bgrid._bg = ''; } }
     renderOverlay();
-    clearTimeout(viewT); viewT = setTimeout(() => { if (D) { D.view = { x: Math.round(view.x), y: Math.round(view.y), k: +view.k.toFixed(4) }; save(); } }, 300);
+    clearTimeout(viewT); viewT = setTimeout(() => { if (D) { D.view = { x: Math.round(view.x), y: Math.round(view.y), k: +view.k.toFixed(4), r: +view.r.toFixed(2) }; save(); }
+      // zoomed in past what textured strokes were rasterised for: draw them again, sharp (0.2.24, iPad)
+      if (view.k > inkZoom * 1.15 || view.k < inkZoom / 2) { setInkZoom(view.k); let n = 0; for (const it of items) if (it.k === 'ink' && it.b) { const nd = nodes.get(it.id); if (nd) { nd._sig = ''; nd._it = null; n++; } } if (n) schedule(); }
+    }, 300);
   }
-  function zoomAt(sx, sy, f) { const k = clamp(view.k * f, MINK, MAXK); f = k / view.k; view.x = sx - (sx - view.x) * f; view.y = sy - (sy - view.y) * f; view.k = k; viewChanged(); }
+  function zoomAt(sx, sy, f) { if (view.r) { const r = hostRect(), p = unrot(sx + r.left, sy + r.top); sx = p.x; sy = p.y; } const k = clamp(view.k * f, MINK, MAXK); f = k / view.k; view.x = sx - (sx - view.x) * f; view.y = sy - (sy - view.y) * f; view.k = k; viewChanged(); }
   function zoomCenter(f) { const r = hostRect(); zoomAt(r.width / 2, r.height / 2, f); }
   function zoomTo(k) { const r = hostRect(), c = toW(r.left + r.width / 2, r.top + r.height / 2); view.k = clamp(k, MINK, MAXK); view.x = r.width / 2 - c.x * view.k; view.y = r.height / 2 - c.y * view.k; viewChanged(); }
 
@@ -1456,14 +1470,51 @@ const Board = (() => {
   function startPan(e, tapClear) {
     grab(e); host.classList.add('panning');
     const s = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; let moved = false;
-    op = { id: e.pointerId, kind: 'pan', move(ev) { if (ev.pointerId !== this.id) return; const dx = ev.clientX - s.x, dy = ev.clientY - s.y; if (Math.abs(dx) + Math.abs(dy) > 4) moved = true; view.x = s.vx + dx; view.y = s.vy + dy; viewChanged(); },
+    op = { id: e.pointerId, kind: 'pan', move(ev) { if (ev.pointerId !== this.id) return; const [dx, dy] = rotD(ev.clientX - s.x, ev.clientY - s.y); if (Math.abs(dx) + Math.abs(dy) > 4) moved = true; view.x = s.vx + dx; view.y = s.vy + dy; viewChanged(); },
       up() { host.classList.remove('panning'); if (tapClear && !moved) { sel.clear(); schedule(); } op = null; } };
   }
+  /* iPad: no keyboard, so Ctrl, Shift and Alt sit in a small floating rail on the left. A tap arms the key for the next
+     gesture (it lets go when the finger or pencil lifts), a double tap locks it until tapped again. While armed, the
+     board's pointer and wheel events read it as held, so every shortcut (Ctrl branch, Shift snap, Alt pipette...) works. */
+  const vmods = { ctrl: 0, shift: 0, alt: 0 };   // 0 off, 1 next gesture, 2 locked
+  let modsEl = null;
+  const touchUI = () => IPAD || (matchMedia && matchMedia('(pointer: coarse)').matches);
+  function mountMods() {
+    if (!touchUI()) return;
+    modsEl = document.createElement('div'); modsEl.className = 'vmods';
+    modsEl.innerHTML = [['ctrl', 'Ctrl', 'Ctrl : branche de flèche, point d’ancrage, taille du pinceau…'], ['shift', 'Maj', 'Maj : angles droits, proportions, ajout à la sélection'], ['alt', 'Alt', 'Alt : pipette, déplacer sans aimant']].map(([k, l, t]) => `<button data-vm="${k}" title="${t}" aria-pressed="false">${l}</button>`).join('');
+    wrap.append(modsEl);
+    let lastTap = {};
+    modsEl.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); });
+    modsEl.addEventListener('click', e => { const b = e.target.closest('[data-vm]'); if (!b) return; const k = b.dataset.vm, t = performance.now();
+      vmods[k] = t - (lastTap[k] || 0) < 320 ? 2 : vmods[k] ? 0 : 1; lastTap[k] = t;
+      if (k === 'alt' && (PENS[tool] || tool === 'eraser')) { if (vmods.alt) { altPick = true; setTool('pick'); } else endAltPick(); }
+      syncMods(); });
+    for (const ty of ['pointerdown', 'pointermove', 'pointerup', 'click', 'dblclick', 'wheel', 'contextmenu']) host.addEventListener(ty, armEvent, true);
+    addEventListener('pointerup', releaseMods, true); addEventListener('pointercancel', releaseMods, true);
+    syncMods();
+  }
+  function armEvent(e) {
+    if (!vmods.ctrl && !vmods.shift && !vmods.alt) return;
+    const def = (k, v) => { if (v && !e[k]) try { Object.defineProperty(e, k, { value: true }); } catch (_) {} };
+    def('ctrlKey', vmods.ctrl); def('metaKey', vmods.ctrl); def('shiftKey', vmods.shift); def('altKey', vmods.alt);
+  }
+  function releaseMods(e) {
+    if (!modsEl || (e.target instanceof Node && modsEl.contains(e.target))) return;
+    let ch = false; for (const k in vmods) if (vmods[k] === 1) { vmods[k] = 0; ch = true; if (k === 'alt') setTimeout(endAltPick); }
+    if (ch) setTimeout(syncMods);
+  }
+  function syncMods() { if (!modsEl) return; for (const b of modsEl.children) { const v = vmods[b.dataset.vm]; b.setAttribute('aria-pressed', v ? 'true' : 'false'); b.classList.toggle('lock', v === 2); } }
+  /* two fingers: zoom, pan and turn the board (Concepts-like); the turn snaps to straight angles within 5°,
+     the fit button (or F) puts it back straight */
   function startPinch() {
     const [a, b] = [...touches.values()];
-    const s = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, v: { ...view } };
-    op = { kind: 'pinch', id: -1, move() { const [p, q] = [...touches.values()]; if (!q) return; const r = hostRect(), d = Math.hypot(p.x - q.x, p.y - q.y), cx = (p.x + q.x) / 2, cy = (p.y + q.y) / 2, k = clamp(s.v.k * d / s.d, MINK, MAXK);
-      view.k = k; view.x = (cx - r.left) - ((s.cx - r.left) - s.v.x) * (k / s.v.k); view.y = (cy - r.top) - ((s.cy - r.top) - s.v.y) * (k / s.v.k); viewChanged(); },
+    const s = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, ang: Math.atan2(b.y - a.y, b.x - a.x), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, v: { ...view } };
+    const w0 = toW(s.cx, s.cy);
+    op = { kind: 'pinch', id: -1, move() { const [p, q] = [...touches.values()]; if (!q) return; const d = Math.hypot(p.x - q.x, p.y - q.y), cx = (p.x + q.x) / 2, cy = (p.y + q.y) / 2, k = clamp(s.v.k * d / s.d, MINK, MAXK);
+      let r = s.v.r + (Math.atan2(q.y - p.y, q.x - p.x) - s.ang) * 180 / Math.PI; r = ((r % 360) + 540) % 360 - 180;
+      const st = Math.round(r / 90) * 90; if (Math.abs(r - st) < 5) r = st; if (Math.abs(r) < .01 || Math.abs(Math.abs(r) - 360) < .01) r = 0;
+      view.k = k; view.r = r === -180 ? 180 : r; const u = unrot(cx, cy); view.x = u.x - w0.x * k; view.y = u.y - w0.y * k; viewChanged(); },
       up() { if (touches.size < 2) op = null; } };
   }
   /* groups (Ctrl G / Ctrl Alt G): items sharing a group id g are picked, moved, copied and deleted together;
@@ -1918,7 +1969,7 @@ const Board = (() => {
     const mouseWheel = e.deltaMode === 1 || (Math.abs(dx) < .5 && Math.abs(dy) >= 40 && Number.isInteger(dy));
     if (e.ctrlKey || e.metaKey) zoomAt(sx, sy, Math.exp(-dy * (mouseWheel ? .0018 : .01)));
     else if (S.prefs.wheel === 'zoom' && mouseWheel && !e.shiftKey) zoomAt(sx, sy, Math.exp(-dy * .0018));
-    else { view.x -= e.shiftKey && !dx ? dy : dx; view.y -= e.shiftKey && !dx ? 0 : dy; viewChanged(); }
+    else { const [ux, uy] = rotD(e.shiftKey && !dx ? dy : dx, e.shiftKey && !dx ? 0 : dy); view.x -= ux; view.y -= uy; viewChanged(); }
     lastClient = { x: e.clientX, y: e.clientY };
   }
 
@@ -2292,7 +2343,7 @@ const Board = (() => {
     D = doc; items = (doc.items || []).slice(); reindex(); hist = []; fut = []; sel = new Set(); editing = null; editSub = null; op = null; nodes.clear(); fitCache.clear(); propSig = ''; qSig = ''; propsTab = 'style';
     const open = S.prefs.props == null ? innerWidth >= 1100 : !!S.prefs.props;
     container.innerHTML = `<div class="bwrap${open ? ' props-open' : ''}" style="position:absolute;inset:0">
-      <div class="bhost bg-${doc.bg || 'dots'}" tabindex="-1" aria-label="Board ${esc(doc.title)}"><div class="world"><div class="layer"></div><svg class="edges"></svg><div class="layer"></div><svg class="edges"></svg><div class="layer"></div></div><canvas class="blive"></canvas><div class="ovl"></div><div class="measure it"></div></div>
+      <div class="bhost bg-${doc.bg || 'dots'}" tabindex="-1" aria-label="Board ${esc(doc.title)}"><div class="bstage"><div class="bgrid" hidden></div><div class="world"><div class="layer"></div><svg class="edges"></svg><div class="layer"></div><svg class="edges"></svg><div class="layer"></div></div><canvas class="blive"></canvas><div class="ovl"></div></div><div class="measure it"></div></div>
       <div class="tdock"><div class="trow"><button class="tgrip" title="Glisser pour déplacer les barres · double-clic pour les remettre en place" aria-label="Déplacer les barres d’outils"></button><nav class="isl tools" aria-label="Outils"></nav></div><div class="isl topts" role="toolbar" aria-label="Options de l’outil" hidden></div></div>
       <div class="isl tr"><button class="tl" data-a="props" title="Style, calques et moodboard" aria-label="Panneau" aria-pressed="${open}">${icon('sliders')}<span>Style</span></button></div>
       <div class="qbar" hidden></div>
@@ -2301,7 +2352,7 @@ const Board = (() => {
       <div class="isl bl undo"><button class="tl" data-a="undo" title="Annuler (Ctrl Z)" aria-label="Annuler">${icon('undo')}</button><button class="tl" data-a="redo" title="Rétablir (Ctrl Y)" aria-label="Rétablir">${icon('redo')}</button></div>
       <div class="isl br"><button class="tl snapb" data-a="snap" title="Alignement auto (aimant) : activé" aria-label="Alignement automatique" aria-pressed="true">${icon('magnet')}</button><button class="tl" data-a="fit" title="Tout voir (F ou 0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
     wrap = container.firstElementChild; host = $('.bhost', wrap); world = $('.world', host);
-    [framesL, edges, itemsL, edgesTop, labelsL] = world.children; ovl = $('.ovl', host); liveCv = $('.blive', host); meas = $('.measure', host);
+    [framesL, edges, itemsL, edgesTop, labelsL] = world.children; ovl = $('.ovl', host); liveCv = $('.blive', host); stage = $('.bstage', host); bgrid = $('.bgrid', host); meas = $('.measure', host);
     // mind maps are laid out from the measured size of their words: again once the fonts are in
     const lay = () => { if (!mounted || D !== doc || !hasMind(items)) return; measCache.clear(); items = relayout(items); reindex(); D.items = items; schedule(); };
     toolsEl = $('.tools', wrap); optsEl = $('.topts', wrap); dockEl = $('.tdock', wrap); trEl = $('.tr', wrap); propsEl = $('.props', wrap); qbarEl = $('.qbar', wrap); zoomEl = $('.isl.zoom', wrap); undoEl = $('.isl.undo', wrap); brEl = $('.isl.br', wrap);
@@ -2312,6 +2363,7 @@ const Board = (() => {
       color: () => penPref(penKind).c,
       setColor(c, final) { S.prefs.pens[penKind].c = c; save(); const d = $('[data-tool="pen"] .cdot', toolsEl); if (d) d.style.background = c; if (final) refreshTools(); },
       changed(partial) { propSig = ''; refreshTools(); if (!partial) { Studio.sync(); renderProps(); } } });
+    mountMods();
     host.addEventListener('pointerdown', onDown);
     host.addEventListener('mousedown', e => { if (fxPicking) e.preventDefault(); });
     host.addEventListener('dblclick', onDbl);
@@ -2349,7 +2401,7 @@ const Board = (() => {
     tool = 'select'; setTool('select');
     items = relayout(items); reindex(); D.items = items;
     render();
-    if (doc.view && isFinite(doc.view.k)) { view.x = doc.view.x; view.y = doc.view.y; view.k = clamp(doc.view.k, MINK, MAXK); viewChanged(); } else fitAll();
+    view.r = 0; if (doc.view && isFinite(doc.view.k)) { view.x = doc.view.x; view.y = doc.view.y; view.k = clamp(doc.view.k, MINK, MAXK); view.r = +doc.view.r || 0; viewChanged(); } else fitAll();
     updateUndo();
     if (!S.prefs.boardHint) { S.prefs.boardHint = 1; save(); toolHint('Double-clic : post-it · D : dessin · A : flèche · glissez images et fichiers ici'); }
     setTimeout(() => { if (mounted) host.focus({ preventScroll: true }); }, 0);
@@ -2361,8 +2413,10 @@ const Board = (() => {
     if (op && op.keep) cancelOp();
     closeMarking(); mounted = false; cancelAnimationFrame(raf); raf = 0; Studio.unmount(); shot = null;
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onCancel);
+    removeEventListener('pointerup', releaseMods, true); removeEventListener('pointercancel', releaseMods, true);
+    if (modsEl) { modsEl.remove(); modsEl = null; } for (const k in vmods) vmods[k] = 0;
     if (ro) ro.disconnect();
-    if (D) { D.view = { x: Math.round(view.x), y: Math.round(view.y), k: +view.k.toFixed(4) }; D.items = items; save(); }
+    if (D) { D.view = { x: Math.round(view.x), y: Math.round(view.y), k: +view.k.toFixed(4), r: +view.r.toFixed(2) }; D.items = items; save(); }
     nodes.clear(); D = null; op = null;
   }
   /* the browser menu never shows on the board: the right button opens the marking menu (onDown); the menu key opens it at the pointer */

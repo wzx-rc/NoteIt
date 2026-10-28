@@ -228,15 +228,21 @@ const texScale = st => clamp(st.s / 18, .6, 1.4);
 let _webp = null;
 const rasterType = () => { if (_webp === null) { try { _webp = mkCanvas(2).toDataURL('image/webp').startsWith('data:image/webp'); } catch (e) { _webp = false; } } return _webp ? 'image/webp' : 'image/png'; };
 const _stamp = new WeakMap();
+let inkZoom = 1;   // the board's zoom, for how fine stamped strokes are rasterised
+const setInkZoom = k => { inkZoom = k; };
 function stampPicture(st) {
   const key = [st.c, st.s, st.o, JSON.stringify(st.b), isDarkTheme()].join('|'); let v = _stamp.get(st.p);
-  if (v && v.key === key) return v;
+  /* pixels per board unit: the screen's density at the zoom it was drawn at, or the zoom it is looked at now if closer;
+     a picture made for a lower zoom is made again (inkZoom, set by the board once a zoom settles) instead of being enlarged */
+  const dpr = clamp(devicePixelRatio || 1, 1, 3), want = clamp(dpr * Math.max(st.b.k || 1, inkZoom), .35, 8);
+  if (v && v.key === key && v.res >= want * .85 - 1e-6) return v;
   const [x0, y0, x1, y1] = inkBounds(st.p, st.s * 1.9), W = x1 - x0, H = y1 - y0;
-  let res = clamp(2 * (st.b.k || 1), .35, 4); res = Math.min(res, 3200 / Math.max(W, H, 1), Math.sqrt(7e6 / Math.max(W * H, 1)));
+  if (v && v.key === key && v.capped) return v;
+  let res = want; const cap = Math.min(4096 / Math.max(W, H, 1), Math.sqrt(1.2e7 / Math.max(W * H, 1))), capped = res > cap; res = Math.min(res, cap);
   const c = mkCanvas(W * res, H * res), x = c.getContext('2d');
   x.setTransform(c.width / W, 0, 0, c.height / H, -x0 * c.width / W, -y0 * c.height / H);
   stampInto(x, st);
-  v = { key, url: c.toDataURL(rasterType(), .9), x0, y0, W, H, cv: c }; _stamp.set(st.p, v); return v;
+  v = { key, url: c.toDataURL(rasterType(), .9), x0, y0, W, H, cv: c, res, capped }; _stamp.set(st.p, v); return v;
 }
 function stampSVG(st, extra, o) {
   const v = stampPicture(st), def = PENS[st.t] || PENS.pen, op = st.o ?? def.o, f = n => Math.round(n * 100) / 100;
@@ -307,6 +313,7 @@ class InkCapture {
   }
   begin(ev, st) {
     if (ev.pointerType === 'pen') penSeenGlobal = true;
+    this.gen = (this.gen || 0) + 1;
     this.sim = { p: .42, t: ev.timeStamp || now(), x: ev.clientX, y: ev.clientY };
     const w = this.map.toLocal(ev.clientX, ev.clientY), p0 = this.pressure(ev), def = PENS[st.t] || PENS.pen;
     this.cur = { t: st.t, c: st.c, s: st.s, o: st.o ?? def.o, p: [w.x, w.y, p0] }; if (st.b) this.cur.b = st.b;
@@ -337,11 +344,15 @@ class InkCapture {
     const c = this.cur, l = this.sm.last, n = c.p.length;
     if (Math.hypot(l.x - c.p[n - 3], l.y - c.p[n - 2]) > .3 / this.sm.k) c.p.push(l.x, l.y, l.p);
     c.p = c.p.map(v => Math.round(v * 100) / 100);
-    this.cancel(); return c;
+    /* the live stroke stays on screen until the finished one is painted (two frames), so lifting the pencil never flashes */
+    this.cur = null; this.walk = null; cancelAnimationFrame(this.raf); this.raf = 0;
+    const gen = this.gen = (this.gen || 0) + 1;
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (this.gen === gen && !this.cur) this.cancel(); }));
+    return c;
   }
   cancel() { this.cur = null; this.walk = null; cancelAnimationFrame(this.raf); this.raf = 0; this.cx.setTransform(1, 0, 0, 1, 0, 0); this.cx.clearRect(0, 0, this.cv.width, this.cv.height); if (this.layer) { const l = this.layer.getContext('2d'); l.setTransform(1, 0, 0, 1, 0, 0); l.clearRect(0, 0, this.layer.width, this.layer.height); } }
   resize() {
-    const r = this.cv.parentElement.getBoundingClientRect(), dpr = Math.min(2.5, devicePixelRatio || 1);
+    const pe = this.cv.parentElement, r = { width: pe.clientWidth, height: pe.clientHeight }, dpr = Math.min(2.5, devicePixelRatio || 1);   // its own size, even when the board is turned
     const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
     if (this.cv.width !== W || this.cv.height !== H) { this.cv.width = W; this.cv.height = H; this.cv.style.width = r.width + 'px'; this.cv.style.height = r.height + 'px'; }
     this.dpr = dpr;
