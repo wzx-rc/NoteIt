@@ -1899,3 +1899,22 @@ figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
 /* 0.2.24: a link card without a preview image: the site's icon, or its initial */
 .nbody figure.nlink .nl-pic img.nl-ico { width: 40px; height: 40px; object-fit: contain; position: absolute; inset: 0; margin: auto; border-radius: 9px; }
 .nbody figure.nlink .nl-pic .nl-ini { position: absolute; inset: 0; margin: auto; width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; color: #fff; font: 600 19px/1 var(--font-ui, inherit); font-style: normal; }
+/* 0.2.24: the tools float as one bar with a grip on the left (drag it, double-click to put it back), the tool's
+   options start under its left edge. Themes with their own dock (Farmer, Keyboard, Pokédex) keep theirs. */
+@media (min-width: 761px) {
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .tdock { display: block; position: absolute; z-index: 21; top: 12px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 24px); }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .bwrap.props-open .tdock:not(.moved) { left: calc((100% - var(--props-w) - 12px) / 2); }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .bwrap.drawing:not(.lite).props-open .tdock:not(.moved) { left: 50%; }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .tdock.moved { transform: none; }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .tdock.dragging { opacity: .94; }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .tdock .trow { display: flex; align-items: center; gap: 0; min-height: 0; padding: 0; border-radius: 0; }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .tdock .trow:hover { background: none; }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .tdock .trow { position: relative; }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .tdock .tgrip { display: block; position: absolute; z-index: 30; left: 1px; top: 1px; bottom: 1px; width: 17px; padding: 0; border: 0; border-radius: 10px 0 0 10px; background: none; cursor: grab; touch-action: none; }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .tdock .tgrip::before { content: ""; position: absolute; left: 6px; top: 50%; width: 2.6px; height: 2.6px; margin-top: -1.3px; border-radius: 50%; background: var(--ink-3); box-shadow: 4.4px 0 var(--ink-3), 0 -5px var(--ink-3), 4.4px -5px var(--ink-3), 0 5px var(--ink-3), 4.4px 5px var(--ink-3); opacity: .9; }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .tdock .tgrip:hover { background-color: var(--sunk); }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .tdock.dragging .tgrip { cursor: grabbing; }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .bwrap:is(*, .props-open, .drawing) .tdock .trow .isl.tools { position: static; transform: none; left: auto; top: auto; max-width: none; padding-left: 18px; }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"]) .bwrap .tdock .topts:not([hidden]) { top: calc(100% + 8px); left: 0; transform: none; max-width: min(1000px, calc(100vw - 80px)); }
+  html:not([data-skin="farmer"], [data-skin="keyboard"], [data-skin="pokedex"])[data-focus] .tdock { top: 60px; }
+}
