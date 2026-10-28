@@ -284,22 +284,70 @@ const Note = (() => {
       else { const id = await Assets.put(f); html += `<p><span class="nfile" contenteditable="false" data-asset="${id}">${icon('file', 'sm')}<b>${esc(f.name)}</b><small>${fmtSize(f.size)}</small></span></p>`; }
     }
     if (!html) return;
-    body.focus();
-    const s = getSelection();
-    if (at) { s.removeAllRanges(); s.addRange(at); } else if (!selInBody()) ensureFocus();
-    document.execCommand('insertHTML', false, html);
-    saveBody();
+    insertHTMLAt(html, at);
   }
   /* an element of the space's moodboard, as note content */
   function mediaHTML(m) {
     if (m.type === 'image' && Assets.has(m.asset)) return `<figure contenteditable="false"><img data-asset="${m.asset}" src="${Assets.url(m.asset)}" alt=""></figure><p><br></p>`;
     if (m.type === 'file' && Assets.has(m.asset)) return `<p><span class="nfile" contenteditable="false" data-asset="${m.asset}">${icon('file', 'sm')}<b>${esc(m.name || 'Fichier')}</b><small>${fmtSize(m.size || 0)}</small></span></p>`;
-    if (m.type === 'link' && m.url) return `<p><a href="${esc(m.url)}">${esc(m.title || m.url)}</a></p>`;
+    if (m.type === 'link' && m.url) return linkCard(m.url, m.title);
     if (m.type === 'text' && m.txt) return m.txt.split(/\n{2,}/).map(p => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
     return '';
   }
+  /* 0.2.20: a web address dropped in a note becomes a small card: the page's picture, its title and its site.
+     The preview is fetched afterwards (Windows app: Open Graph through the main process) and kept in the note. */
+  let innerDrag = false;
+  const URL_RE = /^https?:\/\/\S+$/i;
+  function urlOf(dt) {
+    const u = (dt.getData('text/uri-list') || '').split(/\r?\n/).map(x => x.trim()).find(x => x && !x.startsWith('#'));
+    if (u && URL_RE.test(u)) return u;
+    const t = (dt.getData('text/plain') || '').trim(); return URL_RE.test(t) ? t : '';
+  }
+  function linkCard(url, title) {
+    const id = uid('lk');
+    queueMicrotask(() => unfurlCard(id, url));
+    return `<figure class="nlink" contenteditable="false" data-url="${esc(url)}" data-lk="${id}"><span class="nl-pic"></span><span class="nl-t"><b>${esc(title || hostOf(url))}</b><small>${esc(title ? hostOf(url) : url.replace(/^https?:\/\/(www\.)?/i, ''))}</small></span></figure><p><br></p>`;
+  }
+  async function unfurlCard(id, url) {
+    const m = await Net.meta(url); if (!m) return;
+    let asset = '';
+    if (m.image) { const b = await Net.blob(m.image); if (b && /^image\//.test(b.type)) { try { asset = (await importImage(b, 480)).id; } catch (e) {} } }
+    else if (m.isImage) { const b = await Net.blob(url); if (b && /^image\//.test(b.type)) { try { asset = (await importImage(b, 480)).id; } catch (e) {} } }
+    if (!mounted) return;
+    const f = PG.map(g => g.body.querySelector(`figure.nlink[data-lk="${id}"]`)).find(Boolean); if (!f) return;
+    const t = m.title && cleanTitle(m.title, isInsta(url)); if (t) f.querySelector('.nl-t b').textContent = t;
+    f.querySelector('.nl-t small').textContent = m.site || hostOf(url);
+    if (asset) f.querySelector('.nl-pic').innerHTML = `<img data-asset="${asset}" src="${Assets.url(asset)}" alt="">`;
+    const g = PG.find(g => g.body.contains(f)); if (g) { const was = cur; use(g); saveBody(); saveBody.flush(); if (was && was !== g) use(was); }
+  }
+  /* 0.2.20: while dragging something in, a thin line shows where it will land, between the paragraphs */
+  let dropSlot = null;
+  function slotAt(g, y) {
+    const kids = [...g.body.children].filter(c => c.offsetParent !== null), r0 = g.el.getBoundingClientRect(), br = g.body.getBoundingClientRect();
+    let ref = null, top;
+    for (const c of kids) { const r = c.getBoundingClientRect(); if (y < r.top + r.height / 2) { ref = c; break; } }
+    if (ref) { const r = ref.getBoundingClientRect(), prev = ref.previousElementSibling, pb = prev ? prev.getBoundingClientRect().bottom : r.top - 8; top = (Math.max(pb, r.top - 16) + r.top) / 2 - r0.top; }
+    else { const last = kids[kids.length - 1]; top = (last ? last.getBoundingClientRect().bottom + 4 : br.top + 8) - r0.top; }
+    return { g, ref, top, left: br.left - r0.left, width: br.width };
+  }
+  function showSlot(sl) {
+    dropSlot = sl; let ln = sl.g.el.querySelector(':scope > .ndropline');
+    if (!ln) { ln = document.createElement('div'); ln.className = 'ndropline'; sl.g.el.append(ln); }
+    ln.style.cssText = `top:${sl.top}px;left:${sl.left}px;width:${sl.width}px`;
+    for (const x of $$('.ndropline', wrap)) if (x !== ln) x.remove();
+  }
+  function clearSlot() { dropSlot = null; if (wrap) for (const x of $$('.ndropline', wrap)) x.remove(); }
+  function placeHTML(html, sl) {
+    const g = sl.g; use(g);
+    const tmp = document.createElement('div'); tmp.innerHTML = html;
+    const nodes = [...tmp.childNodes], last = nodes[nodes.length - 1];
+    if (sl.ref && sl.ref.parentNode === g.body) sl.ref.before(...nodes); else g.body.append(...nodes);
+    if (last && last.nodeType === 1) { g.body.focus({ preventScroll: true }); const r = document.createRange(); r.selectNodeContents(last); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+    syncMarkers(g.body); saveBody(); renderTool();
+  }
   function insertHTMLAt(html, at) {
     if (!html) return;
+    if (at && at.slot) { placeHTML(html, at.slot); return; }
     body.focus();
     const s = getSelection();
     if (at) { s.removeAllRanges(); s.addRange(at); } else if (!selInBody()) ensureFocus();
@@ -308,11 +356,19 @@ const Note = (() => {
   }
   function onDrop(e) {
     const nj = e.dataTransfer && e.dataTransfer.getData('application/x-notely');
-    const files = [...(e.dataTransfer && e.dataTransfer.files || [])]; if (!files.length && !nj) return;
+    const files = [...(e.dataTransfer && e.dataTransfer.files || [])], url = !files.length && !nj && !innerDrag && e.dataTransfer ? urlOf(e.dataTransfer) : '';
+    if (!files.length && !nj && !url) return;
     e.preventDefault(); sheet.classList.remove('dropping');
+    const sl = dropSlot; clearSlot();
+    if (sl) {
+      if (nj) { try { const j = JSON.parse(nj); placeHTML((Array.isArray(j) ? j : [j]).map(mediaHTML).join(''), sl); } catch (err) {} return; }
+      if (url) { placeHTML(linkCard(url), sl); return; }
+      addFiles(files, { slot: sl }); return;
+    }
     let r = null; if (document.caretRangeFromPoint) r = document.caretRangeFromPoint(e.clientX, e.clientY); else if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(e.clientX, e.clientY); if (p) { r = document.createRange(); r.setStart(p.offsetNode, p.offset); } }
     if (r && !body.contains(r.startContainer)) r = null;
     if (nj) { try { const j = JSON.parse(nj); insertHTMLAt((Array.isArray(j) ? j : [j]).map(mediaHTML).join(''), r); } catch (err) {} return; }
+    if (url) { insertHTMLAt(linkCard(url), r); return; }
     addFiles(files, r);
   }
   function onPaste(e) {
@@ -571,9 +627,10 @@ const Note = (() => {
     b.addEventListener('click', e => {
       const li = e.target.closest('ul.chk > li'); if (li && e.offsetX < 26 && e.target === li) { use(g); li.toggleAttribute('data-done'); saveBody(); return; }
       const a = e.target.closest('a[href]'); if (a && (e.ctrlKey || e.metaKey)) window.open(a.href, '_blank', 'noopener');
+      const lk = e.target.closest('figure.nlink'); if (lk && lk.dataset.url && /^https?:/i.test(lk.dataset.url)) window.open(lk.dataset.url, '_blank', 'noopener');
       const f = e.target.closest('.nfile'); if (f) { const u = Assets.url(f.dataset.asset); if (u) { const l = document.createElement('a'); l.href = u; l.download = f.querySelector('b').textContent; document.body.append(l); l.click(); l.remove(); } }
     });
-    b.addEventListener('dblclick', e => { const im = e.target.closest('figure img'); if (im && im.src) { const lb = document.createElement('div'); lb.className = 'lightbox'; lb.innerHTML = `<img src="${im.src}" alt="">`; lb.onclick = () => lb.remove(); document.body.append(lb); } });
+    b.addEventListener('dblclick', e => { const im = e.target.closest('figure:not(.nlink) img'); if (im && im.src) { const lb = document.createElement('div'); lb.className = 'lightbox'; lb.innerHTML = `<img src="${im.src}" alt="">`; lb.onclick = () => lb.remove(); document.body.append(lb); } });
     b.addEventListener('pointerdown', e => {
       if (mode === 'text' && e.pointerType === 'mouse' && e.button === 2) { const s = getSelection(); if (s.rangeCount && !s.isCollapsed && b.contains(s.anchorNode) && s.toString().trim()) { e.preventDefault(); use(g); openMM(e); } return; }
       if (mode !== 'text' || (e.pointerType === 'mouse' && e.button > 0)) return;
@@ -585,8 +642,9 @@ const Note = (() => {
     g.pad.addEventListener('pointerdown', e => { if (e.button > 0 && e.pointerType === 'mouse') return; if (e.pointerType === 'touch' && penSeen) return; e.preventDefault(); use(g); startStroke(e); });
     /* a stylus writes even in text mode, unless the setting is off */
     el.addEventListener('pointerdown', e => { if (mode === 'text' && e.pointerType === 'pen' && S.prefs.autoPen && !e.target.closest('input')) { e.preventDefault(); use(g); if (PENS[pen] === undefined && pen !== 'eraser') pen = 'pen'; startStroke(e); } }, true);
-    el.addEventListener('dragover', e => { const ty = [...(e.dataTransfer.types || [])]; if (ty.includes('Files') || ty.includes('application/x-notely')) { e.preventDefault(); el.classList.add('dropping'); } });
-    el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('dropping'); });
+    el.addEventListener('dragover', e => { const ty = [...(e.dataTransfer.types || [])]; if (ty.includes('Files') || ty.includes('application/x-notely') || (!innerDrag && ty.includes('text/uri-list'))) { e.preventDefault(); showSlot(slotAt(g, e.clientY)); } });
+    b.addEventListener('dragstart', () => { innerDrag = true; }); b.addEventListener('dragend', () => { innerDrag = false; });
+    el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) { el.classList.remove('dropping'); clearSlot(); } });
     el.addEventListener('drop', e => { use(g); onDrop(e); });
     hydrateInto(b, g.data.html, g.data);
     if (ro) ro.observe(el);
