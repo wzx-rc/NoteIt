@@ -2600,11 +2600,12 @@ const Board = (() => {
     mount, unmount, key, keyUp, paste: onPaste,
     get mounted() { return mounted; }, get doc() { return D; }, get tool() { return tool; },
     refreshRefs() { if (!mounted) return; for (const [id, n] of nodes) { const it = byId.get(id); if (it && (it.k === 'task' || it.k === 'doc' || it.k === 'todo')) { n._sig = ''; n._it = null; } } propSig = ''; schedule(); },
-    retheme(from) {
+    /* modeOnly: the same theme switched between light and dark; the fonts did not change, so nothing is measured again */
+    retheme(from, modeOnly) {
       if (!mounted) return;
       if (from) { const m = schemeMapper(from, scheme()); hist = hist.map(m.list); fut = fut.map(m.list); noteColor = m.re(noteColor) || noteColor; items = D.items; closePop(); }
       if (optsEl) { optsEl._h = ''; refreshTools(); }
-      Studio.retheme(); measCache.clear(); items = relayout(items); reindex(); D.items = items; for (const n of nodes.values()) { n._sig = ''; n._it = null; } propSig = ''; qSig = ''; schedule(); },
+      Studio.retheme(); if (!modeOnly) { measCache.clear(); items = relayout(items); reindex(); D.items = items; } for (const n of nodes.values()) { n._sig = ''; n._it = null; } propSig = ''; qSig = ''; schedule(); },
     layoutChanged,
     /* used by the assistant and the space page */
     items: () => items, select: ids => { sel = new Set(ids); schedule(); },

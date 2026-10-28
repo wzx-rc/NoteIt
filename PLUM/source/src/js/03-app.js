@@ -814,7 +814,9 @@ function applyTheme() {
   /* the boards follow the theme's colour scheme (S.prefs.schemeTh = the theme their colours are in) */
   let from = null;
   if (S && S.prefs.schemeTh !== sk) { if (THEMES[S.prefs.schemeTh]) { from = schemeOf(THEMES[S.prefs.schemeTh]); remapScheme(from, schemeOf(th)); } S.prefs.schemeTh = sk; save(); }
-  if (S) { renderSide(); if (R.name === 'doc' && typeof Board !== 'undefined') { Board.retheme(from); Note.retheme(); } }
+  if (S) { renderSide(); if (R.name === 'doc' && typeof Board !== 'undefined') { Board.retheme(from, prev === th && !from); Note.retheme(); } }
+  /* no colour transitions while everything changes colour at once: the switch is instant instead of a slow fade element by element */
+  r.classList.add('th-switch'); cancelAnimationFrame(applyTheme.raf); applyTheme.raf = requestAnimationFrame(() => { applyTheme.raf = requestAnimationFrame(() => r.classList.remove('th-switch')); });
 }
 /* the theme's colour and accent chosen in Réglages (themes with tints / accents): the theme's CSS reads them */
 function applyLook(th, r) {
