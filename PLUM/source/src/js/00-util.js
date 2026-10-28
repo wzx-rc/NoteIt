@@ -27,7 +27,8 @@ const THEME_BASE = {
   meta: '',                  // <meta name="theme-color">
   chalk: '#ECEAE5',          // near-black ink drawn on a dark sheet
   hand: '',                  // near-black handwritten text on a dark sheet ('' = chalk)
-  colors: {},                // swatch sets: ink, hl, stroke, fill, note, mind, space, picker (rows of the colour popup)
+  scheme: null,              // the 20 colours of the theme, in the roles of SCHEME_NAMES (null = SCHEME_BASE)
+  colors: {},                // other swatch sets: space (the dots of the spaces)
   palettes: [],              // extra palettes in the atelier, { id, tab: 'nature' | 'saisons', name, scene, cols }
   icons: {},                 // icon name -> SVG markup drawn in a 24×24 box, or { vb: '0 0 w h', svg }
   decor: [],                 // decoration layers: { at: CSS selector of a lasting element, cls } -> <div class="th-decor cls">
@@ -62,8 +63,25 @@ const tintOf = hex => {
   return { id: 'custom', h: Math.round((Math.atan2(B, A) * 180 / Math.PI + 360) % 360), c: +Math.min(.035, Math.hypot(A, B) * .15).toFixed(4), l: +L.toFixed(3) };
 };
 const onAccent = hex => lum(hex) > .36 ? '#0B0D12' : '#FFFFFF';
-/* a swatch set of the current theme, else the base one */
-const themeColors = (k, base) => theme().colors[k] || base;
+/* ---------- the colour scheme: 20 colours per theme, always in the same roles ----------
+   Colour n°1 is the ink, n°5 the theme's own colour (arrows take it), 6–14 the hues, 15–20 the pastels of
+   post-its and fills. A theme gives its own 20 in its manifest (scheme); a colour picked from the scheme is
+   remembered by its number (item.cs = { key: n }), so switching themes repaints it in the new theme's n°n. */
+const SCHEME_NAMES = ['Encre', 'Graphite', 'Gris', 'Blanc', 'Couleur du thème', 'Rouge', 'Orange', 'Jaune', 'Vert', 'Sarcelle', 'Bleu', 'Violet', 'Rose', 'Terre', 'Jaune pâle', 'Pêche', 'Rose pâle', 'Lavande', 'Ciel', 'Menthe'];
+const SCHEME_BASE = ['#1E1E1E', '#5F5E5A', '#A3A29C', '#FFFFFF', '#4A72E8', '#E5564B', '#EE8A2F', '#E9B731', '#2FA96A', '#1FA2A0', '#2B5FA8', '#7C5CE0', '#DB5C9A', '#8B6A4F', '#FCE9A6', '#FAD3B5', '#F7CAD6', '#DCD3F5', '#C9DDF7', '#CDEBD3'];
+/* the default number of each kind of colour: ink and outlines n°1, arrows n°5, post-its n°15 */
+const SCHEME_DEF = { sc: 1, csc: 5, note: 15, text: 1 };
+/* the swatch rows the older choosers still show, as numbers of the scheme */
+const SCHEME_SETS = { ink: [1, 6, 7, 9, 11, 12, 13, 14], stroke: [1, 5, 6, 9, 11], fill: [17, 20, 19, 15, 4], note: [15, 16, 17, 18, 19, 20, 4, 3], hl: [8, 20, 19, 17, 16, 18], mind: [12, 11, 9, 7, 13, 10, 6, 14] };
+const schemeOf = th => (th && Array.isArray(th.scheme) && th.scheme.length >= 20 ? th.scheme : SCHEME_BASE);
+const scheme = () => schemeOf(theme());
+const schemeHex = n => scheme()[n - 1] || null;
+/* the number of a colour in a scheme (0 = not in it) */
+const schemeNo = (hex, sch = scheme()) => { const u = String(hex || '').toUpperCase(); const i = u ? sch.findIndex(c => c.toUpperCase() === u) : -1; return i + 1; };
+/* "@5" in a saved default means the scheme's n°5 */
+const schemeVal = v => typeof v === 'string' && v[0] === '@' ? schemeHex(+v.slice(1)) : v;
+/* a swatch set of the current theme: from its scheme (ink, stroke, fill, note, hl, mind), else its own list, else the base one */
+const themeColors = (k, base) => SCHEME_SETS[k] ? SCHEME_SETS[k].map(n => scheme()[n - 1]) : theme().colors[k] || base;
 /* near-black ink reads as chalk on a dark sheet */
 const inkColor = c => isDarkTheme() && lum(c) < .03 ? theme().chalk : c;
 /* handwritten annotations can take their own chalk colour */

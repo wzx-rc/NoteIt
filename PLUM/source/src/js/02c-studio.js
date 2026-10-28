@@ -407,8 +407,40 @@ function namePop(anchor, title, value, done) {
   i.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') ok(); if (e.key === 'Escape') closePop(); });
   $('[data-ok]', p).onclick = ok;
 }
+/* the full atelier (wheel, palettes, harmonies… on the board) is an option in Réglages; by default drawing shows
+   the simple brush panel and the colour popover */
+const atelierFull = () => S.prefs.atelier === 'complet';
 const PenPanel = {
+  /* the simple panel: the brush (menu with previews), size and opacity, the colour from the theme's scheme;
+     shape, texture, flow, spacing, dynamics, smoothing and pressure are folded under "Réglages avancés" */
   html(pen, o = {}) {
+    if (o.atl) return PenPanel.atl(pen, o);
+    const isE = pen === 'eraser';
+    if (isE) return `<div class="bp2"><button class="bp2-sel" data-bsel="1" aria-label="Choisir un pinceau"><span class="bp2-ic">${icon('eraser')}</span><span class="bp2-n">Gomme</span>${icon('chevd', 'sm')}</button>${PenPanel.list(pen, true)}<div class="pp-hint">${o.note ? 'La gomme efface les traits entiers.' : 'La gomme efface un trait entier ; sélectionnez-le pour le déplacer ou le redimensionner.'}</div></div>`;
+    const def = PENS[pen] || PENS.pen, pr = penPref(pen), nat = pr.sh === 'native', cur = (pr.c || '').toUpperCase();
+    const rng = (k, lab) => { const isS = k === 's', val = isS ? sizeT(pen, pr.s) : pr[k], off = nat && (k === 'fl' || k === 'sp');
+      return `<label class="bp2-row${off ? ' off' : ''}" title="${off ? 'Choisissez une forme de pinceau pour régler le flux et l’espacement' : lab}"><span>${lab}</span><input type="range" data-k="${k}" min="${isS ? 0 : .01}" max="1" step="${isS ? .002 : .01}" value="${val}" aria-label="${lab}"${off ? ' disabled' : ''}><b data-v="${k}">${sliderText(k, pr[k])}</b></label>`; };
+    const sch = scheme(), mine = !schemeNo(cur);
+    return `<div class="bp2">
+      <button class="bp2-sel" data-bsel="1" aria-label="Choisir un pinceau"><span class="bp-pv">${PenPanel.preview(pen, 150, 30)}</span><span class="bp2-n">${def.name}</span>${icon('chevd', 'sm')}</button>${PenPanel.list(pen, true)}
+      ${rng('s', 'Taille')}${rng('o', 'Opacité')}
+      <div class="bp2-h">Couleur</div>
+      <div class="bp2-cols">${sch.map((c, i) => `<button class="sw" data-pc="${c}" style="--c:${c}" aria-pressed="${c.toUpperCase() === cur}" title="${i + 1} · ${SCHEME_NAMES[i]}" aria-label="Couleur ${i + 1}, ${SCHEME_NAMES[i]}"></button>`).join('')}</div>
+      <button class="bp2-free" data-pcw="1" title="Couleur libre"><span class="sw" style="--c:${mine ? cur : 'transparent'}"></span><span${mine ? ' class="hex"' : ''}>${mine ? cur : 'Couleur libre…'}</span></button>
+      <details class="bp2-more"${S.prefs.bpMore ? ' open' : ''}><summary>Réglages avancés</summary>
+        ${rng('fl', 'Flux')}${rng('sp', 'Espacement')}
+        <label class="bp2-row"><span>Lissage</span><input type="range" data-k="sm" min="0" max="1" step=".05" value="${pr.sm}" aria-label="Lissage"><b data-v="sm">${Math.round(pr.sm * 100)} %</b></label>
+        <div class="bp2-h">Forme</div><div class="bp-tiles">${NIB_ORDER.map(k => `<button class="bp-t${k === 'native' ? ' nat' : ''}" data-sh="${k}" aria-pressed="${pr.sh === k}" title="${NIBS[k].name}${k === 'native' ? ' : le tracé vectoriel du pinceau' : ''}">${k === 'native' ? icon(def.icon) : `<img src="${nibThumb(k)}" alt="">`}</button>`).join('')}</div>
+        <div class="bp2-h">Texture</div><div class="bp-tiles">${TEX_ORDER.map(k => `<button class="bp-t" data-tx="${k}" aria-pressed="${pr.tx === k}" title="${TEXS[k].name}"><img src="${texThumb(k)}" alt=""></button>`).join('')}</div>
+        <div class="bp2-h">Dynamique</div><div class="bp-dyn">${DYNS.map(([k, ic, l]) => `<button class="bp-d" data-dy="${k}" aria-pressed="${!!pr.dy[k]}" title="${l}" aria-label="${l}">${icon(ic)}</button>`).join('')}</div>
+        <div class="bp2-h">Pression</div><div class="seg sm" data-seg="pressure">${[['pen', 'Stylet'], ['speed', 'Vitesse'], ['fixed', 'Fixe']].map(([v, l]) => `<button data-pv="${v}" aria-pressed="${(S.prefs.pressure || 'pen') === v}">${l}</button>`).join('')}</div>
+        <div class="pp-hint"><span id="ppDiag">${penDiagLine()}</span> <button class="lnk" data-diag="1">Tester</button></div>
+        <div class="bp2-acts"><button class="btn sm" data-presave="1">${icon('plus', 'sm')}Enregistrer en préréglage</button><button class="btn sm" data-breset="1" title="Revenir aux réglages d’origine de ce pinceau">Réinitialiser</button></div>
+      </details>
+    </div>`;
+  },
+  /* the atelier's own panel (dark, with the concept's tiles), in the brush card of the full atelier */
+  atl(pen, o = {}) {
     const isE = pen === 'eraser';
     if (isE) return `<div class="bp"><div class="bp-sel" data-bsel="1"><span>${icon('eraser')}Gomme</span>${icon('chevd', 'sm')}</div>${PenPanel.list(pen)}<div class="pp-hint">${o.note ? 'La gomme efface les traits entiers.' : 'La gomme efface un trait entier ; sélectionnez-le pour le déplacer ou le redimensionner.'}</div></div>`;
     const def = PENS[pen] || PENS.pen, pr = penPref(pen), nat = pr.sh === 'native';
@@ -430,13 +462,15 @@ const PenPanel = {
     </div>`;
   },
   /* the preview of the concept: the stroke in ivory chalk, whatever the colour (the wheel shows the colour) */
-  preview(pen, w = 260, h = 64) { const pr = penPref(pen); return brushPreview(pen, Object.assign({}, pr, { c: theme().atlInk, o: Math.max(.75, pr.o) }), w, h, atlOnDark()); },
-  list(pen) {
-    const row = k => { const p = penPref(k); return `<button class="bp-li" data-pen="${k}" aria-pressed="${k === pen}">${brushPreview(k, Object.assign({}, p, { c: theme().atlInk, s: Math.min(p.s, 14) }), 120, 28, atlOnDark())}<span>${PENS[k].name}</span></button>`; };
+  preview(pen, w = 260, h = 64) { const pr = penPref(pen); if (w < 200) return brushPreview(pen, Object.assign({}, pr, { s: Math.min(pr.s, h * .45), o: Math.max(.75, pr.o) }), w, h, isDarkTheme()); return brushPreview(pen, Object.assign({}, pr, { c: theme().atlInk, o: Math.max(.75, pr.o) }), w, h, atlOnDark()); },
+  /* lite: the simple panel's menu, previews in the ink of the page */
+  list(pen, lite) {
+    const ink = lite ? (isDarkTheme() ? '#E6E4DF' : '#2A2A28') : theme().atlInk, dk = lite ? isDarkTheme() : atlOnDark();
+    const row = k => { const p = penPref(k); return `<button class="bp-li" data-pen="${k}" aria-pressed="${k === pen}">${brushPreview(k, Object.assign({}, p, { c: ink, s: Math.min(p.s, 14) }), 120, 28, dk)}<span>${PENS[k].name}</span></button>`; };
     const mine = studioPrefs().presets || [];
     return `<div class="bp-list" hidden><div class="bp-lh">Atelier</div>${ATL_PENS.filter(k => PENS[k]).map(row).join('')}
-      ${mine.length ? `<div class="bp-lh">Mes préréglages</div>${mine.map(m => `<div class="bp-li my"><button data-preset="${m.id}">${brushPreview(m.pen, Object.assign({}, penPref(m.pen), m.cfg, { c: theme().atlInk, s: Math.min(m.cfg.s || 8, 14) }), 120, 28, atlOnDark())}<span>${esc(m.name)}</span></button><button class="bp-x" data-predel="${m.id}" title="Supprimer ce préréglage" aria-label="Supprimer">${icon('x', 'sm')}</button></div>`).join('')}` : ''}
-      ${PENS[pen] ? `<button class="bp-li sv" data-presave="1">${icon('plus')}<span>Enregistrer ces réglages comme préréglage…</span></button>` : ''}
+      ${mine.length ? `<div class="bp-lh">Mes préréglages</div>${mine.map(m => `<div class="bp-li my"><button data-preset="${m.id}">${brushPreview(m.pen, Object.assign({}, penPref(m.pen), m.cfg, { c: ink, s: Math.min(m.cfg.s || 8, 14) }), 120, 28, dk)}<span>${esc(m.name)}</span></button><button class="bp-x" data-predel="${m.id}" title="Supprimer ce préréglage" aria-label="Supprimer">${icon('x', 'sm')}</button></div>`).join('')}` : ''}
+      ${PENS[pen] && !lite ? `<button class="bp-li sv" data-presave="1">${icon('plus')}<span>Enregistrer ces réglages comme préréglage…</span></button>` : ''}
       <div class="bp-lh">Classiques</div>${PEN_ORDER.filter(k => !PENS[k].stamp).map(row).join('')}<button class="bp-li er" data-pen="eraser" aria-pressed="${pen === 'eraser'}">${icon('eraser')}<span>Gomme</span></button></div>`;
   },
   /* h: { pen(), setPen(k), changed(partial) } — partial = true when only a slider moved */
@@ -449,6 +483,8 @@ const PenPanel = {
       const pd = e.target.closest('[data-predel]'); if (pd) { const P = studioPrefs(); P.presets = (P.presets || []).filter(x => x.id !== pd.dataset.predel); save(); h.changed(false); return; }
       const pen = h.pen(); if (!PENS[pen]) return;
       const sv = e.target.closest('[data-presave]'); if (sv) { namePop(sv, 'Nom du préréglage', PENS[pen].name + ' ' + ((studioPrefs().presets || []).length + 1), name => { const pr = penPref(pen), cfg = {}; for (const k of PRESET_KEYS) cfg[k] = JSON.parse(JSON.stringify(pr[k])); const P = studioPrefs(); P.presets = (P.presets || []).concat({ id: uid('bp'), name, pen, cfg }); save(); h.changed(false); toast('Préréglage « ' + name + ' » enregistré'); }); return; }
+      const pc = e.target.closest('[data-pc]'); if (pc) { pref().c = pc.dataset.pc; save(); pc.parentNode.querySelectorAll('[data-pc]').forEach(b => b.setAttribute('aria-pressed', b === pc)); h.changed(false); return; }
+      const pw = e.target.closest('[data-pcw]'); if (pw) { Colors.open(pw, { value: penPref(pen).c, onPick: (c, final) => { pref().c = c; save(); if (final) h.changed(false); } }); return; }
       const sh = e.target.closest('[data-sh]'); if (sh) { pref().sh = sh.dataset.sh; save(); h.changed(false); return; }
       const tx = e.target.closest('[data-tx]'); if (tx) { pref().tx = tx.dataset.tx; save(); h.changed(false); return; }
       const dy = e.target.closest('[data-dy]'); if (dy) { const cur = penPref(pen).dy; pref().dy = Object.assign({}, cur, { [dy.dataset.dy]: cur[dy.dataset.dy] ? 0 : 1 }); save(); h.changed(false); return; }
@@ -456,12 +492,13 @@ const PenPanel = {
       const s = e.target.closest('[data-pv]'); if (s) { S.prefs.pressure = s.dataset.pv; save(); h.changed(false); return; }
       if (e.target.closest('[data-diag]')) { closePop(); openSettings('pen'); }
     });
-    root.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-bsel]')) { e.preventDefault(); e.target.click(); } });
+    root.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-bsel]') && !e.target.matches('button')) { e.preventDefault(); e.target.click(); } });
+    root.addEventListener('toggle', e => { if (e.target.matches('.bp2-more')) { S.prefs.bpMore = e.target.open; save(); } }, true);
     root.addEventListener('input', e => {
       const r = e.target; if (r.type !== 'range' || !r.dataset.k) return; const pen = h.pen(); if (!PENS[pen]) return;
       const k = r.dataset.k, val = k === 's' ? sizeOf(pen, +r.value) : +r.value; pref()[k] = val; save();
       const lab = root.querySelector(`[data-v="${k}"]`); if (lab) lab.textContent = sliderText(k, val);
-      const pv = root.querySelector('.bp-pv'); if (pv) pv.innerHTML = PenPanel.preview(pen);
+      const pv = root.querySelector('.bp-pv'); if (pv) pv.innerHTML = pv.closest('.bp2') ? PenPanel.preview(pen, 150, 30) : PenPanel.preview(pen);
       h.changed(true);
     });
     root.addEventListener('change', e => { if (e.target.type === 'range') h.changed(false); });
@@ -478,7 +515,7 @@ async function saveJSON(name, txt, done) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast(done);
 }
 const Studio = (() => {
-  let api = null, root = null, wrapEl = null, plateEl, rad = null, on = false, planche = false, harmBase = null, varBase = null, lock = 0, pickImg = '', rightEl, stackEl, dockEl, favEl, chipEl, loupeEl;
+  let api = null, root = null, wrapEl = null, plateEl, rad = null, on = false, lite = true, planche = false, harmBase = null, varBase = null, lock = 0, pickImg = '', rightEl, stackEl, dockEl, favEl, chipEl, loupeEl;
   const P = () => studioPrefs();
   const color = () => api ? api.color() : '#1E1E1E';
   const shown = () => planche ? PLANCHE : P().cards;
@@ -507,15 +544,17 @@ const Studio = (() => {
   /* called by the board whenever the tool, the pen or its colour changed */
   function sync() {
     if (!root || !api) return;
-    const was = on; on = api.drawing(); root.hidden = !on;
-    if (!on) { hideLoupe(); if (planche) setPlanche(false, true); return; }
+    const was = on && !lite; on = api.drawing(); root.hidden = !on;
+    // the simple mode keeps only the eyedropper's loupe: the brush is in the Style panel and the tool bar
+    lite = !atelierFull(); root.classList.toggle('lite', lite);
+    if (!on || lite) { if (!on) hideLoupe(); if (planche) setPlanche(false, true); return; }
     renderBar(); renderFavs();
     if (!was || !dockEl.firstChild) renderDock(); else if (rad) rad.update();
     if (!was) renderStack(); else refresh('color');
   }
   /* parts that depend on the colour follow it; harmony and variations keep their base while you pick inside them */
   function refresh(what) {
-    if (!root || !on) return;
+    if (!root || !on || lite) return;
     if (what === 'favs') { renderFavs(); if (rad) rad.update(); return; }
     if (what === 'palettes') { renderCard('palettes'); return; }
     if (rad) rad.update(); renderFavs(); renderBar();
@@ -591,7 +630,7 @@ const Studio = (() => {
   function renderCard(id) {
     if (!stackEl) return;
     const sec = $(`[data-card="${id}"]`, stackEl); if (!sec || sec.classList.contains('shut')) return; const body = $('.ac-body', sec);
-    if (id === 'brush') { const k = PENS[api.tool()] ? api.pen() : api.tool() === 'eraser' ? 'eraser' : api.pen(); if (body._sig === brushSig(k) && body.firstChild) return; body._sig = brushSig(k); body.innerHTML = PenPanel.html(k); if (!body._bound) { body._bound = true; PenPanel.bind(body, { pen: () => PENS[api.tool()] ? api.pen() : api.tool() === 'eraser' ? 'eraser' : api.pen(), setPen: k2 => api.setTool(k2), changed: partial => { api.changed(partial); if (!partial) { body._sig = ''; renderCard('brush'); } else if (rad) rad.update(); } }); } return; }
+    if (id === 'brush') { const k = PENS[api.tool()] ? api.pen() : api.tool() === 'eraser' ? 'eraser' : api.pen(); if (body._sig === brushSig(k) && body.firstChild) return; body._sig = brushSig(k); body.innerHTML = PenPanel.html(k, { atl: true }); if (!body._bound) { body._bound = true; PenPanel.bind(body, { pen: () => PENS[api.tool()] ? api.pen() : api.tool() === 'eraser' ? 'eraser' : api.pen(), setPen: k2 => api.setTool(k2), changed: partial => { api.changed(partial); if (!partial) { body._sig = ''; renderCard('brush'); } else if (rad) rad.update(); } }); } return; }
     if (id === 'palettes') body.innerHTML = palettesHTML();
     if (id === 'history') body.innerHTML = historyHTML();
     if (id === 'harmony') { if (!lock || !harmBase) harmBase = color(); body.innerHTML = harmonyHTML(harmBase); }
@@ -739,13 +778,14 @@ const Studio = (() => {
   }
 
   /* another theme: the wheel and the cards are built again in its look */
-  function retheme() { if (!root || !on) return; renderBar(); renderFavs(); renderDock(); renderStack(); }
+  function retheme() { if (!root || !on || lite) return; renderBar(); renderFavs(); renderDock(); renderStack(); }
 
-  return { mount, unmount, sync, refresh, retheme, showLoupe, hideLoupe, picked, toggleCard, planche: v => { if (on) setPlanche(v === undefined ? !planche : v); }, get on() { return on; }, get isPlanche() { return planche; } };
+  return { mount, unmount, sync, refresh, retheme, showLoupe, hideLoupe, picked, toggleCard, planche: v => { if (on && !lite) setPlanche(v === undefined ? !planche : v); }, get on() { return on; }, get isPlanche() { return planche; } };
 })();
 
 /* the radial picker in a popover, for notes */
 function radialPop(anchor, o) {
+  if (!atelierFull()) return Colors.open(anchor, { value: o.get(), above: o.above, align: 'right', onPick: (c, final) => { if (c) o.set(c, final); } });
   const p = openPop(anchor, `<div class="atl-solo"><div class="rad-host"></div><div class="solo-pal"></div></div>`, { cls: 'atl-pop radpop', focus: false, above: o.above, align: 'right' });
   const side = hasEyeDropper() ? [['screen', 'drop', 'Pipette (prendre une couleur à l’écran)']] : [];
   const r = Radial($('.rad-host', p), { leaves: false, get: o.get, set: (c, final) => { o.set(c, final); if (final) { useColor(c); hist(); } }, side, onSide: async id => { if (id === 'screen') { const c = await screenPick(); if (c) { o.set(c, true); useColor(c); r.update(); hist(); } } } });

@@ -56,7 +56,7 @@
   [data-skin="keyboard"] .isl.bl { left: 14px; bottom: 14px; }
   [data-skin="keyboard"] .isl.bl.undo { left: 176px; }
   [data-skin="keyboard"] .isl.tr { top: 14px; right: 14px; }
-  [data-skin="keyboard"] .bwrap.drawing .isl.tr { right: 92px; }
+  [data-skin="keyboard"] .bwrap.drawing:not(.lite) .isl.tr { right: 92px; }
   [data-skin="keyboard"] .isl.br { right: 14px; bottom: 14px; }
 }
 /* "Style" is the orange key */

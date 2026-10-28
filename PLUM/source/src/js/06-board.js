@@ -6,7 +6,7 @@ const Board = (() => {
   let D = null, items = [], byId = new Map();
   let host, world, framesL, edges, edgesTop, itemsL, labelsL, ovl, liveCv, ink, meas, wrap, toolsEl, optsEl, dockEl, trEl, propsEl, qbarEl, zoomEl, undoEl, brEl, hintEl;
   const view = { x: 0, y: 0, k: 1 };
-  let tool = 'select', shapeKind = 'rect', penKind = 'pen', noteColor = NOTE_COLORS[0];
+  let tool = 'select', shapeKind = 'rect', penKind = 'pen', noteColor = SCHEME_BASE[14];
   let sel = new Set(), editing = null, editSub = null, hist = [], fut = [], op = null, guides = null, marquee = null, attachHi = null, eraserAt = null;
   let spaceDown = false, penSeen = false, clip = null, raf = 0, propSig = '', qSig = '', lastClient = null, mounted = false, propsTab = 'style', propsHold = false, liveBefore = null;
   const touches = new Map(), nodes = new Map(), fitCache = new Map(), measCache = new Map();
@@ -400,36 +400,136 @@ const Board = (() => {
       cancel() { setLive(before); } };
   }
 
-  /* ---------- quick bar: a few buttons over the selection when the panel is closed ---------- */
-  const primaryProp = it => it.k === 'note' || it.k === 'todo' ? 'fc' : it.k === 'frame' || it.k === 'image' || it.k === 'file' || it.k === 'link' || it.k === 'doc' || it.k === 'task' ? null : 'sc';
+  /* ---------- contextual bars, as in Miro: the options of the selection float over it (qbar), those of the chosen
+     tool under the tools (topts). Colours open the colour popover, the rest small popovers; ⋯ has order, groups, opacity. ---------- */
+  const primaryProp = it => it.k === 'note' || it.k === 'todo' ? 'fc' : it.k === 'frame' || it.k === 'image' || it.k === 'file' || it.k === 'link' || it.k === 'doc' || it.k === 'task' || it.k === 'sheet' ? null : 'sc';
   const propValue = (it, prop) => prop === 'fc' ? (it.k === 'shape' ? it.fc : it.c) : prop === 'sc' ? (it.k === 'text' ? it.color : it.k === 'ink' || it.k === 'mind' ? it.c : it.sc) : it[prop];
-  function renderQuick(list, dragging) {
-    const show = list.length && !dragging && !propsOpen() && !(op && op.kind === 'marquee') && !editing;
-    if (!show) { qbarEl.hidden = true; qSig = ''; return; }
-    const one = list[0], prop = list.length === 1 ? primaryProp(one) : null, cur = prop ? propValue(one, prop) : null;
-    const sig = list.map(i => i.id).join(',') + '|' + prop + '|' + cur;
-    if (sig !== qSig) {
-      qSig = sig;
-      qbarEl.innerHTML = (prop ? `<button class="qb" data-q="color" title="Couleur"><span class="sw${cur ? '' : ' fill-none'}" style="background:${cur || 'transparent'}"></span></button>` : '')
-        + `<button class="qb" data-q="style" title="Style et calques">${icon('sliders')}<span>Style</span></button><span class="vs"></span><button class="qb" data-q="dup" title="Dupliquer (Ctrl D)">${icon('dup')}</button><button class="qb" data-q="del" title="Supprimer (Suppr)">${icon('trash')}</button>`;
+  const SC_KINDS = ['shape', 'conn', 'text', 'ink', 'mind'];
+  const qsw = (prop, cur, title) => `<button class="qb qc" data-qc="${prop}" title="${esc(title)}" aria-label="${esc(title)}"><span class="qsw${prop === 'fc' ? ' fill' : ''}${cur ? '' : ' none'}" style="--c:${cur || 'transparent'}"></span></button>`;
+  const qbtn = (id, inner, title, chev = true) => `<button class="qb" data-qp="${id}" title="${esc(title)}" aria-label="${esc(title)}">${inner}${chev ? '<svg class="qchev" viewBox="0 0 8 8"><path d="M1.5 3 4 5.5 6.5 3"/></svg>' : ''}</button>`;
+  const qact = (a, ic, title, label) => `<button class="qb" data-qa="${a}" title="${esc(title)}" aria-label="${esc(title)}">${icon(ic)}${label ? `<span>${label}</span>` : ''}</button>`;
+  /* what the bar is about: the selection, or (empty list) the tool about to draw */
+  function ctxOf(list) {
+    const td = !list.length, T = tool === 'line' ? 'conn' : tool, kinds = new Set(list.map(i => i.k));
+    const has = (...ks) => td ? ks.includes(T) : ks.some(k => kinds.has(k)), only = (...ks) => td ? ks.includes(T) : [...kinds].every(k => ks.includes(k));
+    const first = (...ks) => list.find(i => ks.includes(i.k));
+    const val = (prop, def, ...ks) => { if (td) return def; const it = list.find(i => (!ks.length || ks.includes(i.k)) && propValue(i, prop) !== undefined); return it ? propValue(it, prop) ?? def : def; };
+    return { td, T, has, only, first, val, one: list.length === 1 ? list[0] : null, bd: BD() };
+  }
+  function ctxHTML(list) {
+    const c = ctxOf(list), { td, T, has, only, first, val, one, bd } = c, g = [];
+    if (td && (PENS[tool] || tool === 'eraser')) {
+      const pr = penPref(penKind);
+      g.push(`<div class="seg sm ic qpens">${PEN_ORDER.slice(0, 8).map(k => `<button data-tool="${k}" title="${PENS[k].name} (${PEN_ORDER.indexOf(k) + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme (E)" aria-pressed="${tool === 'eraser'}">${icon('eraser')}</button></div>`);
+      if (tool !== 'eraser') g.push(`<button class="qb pchip" data-opp="1" title="${PENS[penKind].name} : taille, opacité, forme, texture">${brushPreview(penKind, Object.assign({}, pr, { s: Math.min(pr.s, 10) }), 64, 20, isDarkTheme())}<span>${sizeText(pr.s)}</span></button>` + qsw('pen', pr.c, 'Couleur du stylo'));
+      return g.join('<span class="vs"></span>');
     }
+    if (td && !['shape', 'conn', 'text', 'note', 'todo'].includes(T)) return '';
+    /* colours */
+    const cols = [];
+    if (only('mind')) cols.push(qsw('sc', val('sc', null, 'mind'), 'Couleur de la branche'));
+    else if (only('note', 'todo')) cols.push(qsw('fc', td ? (T === 'note' ? noteColor : '#FFFFFF') : val('fc', null, 'note', 'todo'), 'Couleur'));
+    else {
+      if (has(...SC_KINDS)) cols.push(qsw('sc', td ? (T === 'conn' ? bd.csc : bd.sc) : val('sc', null, ...SC_KINDS), only('text') ? 'Couleur du texte' : only('ink') ? 'Couleur du trait' : 'Couleur du trait ou du contour'));
+      if (has('shape')) cols.push(qsw('fc', td ? bd.fc : val('fc', null, 'shape'), 'Fond'));
+    }
+    if (cols.length) g.push(cols.join(''));
+    /* shape, stroke, arrow heads, text */
+    const st = [];
+    if (only('shape')) { const sh = td ? shapeKind : val('sh', 'rect', 'shape'); st.push(qbtn('shape', icon(sh === 'starsh' ? 'starsh' : sh), 'Forme')); }
+    if (has('shape', 'conn')) { const sw = val('sw', bd.sw || 2, 'shape', 'conn'), dash = val('dash', bd.dash || '', 'shape', 'conn'); st.push(qbtn('stroke', pline('M4 8h32', ` stroke-width="${sw >= 4 ? 4 : sw >= 2 ? 2.6 : 1.4}"${dash === 'dash' ? ' stroke-dasharray="6 4"' : dash === 'dot' ? ' stroke-dasharray="1 4"' : ''}`), 'Trait : épaisseur, style, tracé')); }
+    if (only('conn')) st.push(qbtn('heads', td ? icon(T === 'conn' && tool === 'line' ? 'line' : (bd.route === 'elbow' ? 'elbow' : bd.route === 'straight' ? 'line' : 'conn')) : headIcon(val('h1', 'arrow', 'conn')), td ? 'Tracé des flèches' : 'Pointes et tracé'));
+    if (has('note', 'text', 'shape', 'todo')) st.push(qbtn('text', `<span class="qaa" style="font-family:${fontOf(td ? bd.font || HAND : (first('note', 'text', 'shape', 'todo') || {}).font || HAND)}">Aa</span>`, 'Texte : police, taille, alignement'));
+    if (one && one.k === 'image') st.push(qbtn('frm', icon('image'), 'Cadre de l’image'));
+    if (st.length) g.push(st.join(''));
+    if (td) return g.join('<span class="vs"></span>');
+    /* actions */
+    const ac = [];
+    if (one && one.k === 'mind') ac.push(qact('mchild', 'plus', 'Ajouter une idée (Tab)'));
+    if (one && one.k === 'conn') ac.push(qact('label', 'text', 'Ajouter un texte sur la flèche'));
+    if (one && ['link', 'doc', 'task'].includes(one.k)) ac.push(qact('open', 'ext', 'Ouvrir'));
+    if (list.some(i => i.g)) ac.push(qact('ungroup', 'ungroup', 'Dégrouper (Ctrl Alt G)'));
+    else if (list.filter(i => !(i.k === 'mind' && i.parent)).length > 1) ac.push(qact('group', 'group', 'Grouper (Ctrl G)'));
+    ac.push(qact('dup', 'dup', 'Dupliquer (Ctrl D)'), qact('del', 'trash', 'Supprimer (Suppr)'), qact('more', 'dots', 'Plus : ordre, opacité, ranger…'));
+    g.push(ac.join(''));
+    return g.join('<span class="vs"></span>');
+  }
+  function renderQuick(list, dragging) {
+    const show = list.length && !dragging && !(op && op.kind === 'marquee') && !editing && !wrap.classList.contains('drawing');
+    if (!show) { qbarEl.hidden = true; qSig = ''; return; }
+    const html = ctxHTML(list);
+    if (html !== qSig) { qSig = html; qbarEl.innerHTML = html; }
     qbarEl.hidden = false;
     const bb = unionBox(list.filter(i => i.k !== 'conn')) || (() => { const g = connGeom(list[0], byId); return [Math.min(g.a[0], g.b[0]), Math.min(g.a[1], g.b[1]), Math.max(g.a[0], g.b[0]), Math.max(g.a[1], g.b[1])]; })();
     const a = toS(bb[0], bb[1]), b = toS(bb[2], bb[3]), r = hostRect(), w = qbarEl.offsetWidth, hh = qbarEl.offsetHeight;
-    let x = (a.x + b.x) / 2 - w / 2, y = a.y - hh - 14;
-    if (y < 64) y = b.y + 14;
-    if (y + hh > r.height - 70) y = Math.max(64, a.y - hh - 14);
+    let x = (a.x + b.x) / 2 - w / 2, y = a.y - hh - 16;
+    if (y < 64) y = b.y + 16;
+    if (y + hh > r.height - 70) y = Math.max(64, a.y - hh - 16);
     qbarEl.style.left = clamp(x, 8, Math.max(8, r.width - w - 8)) + 'px'; qbarEl.style.top = clamp(y, 8, Math.max(8, r.height - hh - 8)) + 'px';
   }
-  function quickAction(a, btn) {
+  /* a click in either bar */
+  function ctxClick(e) {
+    const t = e.target;
+    const tb = t.closest('[data-tool]'); if (tb) { setTool(tb.dataset.tool); return; }
+    const qc = t.closest('[data-qc]'); if (qc) { ctxColor(qc.dataset.qc, qc); return; }
+    const qp = t.closest('[data-qp]'); if (qp) { ctxPop(qp.dataset.qp, qp); return; }
+    const qa = t.closest('[data-qa]'); if (qa) { if (qa.dataset.qa === 'more') ctxMore(qa); else action(qa.dataset.qa, qa); return; }
+    const pp = t.closest('[data-opp]'); if (pp) { const pop = openPop(pp, `<div class="pp-wrap">${PenPanel.html(penKind)}</div>`, { cls: 'pppop', focus: false }); PenPanel.bind(pop, { pen: () => penKind, setPen: k => { closePop(); setTool(k); }, changed: partial => { if (!partial) { refreshTools(); propSig = ''; renderProps(); const k = penKind; const w = $('.pp-wrap', pop); if (w && pop.isConnected) w.innerHTML = PenPanel.html(k); } } }); return; }
+  }
+  function ctxColor(prop, btn) {
+    if (prop === 'pen') { Colors.open(btn, { value: penPref(penKind).c, onPick: (c, final) => { if (!c) return; S.prefs.pens[penKind].c = c; save(); const d = $('[data-tool="pen"] .cdot', toolsEl); if (d) d.style.background = c; if (final) { refreshTools(); propSig = ''; renderProps(); Studio.sync(); } } }); return; }
+    const list = selItems(), notes = list.length ? list.every(i => i.k === 'note' || i.k === 'todo') : tool === 'note' || tool === 'todo';
+    const it = list.find(i => (prop === 'fc' ? ['shape', 'note', 'todo'] : SC_KINDS).includes(i.k));
+    const cur = it ? propValue(it, prop) : prop === 'fc' ? (tool === 'note' ? noteColor : BD().fc) : tool === 'conn' || tool === 'line' ? BD().csc : BD().sc;
+    Colors.open(btn, { value: cur, none: prop === 'fc' && !notes, onPick: (v, final) => { if (!v && notes) return; setProp(prop, v, !final); if (final) qSig = ''; } });
+  }
+  function ctxPop(id, btn) {
+    const list = selItems(), c = ctxOf(list), { td, val, bd } = c;
+    let h = '';
+    if (id === 'shape') h = `<div class="shgrid" data-set="sh">${Object.entries(SHAPES).map(([k, l]) => `<button data-v="${k}" aria-pressed="${k === (td ? shapeKind : val('sh', 'rect', 'shape'))}" title="${l}">${icon(k)}</button>`).join('')}</div>`;
+    if (id === 'stroke') h = sec('Épaisseur', seg('sw', val('sw', bd.sw || 2, 'shape', 'conn'), [[1, pline('M4 8h32', ' stroke-width="1.4"'), 'Fin'], [2, pline('M4 8h32', ' stroke-width="2.6"'), 'Moyen'], [4, pline('M4 8h32', ' stroke-width="4.2"'), 'Épais']], 'ic'))
+      + sec('Style', seg('dash', val('dash', bd.dash || '', 'shape', 'conn') || '', [['', pline('M4 8h32'), 'Continu'], ['dash', pline('M4 8h32', ' stroke-dasharray="6 4"'), 'Tirets'], ['dot', pline('M4 8h32', ' stroke-dasharray="1 4"'), 'Pointillés']], 'ic'))
+      + sec('Tracé', seg('sty', val('sty', bd.sty || 'sketch', 'shape', 'conn'), [['clean', pline('M4 8h32'), 'Net'], ['sketch', pline('M4 9c6-3 12 2 18-1s8-2 14 0'), 'Croquis'], ['wild', pline('M4 10c4-6 8 4 12-2s6 6 10-2 6 4 10 0'), 'Fou']], 'ic'))
+      + (c.has('shape') && (td ? bd.fc : list.some(i => i.k === 'shape' && i.fc)) ? sec('Remplissage', seg('fill', val('fill', bd.fill || 'solid', 'shape'), [['solid', 'Plein'], ['hachure', 'Hachures']])) : '');
+    if (id === 'heads') h = (td ? '' : sec('Départ', seg('h0', val('h0', 'none', 'conn'), Object.keys(HEADS).map(k => [k, headIcon(k), HEADS[k]]), 'ic heads1')) + sec('Arrivée', seg('h1', val('h1', 'arrow', 'conn'), Object.keys(HEADS).map(k => [k, headIcon(k), HEADS[k]]), 'ic heads1')))
+      + (td && tool === 'line' ? '' : sec('Tracé', seg('route', td ? bd.route || 'curve' : val('route', 'curve', 'conn'), [['curve', icon('conn'), 'Courbe'], ['straight', icon('line'), 'Droit'], ['elbow', icon('elbow'), 'Coudé']], 'ic')));
+    if (id === 'text') {
+      const f = c.first('note', 'text', 'shape', 'todo');
+      h = sec('Police', seg('font', td ? bd.font || HAND : (f && f.font) || HAND, [[HAND, '<span style="font-family:var(--font-hand);font-size:17px">Aa</span>', 'Manuscrite'], [SANS, '<span>Aa</span>', 'Normale'], [MONO, '<span style="font-family:var(--font-mono);font-size:12px">Aa</span>', 'Code']], 'ic'));
+      if (!td) {
+        h += sec('Taille', seg('fs', fsLevel(f), [[0, 'S'], [1, 'M'], [2, 'L'], [3, 'XL']]));
+        if (c.has('note', 'text')) h += sec('Alignement', seg('al', (c.first('note', 'text') || {}).al || 'left', [['left', icon('al-l'), 'À gauche'], ['center', icon('al-c'), 'Centré'], ['right', icon('al-r'), 'À droite']], 'ic'));
+        if (c.only('text')) h += sec('Style', `<div class="qrow">${seg('bold', !!f.bold, [[false, 'Normal'], [true, '<b>Gras</b>']])}${seg('ital', !!f.ital, [[false, 'Droit'], [true, '<i>Italique</i>']])}</div>`);
+      }
+    }
+    if (id === 'frm') h = seg('frm', val('frm', 'shadow', 'image'), [['shadow', 'Ombre'], ['polaroid', 'Polaroïd'], ['square', 'Carré'], ['none', 'Simple']]);
+    if (!h) return;
+    const p = openPop(btn, `<div class="qpop-b">${h}</div>`, { cls: 'qpop', focus: false });
+    p.addEventListener('click', e => {
+      const sv = e.target.closest('[data-set] [data-v]'); if (!sv) return;
+      const box = sv.closest('[data-set]'), prop = box.dataset.set, v = sv.dataset.v;
+      setProp(prop, v === 'true' ? true : v === 'false' ? false : v);
+      box.querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', b === sv));
+      if (id === 'shape' || id === 'frm') closePop();
+    });
+  }
+  function ctxMore(btn) {
     const list = selItems(); if (!list.length) return;
-    if (a === 'dup') duplicate(); else if (a === 'del') deleteSel();
-    else if (a === 'style') { setProps(true); propsTab = 'style'; renderProps(true); }
-    else if (a === 'color') { const prop = primaryProp(list[0]); Colors.open(btn, { value: propValue(list[0], prop), none: prop === 'fc', onPick: (c, final) => setProp(prop, c, !final) }); }
+    const o = list[0].op ?? 1, items2 = [
+      { head: 'Ordre' }, { label: 'Tout devant', icon: 'front', small: 'Ctrl Page préc.', run: () => zMove('front') }, { label: 'Avancer', icon: 'up', small: 'Page préc.', run: () => zMove('fwd') }, { label: 'Reculer', icon: 'down', small: 'Page suiv.', run: () => zMove('bwd') }, { label: 'Tout en arrière', icon: 'back', small: 'Ctrl Page suiv.', run: () => zMove('back') }, '-'];
+    if (list.filter(i => i.k !== 'conn').length >= 2) items2.push({ label: 'Ranger, aligner, répartir', icon: 'arrange', run: () => arrangeMenu(btn) }, { label: 'Entourer d’un cadre', icon: 'frame', run: () => frameAround(list.filter(i => i.k !== 'conn')) });
+    if (list.length === 1 && list[0].k === 'frame') items2.push({ label: 'Ranger le contenu', icon: 'arrange', run: () => arrangeMenu(btn, true) }, { label: 'Ajuster au contenu', icon: 'fit', run: () => fitFrame(list[0]) }, { label: list[0].nt ? 'Afficher le titre' : 'Masquer le titre', icon: 'text', run: () => setProp('ftitle', !!list[0].nt) });
+    items2.push({ label: `Opacité · ${Math.round(o * 100)} %`, icon: 'drop', keep: true, run: () => {
+      const p = openPop(btn, `<div class="qpop-b">${sec(`Opacité <b class="pv">${Math.round(o * 100)} %</b>`, `<input type="range" class="prange" min=".05" max="1" step=".05" value="${o}" aria-label="Opacité">`)}</div>`, { cls: 'qpop', focus: false });
+      const r = $('input', p), lab = $('.pv', p);
+      r.addEventListener('input', () => { lab.textContent = Math.round(r.value * 100) + ' %'; setProp('op', +r.value, true); });
+      r.addEventListener('change', () => setProp('op', +r.value));
+    } }, '-', { label: 'Panneau Style et calques', icon: 'sliders', run: () => { setProps(true); propsTab = 'style'; renderProps(true); } });
+    openPop(btn, items2, { align: 'right' });
   }
 
   /* ---------- the Style / Layers / Moodboard panel ---------- */
-  const propsOpen = () => propsEl && !propsEl.hidden && !wrap.classList.contains('drawing');
+  const propsOpen = () => propsEl && !propsEl.hidden && !(wrap.classList.contains('drawing') && atelierFull());
   function setProps(on) { S.prefs.props = on; save(); propsEl.hidden = !on; wrap.classList.toggle('props-open', on); $('[data-a="props"]', trEl).setAttribute('aria-pressed', on); propSig = ''; renderOverlay(); layoutChanged(); }
   const SW_OPTS = [[1, 'Fin'], [2, 'Moyen'], [4, 'Épais']];
   const FS_TABLE = { note: [22, 30, 40, 54], text: [20, 28, 40, 64], shape: [18, 26, 34, 46], todo: [18, 24, 30, 38], sheet: [12, 14, 17, 21] };
@@ -458,7 +558,7 @@ const Board = (() => {
     const want = td ? { sc: ['shape', 'conn', 'line', 'text'].includes(T), fc: ['shape', 'note', 'todo'].includes(T), fill: T === 'shape', sw: ['shape', 'conn', 'line'].includes(T), dash: ['shape', 'conn', 'line'].includes(T), sty: ['shape', 'conn', 'line'].includes(T), sh: T === 'shape', heads: T === 'conn', route: T === 'conn', font: ['text', 'note', 'todo', 'shape'].includes(T) }
       : { sc: has('shape', 'conn', 'text', 'ink', 'mind'), fc: has('shape', 'note', 'todo'), fill: has('shape') && list.some(i => i.k === 'shape' && i.fc), sw: has('shape', 'conn'), dash: has('shape', 'conn'), sty: has('shape', 'conn'), sh: only('shape'), heads: only('conn'), route: only('conn'), font: has('note', 'text', 'shape', 'todo'), fs: has('note', 'text', 'shape', 'todo', 'sheet'), al: has('note', 'text'), bold: only('text'), op: true };
     const val = (prop, def) => { if (td) return def; const it = first(); return propValue(list.find(i => propValue(i, prop) !== undefined) || it, prop) ?? def; };
-    const scCur = td ? bd.sc : (list.some(i => ['shape', 'conn', 'text', 'ink', 'mind'].includes(i.k)) ? propValue(list.find(i => ['shape', 'conn', 'text', 'ink', 'mind'].includes(i.k)), 'sc') : bd.sc);
+    const scCur = td ? (T === 'conn' || T === 'line' ? bd.csc : bd.sc) : (list.some(i => ['shape', 'conn', 'text', 'ink', 'mind'].includes(i.k)) ? propValue(list.find(i => ['shape', 'conn', 'text', 'ink', 'mind'].includes(i.k)), 'sc') : bd.sc);
     const fcCur = td ? (T === 'note' ? noteColor : T === 'todo' ? '#FFFFFF' : bd.fc) : propValue(list.find(i => ['shape', 'note', 'todo'].includes(i.k)) || list[0], 'fc');
     if (one && one.k === 'mind') out.push(sec('Branche', Colors.row(themeColors('mind', MIND_COLORS), one.c, 'sc') + btnRow([['mchild', 'plus', 'Idée', 'Ajouter une idée (Tab)'], one.parent ? ['msib', 'plus', 'Voisine', 'Ajouter une idée voisine (Entrée)'] : ['mtidy', 'wand', 'Équilibrer', 'Équilibrer les branches']])));
     else if (want.sc) out.push(sec(has('ink') && only('ink') ? 'Couleur du trait' : has('text') && only('text') ? 'Couleur' : 'Contour', Colors.row(only('ink') ? themeColors('ink', INK_COLORS).slice(0, 5) : themeColors('stroke', STROKE_COLORS), scCur, 'sc')));
@@ -560,8 +660,13 @@ const Board = (() => {
   function setProp(prop, v, live) {
     const list = selItems();
     const BDK = ['sc', 'fc', 'sw', 'sty', 'dash', 'fill', 'font', 'route'];
-    if (BDK.includes(prop) && !live && !(prop === 'fc' && list.length && list.every(i => i.k === 'note' || i.k === 'todo'))) { S.prefs.bd = Object.assign({}, BD(), { [prop]: v }); save(); }
-    if (prop === 'fc' && (!list.length ? tool === 'note' : list.every(i => i.k === 'note'))) noteColor = v || NOTE_COLORS[0];
+    if (BDK.includes(prop) && !live && !(prop === 'fc' && list.length && list.every(i => i.k === 'note' || i.k === 'todo'))) {
+      // arrows and lines keep their own default colour (csc); a colour of the scheme is kept by its number
+      const key = prop === 'sc' && (list.length ? list.every(i => i.k === 'conn') : tool === 'conn' || tool === 'line') ? 'csc' : prop;
+      const no = (prop === 'sc' || prop === 'fc') && v ? schemeNo(v) : 0;
+      S.prefs.bd = Object.assign({}, S.prefs.bd, { [key]: no ? '@' + no : v }); save();
+    }
+    if (prop === 'fc' && (!list.length ? tool === 'note' : list.every(i => i.k === 'note'))) noteColor = v || schemeHex(SCHEME_DEF.note);
     if (prop === 'sh' && !list.length) shapeKind = v;
     if (prop === 'bg') { D.bg = v; touch(D); host.className = host.className.replace(/bg-\w+/, 'bg-' + v); propSig = ''; renderProps(); return; }
     if (!list.length) { refreshTools(); propSig = ''; renderProps(); return; }
@@ -577,7 +682,7 @@ const Board = (() => {
     if (t.closest('[data-a="close"]')) { setProps(false); return; }
     if (t.closest('[data-pp]')) return;
     const c = t.closest('[data-c]'); if (c) { const row = c.closest('[data-prop]'); if (row) { setProp(row.dataset.prop, c.dataset.c || null); return; } }
-    const w = t.closest('[data-wheel]'); if (w) { const prop = w.dataset.wheel, list = selItems(); const cur = list.length ? propValue(list[0], prop) : (prop === 'fc' ? (tool === 'note' ? noteColor : BD().fc) : BD().sc); Colors.open(w, { value: cur || '#1E1E1E', none: prop === 'fc' && !(list.length && list.every(i => i.k === 'note' || i.k === 'todo')), onPick: (v, final) => setProp(prop, v, !final) }); return; }
+    const w = t.closest('[data-wheel]'); if (w) { const prop = w.dataset.wheel, list = selItems(); const cur = list.length ? propValue(list[0], prop) : (prop === 'fc' ? (tool === 'note' ? noteColor : BD().fc) : tool === 'conn' || tool === 'line' ? BD().csc : BD().sc); Colors.open(w, { value: cur || '#1E1E1E', none: prop === 'fc' && !(list.length && list.every(i => i.k === 'note' || i.k === 'todo')), onPick: (v, final) => setProp(prop, v, !final) }); return; }
     const sv = t.closest('[data-set] [data-v]'); if (sv) { const prop = sv.closest('[data-set]').dataset.set, v = sv.dataset.v; setProp(prop, v === 'true' ? true : v === 'false' ? false : v); return; }
     const act = t.closest('[data-act]'); if (act) { action(act.dataset.act, act); return; }
     const hide = t.closest('[data-hide]'); if (hide) { const it = byId.get(hide.dataset.hide); if (it) { const ids = new Set([it.id]); if (it.k === 'mind') mindDesc(it.id, ids); commit(items.map(i => ids.has(i.id) ? Object.assign({}, i, { hid: !it.hid }) : i)); if (!it.hid) sel.delete(it.id); } return; }
@@ -1740,7 +1845,7 @@ const Board = (() => {
         const media = /^video\//.test(m.mime || ''), audio = /^audio\//.test(m.mime || ''), W = (media ? 360 : 280) * s, H = (media ? 202 : audio ? 86 : 78) * s, c = hs.indexOf(Math.min(...hs));
         it = { id: uid('f'), k: 'file', x: single ? at.x - W / 2 : x0 + c * (colW + gap), y: single ? at.y - H / 2 : y0 + hs[c], w: W, h: H, asset: m.asset, name: m.name || 'Fichier', size: m.size || 0, mime: m.mime || '' }; hs[c] += H + gap;
       } else if (m.type === 'link' && m.url) { const W = 300 * s, H = 80 * s, c = hs.indexOf(Math.min(...hs)); it = { id: uid('l'), k: 'link', x: single ? at.x - W / 2 : x0 + c * (colW + gap), y: single ? at.y - H / 2 : y0 + hs[c], w: W, h: H, url: m.url, title: m.title || '' }; hs[c] += H + gap; }
-      else if (m.type === 'text' && m.txt) { const W = 220 * s, H = 220 * s, c = hs.indexOf(Math.min(...hs)); it = mkNote(single ? at.x - W / 2 : x0 + c * (colW + gap), single ? at.y - H / 2 : y0 + hs[c], m.txt, NOTE_COLORS[0], { w: W, h: H, fs: m.txt.length > 120 ? 18 : 24 }); hs[c] += H + gap; }
+      else if (m.type === 'text' && m.txt) { const W = 220 * s, H = 220 * s, c = hs.indexOf(Math.min(...hs)); it = mkNote(single ? at.x - W / 2 : x0 + c * (colW + gap), single ? at.y - H / 2 : y0 + hs[c], m.txt, noteColor, { w: W, h: H, fs: m.txt.length > 120 ? 18 : 24 }); hs[c] += H + gap; }
       else if (m.type === 'doc' && docById(m.doc) && m.doc !== D.id) { const W = 220 * s, H = 180 * s, c = hs.indexOf(Math.min(...hs)); it = { id: uid('d'), k: 'doc', x: single ? at.x - W / 2 : x0 + c * (colW + gap), y: single ? at.y - H / 2 : y0 + hs[c], w: W, h: H, doc: m.doc }; hs[c] += H + gap; }
       if (it) added.push(it);
     }
@@ -2021,7 +2126,7 @@ const Board = (() => {
     tool = t; if (PENS[t]) penKind = t;
     if (!['select', 'hand', 'pick'].includes(t)) lastTool = t;
     host.className = 'bhost bg-' + (D.bg || 'dots') + ' t-' + (PENS[t] ? 'ink' : t);
-    const was = wrap.classList.contains('drawing'); wrap.classList.toggle('drawing', drawingTool());
+    const was = wrap.classList.contains('drawing'); wrap.classList.toggle('drawing', drawingTool()); wrap.classList.toggle('lite', !atelierFull());
     if (t !== 'pick') Studio.hideLoupe();
     refreshTools(); eraserAt = null; propSig = ''; schedule(); Studio.sync();
     if (was !== drawingTool()) layoutChanged();
@@ -2037,39 +2142,14 @@ const Board = (() => {
     })()).join('');
     renderOpts();
   }
-  /* the second bar: the options of the tool chosen in the first one, for what it is about to draw
-     (themes that float the dock show it under the tools; the others keep it hidden) */
+  /* the second bar: the options of the tool chosen in the first one, for what it is about to draw (ctxHTML with no selection) */
   function renderOpts() {
     if (!optsEl) return;
-    const bd = BD(), T = tool, L = (d, a) => `<span class="ol">${a}</span>${d}`;
-    const pline = (d, extra = '') => `<svg viewBox="0 0 40 16" class="pl"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"${extra}/></svg>`;
-    const sw = () => seg('sw', bd.sw || 2, [[1, pline('M4 8h32', ' stroke-width="1.4"'), 'Fin'], [2, pline('M4 8h32', ' stroke-width="2.6"'), 'Moyen'], [4, pline('M4 8h32', ' stroke-width="4.2"'), 'Épais']], 'ic');
-    const dash = () => seg('dash', bd.dash || '', [['', pline('M4 8h32'), 'Continu'], ['dash', pline('M4 8h32', ' stroke-dasharray="6 4"'), 'Tirets'], ['dot', pline('M4 8h32', ' stroke-dasharray="1 4"'), 'Pointillés']], 'ic');
-    const font = () => seg('font', bd.font || HAND, [[HAND, '<span style="font-family:var(--font-hand);font-size:16px">Aa</span>', 'Manuscrite'], [SANS, '<span>Aa</span>', 'Normale'], [MONO, '<span style="font-family:var(--font-mono);font-size:12px">Aa</span>', 'Code']], 'ic');
-    const sc = () => Colors.row(themeColors('stroke', STROKE_COLORS), bd.sc || '#1E1E1E', 'sc');
-    let h = '';
-    if (T === 'shape') h = [seg('sh', shapeKind, Object.entries(SHAPES).map(([k, l]) => [k, icon(k), l]), 'ic'), sc(), Colors.row(themeColors('fill', FILL_COLORS), bd.fc, 'fc', { none: true }), sw()].join('<span class="vs"></span>');
-    else if (T === 'conn') h = [sc(), seg('route', bd.route || 'curve', [['curve', icon('conn'), 'Courbe'], ['straight', icon('line'), 'Droit'], ['elbow', icon('elbow'), 'Coudé']], 'ic'), sw(), dash()].join('<span class="vs"></span>');
-    else if (T === 'line') h = [sc(), sw(), dash()].join('<span class="vs"></span>');
-    else if (T === 'text') h = [sc(), font()].join('<span class="vs"></span>');
-    else if (T === 'note') h = [Colors.row(themeColors('note', NOTE_COLORS).slice(0, 6), noteColor, 'fc'), font()].join('<span class="vs"></span>');
-    else if (T === 'todo') h = font();
-    else if (PENS[T] || T === 'eraser') {
-      const pr = penPref(penKind), cols = penKind === 'highlight' ? themeColors('hl', HL_COLORS) : themeColors('ink', INK_COLORS);
-      h = `<div class="seg sm ic">${PEN_ORDER.slice(0, 8).map(k => `<button data-tool="${k}" title="${PENS[k].name}" aria-pressed="${T === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme" aria-pressed="${T === 'eraser'}">${icon('eraser')}</button></div>`
-        + (T === 'eraser' ? '' : `<span class="vs"></span><button class="pchip" data-opp="1" title="${PENS[penKind].name} : taille, flux, forme, texture">${brushPreview(penKind, Object.assign({}, pr, { s: Math.min(pr.s, 14) }), 72, 22)}<span>${pr.s}</span></button>
-        <span class="vs"></span><div class="sws">${cols.slice(0, 6).map(c => `<button class="sw" data-pcol="${c}" style="background:${c}" aria-pressed="${pr.c.toUpperCase() === c.toUpperCase()}" aria-label="Couleur ${c}"></button>`).join('')}<button class="sw cur" data-pwheel="1" style="background:${pr.c}" title="Roue des couleurs" aria-label="Roue des couleurs">${icon('wheel', 'sm')}</button></div>`);
-    }
-    optsEl.innerHTML = h; optsEl.hidden = !h;
+    const h = ctxHTML([]);
+    if (optsEl._h !== h) { optsEl._h = h; optsEl.innerHTML = h; }
+    optsEl.hidden = !h;
   }
-  function optsClick(e) {
-    const t = e.target;
-    const tb = t.closest('[data-tool]'); if (tb) { setTool(tb.dataset.tool); return; }
-    const pc = t.closest('[data-pcol]'); if (pc) { S.prefs.pens[penKind].c = pc.dataset.pcol; save(); refreshTools(); Studio.sync(); return; }
-    const pw = t.closest('[data-pwheel]'); if (pw) { radialPop(pw, { get: () => penPref(penKind).c, set: (v, final) => { S.prefs.pens[penKind].c = v; save(); pw.style.background = v; if (final) { refreshTools(); Studio.sync(); } } }); return; }
-    const pp = t.closest('[data-opp]'); if (pp) { const pop = openPop(pp, `<div class="pp-wrap">${PenPanel.html(penKind)}</div>`, { cls: 'pppop', focus: false }); PenPanel.bind(pop, { pen: () => penKind, setPen: k => { closePop(); setTool(k); }, changed: partial => { if (!partial) { refreshTools(); propSig = ''; renderProps(); } } }); return; }
-    propsClick(e);
-  }
+  function optsClick(e) { ctxClick(e); }
   /* the dock floats where it was left (S.prefs.dock = { x, y } in px from the board's top left); double-click the grip to put it back */
   function placeDock() {
     if (!dockEl) return; const p = S.prefs.dock;
@@ -2104,6 +2184,7 @@ const Board = (() => {
 
   /* ---------- mount ---------- */
   function mount(container, doc) {
+    if (!noteColor || noteColor === SCHEME_BASE[14]) noteColor = schemeHex(SCHEME_DEF.note);
     D = doc; items = (doc.items || []).slice(); reindex(); hist = []; fut = []; sel = new Set(); editing = null; editSub = null; op = null; nodes.clear(); fitCache.clear(); propSig = ''; qSig = ''; propsTab = 'style';
     const open = S.prefs.props == null ? innerWidth >= 1100 : !!S.prefs.props;
     container.innerHTML = `<div class="bwrap${open ? ' props-open' : ''}" style="position:absolute;inset:0">
@@ -2147,7 +2228,7 @@ const Board = (() => {
     toolsEl.addEventListener('dragstart', e => e.preventDefault());   // only our own drag: a native one would drop the button's text on the board
     toolsEl.addEventListener('mousedown', e => e.preventDefault());
     bindDock();
-    trEl.onclick = e => { if (!e.target.closest('[data-a="props"]')) return; if (drawingTool()) { Studio.toggleCard('brush'); return; } setProps(!propsOpen()); };
+    trEl.onclick = e => { if (!e.target.closest('[data-a="props"]')) return; if (drawingTool() && atelierFull()) { Studio.toggleCard('brush'); return; } setProps(!propsOpen()); };
     propsEl.addEventListener('click', propsClick);
     propsEl.addEventListener('input', propsInput); propsEl.addEventListener('change', propsInput);
     propsEl.addEventListener('keydown', e => e.stopPropagation());
@@ -2155,7 +2236,7 @@ const Board = (() => {
     propsEl.addEventListener('dragend', () => { mediaDrag = false; clearDrop(); });
     propsEl.addEventListener('contextmenu', e => { const t = e.target.closest('[data-media]'); if (!t) return; e.preventDefault(); const m = spaceMedia(D.sp)[+t.dataset.media], sp = spaceById(D.sp); if (!m) return; openPop({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }, [{ label: 'Placer sur le board', icon: 'board', run: () => placeMedia([m]) }, ...(sp && (sp.media || []).includes(m) ? [{ label: 'Retirer du moodboard', icon: 'trash', danger: true, run: () => { sp.media = sp.media.filter(x => x !== m); save(); propSig = ''; renderProps(); } }] : [])]); });
     qbarEl.addEventListener('pointerdown', e => e.preventDefault());
-    qbarEl.onclick = e => { const b = e.target.closest('[data-q]'); if (b) quickAction(b.dataset.q, b); };
+    qbarEl.onclick = ctxClick;
     undoEl.onclick = e => { const b = e.target.closest('[data-a]'); if (b) (b.dataset.a === 'undo' ? undo : redo)(); };
     zoomEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a; if (a === 'zin') zoomCenter(1.25); if (a === 'zout') zoomCenter(.8); if (a === 'z100') zoomTo(1); };
     brEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; if (b.dataset.a === 'fit') fitAll(); if (b.dataset.a === 'help') helpModal(); };
@@ -2259,7 +2340,7 @@ const Board = (() => {
       lastTool ? { label: '↺ ' + toolLabel(lastTool), run: () => setTool(lastTool === 'pen' ? penKind : lastTool) } : { label: 'Main', run: () => setTool('hand') },
       { label: 'Texte', run: () => setTool('text'), sub: () => around(FONTS.map(([f, l]) => ({ label: l, on: (BD().font || HAND) === f, font: f, run: pickOpt('text', 'font', f) }))) },
       { label: SHAPES[shapeKind] || 'Forme', run: () => setTool('shape'), sub: () => around(['rect', 'round', 'ellipse', 'diamond', 'tri', 'hex', 'starsh', 'cloud'].map(k => ({ label: SHAPES[k], on: shapeKind === k, run: () => { shapeKind = k; setTool('shape'); } }))) },
-      { label: 'Post-it', sw: noteColor, run: () => setTool('note'), sub: () => around(NOTE_COLORS.map((c, i) => ({ label: NOTE_NAMES[i] || c, sw: c, on: c === noteColor, run: () => { noteColor = c; setTool('note'); } }))) },
+      { label: 'Post-it', sw: noteColor, run: () => setTool('note'), sub: () => around(themeColors('note', NOTE_COLORS).map((c, i) => ({ label: SCHEME_NAMES[SCHEME_SETS.note[i] - 1] || c, sw: c, on: c === noteColor, run: () => { noteColor = c; setTool('note'); } }))) },
       { label: PENS[penKind].name, run: () => setTool(penKind), sub: () => around(PEN_ORDER.filter(k => PENS[k]).slice(0, 8).map(k => ({ label: PENS[k].name, on: k === penKind, run: () => setTool(k) }))) },
       { label: 'Flèche', run: () => setTool('conn'), sub: () => around([...Object.entries(ROUTES).map(([k, l]) => ({ label: l, on: tool === 'conn' && (BD().route || 'curve') === k, run: pickOpt('conn', 'route', k) })), { label: 'Ligne', on: tool === 'line', run: () => setTool('line') }]) },
       { label: 'Sélection', run: () => setTool('select') },
@@ -2272,7 +2353,7 @@ const Board = (() => {
   function mmItemItems(hit) {
     const list = selItems(), one = list.length === 1 ? list[0] : null, all = k => list.length && list.every(i => i.k === k);
     const sized = list.find(i => FS_TABLE[i.k]), f0 = (one && one.font) || (list.find(i => i.font) || {}).font || HAND;
-    const colors = list.every(i => i.k === 'note' || i.k === 'todo') ? ['fc', NOTE_COLORS] : list.some(i => propPatch(i, 'sc', '#000')) ? ['sc', themeColors('stroke', STROKE_COLORS)] : null;
+    const colors = list.every(i => i.k === 'note' || i.k === 'todo') ? ['fc', themeColors('note', NOTE_COLORS)] : list.some(i => propPatch(i, 'sc', '#000')) ? ['sc', themeColors('stroke', STROKE_COLORS)] : null;
     const sizeIt = sized ? { label: 'Taille', run: null, sub: () => around(['S', 'M', 'L', 'XL'].map((l, i) => ({ label: l, on: fsLevel(sized) === i, run: () => setProp('fs', i) }))) } : null;
     const fontIt = list.some(i => propPatch(i, 'font', HAND)) ? { label: 'Police', run: null, sub: () => around(FONTS.map(([f, l]) => ({ label: l, on: f0 === f, font: f, run: () => setProp('font', f) }))) } : null;
     const colorIt = colors ? { label: 'Couleur', run: null, sub: () => around(colors[1].map((c, i) => ({ label: (colors[0] === 'fc' ? NOTE_NAMES : ['Noir', 'Rouge', 'Vert', 'Bleu', 'Orange', 'Violet', 'Gris', 'Blanc'])[i] || 'Couleur', sw: c, on: one && propValue(one, colors[0]) === c, run: () => setProp(colors[0], c) }))) } : null;
@@ -2405,19 +2486,23 @@ const Board = (() => {
 
   return { busy: () => !!(op || mm || editing),
     mount, unmount, key, keyUp, paste: onPaste,
-    get mounted() { return mounted; }, get doc() { return D; },
+    get mounted() { return mounted; }, get doc() { return D; }, get tool() { return tool; },
     refreshRefs() { if (!mounted) return; for (const [id, n] of nodes) { const it = byId.get(id); if (it && (it.k === 'task' || it.k === 'doc' || it.k === 'todo')) { n._sig = ''; n._it = null; } } propSig = ''; schedule(); },
-    retheme() { if (!mounted) return; Studio.retheme(); measCache.clear(); items = relayout(items); reindex(); D.items = items; for (const n of nodes.values()) { n._sig = ''; n._it = null; } propSig = ''; qSig = ''; schedule(); },
+    retheme(from) {
+      if (!mounted) return;
+      if (from) { const m = schemeMapper(from, scheme()); hist = hist.map(m.list); fut = fut.map(m.list); noteColor = m.re(noteColor) || noteColor; items = D.items; closePop(); }
+      if (optsEl) { optsEl._h = ''; refreshTools(); }
+      Studio.retheme(); measCache.clear(); items = relayout(items); reindex(); D.items = items; for (const n of nodes.values()) { n._sig = ''; n._it = null; } propSig = ''; qSig = ''; schedule(); },
     layoutChanged,
     /* used by the assistant and the space page */
     items: () => items, select: ids => { sel = new Set(ids); schedule(); },
-    addNotes(list) { const cols = Math.min(4, Math.ceil(Math.sqrt(list.length))); const out = list.map((n, i) => mkNote((i % cols) * 240, Math.floor(i / cols) * 240, String(n.texte || n.text || ''), NOTE_COLORS[(n.couleur != null ? NOTE_COLORS.indexOf(n.couleur) : -1) >= 0 ? NOTE_COLORS.indexOf(n.couleur) : colorIndex(n.couleur, i)])); return insert(out); },
+    addNotes(list) { const cols = Math.min(4, Math.ceil(Math.sqrt(list.length))); const out = list.map((n, i) => mkNote((i % cols) * 240, Math.floor(i / cols) * 240, String(n.texte || n.text || ''), themeColors('note', NOTE_COLORS)[(n.couleur != null ? NOTE_COLORS.indexOf(n.couleur) : -1) >= 0 ? NOTE_COLORS.indexOf(n.couleur) : colorIndex(n.couleur, i)])); return insert(out); },
     groupInFrames(groups) {
       let x = 0; const out = [], moved = new Map();
       const placed = new Set();
       for (const g of groups) {
         const its = (g.ids || []).map(id => byId.get(id)).filter(i => i && i.k !== 'conn' && !placed.has(i.id)); its.forEach(i => placed.add(i.id));
-        const extra = (g.nouveaux || []).map(t => mkNote(0, 0, String(t), NOTE_COLORS[0]));
+        const extra = (g.nouveaux || []).map(t => mkNote(0, 0, String(t), noteColor));
         const all = its.concat(extra); if (!all.length) continue;
         const cols = Math.max(1, Math.min(3, Math.ceil(Math.sqrt(all.length)))), rows = Math.ceil(all.length / cols);
         const cw = Math.max(220, ...all.map(i => i.w)) + 24, chh = Math.max(220, ...all.map(i => i.h)) + 24;

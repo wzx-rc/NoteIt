@@ -51,11 +51,15 @@
 
   /* the charcoal dock at the bottom: the chosen tool's options (pens, colours, sizes) */
   [data-skin="farmer"] .topts:not([hidden]) {
-    display: flex; position: absolute; z-index: 21; bottom: 26px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 420px);
+    display: flex; position: absolute; z-index: 21; top: auto; bottom: 26px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 420px);
     align-items: center; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 6px 12px; border-radius: 18px;
     background: linear-gradient(180deg, #3D3833, #2A2622); border: 1px solid #1C1916; color: #EFE3CC; box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), 0 14px 24px -10px rgb(30 18 8 / .65);
   }
   [data-skin="farmer"] .bwrap.props-open .topts:not([hidden]) { left: calc((100% - var(--props-w) - 12px) / 2); max-width: calc(100% - var(--props-w) - 420px); }
+  [data-skin="farmer"] .topts .qb { color: #EFE3CC; }
+  [data-skin="farmer"] .topts .pchip, [data-skin="farmer"] .topts .pchip:hover { background: #EFE3CC; color: #3B2A1C; }
+  [data-skin="farmer"] .topts .qsw { box-shadow: 0 0 0 2px #EFE3CC; }
+  [data-skin="farmer"] .topts .qb:hover { background: rgb(255 255 255 / .08); }
   [data-skin="farmer"] .topts .vs { width: 1px; height: 26px; margin: 0 6px; background: rgb(255 255 255 / .14); }
   [data-skin="farmer"] .topts .ol { font: 700 11px var(--font-ui); color: #BFAF95; margin: 0 4px 0 2px; }
   [data-skin="farmer"] .topts .seg { background: rgb(0 0 0 / .25); padding: 2px; gap: 2px; border: 0; border-radius: 12px; box-shadow: none; }

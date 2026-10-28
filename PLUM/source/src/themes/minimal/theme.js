@@ -8,6 +8,9 @@ const MIN_D = o => `stroke="none" style="fill:var(--i-d,currentColor);opacity:ca
 defineTheme({
   id: 'minimal', order: 0, label: 'Minimal', desc: 'Sobre et aéré, titres à empattements',
   mode: 'user', meta: '#1A1A19', chalk: '#ECEBE8',
+  /* the 20 colours of the scheme (SCHEME_NAMES in 00-util.js): n°5 bleu ardoise for arrows */
+  scheme: ['#1E1E1E', '#5F5E5A', '#A3A29C', '#FFFFFF', '#4A72E8', '#E5564B', '#EE8A2F', '#E9B731', '#2FA96A', '#1FA2A0',
+    '#2B5FA8', '#7C5CE0', '#DB5C9A', '#8B6A4F', '#FCE9A6', '#FAD3B5', '#F7CAD6', '#DCD3F5', '#C9DDF7', '#CDEBD3'],
   tints: [
     { id: 'graphite', name: 'Graphite', h: 80, c: .003 },
     { id: 'pierre', name: 'Pierre', h: 70, c: .011 },
@@ -22,7 +25,6 @@ defineTheme({
   ],
   icons: {
     home: `<path ${MIN_D(.16)} d="M5.5 10.8 12 5.6l6.5 5.2V19h-4.5v-3.5a2 2 0 0 0-4 0V19H5.5z"/><path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z"/><path d="M10 20.5v-5a2 2 0 0 1 4 0v5"/>`,
-    note: `<path ${MIN_D(.3)} d="M14 3.5V7a1 1 0 0 0 1 1h3.5z"/><path d="M6.5 3.5H14l4.5 4.5v11a1.5 1.5 0 0 1-1.5 1.5H6.5A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M14 3.5V7a1 1 0 0 0 1 1h3.5M8.5 12.5h7M8.5 16h4.5"/>`,
     tasks: `<rect ${MIN_D(.14)} x="4" y="4" width="16" height="16" rx="4.5"/><rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="m8.6 12.2 2.4 2.4 4.6-4.9"/>`,
     board: `<rect ${MIN_D(.16)} x="3.5" y="3.5" width="7.5" height="9" rx="2"/><rect ${MIN_D(.16)} x="13" y="11" width="7.5" height="9.5" rx="2"/><rect x="3.5" y="3.5" width="7.5" height="9" rx="2"/><rect x="13" y="3.5" width="7.5" height="5.5" rx="2"/><rect x="13" y="11" width="7.5" height="9.5" rx="2"/><rect x="3.5" y="14.5" width="7.5" height="6" rx="2"/>`,
     star: `<path ${MIN_D(.16)} d="M12 3.8 14.45 8.8l5.5.8-4 3.9.95 5.5L12 16.4 7.1 19l.95-5.5-4-3.9 5.5-.8z"/><path d="M12 3.8 14.45 8.8l5.5.8-4 3.9.95 5.5L12 16.4 7.1 19l.95-5.5-4-3.9 5.5-.8z"/>`,
@@ -46,7 +48,6 @@ defineTheme({
     ital: `<path d="M10.5 5H17M7 19h6.5M14 5l-4 14"/>`,
     list: `<circle cx="5.5" cy="7" r="1.1" fill="currentColor" stroke="none"/><circle cx="5.5" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="5.5" cy="17" r="1.1" fill="currentColor" stroke="none"/><path d="M9.5 7h10M9.5 12h10M9.5 17h7"/>`,
     chk: `<rect ${MIN_D(.2)} x="3.5" y="4.5" width="6" height="6" rx="1.6"/><rect x="3.5" y="4.5" width="6" height="6" rx="1.6"/><path d="m5 7.6 1.3 1.3 2.2-2.4"/><rect x="3.5" y="13.5" width="6" height="6" rx="1.6"/><path d="M13 7.5h7.5M13 16.5h7.5"/>`,
-    hl: `<path ${MIN_D(.16)} d="M14.8 4.6 19.4 9.2l-7.6 7.6H7.2v-4.6z"/><path d="M14.8 4.6 19.4 9.2l-7.6 7.6H7.2v-4.6zM10 9.4l4.6 4.6M4 20.5h16"/>`,
     sticky: `<path ${MIN_D(.3)} d="M19.5 14h-5a1 1 0 0 0-1 1v5z"/><path d="M5.5 4.5h13a1 1 0 0 1 1 1V14l-6 6h-8a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1zM19.5 14h-5a1 1 0 0 0-1 1v5"/>`,
     undo: `<path d="M8.5 6.5 4.5 10.5l4 4M4.5 10.5h10a4.75 4.75 0 0 1 0 9.5H12"/>`,
     redo: `<path d="m15.5 6.5 4 4-4 4M19.5 10.5h-10a4.75 4.75 0 0 0 0 9.5H12"/>`,

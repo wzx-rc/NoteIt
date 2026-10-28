@@ -30,8 +30,11 @@ Un dossier de thème contient :
 2. Dans `theme.js` et `theme.css`, remplacer `modele` par l'id.
 3. **Couleurs** : remplir les variables de `:root[data-skin="<id>"]` dans `theme.css`
    (barre latérale, pages, textes, accent, barre de titre Windows `--tb-*`, logo `--br-*`).
-4. **Nuanciers** (`colors` dans `theme.js`) : stylo, surligneur, contours, fonds, post-it, espaces,
-   lignes du nuancier de la roue. Une liste absente garde celle de base.
+4. **Gamme de couleurs** (`scheme` dans `theme.js`) : 20 couleurs numérotées, toujours dans le même rôle
+   (n°1 encre, n°5 couleur du thème = flèches et lignes, 6–14 teintes, 15–20 pastels des post-it et des fonds ;
+   voir `_modele/theme.js`). Tous les sélecteurs de couleur la proposent. Une couleur prise dans la gamme garde son
+   numéro : au changement de thème, les boards, les stylos et les réglages par défaut passent à la couleur du même
+   numéro. `colors.space` garde les pastilles des espaces.
 5. **Icônes** (`icons`) : nom de l'icône → nouveau dessin SVG 24×24, ou une image peinte
    `<image href="asset:icones/x.png" width="24" height="24"/>`. Les noms sont les `<symbol id="i-…">`
    de `src/body.html` (home, note, tasks, board, pen, rect, sticky, gear, …). Le changement est immédiat partout.
@@ -64,7 +67,8 @@ Règles :
 | `mode` | `'user'` | `'user'` = Système / Clair / Sombre au choix ; `'dark'` / `'light'` = imposé |
 | `meta` | `''` | couleur de la barre du navigateur / iPad |
 | `chalk`, `hand` | `#ECEAE5`, `''` | couleur de l'encre presque noire sur fond sombre, et du texte manuscrit |
-| `colors` | base | nuanciers `ink`, `hl`, `stroke`, `fill`, `note`, `space`, `picker` |
+| `scheme` | `SCHEME_BASE` | les 20 couleurs de la gamme (`SCHEME_NAMES` dans 00-util.js) ; stylo, surligneur, contours, fonds, post-it et mind map en sont tirés |
+| `colors` | base | `space` : couleurs des espaces |
 | `palettes` | `[]` | palettes en plus dans l'atelier de dessin |
 | `icons` | `{}` | icônes redessinées |
 | `decor` | `[]` | calques d'habillage |
@@ -77,7 +81,6 @@ Règles :
 | `mindList` | `false` | mind map : les sous-idées en liste sous leur branche, sur une ligne-crochet avec puces (Farmer) |
 | `mindRoot` | — | mind map : `[largeur min, hauteur min, marge verticale, largeur max du texte]` de l’idée centrale |
 | `mindArt` | — | mind map : `[[regex, 'asset:…'], …]` image peinte à côté d’une branche dont les mots correspondent |
-| `colors.mind` | couleurs PLUM | couleurs des branches du mind map, dans l’ordre |
 | `apply(on)` | | code lancé à la mise en place (`true`) et au retrait (`false`) du thème |
 
 Le code de l'app lit le thème par `theme()` (fiche du thème courant) et `themeColors(clé, base)`

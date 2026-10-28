@@ -3,6 +3,9 @@
 defineTheme({
   id: 'notely', order: 1, label: 'Nuit', desc: 'Net et dense, gris bleutés, accent bleu',
   mode: 'user', meta: '#12171D', chalk: '#E8ECF1',
+  /* the 20 colours of the scheme (SCHEME_NAMES in 00-util.js): n°5 bleu for arrows */
+  scheme: ['#1B1E22', '#4B5563', '#9AA3AF', '#FFFFFF', '#4B8DF8', '#EF4444', '#F59E0B', '#FACC15', '#22C55E', '#14B8A6',
+    '#2563EB', '#8B5CF6', '#EC4899', '#92633F', '#FDE68A', '#FBCFA4', '#F9C4D2', '#D5C8F6', '#BFDBF7', '#C3E8C1'],
   tints: [
     { id: 'ardoise', name: 'Ardoise', h: 250, c: .015 },
     { id: 'graphite', name: 'Graphite', h: 250, c: .002 },

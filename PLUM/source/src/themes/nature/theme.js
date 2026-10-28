@@ -4,6 +4,9 @@
 defineTheme({
   id: 'nature', order: 3, label: 'Nature', desc: 'Anthracite, pastel sec et feuilles',
   mode: 'dark', meta: '#1B1C1B',
+  /* the 20 colours of the scheme (SCHEME_NAMES in 00-util.js): n°5 pêche for arrows */
+  scheme: ['#1C1D1B', '#505D49', '#9A9686', '#F1EADB', '#E3A47F', '#C8553D', '#D98E4A', '#E9C46A', '#728063', '#5E8C88',
+    '#3E5C9A', '#8B7BA8', '#D8A7A0', '#8C6A4A', '#EAD9A8', '#EBC6AE', '#E6C3C3', '#D3C8DD', '#C1D2DA', '#C8D5BA'],
   chalk: '#E9DECA',
   ring: 'patches'
 });

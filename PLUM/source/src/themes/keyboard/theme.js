@@ -6,14 +6,11 @@
 defineTheme({
   id: 'keyboard', order: 5, label: 'Keyboard', desc: 'Touches de clavier, aluminium et orange signal',
   mode: 'user', meta: '#C8C8C5', chalk: '#ECECE9', atlInk: '#E4E4E1',
+  /* the 20 colours of the scheme (SCHEME_NAMES in 00-util.js): n°5 orange signal for arrows */
+  scheme: ['#262626', '#4A4A48', '#8A8A87', '#F7F7F4', '#F2591E', '#D93A2B', '#FF9A66', '#E8C53A', '#4C9A6A', '#3A9E9A',
+    '#3C78C8', '#7A62C4', '#D85B86', '#7C5A44', '#FFE7A6', '#FFD9C4', '#F4C0D2', '#E3DCF2', '#D4E2F2', '#D6E9DA'],
   colors: {
-    ink: ['#262626', '#F2591E', '#E8A33A', '#4C9A6A', '#3C78C8', '#7A62C4', '#D85B86', '#7C5A44'],
-    hl: ['#FFB27A', '#FFE08A', '#B8E3C4', '#B9D4F2', '#F4C0D2', '#D8CFF2'],
-    stroke: ['#262626', '#F2591E', '#4C9A6A', '#3C78C8', '#8A8A87'],
-    fill: ['#FFD2BC', '#E4E4E1', '#C9DCEF', '#D2E8D6', '#FFFFFF'],
-    note: ['#F7F7F4', '#FFD9C4', '#FFE7A6', '#D6E9DA', '#D4E2F2', '#E3DCF2', '#D9D9D6', '#4A4A48'],
     space: ['#F2591E', '#2E2E2D', '#8A8A87', '#E8A33A', '#4C9A6A', '#3C78C8', '#7A62C4', '#D85B86', '#C93A12', '#BDBDBA'],
-    picker: [['#FFFFFF', '#D9D9D6', '#8A8A87', '#262626'], ['#FFE1D2', '#FF9A66', '#F2591E', '#B83C0E']]
   },
   palettes: [
     { id: 'kb-alu', tab: 'nature', name: 'Aluminium', scene: 'mountain', cols: ['#ECECE9', '#C8C8C5', '#8A8A87', '#4A4A48', '#1E1E1E'] },

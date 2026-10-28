@@ -5,6 +5,9 @@
 defineTheme({
   id: 'adjust', order: .5, label: 'Minimal Adjust', desc: 'Anthracite et crème, l’atelier partout',
   mode: 'dark', meta: '#202220', chalk: '#E9DECA',
+  /* the 20 colours of the scheme (SCHEME_NAMES in 00-util.js): n°5 crème for arrows */
+  scheme: ['#1B1B18', '#5C594F', '#A39E8F', '#F2EDE2', '#D8C6A1', '#C8553D', '#D98E4A', '#E9C46A', '#8FAE8F', '#5AA3B0',
+    '#8199D2', '#9C88C0', '#D8A7A0', '#B8925C', '#E9D8A6', '#E8C2B4', '#E3C6CC', '#D9C6DE', '#BFD3D6', '#C9D6B5'],
   tints: [
     { id: 'anthracite', name: 'Anthracite', h: 110, c: .004 },
     { id: 'graphite', name: 'Graphite', h: 100, c: .0012 },
@@ -20,7 +23,6 @@ defineTheme({
   ],
   colors: {
     space: ['#E9C46A', '#5AA3B0', '#8199D2', '#D8A7A0', '#8FAE8F', '#B8925C'],
-    note: ['#E9D8A6', '#E8C2B4', '#D9C6DE', '#BFD3D6', '#C9D6B5', '#E3D3BC']
   },
   /* the spaces' dots take the studio's pastel dabs: the five masks are drawn by ensureDabs (02c-studio.js) */
   apply(on) {

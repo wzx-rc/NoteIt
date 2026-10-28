@@ -10,15 +10,15 @@ defineTheme({
   chalk: '#EAE4D8',                 // encre presque noire dessinée sur un fond sombre
   hand: '',                         // texte manuscrit presque noir sur fond sombre ('' = chalk)
 
-  /* nuanciers proposés par les sélecteurs de couleur (chaque liste est optionnelle) */
+  /* la gamme de couleurs du thème : 20 couleurs, toujours dans le même rôle (n°1 encre, 2 graphite, 3 gris, 4 blanc,
+     5 couleur du thème = flèches et lignes, 6 rouge, 7 orange, 8 jaune, 9 vert, 10 sarcelle, 11 bleu, 12 violet, 13 rose,
+     14 terre, 15–20 pastels : jaune pâle (post-it par défaut), pêche, rose pâle, lavande, ciel, menthe).
+     Une couleur prise dans la gamme garde son numéro : en changeant de thème, elle prend la couleur du même numéro.
+     Le n°1 reste presque noir (il devient chalk sur fond sombre). 20 couleurs toutes différentes. */
+  scheme: ['#1E1E1E', '#5F5E5A', '#A3A29C', '#FFFFFF', '#4A72E8', '#E5564B', '#EE8A2F', '#E9B731', '#2FA96A', '#1FA2A0',
+    '#2B5FA8', '#7C5CE0', '#DB5C9A', '#8B6A4F', '#FCE9A6', '#FAD3B5', '#F7CAD6', '#DCD3F5', '#C9DDF7', '#CDEBD3'],
   colors: {
-    ink: ['#1B1E22', '#E03131', '#F08C00', '#2F9E44', '#1971C2', '#6E56F0', '#D9467E', '#8B5E3C'], // stylo des notes et des boards
-    hl: ['#FDE047', '#86EFAC', '#93C5FD', '#F9A8D4', '#FDBA74', '#C4B5FD'],                         // surligneur
-    stroke: ['#1E1E1E', '#E03131', '#2F9E44', '#1971C2', '#F08C00'],                                // contours (formes, flèches, textes)
-    fill: ['#FFC9C9', '#B2F2BB', '#A5D8FF', '#FFEC99', '#FFFFFF'],                                  // fonds des formes
-    note: ['#FDE68A', '#FBCFA4', '#F9C4D2', '#D5C8F6', '#BFDBF7', '#C3E8C1'],                      // post-it
-    space: ['#5B7CFA', '#F2B33D', '#EC6A9C', '#E5484D', '#2E9E6A', '#8B76FF'],                      // couleurs des espaces
-    picker: [['#FFFFFF', '#ADB5BD', '#495057', '#1E1E1E'], ['#FFE3E3', '#FF8787', '#E03131', '#A51D1D']] // lignes du nuancier de la roue
+    space: ['#5B7CFA', '#F2B33D', '#EC6A9C', '#E5484D', '#2E9E6A', '#8B76FF']                       // couleurs des espaces
   },
 
   /* palettes en plus dans l'atelier de dessin (onglets 'nature' ou 'saisons') */
