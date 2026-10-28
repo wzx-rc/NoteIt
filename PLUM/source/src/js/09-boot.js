@@ -93,7 +93,7 @@ function bindShell() {
     e.preventDefault(); Mood.drop(e.dataTransfer, spaceById(ctxSpace()) || curSpace());
   });
 
-  window.__nh = { S: () => S, go, save, applyTheme, openSettings, spaceMedia, Board, Ink, PENS, migrateState, importJSON, exportJSON, newDoc, Mood, createSpace };
+  window.__nh = { S: () => S, go, save, applyTheme, openSettings, spaceMedia, Board, Ink, PENS, migrateState, importJSON, exportJSON, newDoc, Mood, createSpace, ink: { inkSVG, sampleStroke, brushPreview, penPref, TEX_ORDER, NIB_ORDER, texTile, nibImage } };
   const flush = () => { try { window.__flushSave(); } catch (e) {} };
   addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });

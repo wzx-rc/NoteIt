@@ -20,10 +20,12 @@ const PENS = {
   dry: { name: 'Pinceau sec', icon: 'brush', hint: 'Poils écartés, la toile apparaît', size: 40, min: 1, max: 200, thin: .6, gamma: 1, o: .95, smooth: .5, stamp: { sh: 'feather', tx: 'canvas', fl: .55, sp: .05, dy: { ps: 1, po: 0, rot: 1, sc: 0 } } },
   gouache: { name: 'Gouache', icon: 'brush', hint: 'Pointe souple et couvrante', size: 24, min: 1, max: 200, thin: .8, gamma: 1.2, o: 1, smooth: .55, stamp: { sh: 'taper', tx: 'none', fl: .9, sp: .05, dy: { ps: 1, po: 0, rot: 1, sc: 0 } } },
   spray: { name: 'Éclaboussures', icon: 'air', hint: 'Projections dispersées', size: 60, min: 1, max: 200, thin: .4, gamma: 1, o: .9, smooth: .5, stamp: { sh: 'grain', tx: 'splat', fl: .4, sp: .3, dy: { ps: 1, po: 1, rot: 0, sc: 1 } } },
-  inkfine: { name: 'Encre fine', icon: 'pen', hint: 'Plume souple, encre dense et nette', size: 6, min: 1, max: 200, thin: .7, gamma: 1, o: 1, smooth: .5, stamp: { sh: 'taper', tx: 'none', fl: 1, sp: .04, dy: { ps: 1, po: 0, rot: 1, sc: 0 } } }
+  inkfine: { name: 'Encre fine', icon: 'pen', hint: 'Plume souple, encre dense et nette', size: 6, min: 1, max: 200, thin: .7, gamma: 1, o: 1, smooth: .5, stamp: { sh: 'taper', tx: 'none', fl: 1, sp: .04, dy: { ps: 1, po: 0, rot: 1, sc: 0 } } },
+  /* painting knife: a flat blade dragged across the paper, streaks along the stroke and paint that breaks up */
+  knife: { name: 'Couteau', icon: 'knife', hint: 'Lame plate, pâte striée qui accroche', size: 28, min: 4, max: 200, thin: .2, gamma: 1, o: 1, smooth: .6, stamp: { sh: 'knife', tx: 'impasto', fl: .5, sp: .03, dy: { ps: 0, po: 1, rot: 1, sc: 0 } } }
 };
 /* 1 to 8 stay the classic pens of 0.5; 9 is the natural pencil */
-const PEN_ORDER = ['pencil', 'pen', 'fine', 'brush', 'marker', 'water', 'air', 'highlight', 'natural', 'charcoal', 'chalk', 'dry', 'gouache', 'spray', 'inkfine'];
+const PEN_ORDER = ['pencil', 'pen', 'fine', 'brush', 'marker', 'water', 'air', 'highlight', 'natural', 'charcoal', 'chalk', 'dry', 'gouache', 'spray', 'inkfine', 'knife'];
 const PEN_DEFAULT_COLORS = { pencil: '#3A3F46', pen: '#1B1E22', fine: '#1971C2', brush: '#23496F', marker: '#8EC5D8', water: '#4F86B8', air: '#E58C73', highlight: '#FDE047', natural: '#3B3A36', charcoal: '#2B2826', chalk: '#E8DCC4', dry: '#6E8F5E', gouache: '#C8553D', spray: '#2A6F7F', inkfine: '#24262A' };
 const INK_COLORS = ['#1B1E22', '#E03131', '#F08C00', '#2F9E44', '#1971C2', '#6E56F0', '#D9467E', '#8B5E3C'];
 const HL_COLORS = ['#FDE047', '#86EFAC', '#93C5FD', '#F9A8D4', '#FDBA74', '#C4B5FD'];
@@ -31,7 +33,7 @@ const easeT = t => Math.sin(clamp(t, 0, 1) * Math.PI / 2);
 const radiusFor = (def, s, p) => s * .5 * ((1 - def.thin) + def.thin * Math.pow(clamp(p, 0, 1), def.gamma));
 const STAMP_DEF = { sh: 'native', tx: 'none', fl: 1, sp: .1, dy: { ps: 1, po: 0, rot: 0, sc: 0 } };
 /* a pen not given a colour yet takes this number of the theme's scheme (00-util.js) */
-const PEN_DEFAULT_SCHEME = { pencil: 2, pen: 1, fine: 11, brush: 11, marker: 19, water: 11, air: 6, highlight: 8, natural: 1, charcoal: 1, chalk: 14, dry: 9, gouache: 6, spray: 10, inkfine: 1 };
+const PEN_DEFAULT_SCHEME = { pencil: 2, pen: 1, fine: 11, brush: 11, marker: 19, water: 11, air: 6, highlight: 8, natural: 1, charcoal: 1, chalk: 14, dry: 9, gouache: 6, spray: 10, inkfine: 1, knife: 11 };
 const penPref = k => { const d = PENS[k] || PENS.pen, p = (S && S.prefs.pens[k]) || {}, b = d.stamp || STAMP_DEF;
   return { c: p.c || schemeHex(PEN_DEFAULT_SCHEME[k]) || PEN_DEFAULT_COLORS[k] || '#1B1E22', s: p.s || d.size, o: p.o ?? d.o, sm: p.sm ?? d.smooth, sh: p.sh || b.sh, tx: p.tx || b.tx, fl: p.fl ?? b.fl, sp: p.sp ?? b.sp, dy: Object.assign({}, b.dy, p.dy || {}) }; };
 /* the brush settings a new stroke carries; null keeps the pen's own vector outline */
@@ -117,11 +119,13 @@ function inkSVG(st, extra = '', o = {}) {
 const NIBS = {
   native: { name: 'Natif' },
   grain: { name: 'Grain', jit: 6.28 }, line: { name: 'Fin', jit: 0 }, wedge: { name: 'Biseau', ang: -.6, jit: .15 },
-  flat: { name: 'Plat', ang: -.78, jit: .1 }, feather: { name: 'Plume', jit: .12 }, taper: { name: 'Effilé', ang: -.5, jit: .05 }
+  flat: { name: 'Plat', ang: -.78, jit: .1 }, feather: { name: 'Poils', jit: .12 }, taper: { name: 'Effilé', ang: -.5, jit: .05 },
+  knife: { name: 'Couteau', jit: .03 }
 };
-const NIB_ORDER = ['native', 'grain', 'line', 'wedge', 'flat', 'feather', 'taper'];
-const TEXS = { none: { name: 'Aucune' }, grain: { name: 'Papier' }, splat: { name: 'Éclaboussures' }, powder: { name: 'Poudre' }, charcoal: { name: 'Fusain' }, canvas: { name: 'Toile' } };
-const TEX_ORDER = ['none', 'grain', 'splat', 'powder', 'charcoal', 'canvas'];
+/* 'line' stays for strokes drawn with it, the native outline does the same job in the panel */
+const NIB_ORDER = ['native', 'grain', 'wedge', 'flat', 'feather', 'taper', 'knife'];
+const TEXS = { none: { name: 'Lisse' }, grain: { name: 'Papier' }, powder: { name: 'Poudre' }, charcoal: { name: 'Fusain' }, canvas: { name: 'Toile' }, impasto: { name: 'Empâtement' }, splat: { name: 'Éclats' } };
+const TEX_ORDER = ['none', 'grain', 'powder', 'charcoal', 'canvas', 'impasto', 'splat'];
 const DYNS = [['ps', 'dy-size', 'Pression → taille'], ['po', 'dy-op', 'Pression → opacité'], ['rot', 'dy-rot', 'Suit la direction'], ['sc', 'dy-sc', 'Dispersion']];
 const mkCanvas = (w, h = w) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; };
 /* periodic value noise, so textures tile */
@@ -145,6 +149,9 @@ function nibImage(sh) {
       case 'flat': { const q = Math.hypot(u / .98, v / .26); a = clamp((1 - q) / (aa * 3), 0, 1) * (.75 + .25 * n2(u * 16 + 16, v * 4 + 4)); break; }
       case 'feather': { const q = Math.hypot(u / .98, v / .62), st = Math.pow(n2(u * 1.5 + 30, v * 22 + 22), 1.6); a = ss(1, .35, q) * clamp(st * 1.8 - .1, 0, 1); break; }
       case 'taper': { const w = .44 * Math.pow(Math.max(0, 1 - u * u), .75); a = clamp((w - Math.abs(v)) / (aa * 2.5), 0, 1) * (.9 + .1 * n1(u * 6 + 6, v * 6 + 6)); break; }
+      /* the blade across the stroke (u runs along it once turned): hard edges, ridges of paint on both ends, streaks */
+      case 'knife': { const inside = clamp((.3 - Math.abs(u)) / aa, 0, 1) * clamp((.94 - Math.abs(v)) / aa, 0, 1), st = n2(3, v * 9 + 9) * .7 + n1(5, v * 3 + 3) * .3;
+        a = inside * clamp(.72 + (st - .5) * 2.2, .3, 1) * (Math.abs(v) > .86 ? 1.4 : 1); a = Math.min(a, 1); break; }
       default: a = clamp((.96 - R) / aa, 0, 1);
     }
     const k = (j * N + i) * 4; d[k] = d[k + 1] = d[k + 2] = 255; d[k + 3] = a * 255;
@@ -172,6 +179,8 @@ function texTile(tx) {
       case 'powder': { const n = .6 * f64(u * 64, v * 64) + .4 * r(); a = clamp((.62 - n) * 2.6, 0, 1); break; }
       case 'charcoal': { const n = .55 * f64(u * 64, v * 4 * 4) + .25 * f32(u * 32, v * 8) + .2 * f4(u * 4, v * 4); a = clamp((.58 - n) * 3.4, 0, .95); break; }
       case 'canvas': { const w = Math.sin(u * Math.PI * 2 * 21) * Math.sin(v * Math.PI * 2 * 21); a = clamp(.18 + .45 * w + .3 * (f32(u * 32, v * 32) - .5), 0, .8); break; }
+      /* thick paint: mostly covered, with dry skips and a few holes where the knife lifted */
+      case 'impasto': { const n = .6 * f16(u * 16, v * 16) + .4 * f64(u * 64, v * 64); a = clamp((.34 - n) * 4.5, 0, 1) + (r() < .015 ? .8 : 0); a = Math.min(a, .95); break; }
     }
     const k = (j * N + i) * 4; d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = a * 255;
   }
@@ -214,7 +223,8 @@ function stampInto(ctx, st) {
   else stampWalk(ctx, st, null);
   applyTexture(ctx, st.b.tx, st.b.ox || 0, st.b.oy || 0, texScale(st));
 }
-const texScale = st => clamp(st.s / 18, .25, 1.2);
+/* textures keep a readable grain on fine strokes too (below .6 they all turned into the same fine noise) */
+const texScale = st => clamp(st.s / 18, .6, 1.4);
 let _webp = null;
 const rasterType = () => { if (_webp === null) { try { _webp = mkCanvas(2).toDataURL('image/webp').startsWith('data:image/webp'); } catch (e) { _webp = false; } } return _webp ? 'image/webp' : 'image/png'; };
 const _stamp = new WeakMap();
