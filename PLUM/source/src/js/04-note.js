@@ -171,13 +171,13 @@ const Note = (() => {
   }
   /* the marking menu of the selected text (right button): pressed, flick toward an item and let go; a plain right click
      leaves it open to click. Up is always the last colour. Same look as the board's (.mmenu). */
-  const MM_R = 86, MM_DEAD = 18;
+  const MM_R = 64, MM_DEAD = 16;
   let mm = null;
+  // four arms only (0.2.18): up the last colour, right bold, down highlight, left the colours
   function mmItems() {
-    return [{ dir: 0, label: 'Dernière couleur', sw: lastColor(), run: () => colorSel(lastColor()) }, { dir: 1, label: 'Gras', run: () => cmd('bold') },
-      { dir: 2, label: 'Italique', run: () => cmd('italic') }, { dir: 3, label: 'Souligné', run: () => cmd('underline') }, { dir: 4, label: 'Surligner', run: () => cmd('mark') },
-      { dir: 5, label: 'Liste', run: () => cmd('ul') }, { dir: 6, label: 'Titre', run: () => cmd('h2') },
-      { dir: 7, label: 'Couleurs…', run: () => { const a = bub && !bub.hidden && $('.bc', bub) || $('[data-tx="color"]', tool); if (a) textPop(a); } }];
+    return [{ dir: 0, label: 'Dernière couleur', sw: lastColor(), run: () => colorSel(lastColor()) }, { dir: 2, label: 'Gras', run: () => cmd('bold') },
+      { dir: 4, label: 'Surligner', run: () => cmd('mark') },
+      { dir: 6, label: 'Couleurs…', run: () => { const a = bub && !bub.hidden && $('.bc', bub) || $('[data-tx="color"]', tool); if (a) textPop(a); } }];
   }
   function openMM(e) {
     closeMM();
@@ -199,9 +199,9 @@ const Note = (() => {
   function mmShow() {
     const dx = mm.mx - mm.x, dy = mm.my - mm.y;
     mm.el.classList.toggle('sticky', mm.sticky);
-    let h = `<svg class="mmg"><circle cx="${mm.x}" cy="${mm.y}" r="${MM_DEAD}" class="ring"/>${mm.hover >= 0 ? `<line x1="${mm.x}" y1="${mm.y}" x2="${mm.x + dx}" y2="${mm.y + dy}"/>` : ''}<circle cx="${mm.x}" cy="${mm.y}" r="5" class="dot"/></svg><span class="mmt" style="left:${mm.x}px;top:${mm.y + 26}px">Texte</span>`;
+    let h = `<svg class="mmg"><circle cx="${mm.x}" cy="${mm.y}" r="${MM_DEAD}" class="ring"/>${mm.hover >= 0 ? `<line x1="${mm.x}" y1="${mm.y}" x2="${mm.x + dx}" y2="${mm.y + dy}"/>` : ''}<circle cx="${mm.x}" cy="${mm.y}" r="5" class="dot"/></svg>`;
     for (const it of mm.items) {
-      const a = it.dir * Math.PI / 4, sx = Math.sin(a), px = mm.x + sx * MM_R, py = mm.y - Math.cos(a) * MM_R * .82;
+      const a = it.dir * Math.PI / 4, sx = Math.sin(a), px = mm.x + sx * MM_R, py = mm.y - Math.cos(a) * MM_R * .72;
       const tx = sx > .3 ? 'translate(-8px,-50%)' : sx < -.3 ? 'translate(calc(8px - 100%),-50%)' : 'translate(-50%,-50%)';
       h += `<span class="mmp${it.dir === mm.hover ? ' hot' : ''}" data-dir="${it.dir}" style="left:${px}px;top:${py}px;transform:${tx}">${it.sw ? `<i style="background:${it.sw}"></i>` : ''}${esc(it.label)}</span>`;
     }
@@ -211,7 +211,7 @@ const Note = (() => {
     mm.mx = ev.clientX; mm.my = ev.clientY;
     const dx = mm.mx - mm.x, dy = mm.my - mm.y, far = Math.hypot(dx, dy) > MM_DEAD;
     if (far) mm.moved = true;
-    const h = far ? (Math.round(Math.atan2(dx, -dy / .82) / (Math.PI / 4)) + 8) % 8 : -1;
+    const h = far ? ((Math.round(Math.atan2(dx, -dy) / (Math.PI / 2)) + 4) % 4) * 2 : -1;
     if (h !== mm.hover) { mm.hover = h; mmShow(); } else if (h >= 0 && !mm.sticky) mmShow();   // the line follows the pointer while flicking
   }
   function mmMove(ev) { if (mm) mmTrack(ev); }
