@@ -549,7 +549,7 @@ const Studio = (() => {
     root = document.createElement('div'); root.className = 'atl'; root.hidden = true;
     root.innerHTML = `<div class="atl-plate"><div class="atl-right"><nav class="atl-bar" aria-label="Outils de dessin"></nav><div class="atl-favs" aria-label="Couleurs favorites"></div></div>
       <div class="atl-stack"></div><div class="atl-dock"></div></div>
-      <div class="atl-loupe" hidden>${leavesOn() ? leafDecor('cluster') : ''}<div class="lp-ring"><canvas width="300" height="300"></canvas><i></i></div><div class="lp-chip"><span></span><b></b></div></div><div class="atl-chip" hidden></div>`;
+      <div class="atl-loupe" hidden><div class="lp-ring"><canvas width="300" height="300"></canvas><i></i></div><div class="lp-chip"><span></span><b></b></div></div><div class="atl-chip" hidden></div>`;
     wrap.append(root);
     plateEl = $('.atl-plate', root); rightEl = $('.atl-right', root); stackEl = $('.atl-stack', root); dockEl = $('.atl-dock', root); favEl = $('.atl-favs', root); loupeEl = $('.atl-loupe', root); chipEl = $('.atl-chip', root);
     for (const el of [rightEl, stackEl, dockEl, chipEl]) {

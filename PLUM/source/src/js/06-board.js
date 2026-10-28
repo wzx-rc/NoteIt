@@ -786,7 +786,7 @@ const Board = (() => {
     ], { align: 'right' });
   }
   function helpModal() {
-    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O', 'Rectangle · Ellipse'], ['A', 'Flèche'], ['L', 'Ligne'], ['D ou P', 'Dessin'], ['Ctrl + glisser', 'Taille du pinceau (en dessin)'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K / Alt + clic', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
+    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O', 'Rectangle · Ellipse'], ['A', 'Flèche'], ['L', 'Ligne'], ['D ou P', 'Dessin'], ['Alt + clic droit glissé', 'Taille du pinceau (en dessin)'], ['1 … 9', 'Choisir un pinceau (9 : crayon naturel)'], ['K · Alt maintenu', 'Pipette sur le board'], ['E', 'Gomme'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
       ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl G', 'Grouper (Alt + clic : un seul élément du groupe)'], ['Ctrl Alt G', 'Dégrouper'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Maj + glisser', 'Dupliquer et déplacer la copie'], ['Page ↑ / ↓', 'Avancer / reculer d’un plan'], ['Ctrl + Page ↑ / ↓', 'Tout devant / tout au fond'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
       ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]],
       ['Tableur', [['Clic · glisser', 'Choisir des cellules'], ['Maj + clic', 'Étendre la sélection'], ['En-tête', 'Ligne ou colonne entière'], ['Entrée · F2', 'Modifier la cellule'], ['Suppr', 'Vider les cellules'], ['Ctrl − / Ctrl +', 'Supprimer / insérer des lignes'], ['Ctrl C / V', 'Copier / coller des cellules'], ['Bord d’en-tête', 'Glisser pour redimensionner']]]];
@@ -1390,6 +1390,7 @@ const Board = (() => {
   function onDown(e) {
     closePop(); lastClient = { x: e.clientX, y: e.clientY };
     if (mm) { mmDown(e); return; }
+    if (e.button === 2 && e.altKey && !op && (PENS[tool] || tool === 'pick' || tool === 'eraser')) { e.preventDefault(); Studio.hideLoupe(); startSize(e); return; }
     if (e.button === 2 && !(op && op.keep) && e.pointerType !== 'touch') { e.preventDefault(); if (editing) finishEdit(); openMarking(e, hitAt(e)); return; }
     if (e.pointerType === 'touch' && !touches.size && !drawingTool()) holdFor(e);
     if (op && op.keep) { if (e.button === 0) { e.preventDefault(); op.click(e); } else if (e.button === 2) { e.preventDefault(); op.finish(); } return; }
@@ -1413,7 +1414,6 @@ const Board = (() => {
     const ab = t.closest('[data-arr]'); if (ab) { e.preventDefault(); e.stopPropagation(); setTimeout(() => arrangeMenu(ab, false)); return; }
     if (e.pointerType === 'touch' && penSeen && (PENS[tool] || tool === 'eraser')) { startPan(e); return; }
     if (tool === 'pick' || (PENS[tool] && e.altKey)) { e.preventDefault(); pickAt(e); return; }
-    if (PENS[tool] && (e.ctrlKey || e.metaKey)) { e.preventDefault(); startSize(e); return; }
     if (PENS[tool]) { e.preventDefault(); startInk(e); return; }
     if (tool === 'eraser') { e.preventDefault(); startErase(e); return; }
     const w = toW(e.clientX, e.clientY), hit = hitAt(e);
@@ -1825,13 +1825,13 @@ const Board = (() => {
       up() { op = null; const st = ink.end(); if (st && st.p.length >= 3) { if (st.p.length === 3) st.p.push(st.p[0] + .4 / view.k, st.p[1] + .2 / view.k, st.p[2]); commit(items.concat(mkInk(st))); useColor(st.c); if (Studio.on) Studio.refresh('history'); } },
       cancel() { ink.cancel(); } };
   }
-  /* Ctrl + drag left or right: the brush size, with a ring at the press point showing it (as in Photoshop or Substance) */
+  /* Alt + right drag left or right: the brush size, a ring at the press point and the value beside it (as in Photoshop) */
   function startSize(e) {
     grab(e);
     const k = penKind, t0 = sizeT(k, penPref(k).s), x0 = e.clientX, r = wrap.getBoundingClientRect();
     const ring = document.createElement('div'); ring.className = 'bsz'; ring.style.left = (e.clientX - r.left) + 'px'; ring.style.top = (e.clientY - r.top) + 'px';
     ring.innerHTML = '<i></i><b></b>'; wrap.append(ring);
-    const show = sz => { const d = Math.max(2, sz); ring.firstChild.style.cssText = `width:${d}px;height:${d}px;border-color:${penPref(k).c}`; ring.lastChild.textContent = sizeText(sz); };
+    const show = sz => { const d = Math.max(2, sz); ring.firstChild.style.cssText = `width:${d}px;height:${d}px;border-color:${penPref(k).c}`; ring.lastChild.style.left = (d / 2 + 10) + 'px'; ring.lastChild.textContent = sizeText(sz); };
     show(penPref(k).s);
     op = { id: e.pointerId, kind: 'size', move(ev) { if (ev.pointerId !== this.id) return; if (!S.prefs.pens[k]) S.prefs.pens[k] = {}; const sz = sizeOf(k, clamp(t0 + (ev.clientX - x0) / 480, 0, 1)); S.prefs.pens[k].s = sz; show(sz); },
       up() { op = null; ring.remove(); save(); propSig = ''; refreshTools(); renderProps(); Studio.sync(); }, cancel() { ring.remove(); } };
@@ -1875,11 +1875,11 @@ const Board = (() => {
     shot = { cv: c, dpr, left: r.left, top: r.top, at(px, py) { const d = x.getImageData(clamp(Math.round(px * dpr), 0, c.width - 1), clamp(Math.round(py * dpr), 0, c.height - 1), 1, 1).data; return '#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase(); } };
     snapAt = drawn; return shot;
   }
-  let pickBack = null;
+  let pickBack = null, altPick = false;
   function pickAt(e) {
     const s = snapshot(); if (!s) return; const c = s.at(e.clientX - s.left, e.clientY - s.top);
     S.prefs.pens[penKind].c = c; save(); Studio.picked(c, e.clientX - 0, e.clientY - 0);
-    if (tool === 'pick' && !e.shiftKey) { Studio.hideLoupe(); setTool(pickBack && (PENS[pickBack] || pickBack === 'eraser') ? (pickBack === 'eraser' ? penKind : pickBack) : penKind); }
+    if (tool === 'pick' && !e.shiftKey && !altPick) { Studio.hideLoupe(); setTool(pickBack && (PENS[pickBack] || pickBack === 'eraser') ? (pickBack === 'eraser' ? penKind : pickBack) : penKind); }
     else refreshTools();
   }
   function onUp(e) {
@@ -2156,6 +2156,8 @@ const Board = (() => {
     if (!mounted || editing) return false;
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
     const mod = e.ctrlKey || e.metaKey, k = e.key;
+    // Alt held alone with a brush: the pipette while it is held (Photoshop); Alt + right drag sizes the brush
+    if (k === 'Alt' && !mod && !e.shiftKey && !op && (PENS[tool] || tool === 'eraser')) { e.preventDefault(); altPick = true; setTool('pick'); return true; }
     if (op && op.keep) { if (k === 'Enter') { op.finish(); e.preventDefault(); return true; } if (k === 'Escape') { cancelOp(); e.preventDefault(); return true; } }
     { const sh = sheetSelOf(); if (sh && sheetSelKey(e, sh)) return true; }
     /* layer order: Page Up / Down one step, with Ctrl all the way to the front / back */
@@ -2200,7 +2202,8 @@ const Board = (() => {
     if (TOOL_KEYS[lk]) { if (lk === 'o') shapeKind = 'ellipse'; if (lk === 'r') shapeKind = 'rect'; setTool(TOOL_KEYS[lk] === 'pen' ? penKind : TOOL_KEYS[lk]); return true; }
     return false;
   }
-  function keyUp(e) { if (e.key === ' ') { spaceDown = false; host.classList.toggle('t-hand', tool === 'hand'); } }
+  function keyUp(e) { if (e.key === ' ') { spaceDown = false; host.classList.toggle('t-hand', tool === 'hand'); } if (e.key === 'Alt') { e.preventDefault(); endAltPick(); } }
+  function endAltPick() { if (!altPick) return; altPick = false; if (tool === 'pick') { Studio.hideLoupe(); setTool(pickBack && PENS[pickBack] ? pickBack : pickBack === 'eraser' ? 'eraser' : penKind); } }
 
   /* ---------- tools and islands ---------- */
   function setTool(t) {
