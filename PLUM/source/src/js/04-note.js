@@ -96,15 +96,6 @@ const Note = (() => {
       if (!li.getAttribute('style')) li.removeAttribute('style');
     }
   }
-  /* the colour buttons: a click applies the last colour, holding opens the colours */
-  function colorPress(btn, e) {
-    if (e.button > 0) return;
-    e.preventDefault();
-    let done = false;
-    const t = setTimeout(() => { done = true; textPop(btn); }, 380);
-    const up = ev => { removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); clearTimeout(t); if (done || ev.type === 'pointercancel' || !btn.contains(ev.target)) return; colorSel(lastColor()); };
-    addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
-  }
   function textPop(btn) {
     const s0 = selInBody(), range = s0 && s0.rangeCount ? s0.getRangeAt(0).cloneRange() : null, k = btn.dataset.tx;
     const apply = f => { body.focus(); const sel = getSelection(); if (range) { sel.removeAllRanges(); sel.addRange(range); } else ensureFocus(); try { document.execCommand('styleWithCSS', false, false); } catch (e) {} f(); saveBody(); renderTool(); };
@@ -131,16 +122,16 @@ const Note = (() => {
   let bub = null, bubDown = false, bubRaf = 0;
   const BUB = [['bold', 'B', 'Gras (Ctrl B)'], ['italic', '<i>I</i>', 'Italique (Ctrl I)'], ['underline', '<u>U</u>', 'Souligné (Ctrl U)'], ['strikeThrough', '<s>S</s>', 'Barré'], '|', 'color', '|', ['h2', 'T2', 'Titre'], ['mark', '#hl', 'Surligner'], '|', ['ul', '#list', 'Liste'], ['chk', '#chk', 'Cases à cocher']];
   function bubHTML() {
-    return BUB.map(x => x === '|' ? '<span class="vs"></span>' : x === 'color' ? `<button class="nb bc" data-tx="color" title="Couleur du texte : clic = dernière couleur, maintenir = choisir" aria-label="Couleur du texte"><i style="--c:${lastColor()}"></i></button>`
+    return BUB.map(x => x === '|' ? '<span class="vs"></span>' : x === 'color' ? `<button class="nb bc" data-tx="color" title="Couleur du texte" aria-label="Couleur du texte"><i style="--c:${lastColor()}"></i></button>`
       : `<button class="nb" data-bc="${x[0]}" title="${x[2]}" aria-label="${x[2].replace(/ \(.*/, '')}">${x[1][0] === '#' ? icon(x[1].slice(1)) : `<span class="bt">${x[1]}</span>`}</button>`).join('');
   }
   function bubMount() {
     bub = document.createElement('div'); bub.className = 'nbub'; bub.setAttribute('role', 'toolbar'); bub.setAttribute('aria-label', 'Mise en forme de la sélection'); bub.hidden = true;
     $('#main').append(bub);
-    bub.addEventListener('pointerdown', e => { e.preventDefault(); const c = e.target.closest('[data-tx="color"]'); if (c) colorPress(c, e); });
+    bub.addEventListener('pointerdown', e => e.preventDefault());
     bub.addEventListener('click', e => {
       const b = e.target.closest('[data-bc]'); if (b) { cmd(b.dataset.bc); bubPlace(); return; }
-      const t = e.target.closest('[data-tx]'); if (t && !e.detail) colorSel(lastColor());
+      const t = e.target.closest('[data-tx]'); if (t) textPop(t);
     });
     document.addEventListener('selectionchange', bubQueue);
     addEventListener('pointerdown', bubPress, true); addEventListener('pointerup', bubRelease, true);
@@ -535,7 +526,7 @@ const Note = (() => {
   function onToolClick(e) {
     const m = e.target.closest('[data-mode]'); if (m) { setMode(m.dataset.mode); return; }
     const c = e.target.closest('[data-cmd]'); if (c) { if (c.dataset.cmd === 'dictate') dictateHere(c); else cmd(c.dataset.cmd); return; }
-    const tx = e.target.closest('[data-tx]'); if (tx) { if (tx.dataset.tx !== 'color') textPop(tx); else if (!e.detail) colorSel(lastColor()); return; }
+    const tx = e.target.closest('[data-tx]'); if (tx) { textPop(tx); return; }
     const p = e.target.closest('[data-pen]'); if (p) { pen = p.dataset.pen; if (mode !== 'draw') setMode('draw'); else renderToolbar(); return; }
     const sw = e.target.closest('[data-col]'); if (sw) { S.prefs.pens[pen].c = sw.dataset.col; save(); renderToolbar(); return; }
     const wh = e.target.closest('[data-wheel]'); if (wh) { radialPop(wh, { get: () => penPref(pen).c, set: (v, final) => { S.prefs.pens[pen].c = v; save(); const cur = $('[data-wheel]', tool); if (cur) cur.style.background = v; } }); return; }
@@ -688,7 +679,7 @@ const Note = (() => {
     use(PG[0]);
     renderSub(); renderToolbar();
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
-    tool.addEventListener('pointerdown', e => { const c = e.target.closest('[data-tx="color"]'); if (c) { colorPress(c, e); return; } if (e.target.closest('[data-cmd],[data-tx]')) e.preventDefault(); });
+    tool.addEventListener('pointerdown', e => { if (e.target.closest('[data-cmd],[data-tx]')) e.preventDefault(); });
     tool.addEventListener('click', onToolClick);
     bubMount();
     wrap.addEventListener('click', e => {
