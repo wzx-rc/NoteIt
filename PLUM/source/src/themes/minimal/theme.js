@@ -7,7 +7,7 @@
 const MIN_D = o => `stroke="none" style="fill:var(--i-d,currentColor);opacity:calc(var(--i-dk,1)*${o})"`;
 defineTheme({
   id: 'minimal', order: 0, label: 'Minimal', desc: 'Sobre et aéré, titres à empattements',
-  mode: 'user', meta: '#1A1A19', chalk: '#ECEBE8',
+  mode: 'user', meta: '#1A1A19', chalk: '#ECEBE8', ring: 'clean',
   /* the 20 colours of the scheme (SCHEME_NAMES in 00-util.js): n°5 bleu ardoise for arrows */
   scheme: ['#1E1E1E', '#5F5E5A', '#A3A29C', '#FFFFFF', '#4A72E8', '#E5564B', '#EE8A2F', '#E9B731', '#2FA96A', '#1FA2A0',
     '#2B5FA8', '#7C5CE0', '#DB5C9A', '#8B6A4F', '#FCE9A6', '#FAD3B5', '#F7CAD6', '#DCD3F5', '#C9DDF7', '#CDEBD3'],

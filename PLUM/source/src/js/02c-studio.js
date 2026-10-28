@@ -213,6 +213,11 @@ function ringCanvas() {
   if (_ring && _ringSkin === skin()) return _ring;
   _ringSkin = skin();
   const { W, C, R, RI } = RAD, c = mkCanvas(W * 2), x = c.getContext('2d'), r = rng(.913); x.scale(2, 2);
+  /* Minimal: a plain, even hue ring, no pastel texture */
+  if (theme().ring === 'clean') {
+    for (let a = 0; a < 360; a += .5) { x.beginPath(); x.arc(C, C, (R + RI) / 2, (a - .4) * Math.PI / 180, (a + .4) * Math.PI / 180); x.strokeStyle = Colors.hsv2hex(angToHue(360 - a), .82, .96); x.lineWidth = R - RI - 4; x.stroke(); }
+    _ring = c; return c;
+  }
   /* hues turn the other way round on screen, as in the concept: red on the right, yellow on top, blue at the bottom */
   const jit = Array.from({ length: 24 }, () => (r() - .5) * .07), col = (a, ds = 0, dv = 0) => { const hu = angToHue(360 - a), g = Math.exp(-(((hu - 135) / 50) ** 2)); return Colors.hsv2hex(hu, clamp(.6 - g * .14 + ds, 0, 1), clamp(.9 - g * .14 + dv + jit[Math.floor(((a % 360) + 360) % 360 / 15)], 0, 1)); };
   for (let a = 0; a < 360; a += 1) { x.beginPath(); x.arc(C, C, (R + RI) / 2, (a - .8) * Math.PI / 180, (a + .8) * Math.PI / 180); x.strokeStyle = col(a); x.lineWidth = R - RI - 2; x.stroke(); }
@@ -259,6 +264,10 @@ function ringCanvas() {
 function radialFrame() {
   const { W, C, R, RI, RB } = RAD, P = (deg, rad) => { const a = deg * Math.PI / 180; return [(C + Math.cos(a) * rad).toFixed(1), (C + Math.sin(a) * rad).toFixed(1)]; };
   const band = (a0, a1) => { const [x0, y0] = P(a0, RB), [x1, y1] = P(a1, RB); return `<path d="M${x0} ${y0}A${RB} ${RB} 0 0 1 ${x1} ${y1}" class="rf-band"/><path d="M${x0} ${y0}A${RB} ${RB} 0 0 1 ${x1} ${y1}" class="rf-band-hi"/>`; };
+  /* Minimal: a flat card in the theme's colours (light or dark), thin lines instead of bevels */
+  if (theme().ring === 'clean') return `<svg class="rad-frame" viewBox="0 0 ${W} ${W}" aria-hidden="true">
+    <circle class="rf-plate" cx="${C}" cy="${C}" r="${RB + 26}"/>${band(244, 350)}${band(64, 140)}
+    <circle class="rf-line" cx="${C}" cy="${C}" r="${R + 4}"/><circle class="rf-well" cx="${C}" cy="${C}" r="${RI - 4}"/></svg>`;
   return `<svg class="rad-frame" viewBox="0 0 ${W} ${W}" aria-hidden="true"><defs>
     <radialGradient id="rfPlate" cx="50%" cy="46%" r="52%"><stop offset="0" stop-color="#262723"/><stop offset=".72" stop-color="#1D1E1B"/><stop offset="1" stop-color="#171816"/></radialGradient>
     <linearGradient id="rfBezel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34352F"/><stop offset=".5" stop-color="#1E1F1C"/><stop offset="1" stop-color="#121311"/></linearGradient>
@@ -274,7 +283,8 @@ function Radial(el, o) {
   if (theme().wheel) return theme().wheel(el, o);
   const { W, C, R, RI, RB } = RAD, TR = RI - 16;
   const pos = (deg, rad) => { const a = deg * Math.PI / 180; return `left:${(C + Math.cos(a) * rad).toFixed(1)}px;top:${(C + Math.sin(a) * rad).toFixed(1)}px`; };
-  el.classList.add('rad'); el.style.setProperty('--W', W + 'px');
+  const clean = theme().ring === 'clean';
+  el.classList.add('rad'); el.classList.toggle('clean', clean); el.style.setProperty('--W', W + 'px');
   const SIDE = [221, 199, 174, 151];
   el.innerHTML = `${o.leaves && leavesOn() ? leafDecor('wreath') : ''}${radialFrame()}<canvas class="rad-c" width="${W * 2}" height="${W * 2}" aria-label="Roue des couleurs : teinte sur l’anneau, saturation et luminosité dans le triangle" tabindex="0"></canvas>
     <div class="rad-rec"></div><div class="rad-fav"></div>
@@ -301,10 +311,16 @@ function Radial(el, o) {
     /* hue handle and the line to the colour, as in the concept */
     const ha = -hueToAng(h) * Math.PI / 180, hx = C + Math.cos(ha) * (R + RI) / 2, hy = C + Math.sin(ha) * (R + RI) / 2;
     const wa = s * v, wb = v - s * v, wc = 1 - v, px = A[0] * wa + B[0] * wb + Cc[0] * wc, py = A[1] * wa + B[1] * wb + Cc[1] * wc;
-    x.strokeStyle = 'rgba(240,228,204,.9)'; x.lineWidth = 1.4; x.beginPath(); x.moveTo(px, py); x.lineTo(A[0], A[1]); x.stroke();
-    x.beginPath(); x.arc(hx, hy, 9, 0, 7); x.lineWidth = 3; x.strokeStyle = '#EFE3C8'; x.stroke(); x.lineWidth = 1; x.strokeStyle = 'rgba(0,0,0,.5)'; x.stroke();
-    x.beginPath(); x.arc(A[0], A[1], 5.5, 0, 7); x.fillStyle = '#E8D6B0'; x.fill(); x.lineWidth = 1; x.strokeStyle = 'rgba(0,0,0,.35)'; x.stroke();
-    x.beginPath(); x.arc(px, py, 6, 0, 7); x.fillStyle = '#E8D6B0'; x.fill(); x.lineWidth = 1.2; x.strokeStyle = 'rgba(0,0,0,.45)'; x.stroke();
+    if (clean) {
+      /* plain white rings, no guide line */
+      const cur = hexv(h, s, v), ring = (cx, cy, r, fill) => { x.beginPath(); x.arc(cx, cy, r, 0, 7); if (fill) { x.fillStyle = fill; x.fill(); } x.lineWidth = 3; x.strokeStyle = '#fff'; x.stroke(); x.lineWidth = 1; x.strokeStyle = 'rgba(0,0,0,.28)'; x.beginPath(); x.arc(cx, cy, r + 2, 0, 7); x.stroke(); };
+      ring(hx, hy, 10, Colors.hsv2hex(h, 1, 1)); ring(px, py, 7, cur);
+    } else {
+      x.strokeStyle = 'rgba(240,228,204,.9)'; x.lineWidth = 1.4; x.beginPath(); x.moveTo(px, py); x.lineTo(A[0], A[1]); x.stroke();
+      x.beginPath(); x.arc(hx, hy, 9, 0, 7); x.lineWidth = 3; x.strokeStyle = '#EFE3C8'; x.stroke(); x.lineWidth = 1; x.strokeStyle = 'rgba(0,0,0,.5)'; x.stroke();
+      x.beginPath(); x.arc(A[0], A[1], 5.5, 0, 7); x.fillStyle = '#E8D6B0'; x.fill(); x.lineWidth = 1; x.strokeStyle = 'rgba(0,0,0,.35)'; x.stroke();
+      x.beginPath(); x.arc(px, py, 6, 0, 7); x.fillStyle = '#E8D6B0'; x.fill(); x.lineWidth = 1.2; x.strokeStyle = 'rgba(0,0,0,.45)'; x.stroke();
+    }
   }
   function arcs() {
     const rec = (S.prefs.recent || []).slice(0, 7), favs = studioPrefs().favs.slice(0, 5);

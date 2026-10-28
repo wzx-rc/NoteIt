@@ -1086,6 +1086,35 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .dock-puck { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: #F4ECDC; background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .25), transparent 60%), var(--c, #444); border: 4px solid #252623; box-shadow: 0 10px 26px rgba(0, 0, 0, .45), 0 0 0 1px var(--a-edge); }
 .dock-puck .i { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .6)); }
 
+/* Minimal's wheel (theme ring 'clean'): a flat card in the theme's colours, plain round swatches */
+.rad.clean .rad-frame { filter: drop-shadow(0 10px 24px rgb(0 0 0 / .14)); }
+[data-resolved="dark"] .rad.clean .rad-frame { filter: drop-shadow(0 14px 28px rgb(0 0 0 / .5)); }
+.rad.clean .rf-plate { fill: var(--card); stroke: var(--line); stroke-width: 1; }
+.rad.clean .rf-band { stroke: var(--line); stroke-width: 50; }
+.rad.clean .rf-band-hi { stroke: var(--raise); stroke-width: 48; }
+.rad.clean .rf-line { fill: none; stroke: var(--line); stroke-width: 1; }
+.rad.clean .rf-well { fill: var(--raise); stroke: var(--line); stroke-width: 1; }
+.rad.clean .blb { width: 28px; height: 28px; border-radius: 50%; background: var(--c); -webkit-mask: none; mask: none; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); }
+[data-resolved="dark"] .rad.clean .blb { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .2); }
+.rad.clean .blb::after { display: none; }
+.rad.clean .blb:hover { transform: translate(-50%, -50%) scale(1.12); }
+.rad.clean .blb[aria-pressed="true"]::before { background: #fff; }
+.rad.clean .rad-b { width: 40px; height: 40px; background: var(--card); color: var(--ink-2); border: 1px solid var(--line-2); box-shadow: var(--shadow-1, 0 1px 2px rgb(0 0 0 / .08)); }
+.rad.clean .rad-b:hover { background: var(--sunk); color: var(--ink); }
+.rad.clean .rad-b .i { width: 19px; height: 19px; }
+.rad.clean .rad-add { width: 30px; height: 30px; background: var(--card); color: var(--ink-3); border: 1.5px dashed var(--line-2); box-shadow: none; }
+.rad.clean .rad-add:hover { color: var(--ink); border-color: var(--ink-3); background: var(--card); }
+.rad.clean .rad-cur { border: 3px solid var(--card); box-shadow: 0 0 0 1px var(--line-2), 0 4px 10px rgb(0 0 0 / .14); background: var(--card); }
+.rad.clean .rad-cur u { border-color: var(--card); }
+.rad.clean .rad-sl { background: var(--card); border: 1px solid var(--line); box-shadow: 0 6px 18px rgb(0 0 0 / .1); color: var(--ink-3); }
+.rad.clean .rad-sl b { color: var(--ink-3); font-family: var(--font-ui); }
+.atl .rad.clean input[type="range"]::-webkit-slider-runnable-track { background: var(--line-2); }
+.atl .rad.clean input[type="range"]::-webkit-slider-thumb { background: var(--card); border: 2px solid var(--accent); box-shadow: 0 1px 3px rgb(0 0 0 / .25); }
+.atl .rad.clean input[type="range"]::-moz-range-track { background: var(--line-2); }
+.atl .rad.clean input[type="range"]::-moz-range-thumb { background: var(--card); border: 2px solid var(--accent); }
+.atl-dock:has(.rad.clean) .dock-min { background: var(--card); border: 1px solid var(--line-2); color: var(--ink-3); box-shadow: var(--shadow-1, none); }
+.atl-dock:has(.rad.clean) .dock-min:hover { color: var(--ink); background: var(--sunk); }
+
 /* cards */
 .atl-stack { position: absolute; right: calc(max(12px, env(safe-area-inset-right, 0px)) + 58px); top: 50px; bottom: 0; width: 372px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 18px; padding: 40px 30px 30px 22px; pointer-events: none; scrollbar-width: none; }
 .atl-stack::-webkit-scrollbar { display: none; }

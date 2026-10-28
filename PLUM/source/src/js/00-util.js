@@ -32,7 +32,7 @@ const THEME_BASE = {
   palettes: [],              // extra palettes in the atelier, { id, tab: 'nature' | 'saisons', name, scene, cols }
   icons: {},                 // icon name -> SVG markup drawn in a 24×24 box, or { vb: '0 0 w h', svg }
   decor: [],                 // decoration layers: { at: CSS selector of a lasting element, cls } -> <div class="th-decor cls">
-  ring: 'grain',             // atelier hue ring: 'grain' (fine pastel grain) or 'patches' (touches laid by hand)
+  ring: 'grain',             // atelier hue ring: 'grain' (fine pastel grain), 'patches' (touches laid by hand) or 'clean' (plain ring, flat card in the theme's colours)
   mindTags: false,           // mindmap: level-2 ideas as tags on a centred curve, level-1 blocks with an icon
   wheel: null,               // function (el, o) building the theme's own colour wheel instead of Radial (same o, returns { update, el })
   atlInk: '#E6DCC8',         // colour of the brush previews and brush / texture tiles in the atelier (light on the dark atelier)

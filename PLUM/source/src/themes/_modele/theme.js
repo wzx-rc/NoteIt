@@ -35,7 +35,7 @@ defineTheme({
      (choisir un élément qui reste en place : #side, #main, body). Il est dessiné par theme.css. */
   decor: [{ at: '#side', cls: 'mod-feuille' }],
 
-  ring: 'grain',        // roue de l'atelier : 'grain' ou 'patches' (touches posées à la main, comme Nature)
+  ring: 'grain',        // roue de l'atelier : 'grain', 'patches' (touches posées à la main, comme Nature) ou 'clean' (anneau lisse, carte aux couleurs du thème)
   mindTags: false,      // mindmaps façon Inkspace
 
   /* pour un effet qui demande du code : appelé quand le thème est mis (true) ou enlevé (false) */
