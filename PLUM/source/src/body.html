@@ -131,17 +131,19 @@
   <symbol id="i-hm-triad" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5 18.5 15.8H5.5z"/><circle cx="12" cy="4.5" r="1.8" fill="currentColor"/><circle cx="18.5" cy="15.8" r="1.8" fill="currentColor"/><circle cx="5.5" cy="15.8" r="1.8" fill="currentColor"/></symbol>
   <symbol id="i-hm-tetra" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5 19.5 12 12 19.5 4.5 12z"/><circle cx="12" cy="4.5" r="1.7" fill="currentColor"/><circle cx="19.5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="19.5" r="1.7" fill="currentColor"/><circle cx="4.5" cy="12" r="1.7" fill="currentColor"/></symbol>
   <symbol id="i-hm-mono" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="4.5" r="2" fill="currentColor"/><circle cx="12" cy="9" r="1.5" fill="currentColor" opacity=".7"/><circle cx="12" cy="12.8" r="1.2" fill="currentColor" opacity=".45"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13.5 6.2 5.6A1.5 1.5 0 0 1 7.6 4.5h8.8a1.5 1.5 0 0 1 1.4 1.1L20 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18z"/><path d="M4 13.5h4.5l1.2 2.2h4.6l1.2-2.2H20"/></symbol>
+  <symbol id="i-notes" viewBox="0 0 24 24"><path d="M8 3.5h8.5L20 7v11.5H8z"/><path d="M16.5 3.5V7H20M5 7v13.5h11"/><path d="M11 11h6M11 14.5h4"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.5C10 5 7.5 4.5 4 4.5v13c3.5 0 6 .5 8 2 2-1.5 4.5-2 8-2v-13c-3.5 0-6 .5-8 2zM12 6.5v13"/></symbol>
 </svg>
 
 <div id="app">
   <aside id="side" aria-label="Navigation">
     <div class="brand"><span class="pill"><span class="mark"><i class="pm" aria-hidden="true"></i></span><b>Plum</b></span><span class="ver" title="Version de PLUM">{{VERSION}}</span></div>
-    <div class="spsw-row"><button class="spsw" id="spaceSw" aria-haspopup="menu" title="Changer d’espace"></button><button class="spadd" id="addSpace" title="Nouvel espace" aria-label="Nouvel espace"><svg class="i"><use href="#i-plus"/></svg></button></div>
+    <div class="spsw-row qrow"><button class="spsw qnote" id="quickNote" title="Nouvelle note (Ctrl N)"><span class="qn-ic"><svg class="i"><use href="#i-pen"/></svg></span><span class="spn"><small>Ctrl N</small><b>Nouvelle note</b></span></button><button class="spadd" id="quickMore" title="Créer…" aria-label="Créer" aria-haspopup="menu"><svg class="i"><use href="#i-plus"/></svg></button></div>
     <label class="sbox"><svg class="i sm"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Rechercher…" autocomplete="off" aria-label="Rechercher"><kbd>Ctrl K</kbd></label>
     <nav class="nav" id="nav"></nav>
-    <div class="sec" id="pagesSec"><span>PAGES</span><button id="addPage" title="Nouvelle page dans cet espace" aria-label="Nouvelle page"><svg class="i sm"><use href="#i-plus"/></svg></button></div>
-    <div class="nav" id="pages"></div>
+    <div class="sec" id="spacesSec"><span>ESPACES</span><button id="addSpace" title="Nouvel espace" aria-label="Nouvel espace"><svg class="i sm"><use href="#i-plus"/></svg></button></div>
+    <div class="nav" id="spaces"></div>
     <nav class="nav nav2" id="nav2"></nav>
     <div class="side-foot">
       <button class="me" id="meBtn"><span class="av" id="meAv">R</span><span id="meName">Romain</span></button>

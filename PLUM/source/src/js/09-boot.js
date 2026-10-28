@@ -28,10 +28,23 @@ function bindShell() {
     if (g.closest('.pop')) return;
     go(g.dataset.go);
   });
-  $('#spaceSw').onclick = e => { if (popEl && popEl.classList.contains('spm')) { closePop(); return; } openSpaceSwitcher(e.currentTarget); };
-  $('#spaceSw').addEventListener('contextmenu', e => { e.preventDefault(); spaceMenu(e.currentTarget, curSpace()); });
-  $('#addSpace').onclick = () => openSpaceSwitcher($('#spaceSw'), { create: true });
-  $('#addPage').onclick = e => openPop(e.currentTarget, [{ head: 'Nouvelle page' }, { label: 'Note', icon: 'note', run: () => createFrom('note') }, { label: 'Board', icon: 'board', run: () => createFrom('board') }]);
+  /* 0.2.14: a note can be written from anywhere, it goes to the space of the page or to « Non classées » */
+  $('#quickNote').onclick = () => createFrom('note');
+  $('#quickMore').onclick = e => openPop(e.currentTarget, [{ head: 'Créer' }, { label: 'Note', icon: 'note', run: () => createFrom('note') }, { label: 'Board', icon: 'board', run: () => createFrom('board') },
+    { label: 'Tâche', icon: 'tasks', run: () => { go(isGlobal() || curSpace().id === DEF_SPACE ? 'todo' : 'tasks'); setTimeout(() => $('#tAdd') && $('#tAdd').focus(), 30); } }, '-',
+    { label: 'Espace', icon: 'folder', run: () => askSpaceName(n => createSpace(n)) }]);
+  $('#addSpace').onclick = () => askSpaceName(n => createSpace(n));
+  $('#spaces').addEventListener('click', e => { const m = e.target.closest('[data-spmore]'); if (m) { e.stopPropagation(); spaceMenu(m, spaceById(m.dataset.spmore)); } });
+  $('#spaces').addEventListener('contextmenu', e => { const r = e.target.closest('[data-spi]'); if (r) { e.preventDefault(); spaceMenu(r, spaceById(r.dataset.spi)); } });
+  /* drag a note or board card onto a space of the sidebar (or onto « Non classées ») to file it there */
+  const DOC_T = 'application/x-plum-doc', side = $('#side');
+  document.addEventListener('dragstart', e => { const c = e.target.closest && e.target.closest('.dcard[draggable="true"]'); if (!c) return; e.dataTransfer.setData(DOC_T, c.dataset.doc); e.dataTransfer.effectAllowed = 'move'; document.documentElement.classList.add('filing'); });
+  // the card may be re-rendered before its dragend, so the drop also ends the filing state
+  const endFiling = () => { document.documentElement.classList.remove('filing'); $$('.spdrop-on').forEach(x => x.classList.remove('spdrop-on')); };
+  document.addEventListener('dragend', endFiling); addEventListener('drop', endFiling); addEventListener('pointerdown', endFiling);
+  side.addEventListener('dragover', e => { const t = e.target.closest('[data-spdrop]'); if (!t || ![...e.dataTransfer.types].includes(DOC_T)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; $$('.spdrop-on').forEach(x => x !== t && x.classList.remove('spdrop-on')); t.classList.add('spdrop-on'); });
+  side.addEventListener('dragleave', e => { const t = e.target.closest('[data-spdrop]'); if (t && !t.contains(e.relatedTarget)) t.classList.remove('spdrop-on'); });
+  side.addEventListener('drop', e => { const t = e.target.closest('[data-spdrop]'), id = e.dataTransfer.getData(DOC_T); if (!t || !id) return; e.preventDefault(); endFiling(); fileDoc(docById(id), t.dataset.spdrop); if (R.name !== 'doc') go(R, { keepFocus: true }); });
   $('#themeBtn').onclick = () => { S.prefs.theme = isDarkTheme() ? 'light' : 'dark'; save(); applyTheme(); if (R.name !== 'doc') go(R, { keepFocus: true }); };
   $('#setBtn').onclick = openSettings; $('#meBtn').onclick = openSettings;
   bindSearch();
@@ -43,6 +56,7 @@ function bindShell() {
   addEventListener('keydown', e => {
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (mod && k === 'k') { e.preventDefault(); if (document.documentElement.hasAttribute('data-focus')) setFocus(false); $('#q').focus(); $('#q').select(); return; }
+    if (mod && k === 'n' && !e.shiftKey && !e.altKey && R.name !== 'welcome') { e.preventDefault(); createFrom('note'); return; }
     if (mod && k === 'j') { e.preventDefault(); if (S.prefs.aiOn) AI.toggle(); return; }
     if (mod && k === 'm' && !e.shiftKey && !e.altKey) { e.preventDefault(); if (R.name !== 'welcome' && R.name !== 'mood') Mood.toggle(); return; }
     if (mod && (e.key === '.' || e.code === 'Period')) { e.preventDefault(); if (R.name === 'doc') setFocus(!document.documentElement.hasAttribute('data-focus')); return; }
@@ -73,7 +87,7 @@ function bindShell() {
   view.addEventListener('drop', async e => {
     view.classList.remove('dropping');
     if (R.name === 'doc' || R.name === 'welcome' || Mood.dragging()) return;
-    e.preventDefault(); Mood.drop(e.dataTransfer, curSpace());
+    e.preventDefault(); Mood.drop(e.dataTransfer, spaceById(ctxSpace()) || curSpace());
   });
 
   window.__nh = { S: () => S, go, save, applyTheme, openSettings, spaceMedia, Board, Ink, PENS, migrateState, importJSON, exportJSON, newDoc, Mood, createSpace };

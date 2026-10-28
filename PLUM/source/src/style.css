@@ -1633,3 +1633,49 @@ figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
 .mplus .i { width: 14px; height: 14px; stroke-width: 2.6; }
 .card-it .iopen { margin-left: auto; flex: none; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--line-2); border-radius: 8px; background: var(--card); color: var(--accent); cursor: pointer; }
 .card-it .iopen:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ---------- 0.2.14: freer than spaces (Evernote-like) ---------- */
+.qrow .qnote { cursor: pointer; }
+.qnote .qn-ic { width: 26px; height: 26px; flex: none; border-radius: 8px; display: grid; place-items: center; background: var(--accent); color: var(--on-accent, #fff); }
+.qnote .qn-ic .i { width: 15px; height: 15px; }
+.qnote .spn small { font-variant-numeric: tabular-nums; }
+#spacesSec { margin-top: 16px; }
+#spaces .spi { position: relative; }
+#spaces .sprow { padding-right: 30px; }
+#spaces .sprow .spt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#spaces .spx { position: absolute; right: 3px; top: 50%; translate: 0 -50%; width: 24px; height: 24px; color: var(--side-mute); }
+#spaces .spi:hover .spx, #spaces .spx:focus-visible { opacity: 1; }
+#spaces .spi:hover .sprow .ct { opacity: 0; }
+#spaces .spx:hover { background: var(--side-3); color: var(--side-text); }
+#spaces .spsub { margin: 1px 0 6px 14px; padding-left: 8px; border-left: 1px solid var(--side-line, rgba(127,127,127,.2)); display: grid; gap: 1px; }
+#spaces .nv.sub { height: 29px; font-size: 13px; gap: 8px; padding-left: 8px; }
+#spaces .nv.sub .i { opacity: .85; }
+#spaces #pages:not(:empty) { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--side-line, rgba(127,127,127,.2)); }
+#spaces .pempty { line-height: 1.45; padding: 4px 10px 2px; }
+.filing [data-spdrop] { outline: 1px dashed color-mix(in oklab, var(--accent) 45%, transparent); outline-offset: -2px; }
+.filing [data-spdrop].spdrop-on { outline: 2px solid var(--accent); background: color-mix(in oklab, var(--accent) 16%, transparent); }
+.dcard[draggable="true"] { -webkit-user-drag: element; }
+#top .crumbs .spfile { gap: 6px; height: 28px; padding: 0 6px 0 8px; margin-left: -6px; border-radius: 8px; color: var(--ink-2); }
+#top .crumbs .spfile:hover { background: var(--sunk); color: var(--ink); }
+#top .crumbs .spfile.none { color: var(--ink-3); }
+#top .crumbs .spfile .i.sm { width: 14px; height: 14px; }
+#top .crumbs .spfile > .i:last-child { opacity: .6; }
+.dcard .meta small .dsp { margin-right: 6px; padding: 1px 6px; border-radius: 6px; background: var(--sunk); color: var(--ink-2); font: inherit; max-width: 110px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.dcard .meta small .dsp.none { background: none; color: var(--ink-3); outline: 1px dashed var(--line); outline-offset: -1px; }
+.dcard .meta small .dsp:hover { color: var(--ink); }
+.allpage .fbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 18px; }
+.allpage .fsps { display: flex; flex-wrap: wrap; gap: 6px; }
+.fchip { height: 28px; padding: 0 11px; font-size: 12.5px; cursor: pointer; border: 1px solid transparent; }
+.fchip small { color: var(--ink-3); font-weight: 600; }
+.fchip:hover { color: var(--ink); }
+.fchip[aria-pressed="true"] { background: var(--card); color: var(--ink); border-color: var(--line); box-shadow: var(--shadow-1); }
+.fchip .i { width: 13px; height: 13px; }
+#tGroups.tgroups { display: grid; gap: 12px; margin-top: 12px; }
+#tGroups .tgroup[data-sp] > h3 { cursor: auto; display: flex; align-items: center; gap: 8px; }
+#tGroups .tg-h { display: inline-flex; align-items: center; gap: 8px; font: inherit; color: var(--ink); border-radius: 6px; padding: 2px 6px 2px 4px; }
+#tGroups .tg-h:hover { background: var(--sunk); }
+#tGroups .tg-h .i { width: 14px; height: 14px; color: var(--ink-3); }
+.sp-kick .i.sm { width: 14px; height: 14px; }
+.dcard .meta.where { flex-wrap: wrap; row-gap: 4px; }
+.dcard .meta.where b { flex: 1; }
+.dcard .meta.where small { flex-basis: 100%; margin-left: 15px; display: flex; align-items: center; }

@@ -19,13 +19,19 @@ const spaceById = id => S.spaces.find(s => s.id === id);
 const taskById = id => S.tasks.find(t => t.id === id);
 const spaceColor = id => (spaceById(id) || {}).color || '#8F8B83';
 const liveDocs = () => S.docs.filter(d => !d.trash);
-/* the spaces: « Par défaut » is always there (quick notes and to-dos), the current one is S.prefs.cur */
-const DEF_SPACE = 'default';
+/* the spaces: « Non classées » (id default) is always there for what is filed nowhere, the current one is S.prefs.cur.
+   0.2.14: spaces are optional, like Evernote notebooks: a note can be written from anywhere and filed later */
+const DEF_SPACE = 'default', DEF_NAME = 'Non classées';
 function ensureDefaultSpace(st) {
   st.spaces = st.spaces || [];
-  if (!st.spaces.some(s => s.id === DEF_SPACE)) st.spaces.unshift({ id: DEF_SPACE, name: 'Par défaut', color: '#8F8B83', def: true, media: [] });
+  const d = st.spaces.find(s => s.id === DEF_SPACE);
+  if (!d) st.spaces.unshift({ id: DEF_SPACE, name: DEF_NAME, color: '#8F8B83', def: true, media: [] });
+  else if (d.name === 'Par défaut') d.name = DEF_NAME;
   return st;
 }
+/* the pages that cover every space: there, what is created goes to « Non classées » (or to the space picked in the filter) */
+const GLOBAL_ROUTES = ['all', 'todo', 'favs', 'trash', 'search'];
+const isGlobal = () => GLOBAL_ROUTES.includes(R.name);
 const curSpace = () => spaceById(S.prefs.cur) || spaceById(DEF_SPACE) || S.spaces[0];
 const userSpaces = () => S.spaces.filter(s => s.id !== DEF_SPACE);
 function setCurSpace(id) { if (spaceById(id) && S.prefs.cur !== id) { S.prefs.cur = id; save(); } }
@@ -57,7 +63,35 @@ async function addTaskImages(t, files) {
 }
 function showImage(id) { const u = Assets.url(id); if (!u) return; const l = document.createElement('div'); l.className = 'lightbox'; l.innerHTML = `<img src="${u}" alt="">`; l.onclick = () => l.remove(); document.body.append(l); }
 function setTaskDone(t, v) { t.done = v; t.doneAt = v ? Date.now() : 0; save(); refreshTaskViews(); }
-function ctxSpace() { if (R.name === 'doc') { const d = docById(R.id); if (d && spaceById(d.sp)) return d.sp; } return curSpace().id; }
+function ctxSpace() {
+  if (R.name === 'doc') { const d = docById(R.id); if (d && spaceById(d.sp)) return d.sp; }
+  if (R.name === 'all') { const f = allFilter(); return spaceById(f.sp) ? f.sp : DEF_SPACE; }
+  if (isGlobal()) return DEF_SPACE;
+  return curSpace().id;
+}
+/* file a note or a board in a space (or back to « Non classées ») */
+function fileDoc(d, spId) {
+  const sp = spaceById(spId); if (!d || !sp || d.sp === spId) return;
+  const was = d.sp; d.sp = spId; touch(d); renderSide(); if (R.name === 'doc' && R.id === d.id) { setCurSpace(spId); renderTop(); }
+  toast(spId === DEF_SPACE ? 'Retirée des espaces' : `Rangée dans ${sp.name}`, { label: 'Annuler', run: () => { d.sp = was; touch(d); if (R.name === 'doc' && R.id === d.id) setCurSpace(was); go(R, { keepFocus: true }); } });
+}
+function fileMenu(anchor, d, o = {}) {
+  const item = s => ({ label: s.name, dot: s.id === DEF_SPACE ? '' : s.color, icon: s.id === DEF_SPACE ? 'inbox' : '', small: s.id === d.sp ? 'actuel' : '', run: () => { fileDoc(d, s.id); if (o.after) o.after(); } });
+  openPop(anchor, [
+    { head: 'Ranger dans' },
+    ...userSpaces().map(item),
+    ...(userSpaces().length ? ['-'] : []),
+    item(spaceById(DEF_SPACE)),
+    '-',
+    { label: 'Nouvel espace…', icon: 'plus', run: () => askSpaceName(n => { const sp = createSpace(n, { stay: true }); fileDoc(d, sp.id); if (o.after) o.after(); }) }
+  ], { align: o.align || 'left' });
+}
+function askSpaceName(done) {
+  openModal(`<div class="mhd"><h2>Nouvel espace</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
+    <input id="nsName" class="mw-name" placeholder="Nom de l’espace" maxlength="60" autocomplete="off" aria-label="Nom de l’espace">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn ghost" data-close>Annuler</button><button class="btn pri" id="nsOk">Créer</button></div>`,
+    m => { const i = $('#nsName', m), ok = () => { if (i.value.trim()) { closeModal(); done(i.value.trim()); } else i.focus(); }; i.focus(); i.onkeydown = e => { if (e.key === 'Enter') ok(); }; $('#nsOk', m).onclick = ok; });
+}
 /* the moodboard of a space: what was dropped into it, plus every image, file and link of its notes and boards */
 function spaceMedia(spId) {
   const sp = spaceById(spId), out = [], seen = new Set();
@@ -117,10 +151,10 @@ function go(route, opts = {}) {
   R = typeof route === 'string' ? parseRoute(route) : route;
   /* everything lives in a space: the space's home replaces the old home page, opening a page of another space switches to it */
   if (R.name === 'doc') { const d = docById(R.id); if (!d) R = { name: 'space' }; else if (d.trash) R = { name: 'trash' }; else setCurSpace(d.sp); }
-  if (R.name === 'home') R = { name: 'space' };
+  if (R.name === 'home') R = { name: 'all' };
   if (R.name === 'space') { if (spaceById(R.id)) setCurSpace(R.id); R = { name: 'space', id: curSpace().id }; }
   if (!S.prefs.welcomed) R = { name: 'welcome' };
-  else if (R.name === 'welcome') R = { name: 'space', id: curSpace().id };
+  else if (R.name === 'welcome') R = { name: 'all' };
   S.prefs.last = routeStr(R); save();
   document.documentElement.removeAttribute('data-nav');
   document.documentElement.toggleAttribute('data-welcome', R.name === 'welcome');
@@ -132,6 +166,8 @@ function go(route, opts = {}) {
     case 'welcome': renderWelcome(v); break;
     case 'notes': case 'boards': case 'favs': case 'trash': renderDocList(v, R.name); break;
     case 'tasks': renderTasks(v); break;
+    case 'all': renderAll(v); break;
+    case 'todo': renderAllTasks(v); break;
     case 'mood': renderMood(v); break;
     case 'search': renderSearch(v); break;
     case 'doc': openDoc(v, docById(R.id)); break;
@@ -149,49 +185,42 @@ function openDoc(v, d) {
 }
 
 /* ================= sidebar =================
-   On top the space switcher (dropdown, + for a new one), then the sections of the current space and its pages;
-   Favoris and Corbeille cover every space. */
-const NAV = [['space', 'home', 'Accueil'], ['tasks', 'tasks', 'Tâches'], ['notes', 'note', 'Notes'], ['boards', 'board', 'Boards'], ['mood', 'image', 'Moodboard']];
-const NAV2 = [['favs', 'star', 'Favoris'], ['trash', 'trash', 'Corbeille']];
+   0.2.14, Evernote-like: a « Nouvelle note » button on top, the pages that cover everything (Toutes les notes, Tâches,
+   Non classées, Favoris), then the spaces like notebooks: the open one shows its sections and its pages. */
+const NAV = [['all', 'notes', 'Toutes les notes'], ['todo', 'tasks', 'Tâches'], ['space:' + 'default', 'inbox', 'Non classées'], ['favs', 'star', 'Favoris']];
+const SP_NAV = [['tasks', 'tasks', 'Tâches'], ['notes', 'note', 'Notes'], ['boards', 'board', 'Boards'], ['mood', 'image', 'Moodboard']];
+const NAV2 = [['trash', 'trash', 'Corbeille']];
 function renderSide() {
   const sp = curSpace(), ld = liveDocs(), mine = ld.filter(d => d.sp === sp.id);
-  const cd = R.name === 'doc' ? docById(R.id) : null, cur = cd ? '' : R.name;
-  const count = { tasks: S.tasks.filter(t => t.sp === sp.id && !t.done).length, notes: mine.filter(d => d.type === 'note').length, boards: mine.filter(d => d.type === 'board').length, mood: (sp.media || []).length, favs: ld.filter(d => d.fav).length, trash: S.docs.filter(d => d.trash).length };
-  const row = ([k, ic, l]) => `<button class="nv" data-go="${k === 'space' ? 'space:' + sp.id : k}"${cur === k ? ' aria-current="page"' : ''}>${icon(ic)}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>`;
+  const cd = R.name === 'doc' ? docById(R.id) : null, cur = cd ? '' : R.name === 'space' ? 'space:' + R.id : R.name;
+  const inSp = !isGlobal() && R.name !== 'welcome', open = inSp ? sp : null;
+  const count = { all: ld.length, todo: S.tasks.filter(t => !t.done).length, ['space:' + DEF_SPACE]: ld.filter(d => d.sp === DEF_SPACE).length + S.tasks.filter(t => t.sp === DEF_SPACE && !t.done).length,
+    tasks: S.tasks.filter(t => t.sp === sp.id && !t.done).length, notes: mine.filter(d => d.type === 'note').length, boards: mine.filter(d => d.type === 'board').length, mood: (sp.media || []).length, favs: ld.filter(d => d.fav).length, trash: S.docs.filter(d => d.trash).length };
+  // « Non classées » shows no sections in the sidebar: its home has everything, its row stays lit on its pages
+  const row = ([k, ic, l]) => `<button class="nv" data-go="${k}"${cur === k || (k === 'space:' + DEF_SPACE && open && open.id === DEF_SPACE) ? ' aria-current="page"' : ''}${k === 'space:' + DEF_SPACE ? ` data-spdrop="${DEF_SPACE}"` : ''}>${icon(ic)}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>`;
   $('#nav').innerHTML = NAV.map(row).join('');
   $('#nav2').innerHTML = NAV2.map(row).join('');
-  const sw = $('#spaceSw');
-  sw.innerHTML = `<span class="dot" style="background:${sp.color}"></span><span class="spn"><small>Espace</small><b>${esc(sp.name)}</b></span>${icon('chevd', 'sm')}`;
-  sw.dataset.sp = sp.id; sw.classList.toggle('def', sp.id === DEF_SPACE);
-  const pages = mine.slice().sort((a, b) => a.created - b.created);
-  $('#pages').innerHTML = pages.map(d => `<button class="nv pg" data-go="doc:${d.id}"${cd && cd.id === d.id ? ' aria-current="page"' : ''}>${icon(d.type === 'board' ? 'board' : 'note', 'sm')}<span class="pt">${esc(d.title)}</span></button>`).join('') || '<div class="pempty">Pas encore de page ici.</div>';
+  const n = s => ld.filter(d => d.sp === s.id).length + S.tasks.filter(t => t.sp === s.id && !t.done).length;
+  const spRow = s => {
+    const on = open && open.id === s.id;
+    let h = `<div class="spi${on ? ' open' : ''}" data-spi="${s.id}"><button class="nv sprow" data-go="space:${s.id}" data-spdrop="${s.id}"${R.name === 'space' && R.id === s.id ? ' aria-current="page"' : ''}${on ? ' aria-expanded="true"' : ''}><span class="dot" style="background:${s.color}"></span><span class="spt">${esc(s.name)}</span><span class="ct">${n(s) || ''}</span></button><button class="spm-more spx" data-spmore="${s.id}" aria-label="Options de ${esc(s.name)}" title="Options">${icon('dots', 'sm')}</button></div>`;
+    if (on) {
+      const sub = SP_NAV.map(([k, ic, l]) => `<button class="nv sub" data-go="${k}"${cur === k ? ' aria-current="page"' : ''}>${icon(ic, 'sm')}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>`).join('');
+      const pages = mine.slice().sort((a, b) => a.created - b.created);
+      h += `<div class="spsub">${sub}<div class="nav" id="pages">${pages.map(d => `<button class="nv pg" data-go="doc:${d.id}"${cd && cd.id === d.id ? ' aria-current="page"' : ''}>${icon(d.type === 'board' ? 'board' : 'note', 'sm')}<span class="pt">${esc(d.title)}</span></button>`).join('')}</div></div>`;
+    }
+    return h;
+  };
+  $('#spaces').innerHTML = userSpaces().map(spRow).join('') || '<div class="pempty">Aucun espace. Un espace réunit les notes, tâches, boards et le moodboard d’un projet.</div>';
   $('#meName').textContent = S.prefs.name || 'Moi'; $('#meAv').textContent = (S.prefs.name || 'M')[0].toUpperCase();
   $('#themeBtn').innerHTML = icon(isDarkTheme() ? 'sun' : 'moon');
 }
-/* the dropdown of the spaces: pick one, ⋯ for its options, a field at the bottom to create one */
-function openSpaceSwitcher(anchor, o = {}) {
-  const cur = curSpace(), ld = liveDocs();
-  const n = s => ld.filter(d => d.sp === s.id).length + S.tasks.filter(t => t.sp === s.id && !t.done).length;
-  const item = s => `<div class="spm-row"><button class="mi spm-it" data-sw="${s.id}"${s.id === cur.id ? ' aria-current="true"' : ''}><span class="sdot" style="background:${s.color}"></span><span class="t">${esc(s.name)}</span><small>${n(s) || ''}</small>${s.id === cur.id ? icon('check', 'sm') : ''}</button>${s.id === DEF_SPACE ? '' : `<button class="spm-more" data-spmore="${s.id}" aria-label="Options de ${esc(s.name)}" title="Options">${icon('dots', 'sm')}</button>`}</div>`;
-  const mine = userSpaces(), def = spaceById(DEF_SPACE);
-  const p = openPop(anchor, `<div class="mh">Vos espaces</div>
-    ${mine.map(item).join('') || '<div class="spm-empty">Aucun espace pour l’instant.</div>'}
-    <div class="msep"></div>${def ? item(def) : ''}
-    <div class="msep"></div>
-    <label class="spm-new">${icon('plus', 'sm')}<input id="spNew" placeholder="Nouvel espace…" aria-label="Nom du nouvel espace" autocomplete="off"></label>`, { cls: 'spm', focus: false });
-  const w = anchor.getBoundingClientRect ? anchor.getBoundingClientRect().width : 0; if (w > 200) p.style.minWidth = w + 'px';
-  const inp = $('#spNew', p);
-  p.addEventListener('click', e => {
-    const m = e.target.closest('[data-spmore]'); if (m) { e.stopPropagation(); spaceMenu(m, spaceById(m.dataset.spmore)); return; }
-    const b = e.target.closest('[data-sw]'); if (b) { closePop(); go('space:' + b.dataset.sw); }
-  });
-  inp.onkeydown = e => { if (e.key === 'Enter' && inp.value.trim()) { closePop(); createSpace(inp.value); } if (e.key === 'Escape') closePop(); };
-  if (o.create) inp.focus(); else { const c = $('[aria-current="true"]', p); if (c) c.focus({ preventScroll: true }); }
-}
-function createSpace(name) {
+function createSpace(name, o = {}) {
   const cols = themeColors('space', SPACE_COLORS);
   const sp = { id: uid('s'), name: String(name).trim().slice(0, 60) || 'Nouvel espace', color: cols[userSpaces().length % cols.length], media: [], created: Date.now() };
-  S.spaces.push(sp); S.prefs.cur = sp.id; S.prefs.welcomed = true; save();
+  S.spaces.push(sp); S.prefs.welcomed = true;
+  if (o.stay) { save(); renderSide(); return sp; }
+  S.prefs.cur = sp.id; save();
   go('space:' + sp.id); toast(`Espace « ${sp.name} » créé`);
   return sp;
 }
@@ -226,19 +255,20 @@ function renderTop() {
   const menu = `<button class="tb menu-btn" id="navBtn" aria-label="Menu">${icon('menu')}</button>`;
   const aiBtn = !S.prefs.aiOn ? '' : `<button class="tb ai" id="aiBtn" aria-pressed="${!$('#ai').hidden}" title="Assistant IA (Ctrl J)">${icon('spark')}<span class="lbl">Assistant</span></button>`;
   let crumbs = '', acts = '';
-  const titles = { notes: 'Notes', boards: 'Boards', tasks: 'Tâches', mood: 'Moodboard', favs: 'Favoris', trash: 'Corbeille', search: 'Recherche' };
+  const titles = { notes: 'Notes', boards: 'Boards', tasks: 'Tâches', mood: 'Moodboard', favs: 'Favoris', trash: 'Corbeille', search: 'Recherche', all: 'Toutes les notes', todo: 'Toutes les tâches' };
   // the moodboard of the space opens as a drawer from every page (Ctrl M)
-  const moodBtn = R.name === 'mood' || R.name === 'welcome' ? '' : `<button class="tb" id="moodBtn" aria-pressed="${Mood.isOpen()}" title="Moodboard de l’espace (Ctrl M)">${icon('image')}<span class="lbl">Moodboard</span></button>`;
+  const moodBtn = R.name === 'mood' || R.name === 'welcome' || isGlobal() ? '' : `<button class="tb" id="moodBtn" aria-pressed="${Mood.isOpen()}" title="Moodboard de l’espace (Ctrl M)">${icon('image')}<span class="lbl">Moodboard</span></button>`;
   const spCrumb = sp => `<button class="sp" data-go="space:${sp.id}"><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</button><span>/</span>`;
   if (d) {
-    const sp = spaceById(d.sp);
-    crumbs = `${sp ? spCrumb(sp) : ''}<input class="cur" id="docTitle" value="${esc(d.title)}" aria-label="Titre">`;
+    // the space of the page, as a button to file it elsewhere (or nowhere)
+    const sp = spaceById(d.sp) || spaceById(DEF_SPACE), def = sp.id === DEF_SPACE;
+    crumbs = `<button class="sp spfile${def ? ' none' : ''}" id="docSp" aria-haspopup="menu" title="${def ? 'Ranger dans un espace' : 'Changer d’espace'}">${def ? icon('inbox', 'sm') : `<span class="sdot" style="background:${sp.color}"></span>`}<span>${def ? 'Ranger…' : esc(sp.name)}</span>${icon('chevd', 'sm')}</button><span>/</span><input class="cur" id="docTitle" value="${esc(d.title)}" aria-label="Titre">`;
     acts = `<button class="tb" id="favBtn" aria-pressed="${d.fav}" title="Favori">${icon('star')}</button>${moodBtn}
       <button class="tb" id="focusBtn" title="Mode focus (Ctrl .)">${icon('focus')}<span class="lbl">Focus</span></button>${aiBtn}
       <button class="tb" id="docMore" aria-label="Plus d'actions">${icon('dots')}</button>`;
   } else if (R.name === 'space') {
     const sp = spaceById(R.id);
-    crumbs = `<span class="sp"><span class="sdot" style="background:${sp.color}"></span></span><span class="cur">${esc(sp.name)}</span>`;
+    crumbs = `<span class="sp">${sp.id === DEF_SPACE ? icon('inbox', 'sm') : `<span class="sdot" style="background:${sp.color}"></span>`}</span><span class="cur">${esc(sp.name)}</span>`;
     acts = `${moodBtn}${sp.id === DEF_SPACE ? '' : `<button class="tb" id="spMore" aria-label="Options de l'espace">${icon('dots')}</button>`}${aiBtn}`;
   } else if (R.name === 'welcome') {
     crumbs = ''; acts = '';
@@ -256,6 +286,7 @@ function renderTop() {
     $('#favBtn').onclick = () => { d.fav = !d.fav; touch(d); $('#favBtn').setAttribute('aria-pressed', d.fav); renderSide(); toast(d.fav ? 'Ajouté aux favoris' : 'Retiré des favoris'); };
     $('#focusBtn').onclick = () => setFocus(true);
     $('#docMore').onclick = e => docMenu(e.currentTarget, d);
+    $('#docSp').onclick = e => fileMenu(e.currentTarget, d);
   }
   const sm = $('#spMore'); if (sm) sm.onclick = e => spaceMenu(e.currentTarget, spaceById(R.id));
   const mb = $('#moodBtn'); if (mb) mb.onclick = () => Mood.toggle();
@@ -264,12 +295,10 @@ function renderTop() {
 }
 function docMenu(anchor, d) {
   openPop(anchor, [
-    { head: 'Déplacer vers' },
-    ...S.spaces.map(s => ({ label: s.name, dot: s.color, small: s.id === d.sp ? 'actuel' : '', run: () => { d.sp = s.id; touch(d); renderTop(); renderSide(); toast(`Déplacé dans ${s.name}`); } })),
-    '-',
+    { label: 'Ranger dans…', icon: 'folder', run: () => fileMenu($('#docSp') || anchor, d) },
     { label: 'Dupliquer', icon: 'dup', run: () => { const c = JSON.parse(JSON.stringify(d)); c.id = uid('d'); c.title = d.title + ' (copie)'; c.created = c.updated = Date.now(); c.fav = false; S.docs.push(c); save(); go('doc:' + c.id); toast('Copie créée'); } },
     { label: 'Exporter en fichier', icon: 'download', run: () => exportJSON({ docs: [d] }, `${d.title || 'document'}.json`) },
-    { label: 'Mettre à la corbeille', icon: 'trash', danger: true, run: () => { d.trash = true; touch(d); go(d.type === 'board' ? 'boards' : 'notes'); toast('Mis à la corbeille', { label: 'Annuler', run: () => { d.trash = false; touch(d); go('doc:' + d.id); } }); } }
+    { label: 'Mettre à la corbeille', icon: 'trash', danger: true, run: () => { d.trash = true; touch(d); go(d.sp === DEF_SPACE ? 'all' : d.type === 'board' ? 'boards' : 'notes'); toast('Mis à la corbeille', { label: 'Annuler', run: () => { d.trash = false; touch(d); go('doc:' + d.id); } }); } }
   ], { align: 'right' });
 }
 
@@ -541,7 +570,7 @@ function sortable(root, o) {
 }
 function refreshTaskViews() {
   renderSide();
-  if (R.name === 'tasks' || R.name === 'space') { const v = $('#view'), st = v.scrollTop; go(R, { keepFocus: true }); v.scrollTop = st; }
+  if (R.name === 'tasks' || R.name === 'space' || R.name === 'todo') { const v = $('#view'), st = v.scrollTop; go(R, { keepFocus: true }); v.scrollTop = st; }
   else if (R.name === 'doc' && typeof Board !== 'undefined') Board.refreshRefs();
 }
 
@@ -565,7 +594,7 @@ function bindCreate(v) {
   const fab = $('#fab', v); if (fab) fab.onclick = e => openPop(e.currentTarget, [
     { label: 'Nouvelle note', icon: 'note', run: () => createFrom('note') },
     { label: 'Nouveau board', icon: 'board', run: () => createFrom('board') },
-    { label: 'Nouvelle tâche', icon: 'tasks', run: () => { go('tasks'); setTimeout(() => $('#tAdd') && $('#tAdd').focus(), 30); } }
+    { label: 'Nouvelle tâche', icon: 'tasks', run: () => { go(isGlobal() ? 'todo' : 'tasks'); setTimeout(() => $('#tAdd') && $('#tAdd').focus(), 30); } }
   ], { above: true, align: 'right' });
 }
 function createFrom(kind) {
@@ -575,11 +604,13 @@ function createFrom(kind) {
 }
 
 /* ================= doc lists ================= */
-function docCard(d) {
+function docCard(d, o = {}) {
   const sp = spaceById(d.sp);
-  return `<div class="dcard" data-doc="${d.id}"${theme().docAttrs ? ' ' + theme().docAttrs(d, sp) : ''}><button class="th" data-open="${d.id}" aria-label="Ouvrir ${esc(d.title)}">${Thumbs.svg(d)}<span class="kind">${icon(d.type === 'board' ? 'board' : 'note', 'sm')}${d.type === 'board' ? 'Board' : 'Note'}</span></button>
+  // on the pages that cover every space, the card says where the page is filed (drag it onto a space of the sidebar to file it)
+  const where = o.where && sp ? `<button class="dsp${sp.id === DEF_SPACE ? ' none' : ''}" data-file="${d.id}" title="Ranger dans…">${sp.id === DEF_SPACE ? 'Non classée' : esc(sp.name)}</button>` : '';
+  return `<div class="dcard" data-doc="${d.id}"${d.trash ? '' : ' draggable="true"'}${theme().docAttrs ? ' ' + theme().docAttrs(d, sp) : ''}><button class="th" data-open="${d.id}" aria-label="Ouvrir ${esc(d.title)}">${Thumbs.svg(d)}<span class="kind">${icon(d.type === 'board' ? 'board' : 'note', 'sm')}${d.type === 'board' ? 'Board' : 'Note'}</span></button>
     ${d.trash ? '' : `<button class="fav" data-fav="${d.id}" aria-pressed="${d.fav}" aria-label="Favori">${icon('star', 'sm')}</button>`}
-    <div class="meta">${sp ? `<span class="sdot" style="background:${sp.color}"></span>` : ''}<b>${esc(d.title)}</b><small>${ago(d.updated)}</small></div>
+    <div class="meta${where ? ' where' : ''}">${sp ? `<span class="sdot" style="background:${sp.color}"></span>` : ''}<b>${esc(d.title)}</b><small>${where}${ago(d.updated)}</small></div>
     ${d.trash ? `<div class="trashacts"><button class="btn sm" data-restore="${d.id}">${icon('restore', 'sm')}Restaurer</button><button class="btn sm ghost danger" data-purge="${d.id}">Supprimer</button></div>` : ''}</div>`;
 }
 function bindDocCards(v) {
@@ -588,6 +619,7 @@ function bindDocCards(v) {
     const f = e.target.closest('[data-fav]'); if (f) { const d = docById(f.dataset.fav); d.fav = !d.fav; touch(d); f.setAttribute('aria-pressed', d.fav); renderSide(); if (R.name === 'favs') go('favs'); return; }
     const r = e.target.closest('[data-restore]'); if (r) { const d = docById(r.dataset.restore); d.trash = false; touch(d); go('trash'); toast('Restauré'); return; }
     const p = e.target.closest('[data-purge]'); if (p) { purgeDocs([docById(p.dataset.purge)]); return; }
+    const fl = e.target.closest('[data-file]'); if (fl) { fileMenu(fl, docById(fl.dataset.file), { after: () => go(R, { keepFocus: true }) }); return; }
   });
 }
 function purgeDocs(list) {
@@ -610,6 +642,45 @@ function renderDocList(v, kind) {
   bindDocCards(v); bindCreate(v);
   const et = $('#emptyTrash'); if (et) et.onclick = () => purgeDocs(list);
 }
+/* every note and board, whatever its space (Evernote's « Notes »): filters by kind and by space, kept in S.prefs.allF */
+const allFilter = () => { const f = S.prefs.allF || (S.prefs.allF = { k: 'all', sp: '' }); if (f.sp && !spaceById(f.sp)) f.sp = ''; return f; };
+function renderAll(v) {
+  const f = allFilter(), ld = liveDocs();
+  const list = ld.filter(d => (f.k === 'all' || d.type === f.k) && (!f.sp || d.sp === f.sp)).sort((a, b) => b.updated - a.updated);
+  const nIn = id => ld.filter(d => d.sp === id).length;
+  const chip = (attr, val, cur, label, extra = '') => `<button class="chip fchip" ${attr}="${val}" aria-pressed="${cur === val}">${extra}${label}</button>`;
+  const spChips = [chip('data-fsp', '', f.sp, 'Tous les espaces'), chip('data-fsp', DEF_SPACE, f.sp, `${DEF_NAME} <small>${nIn(DEF_SPACE) || ''}</small>`, icon('inbox', 'sm')),
+    ...userSpaces().map(s => chip('data-fsp', s.id, f.sp, `${esc(s.name)} <small>${nIn(s.id) || ''}</small>`, `<span class="sdot" style="background:${s.color}"></span>`))].join('');
+  const where = f.sp ? spaceById(f.sp).name : '';
+  v.innerHTML = `<div class="page allpage"><div class="ph"><div><h1>Toutes les notes</h1><div class="sub">${list.length ? `${list.length} page${list.length > 1 ? 's' : ''}` : 'Rien pour l’instant'}${where ? ` dans ${esc(where)}` : ', tous espaces confondus'}. Glissez une carte sur un espace de la barre latérale pour la ranger.</div></div><div class="acts">
+      <button class="btn" data-new="board">${icon('board')}Nouveau board</button><button class="btn pri" data-new="note">${icon('note')}Nouvelle note</button></div></div>
+    <div class="fbar"><div class="seg fkind">${[['all', 'Tout'], ['note', 'Notes'], ['board', 'Boards']].map(([k, l]) => `<button data-fk="${k}" aria-pressed="${f.k === k}">${l}</button>`).join('')}</div><div class="fsps">${spChips}</div></div>
+    <div class="docs"><button class="newcard" data-new="note">${icon('plus', 'lg')}Nouvelle note</button>${list.map(d => docCard(d, { where: true })).join('')}</div>
+    ${!list.length && (f.sp || f.k !== 'all') ? '<div class="empty">Aucune page avec ces filtres.</div>' : ''}
+  </div><button class="fab" id="fab" aria-label="Créer">${icon('plus')}</button>`;
+  bindDocCards(v); bindCreate(v);
+  $('.fbar', v).onclick = e => {
+    const k = e.target.closest('[data-fk]'), sp = e.target.closest('[data-fsp]');
+    if (k) f.k = k.dataset.fk; else if (sp) f.sp = sp.dataset.fsp; else return;
+    save(); go('all');
+  };
+}
+/* every open task, one block per space (« Non classées » first); drag a task into another block to move it */
+function renderAllTasks(v) {
+  const open = S.tasks.filter(t => !t.done), done = S.tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+  const sps = [spaceById(DEF_SPACE), ...userSpaces()].filter(Boolean);
+  const grp = sp => { const l = open.filter(t => t.sp === sp.id).sort(taskSort); if (!l.length && sp.id !== DEF_SPACE) return '';
+    return `<section class="tgroup" data-sp="${sp.id}"><h3><button class="tg-h" data-go="space:${sp.id}">${sp.id === DEF_SPACE ? icon('inbox', 'sm') : `<span class="sdot" style="background:${sp.color}"></span>`}${esc(sp.name)}</button><small>${l.length || ''}</small></h3>
+      <div class="tlist tl-light">${l.map(t => taskRow(t, { drag: true })).join('') || '<div class="tempty">Rien ici. Les tâches écrites ci-dessus arrivent dans ce bloc.</div>'}</div></section>`; };
+  v.innerHTML = `<div class="page tpage" style="max-width:760px"><div class="ph"><div><h1>Tâches</h1><div class="sub">${open.length} à faire dans tous les espaces${done.length ? ` · ${done.length} terminée${done.length > 1 ? 's' : ''}` : ''}</div></div></div>
+    ${quickAddBox('tAdd', 'Ajouter une tâche… (elle ira dans Non classées)', DEF_SPACE)}
+    <div id="tGroups" class="tgroups">${sps.map(grp).join('')}</div>
+    ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div class="tlist">${done.slice(0, 80).map(t => taskRow(t, { space: true })).join('')}</div></details>` : ''}
+  </div>`;
+  bindTaskList(v, () => go('todo'));
+  bindQuickAdd($('#tAdd'), () => go('todo'));
+  setTimeout(() => { const i = $('#tAdd'); if (i && innerWidth > 760) i.focus({ preventScroll: true }); }, 0);
+}
 /* the home of a space: its tasks, its moodboard, its boards and notes */
 function renderSpace(v) {
   const sp = spaceById(R.id), docs = liveDocs().filter(d => d.sp === sp.id).sort((a, b) => b.updated - a.updated);
@@ -618,9 +689,9 @@ function renderSpace(v) {
   const pl = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
   const isDef = sp.id === DEF_SPACE;
   v.innerHTML = `<div class="page sphome">
-    <div class="ph sp-ph"><div class="sp-hd"><div class="sp-kick"><span class="sdot" style="background:${sp.color}"></span>${isDef ? 'Espace par défaut' : 'Espace'}</div>
+    <div class="ph sp-ph"><div class="sp-hd"><div class="sp-kick">${isDef ? `${icon('inbox', 'sm')}Hors espace` : `<span class="sdot" style="background:${sp.color}"></span>Espace`}</div>
       <input class="sp-title" id="spTitle" value="${esc(sp.name)}" aria-label="Nom de l'espace" spellcheck="false"${isDef ? ' readonly tabindex="-1"' : ''}>
-      <div class="sub">${isDef ? 'Pour les notes et les tâches rapides, sans créer d’espace. ' : ''}${[pl(open.length, 'tâche') + ' à faire', nb ? pl(nb, 'board') : '', nn ? pl(nn, 'note') : '', nm ? pl(nm, 'élément') + ' au moodboard' : ''].filter(Boolean).join(' · ')}</div></div>
+      <div class="sub">${isDef ? 'Les notes et les tâches rangées dans aucun espace. Rangez-les quand vous voulez, ou laissez-les ici. ' : ''}${[pl(open.length, 'tâche') + ' à faire', nb ? pl(nb, 'board') : '', nn ? pl(nn, 'note') : '', nm ? pl(nm, 'élément') + ' au moodboard' : ''].filter(Boolean).join(' · ')}</div></div>
       <div class="acts"><button class="btn" data-new="note">${icon('note')}Note</button><button class="btn pri" data-new="board">${icon('board')}Board</button></div></div>
     <div class="sp-grid">
       <section class="card sp-tasks"><h2>${icon('tasks')}Tâches <span class="ct">${open.length || ''}</span><button class="more" data-go="tasks">Tout voir</button></h2>${quickAddBox('sAdd', 'Ajouter une tâche…', sp.id)}
