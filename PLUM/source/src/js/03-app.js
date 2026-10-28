@@ -882,6 +882,12 @@ function applyAi() {
   if (!on && !$('#ai').hidden) AI.toggle(false);
   renderTop();
 }
+function setSideFold(on) {
+  if (S.prefs.sideFold !== !!on) { S.prefs.sideFold = !!on; save(); }
+  document.documentElement.toggleAttribute('data-sidex', !!on);
+  const b = $('#sideFold'); if (b) { b.title = on ? 'Déplier le panneau (Ctrl \\)' : 'Replier le panneau (Ctrl \\)'; b.setAttribute('aria-label', on ? 'Déplier le panneau' : 'Replier le panneau'); }
+  if (typeof Board !== 'undefined' && Board.mounted) Board.layoutChanged();
+}
 function setFocus(on) {
   const r = document.documentElement;
   if (on && R.name !== 'doc') return;

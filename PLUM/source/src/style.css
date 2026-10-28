@@ -1870,3 +1870,14 @@ figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
 .ndropline { position: absolute; height: 3px; margin-top: -1.5px; border-radius: 3px; background: var(--accent); pointer-events: none; z-index: 5; box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent); }
 .ndropline::before, .ndropline::after { content: ''; position: absolute; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: var(--accent); }
 .ndropline::before { left: -5px; } .ndropline::after { right: -5px; }
+/* 0.2.21: fold the sidebar away (a tab on the edge of the page), the drawer's pin */
+.sfold { position: absolute; left: 0; top: 92px; z-index: 70; width: 14px; height: 46px; padding: 0; border-radius: 0 9px 9px 0; display: grid; place-items: center; background: var(--side-2, var(--sunk)); color: var(--side-mute, var(--ink-3)); box-shadow: inset -1px 0 0 var(--line), 0 1px 0 var(--line), 0 -1px 0 var(--line); opacity: .7; transition: opacity .15s, width .15s, color .15s; }
+.sfold .i { width: 12px; height: 12px; transform: scaleX(-1); transition: transform .2s; }
+.sfold:hover { opacity: 1; width: 18px; color: var(--side-text, var(--ink)); }
+@media (min-width: 761px) { [data-sidex] { --side-w: 0px; } [data-sidex] #side { display: none; } }
+[data-sidex] .sfold .i { transform: none; }
+[data-focus] .sfold, [data-welcome] .sfold { display: none; }
+@media (max-width: 760px) { .sfold { display: none; } }
+.mdr-pin[aria-pressed="true"] { color: var(--accent); }
+.mdr-pin[aria-pressed="true"] .i { transform: rotate(-30deg); }
+.mdr-pin .i { transition: transform .15s; }

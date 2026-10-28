@@ -36,6 +36,8 @@ function bindShell() {
   $('#quickMore').onclick = e => openPop(e.currentTarget, [{ head: 'Créer' }, { label: 'Note', icon: 'note', run: () => createFrom('note') }, { label: 'Board', icon: 'board', run: () => createFrom('board') },
     { label: 'Tâche', icon: 'tasks', run: () => { go(isGlobal() || curSpace().id === DEF_SPACE ? 'todo' : 'tasks'); setTimeout(() => $('#tAdd') && $('#tAdd').focus(), 30); } }, '-',
     { label: 'Espace', icon: 'folder', run: () => askSpaceName(n => createSpace(n)) }]);
+  /* 0.2.21: the sidebar folds away (the page takes the whole width; unlike focus mode, the top bar stays) */
+  $('#sideFold').onclick = () => setSideFold(!S.prefs.sideFold);
   $('#addSpace').onclick = () => askSpaceName(n => createSpace(n));
   $('#spaces').addEventListener('click', e => { const m = e.target.closest('[data-spmore]'); if (m) { e.stopPropagation(); spaceMenu(m, spaceById(m.dataset.spmore)); } });
   $('#spaces').addEventListener('contextmenu', e => { const r = e.target.closest('[data-spi]'); if (r) { e.preventDefault(); spaceMenu(r, spaceById(r.dataset.spi)); } });
@@ -60,6 +62,7 @@ function bindShell() {
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (mod && k === 'k') { e.preventDefault(); if (document.documentElement.hasAttribute('data-focus')) setFocus(false); $('#q').focus(); $('#q').select(); return; }
     if (mod && k === 'n' && !e.shiftKey && !e.altKey && R.name !== 'welcome') { e.preventDefault(); createFrom('note'); return; }
+    if (mod && (e.key === '\\' || e.code === 'Backslash')) { e.preventDefault(); setSideFold(!S.prefs.sideFold); return; }
     if (mod && k === 'j') { e.preventDefault(); if (S.prefs.aiOn) AI.toggle(); return; }
     if (mod && k === 'm' && !e.shiftKey && !e.altKey) { e.preventDefault(); if (R.name !== 'welcome' && R.name !== 'mood') Mood.toggle(); return; }
     if (mod && (e.key === '.' || e.code === 'Period')) { e.preventDefault(); if (R.name === 'doc') setFocus(!document.documentElement.hasAttribute('data-focus')); return; }
@@ -112,7 +115,7 @@ async function boot() {
   else { S = migrateState(st); S.prefs = mergePrefs(S.prefs); S.tasks = S.tasks || []; ensureDefaultSpace(S); }
   if (S.prefs.defSkin !== DEFAULT_PREFS.skin) { S.prefs.defSkin = DEFAULT_PREFS.skin; S.prefs.skin = DEFAULT_PREFS.skin; save(); }
   try { await Promise.race([Promise.all(['400 14px Figtree', '600 14px Figtree', '700 14px Figtree', '400 24px Caveat', '700 24px Caveat'].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 1500))]); } catch (e) {}
-  applyTheme(); applyUiScale();
+  applyTheme(); applyUiScale(); setSideFold(!!S.prefs.sideFold);
   bindShell();
   $('#focusAi').hidden = !S.prefs.aiOn;
   Mood.mount();

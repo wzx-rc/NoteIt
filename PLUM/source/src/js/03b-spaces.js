@@ -264,14 +264,21 @@ const Mood = (() => {
     drawer = document.createElement('aside'); drawer.id = 'moodDrawer'; drawer.className = 'mdr'; drawer.hidden = true; drawer.setAttribute('aria-label', 'Moodboard');
     $('#main').append(drawer);
     bindList(drawer, () => drawerList(curSpace()), curSpace, { drawer: true, zone: drawer, folder: () => drawerFolder });
+    /* 0.2.21: not pinned, the drawer folds away once the mouse leaves it (not while an element is being dragged out of it) */
+    drawer.addEventListener('mouseenter', () => clearTimeout(hideT));
+    drawer.addEventListener('mouseleave', autoHide);
+    drawer.addEventListener('dragend', () => setTimeout(() => { if (open && !drawer.matches(':hover')) autoHide(); }, 50));
   }
+  let hideT = 0;
+  const pinned = () => S.prefs.moodPin === true;
+  function autoHide() { clearTimeout(hideT); if (pinned() || !open) return; hideT = setTimeout(() => { if (open && !pinned() && !dragging && !drawer.matches(':hover') && !drawer.contains(document.activeElement)) toggle(false); }, 450); }
   /* the drawer shows everything, or one folder */
   function drawerList(sp) { if (drawerFolder && !folders(sp).some(f => f.id === drawerFolder)) drawerFolder = ''; return drawerFolder ? inFolder(sp, drawerFolder) : own(sp); }
   function renderDrawer() {
     if (!drawer) return;
     const sp = curSpace(), mine = drawerList(sp), d = docOpen(), fs = folders(sp);
     drawer.innerHTML = `<div class="mdr-hd"><div class="mdr-t">${icon('image')}<span><b>Moodboard</b><small><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</small></span></div>
-        <button class="tb" data-go="mood" title="Ouvrir en grand" aria-label="Ouvrir en grand">${icon('ext')}</button><button class="tb" data-mclose title="Fermer (Échap)" aria-label="Fermer">${icon('x')}</button></div>
+        <button class="tb mdr-pin" data-mpin aria-pressed="${pinned()}" title="${pinned() ? 'Épinglé : reste ouvert' : 'Épingler (sinon il se replie quand la souris sort)'}" aria-label="Épingler le moodboard">${icon('pin')}</button><button class="tb" data-go="mood" title="Ouvrir en grand" aria-label="Ouvrir en grand">${icon('ext')}</button><button class="tb" data-mclose title="Fermer (Échap)" aria-label="Fermer">${icon('x')}</button></div>
       ${addBar('mdrAdd', 'Lien ou idée, puis Entrée')}
       ${fs.length ? `<div class="mdr-folds"><button class="mdr-fc" data-dfold="" data-fdrop="" aria-pressed="${!drawerFolder}">Tout</button>${fs.map(f => `<button class="mdr-fc" data-dfold="${f.id}" data-fdrop="${f.id}" aria-pressed="${drawerFolder === f.id}">${icon('folder', 'sm')}${esc(f.name)}<small>${inFolder(sp, f.id).length || ''}</small></button>`).join('')}</div>` : ''}
       <div class="mdr-body">${mine.length ? `<div class="mwall dr">${mine.map((m, i) => tile(m, i)).join('')}</div>` : `<div class="mdr-empty">${icon('upload')}<div>Glissez ici des images, des liens ou des fichiers. Ils restent dans le moodboard de ${esc(sp.name)}.</div></div>`}</div>
@@ -279,7 +286,7 @@ const Mood = (() => {
   }
   function toggle(on = !open) {
     if (!drawer) mount();
-    open = !!on;
+    open = !!on; clearTimeout(hideT);
     if (open) renderDrawer();
     drawer.hidden = !open; document.documentElement.toggleAttribute('data-mood', open); layout();
     const b = $('#moodBtn'); if (b) b.setAttribute('aria-pressed', open);
@@ -289,7 +296,11 @@ const Mood = (() => {
   /* under the top bar, or from the top in focus mode */
   function layout() { if (!drawer || !open) return; const t = $('#top'); drawer.style.top = ((t && t.offsetParent ? t.offsetHeight : 0) + 10) + 'px'; }
   drawerClicks();
-  function drawerClicks() { document.addEventListener('click', e => { if (drawer && e.target.closest && e.target.closest('#moodDrawer [data-mclose]')) toggle(false); }); }
+  function drawerClicks() { document.addEventListener('click', e => {
+    if (!drawer || !e.target.closest) return;
+    if (e.target.closest('#moodDrawer [data-mclose]')) toggle(false);
+    const pn = e.target.closest('#moodDrawer [data-mpin]'); if (pn) { S.prefs.moodPin = !pinned(); save(); renderDrawer(); toast(pinned() ? 'Moodboard épinglé' : 'Le moodboard se repliera quand la souris en sort'); }
+  }); }
   return {
     mount, toggle, preview, bindPreview, drop, renderPage, layout,
     isOpen: () => open,
