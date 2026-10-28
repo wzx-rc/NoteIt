@@ -173,11 +173,10 @@ const Note = (() => {
      leaves it open to click. Up is always the last colour. Same look as the board's (.mmenu). */
   const MM_R = 64, MM_DEAD = 16;
   let mm = null;
-  // four arms only (0.2.18): up the last colour, right bold, down highlight, left the colours
+  // four arms only (0.2.18): up the last colour, right bold, down italic, left underline
   function mmItems() {
     return [{ dir: 0, label: 'Dernière couleur', sw: lastColor(), run: () => colorSel(lastColor()) }, { dir: 2, label: 'Gras', run: () => cmd('bold') },
-      { dir: 4, label: 'Surligner', run: () => cmd('mark') },
-      { dir: 6, label: 'Couleurs…', run: () => { const a = bub && !bub.hidden && $('.bc', bub) || $('[data-tx="color"]', tool); if (a) textPop(a); } }];
+      { dir: 4, label: 'Italique', run: () => cmd('italic') }, { dir: 6, label: 'Souligné', run: () => cmd('underline') }];
   }
   function openMM(e) {
     closeMM();
