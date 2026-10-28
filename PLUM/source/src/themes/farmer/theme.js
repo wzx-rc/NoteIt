@@ -10,16 +10,14 @@ const FM_IMG = f => ({ vb: '0 0 24 24', svg: `<image href="${f}" width="24" heig
 defineTheme({
   id: 'farmer', order: .8, label: 'Farmer', desc: 'Ferme peinte : bois, papier crème, post-it',
   mode: 'light', meta: '#F3EAD7', boardInset: 150, chalk: '#3B2A1C', hand: '#3B2A1C', atlInk: '#3B2A1C',
+  /* the 20 colours of the scheme (SCHEME_NAMES in 00-util.js): n°5 vert prairie for arrows */
+  scheme: ['#3B2A1C', '#6B5440', '#B8A68C', '#FBF5E8', '#5B8A3C', '#B5452F', '#E08A4F', '#D9A441', '#7FA55A', '#6E9E8A',
+    '#4F8FB8', '#8A74B8', '#C9708F', '#7A4E2D', '#F8E7A8', '#F7C7A6', '#F2CFC8', '#E6DAF0', '#C4DFF0', '#D9E8B6'],
   accents: [
     { name: 'Vert prairie', value: '#5B8A3C' }, { name: 'Grange', value: '#B5452F' }, { name: 'Blé', value: '#D9A441' },
     { name: 'Étang', value: '#4F8FB8' }, { name: 'Noyer', value: '#7A4E2D' }, { name: 'Lavande', value: '#8A74B8' }
   ],
   colors: {
-    ink: ['#3B2A1C', '#5B8A3C', '#B5452F', '#D9A441', '#4F8FB8', '#7A4E2D', '#E08A4F', '#8A74B8'],
-    stroke: ['#3B2A1C', '#5B8A3C', '#B5452F', '#4F8FB8', '#D9A441'],
-    fill: ['#F8E7A8', '#D9E8B6', '#C4DFF0', '#F7C7A6', '#FBF5E8'],
-    note: ['#F8E7A8', '#D9E8B6', '#C4DFF0', '#F7C7A6', '#E6DAF0', '#FBF5E8', '#EAD9BF'],
-    mind: ['#E9B949', '#E8876A', '#4FA88E', '#5E9BD6', '#8A74B8', '#7FA55A', '#C9704F', '#8C7B62'],
     space: ['#5B8A3C', '#B5452F', '#D9A441', '#E08A4F', '#4F8FB8', '#7A4E2D', '#8A74B8', '#6E9E8A', '#C9704F', '#8C7B62']
   },
   palettes: [
@@ -30,7 +28,6 @@ defineTheme({
   icons: {
     /* sidebar and pages: painted game-asset pictures */
     home: FM_IMG('asset:ic-home.webp'),
-    note: FM_IMG('asset:ic-note.webp'),
     tasks: FM_IMG('asset:ic-tasks.webp'),
     board: FM_IMG('asset:ic-board.webp'),
     star: FM_IMG('asset:ic-star.webp'),
@@ -51,7 +48,6 @@ defineTheme({
     sticky: FM_IMG('asset:ic-sticky.webp'),
     conn: FM_IMG('asset:ic-conn.webp'),
     dots: FM_IMG('asset:ic-dots.webp'),
-    mind: FM_IMG('asset:ic-mind.webp'),
     plus: '<path d="M12 5v14M5 12h14" stroke-width="2.3"/>'
   },
   /* mind maps as on the concept close-up: the centre idea on a wooden sign (minimum width, height, vertical room,

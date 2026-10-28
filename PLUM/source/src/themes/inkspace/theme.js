@@ -5,6 +5,9 @@
 defineTheme({
   id: 'inkspace', order: 2, label: 'Éclipse', desc: 'Verre dépoli, halos de lumière, dégradés',
   mode: 'user', meta: '#07080B', chalk: '#E9EAF0',
+  /* the 20 colours of the scheme (SCHEME_NAMES in 00-util.js): n°5 iris for arrows */
+  scheme: ['#15161C', '#4A4C5C', '#9597A8', '#F4F4F8', '#8C7BFF', '#FF5C7A', '#FF9F43', '#FFD166', '#3DDC97', '#22D3EE',
+    '#4B8DF8', '#B388FF', '#FF7AC6', '#A0785A', '#FFEBA8', '#FFD3BD', '#FFC9DF', '#DCD3FF', '#C6DCFF', '#C2F0DA'],
   tints: [
     { id: 'vide', name: 'Vide', h: 275, c: .01 },
     { id: 'neutre', name: 'Neutre', h: 275, c: .001 },

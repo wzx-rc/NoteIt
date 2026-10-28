@@ -14,19 +14,45 @@ const SHAPES = { rect: 'Rectangle', round: 'Arrondi', ellipse: 'Ellipse', diamon
 const HEADS = { none: 'Aucune', arrow: 'Flèche', tri: 'Triangle', bar: 'Barre', dot: 'Point', circle: 'Cercle', diamond: 'Losange' };
 const HAND = 'hand', SANS = 'sans', MONO = 'mono';
 const fontOf = f => f === SANS ? 'var(--font-ui)' : f === MONO ? 'var(--font-mono)' : 'var(--font-hand)';
-const BD = () => S.prefs.bd || {};
+/* the defaults for new items (S.prefs.bd); colours of the scheme are kept as "@n" and read in the current theme's scheme.
+   sc = outlines, ink and text, csc = arrows and lines (n°5 unless one was chosen), fc = fill of shapes */
+const BD = () => {
+  const b = Object.assign({}, S.prefs.bd);
+  for (const k of ['sc', 'csc', 'fc']) if (b[k]) b[k] = schemeVal(b[k]);
+  if (!b.sc) b.sc = schemeHex(SCHEME_DEF.sc);
+  if (!b.csc) b.csc = schemeHex(SCHEME_DEF.csc);
+  return b;
+};
+/* the colours of the items that can come from the scheme */
+const COLOR_KEYS = ['sc', 'fc', 'c', 'color'];
+/* switching themes: every colour of the old scheme becomes the colour of the same number in the new one
+   (boards, pen colours and the saved defaults); colours picked freely stay as they are */
+function schemeMapper(from, to) {
+  const map = new Map(); from.forEach((c, i) => { if (to[i]) map.set(c.toUpperCase(), to[i]); });
+  const re = v => typeof v === 'string' ? map.get(v.toUpperCase()) : undefined;
+  const item = it => { let o = null; for (const k of COLOR_KEYS) { const v = re(it[k]); if (v && v !== it[k]) { o = o || Object.assign({}, it); o[k] = v; } } return o || it; };
+  return { re, item, list: arr => { let ch = false; const next = arr.map(it => { const o = item(it); if (o !== it) ch = true; return o; }); return ch ? next : arr; } };
+}
+function remapScheme(from, to) {
+  if (from === to) return;
+  const m = schemeMapper(from, to), P = S.prefs;
+  for (const d of S.docs) if (d.type === 'board' && Array.isArray(d.items)) d.items = m.list(d.items);
+  for (const k in P.pens || {}) { const v = m.re(P.pens[k] && P.pens[k].c); if (v) P.pens[k].c = v; }
+  if (P.bd) for (const k of ['sc', 'csc', 'fc']) { const no = schemeNo(P.bd[k], from); if (no) P.bd[k] = '@' + no; }
+  P.recent = (P.recent || []).map(c => m.re(c) || c);
+}
 
-const mkNote = (x, y, txt, c = NOTE_COLORS[0], o = {}) => ({ id: uid('n'), k: 'note', x, y, w: o.w || 220, h: o.h || 220, txt, c, fs: o.fs || 30, font: o.font || BD().font || HAND, al: o.al || 'left' });
+const mkNote = (x, y, txt, c = schemeHex(SCHEME_DEF.note), o = {}) => ({ id: uid('n'), k: 'note', x, y, w: o.w || 220, h: o.h || 220, txt, c, fs: o.fs || 30, font: o.font || BD().font || HAND, al: o.al || 'left' });
 const mkText = (x, y, txt, o = {}) => ({ id: uid('x'), k: 'text', x, y, w: o.w || 10, h: o.h || 10, txt, fs: o.fs || 28, font: o.font || BD().font || HAND, color: o.color || BD().sc || '#1E1E1E', bold: !!o.bold, fw: o.fw || 0, al: o.al || 'left' });
 const mkShape = (x, y, w, h, sh = 'rect', o = {}) => ({ id: uid('s'), k: 'shape', x, y, w, h, sh, sc: o.sc || BD().sc || '#1E1E1E', fc: o.fc === undefined ? (BD().fc || null) : o.fc, sw: o.sw || BD().sw || 2, sty: o.sty || BD().sty || 'sketch', dash: o.dash || BD().dash || '', fill: o.fill || BD().fill || 'solid', txt: o.txt || '', fs: o.fs || 26, font: o.font || BD().font || HAND, color: o.color || '', sd: Math.random() });
 const mkImage = (x, y, w, h, asset, o = {}) => ({ id: uid('i'), k: 'image', x, y, w, h, asset: asset || '', frm: o.frm || 'shadow', cap: o.cap || '' });
 const mkFrame = (x, y, w, h, title) => ({ id: uid('f'), k: 'frame', x, y, w, h, title: title || 'Cadre' });
-const mkConn = (a, b, o = {}) => ({ id: uid('c'), k: 'conn', a, b, pts: o.pts || [], route: o.route || BD().route || 'curve', sc: o.sc || BD().sc || '#1E1E1E', sw: o.sw || BD().sw || 2, sty: o.sty || BD().sty || 'sketch', h0: o.h0 || 'none', h1: o.h1 === undefined ? 'arrow' : o.h1, txt: o.txt || '', dash: o.dash === true ? 'dash' : (o.dash || ''), sd: Math.random() });
+const mkConn = (a, b, o = {}) => ({ id: uid('c'), k: 'conn', a, b, pts: o.pts || [], route: o.route || BD().route || 'curve', sc: o.sc || BD().csc || '#1E1E1E', sw: o.sw || BD().sw || 2, sty: o.sty || BD().sty || 'sketch', h0: o.h0 || 'none', h1: o.h1 === undefined ? 'arrow' : o.h1, txt: o.txt || '', dash: o.dash === true ? 'dash' : (o.dash || ''), sd: Math.random() });
 const mkTodo = (x, y, title, tasks = [], o = {}) => ({ id: uid('o'), k: 'todo', x, y, w: o.w || 290, h: o.h || 160, title: title || 'À faire', tasks: tasks.slice(), c: o.c || '#FFFFFF', font: o.font || HAND, fs: o.fs || 24 });
 /* a mind map: the centre idea and its branches (strings, or {t, c:[…]} for sub-ideas), half on each side;
    each first-level branch takes the next colour of the theme's mind palette, its sub-ideas share it */
 function mkMind(x, y, title, branches = []) {
-  const root = { id: uid('m'), k: 'mind', x, y, w: 160, h: 64, txt: title, parent: null, side: 1, c: '#1E1D1B', ord: 0, lv: 0 };
+  const root = { id: uid('m'), k: 'mind', x, y, w: 160, h: 64, txt: title, parent: null, side: 1, c: schemeHex(1), ord: 0, lv: 0 };
   root.root = root.id;
   const out = [root], cols = themeColors('mind', MIND_COLORS);
   const add = (parent, list, side, color, lv) => list.forEach((b, i) => {

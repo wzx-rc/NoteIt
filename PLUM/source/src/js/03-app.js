@@ -1,8 +1,8 @@
 /* ================= workspace state ================= */
 const SPACE_COLORS = ['#5B7CFA', '#F2B33D', '#EC6A9C', '#E5484D', '#F5A524', '#2E9E6A', '#8B76FF', '#22A6B3', '#8B5E3C', '#5E6B78'];
 const DEFAULT_PREFS = { theme: 'auto', skin: 'minimal', name: '', autoPen: true, wheel: 'zoom', pressure: 'pen', source: 'auto', sens: .5, last: 'home', cur: 'default', welcomed: false,
-  pens: Object.fromEntries(PEN_ORDER.map(k => [k, { c: PEN_DEFAULT_COLORS[k], s: PENS[k].size }])),
-  bd: { sc: '#1E1E1E', fc: null, sw: 2, sty: 'sketch', dash: '', fill: 'solid', font: 'hand', route: 'curve' }, recent: [], props: null,
+  pens: Object.fromEntries(PEN_ORDER.map(k => [k, { s: PENS[k].size }])),
+  bd: { sc: '@1', fc: null, sw: 2, sty: 'sketch', dash: '', fill: 'solid', font: 'hand', route: 'curve' }, recent: [], props: null,
   ai: { provider: 'auto', tier: 'quick', model: '' }, aiOn: false, taskOrder: [] };
 let S = null;
 let saveT = 0, saving = null;
@@ -740,7 +740,10 @@ function applyTheme() {
   syncTitleBar(t);
   const tb = $('#themeBtn'); if (tb) tb.hidden = th.mode !== 'user';
   const tc = $('meta[name="theme-color"]'); if (tc) tc.content = th.meta || '';
-  if (S) { renderSide(); if (R.name === 'doc' && typeof Board !== 'undefined') { Board.retheme(); Note.retheme(); } }
+  /* the boards follow the theme's colour scheme (S.prefs.schemeTh = the theme their colours are in) */
+  let from = null;
+  if (S && S.prefs.schemeTh !== sk) { if (THEMES[S.prefs.schemeTh]) { from = schemeOf(THEMES[S.prefs.schemeTh]); remapScheme(from, schemeOf(th)); } S.prefs.schemeTh = sk; save(); }
+  if (S) { renderSide(); if (R.name === 'doc' && typeof Board !== 'undefined') { Board.retheme(from); Note.retheme(); } }
 }
 /* the theme's colour and accent chosen in Réglages (themes with tints / accents): the theme's CSS reads them */
 function applyLook(th, r) {
@@ -863,6 +866,7 @@ function openSettings(section) {
     ${DESKTOP ? `<div class="srow"><div class="l"><b>Source de pression</b><small>Auto : Windows Ink pour le stylet, Wintab quand la tablette ne passe pas par Windows Ink.</small></div>${seg('stSrc', p.source, [['auto', 'Auto'], ['ink', 'Windows Ink'], ['wintab', 'Wintab']])}</div>` : ''}
     <div class="srow"><div class="l"><b>Le stylet écrit toujours</b><small>Dans une note, le stylet dessine sans passer en mode Dessin ; le doigt fait défiler.</small></div><label class="tg"><input type="checkbox" id="stPen"${p.autoPen ? ' checked' : ''}><span></span></label></div>
     <div class="srow"><div class="l"><b>Molette de la souris sur un board</b></div>${seg('stWheel', p.wheel, [['zoom', 'Zoomer'], ['pan', 'Défiler']])}</div>
+    <div class="srow"><div class="l"><b>Atelier de dessin</b><small>Simple : le pinceau dans le panneau Style et la barre d'outils. Complet : la roue peinte, les palettes, harmonies et variations sur le board.</small></div>${seg('stAtl', p.atelier === 'complet' ? 'complet' : 'simple', [['simple', 'Simple'], ['complet', 'Complet']])}</div>
     </div>
     <div class="spane" data-pane="other"${tab === 'other' ? '' : ' hidden'}>
     <h5 style="margin-top:4px">Assistant IA</h5>
@@ -886,7 +890,7 @@ function openSettings(section) {
     lookEl.onclick = e => { if (e.target.closest('[data-lkreset]')) { S.prefs.look[theme().id] = {}; save(); applyTheme(); relook(); return; } const b = e.target.closest('button[data-tint], button[data-acc]'); if (!b) return; setLook(b.dataset.tint ? { tint: b.dataset.tint } : { accent: b.dataset.acc }); relook(); };
     const lookOf = t => t.dataset.k === 'tint' ? { tint: 'custom', tintHex: t.value } : { accent: t.value };
     lookEl.oninput = e => { if (e.target.matches('input[type="color"]')) setLook(lookOf(e.target), true); };
-    lookEl.onchange = e => { if (e.target.matches('input[type="color"]')) { setLook(lookOf(e.target)); relook(); } }; segBind('stPress', 'pressure'); segBind('stSrc', 'source'); segBind('stWheel', 'wheel');
+    lookEl.onchange = e => { if (e.target.matches('input[type="color"]')) { setLook(lookOf(e.target)); relook(); } }; segBind('stPress', 'pressure'); segBind('stSrc', 'source'); segBind('stWheel', 'wheel'); segBind('stAtl', 'atelier', () => { if (R.name === 'doc' && typeof Board !== 'undefined' && Board.mounted) Board.setTool(Board.tool || 'select'); });
     $('#stPen', m).onchange = e => { p.autoPen = e.target.checked; save(); };
     $('#stAi', m).onchange = e => { p.aiOn = e.target.checked; save(); applyAi(); };
     $('#stSens', m).oninput = e => { p.sens = +e.target.value; $('#stSensV', m).textContent = Math.round(p.sens * 100) + ' %'; save(); };

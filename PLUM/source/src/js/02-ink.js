@@ -30,8 +30,10 @@ const HL_COLORS = ['#FDE047', '#86EFAC', '#93C5FD', '#F9A8D4', '#FDBA74', '#C4B5
 const easeT = t => Math.sin(clamp(t, 0, 1) * Math.PI / 2);
 const radiusFor = (def, s, p) => s * .5 * ((1 - def.thin) + def.thin * Math.pow(clamp(p, 0, 1), def.gamma));
 const STAMP_DEF = { sh: 'native', tx: 'none', fl: 1, sp: .1, dy: { ps: 1, po: 0, rot: 0, sc: 0 } };
+/* a pen not given a colour yet takes this number of the theme's scheme (00-util.js) */
+const PEN_DEFAULT_SCHEME = { pencil: 2, pen: 1, fine: 11, brush: 11, marker: 19, water: 11, air: 6, highlight: 8, natural: 1, charcoal: 1, chalk: 14, dry: 9, gouache: 6, spray: 10, inkfine: 1 };
 const penPref = k => { const d = PENS[k] || PENS.pen, p = (S && S.prefs.pens[k]) || {}, b = d.stamp || STAMP_DEF;
-  return { c: p.c || PEN_DEFAULT_COLORS[k] || '#1B1E22', s: p.s || d.size, o: p.o ?? d.o, sm: p.sm ?? d.smooth, sh: p.sh || b.sh, tx: p.tx || b.tx, fl: p.fl ?? b.fl, sp: p.sp ?? b.sp, dy: Object.assign({}, b.dy, p.dy || {}) }; };
+  return { c: p.c || schemeHex(PEN_DEFAULT_SCHEME[k]) || PEN_DEFAULT_COLORS[k] || '#1B1E22', s: p.s || d.size, o: p.o ?? d.o, sm: p.sm ?? d.smooth, sh: p.sh || b.sh, tx: p.tx || b.tx, fl: p.fl ?? b.fl, sp: p.sp ?? b.sp, dy: Object.assign({}, b.dy, p.dy || {}) }; };
 /* the brush settings a new stroke carries; null keeps the pen's own vector outline */
 const brushOf = (pr, k = 1) => pr.sh === 'native' && pr.tx === 'none' ? null : { sh: pr.sh, tx: pr.tx, fl: +pr.fl, sp: +pr.sp, dy: Object.assign({}, pr.dy), sd: Math.random(), k: +k.toFixed(3) };
 

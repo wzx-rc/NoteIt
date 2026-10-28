@@ -3,6 +3,9 @@ function mergePrefs(p) {
   const d = JSON.parse(JSON.stringify(DEFAULT_PREFS)), out = Object.assign(d, p || {});
   out.pens = {}; for (const k of Object.keys(DEFAULT_PREFS.pens)) out.pens[k] = Object.assign({}, DEFAULT_PREFS.pens[k], (p && p.pens && p.pens[k]) || {});
   out.bd = Object.assign({}, DEFAULT_PREFS.bd, (p && p.bd) || {});
+  // 0.2.13: colours never changed by hand follow the theme's scheme (a pen's colour of origin, black outlines)
+  for (const k in out.pens) if (out.pens[k].c && out.pens[k].c === PEN_DEFAULT_COLORS[k]) delete out.pens[k].c;
+  if (out.bd.sc === '#1E1E1E') out.bd.sc = '@1';
   out.recent = Array.isArray(p && p.recent) ? p.recent.slice(0, 10) : [];
   out.ai = Object.assign({}, DEFAULT_PREFS.ai, (p && p.ai) || {});
   out.studio = Object.assign(JSON.parse(JSON.stringify(STUDIO_DEF)), (p && p.studio) || {});

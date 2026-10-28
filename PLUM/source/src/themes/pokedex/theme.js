@@ -10,15 +10,14 @@ const PK_LINE = s => `<g stroke-width="2.1">${s}</g>`;
 defineTheme({
   id: 'pokedex', order: 4, label: 'Pokédex', desc: 'PokeBoard : paysage peint, boîtiers rouges',
   mode: 'light', meta: '#F6F0E4', atlInk: '#3A3631', wheel: (el, o) => pkWheel(el, o), harmony: o => pkHarmony(o),
+  /* the 20 colours of the scheme (SCHEME_NAMES in 00-util.js): n°5 rouge for arrows */
+  scheme: ['#2D2B29', '#6B6358', '#B5ADA0', '#FFFDF8', '#D7432F', '#A8342A', '#F2A93B', '#F2C230', '#4E9A5B', '#2FA39A',
+    '#2C6BEA', '#7A5BC7', '#E07A9B', '#8A5A3C', '#FBE58D', '#F9C6B8', '#F3C9D6', '#E3D6F3', '#C5DBF8', '#CDE8BF'],
   tasks: o => pkTasks(o), taskIcon: t => pkTaskIcon(t), docAttrs: (d, sp) => pkDocAttrs(d, sp),
   /* the dark column of the brush device: four painted nibs */
   penTabs: [['inkfine', '<img src="asset:ic-plume.webp" alt="">'], ['natural', '<img src="asset:ic-crayon.webp" alt="">'], ['gouache', '<img src="asset:ic-pinceau-rond.webp" alt="">'], ['charcoal', '<img src="asset:ic-fusain.webp" alt="">']],
   noteSpread: true,
   colors: {
-    ink: ['#2D2B29', '#D7432F', '#F2A93B', '#4E9A5B', '#2C6BEA', '#7A5BC7', '#E07A9B', '#8A5A3C'],
-    stroke: ['#2D2B29', '#D7432F', '#4E9A5B', '#2C6BEA', '#F2A93B'],
-    fill: ['#F8C9BE', '#CFE6C3', '#C6DAF7', '#FBE4A3', '#FFFDF8'],
-    note: ['#FBE58D', '#F9C6B8', '#CDE8BF', '#C5DBF8', '#E3D6F3', '#F6D7B8', '#FFFDF8', '#EAE2D3'],
     space: ['#D7432F', '#F2A93B', '#F2C230', '#4E9A5B', '#2FA39A', '#2C6BEA', '#7A5BC7', '#E07A9B', '#8A5A3C', '#6B6358']
   },
   palettes: [
@@ -38,7 +37,6 @@ defineTheme({
     'hm-mono': PK_IMG('<image href="asset:ic-monochrome.webp" width="24" height="24"/>'),
     /* sidebar: solid glyphs */
     home: PK_IMG('<image href="asset:ic-maison.webp" width="24" height="24"/>'),
-    note: PK_IMG('<image href="asset:ic-note.webp" width="24" height="24"/>'),
     tasks: PK_IMG('<image href="asset:ic-liste-a-cocher.webp" width="24" height="24"/>'),
     board: PK_IMG('<image href="asset:ic-board.webp" width="24" height="24"/>'),
     star: PK_SOLID('<path d="m12 2.6 2.9 5.9 6.4.9-4.7 4.5 1.1 6.4L12 17.3l-5.7 3 1.1-6.4-4.7-4.5 6.4-.9z"/>'),

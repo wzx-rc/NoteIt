@@ -1,6 +1,6 @@
 /* ================= colours =================
-   A colour wheel in the spirit of Concepts: a hue ring around a saturation/brightness square,
-   the hex underneath, the last colours used and a palette of shades. */
+   The colour popover: the theme's scheme of 20 numbered colours, the free colours used lately, and a free colour
+   (saturation / brightness square, hue bar, code, screen eyedropper) folded under "Couleur libre". */
 const Colors = (() => {
   const HUES = [0, 22, 42, 62, 100, 150, 190, 215, 250, 285, 325];
   const SHADES = [.92, .78, .62, .46, .3];
@@ -14,51 +14,50 @@ const Colors = (() => {
   function remember(c) { if (!c) return; c = c.toUpperCase(); const r = recent().filter(x => x !== c); r.unshift(c); S.prefs.recent = r.slice(0, 10); save(); }
   const valid = s => /^#[0-9a-f]{6}$/i.test(s) ? s.toUpperCase() : /^#[0-9a-f]{3}$/i.test(s) ? ('#' + s.slice(1).split('').map(c => c + c).join('')).toUpperCase() : null;
 
-  /* open(anchor, { value, onPick(hex|null), none, above, align }) */
+  /* open(anchor, { value, onPick(hex|null, final), none, above, align, keep })
+     The theme's 20 colours first (numbered, in the roles of SCHEME_NAMES), the last free colours used, and under
+     "Couleur libre" a saturation / brightness square, a hue bar and the code. Picking a swatch closes it. */
   function open(anchor, o = {}) {
-    const R = 86, RI = 64, SQ = Math.floor(RI * 1.36), SZ = R * 2 + 8, C = SZ / 2;
-    let [h, s, v] = hex2hsv(valid(o.value) || '#1E1E1E'), cur = valid(o.value) || '#1E1E1E';
-    const p = openPop(anchor, `<div class="cw">
-      <div class="cw-top"><canvas class="cw-c" width="${SZ * 2}" height="${SZ * 2}" style="width:${SZ}px;height:${SZ}px" aria-label="Roue des couleurs"></canvas>
-        <div class="cw-side"><span class="cw-cur" style="background:${cur}"></span><input class="cw-hex" value="${cur}" maxlength="7" spellcheck="false" aria-label="Code couleur">${o.none ? `<button class="btn sm cw-none">Aucune</button>` : ''}<div class="cw-rec">${recent().map(c => `<button class="sw" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('') || '<small>Vos couleurs récentes apparaîtront ici</small>'}</div></div></div>
-      <div class="cw-pal">${themeColors('picker', PALETTE).map(r => r.map(c => `<button class="sw" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')).join('')}</div></div>`, { cls: 'cwpop', above: o.above, align: o.align, focus: false });
-    const cv = p.querySelector('.cw-c'), x = cv.getContext('2d'), hexIn = p.querySelector('.cw-hex'), curEl = p.querySelector('.cw-cur');
-    const ring = document.createElement('canvas'); ring.width = ring.height = SZ * 2;
-    { const rx = ring.getContext('2d'); rx.scale(2, 2); for (let a = 0; a < 360; a += 1.5) { rx.beginPath(); rx.arc(C, C, R, (a - 1.2) * Math.PI / 180, (a + 1.2) * Math.PI / 180); rx.strokeStyle = hsv2hex(a, 1, 1); rx.lineWidth = R - RI; rx.lineCap = 'butt'; rx.stroke(); } }
+    let cur = valid(o.value) || null, [h, s, v] = hex2hsv(cur || schemeHex(5) || '#4A72E8');
+    const sch = scheme(), same = c => !!cur && c.toUpperCase() === cur;
+    const sw = (c, no) => `<button class="sw" data-c="${c}" style="--c:${c}" aria-pressed="${same(c)}" title="${no ? no + ' · ' + SCHEME_NAMES[no - 1] : c}" aria-label="${no ? 'Couleur ' + no + ', ' + SCHEME_NAMES[no - 1] : c}">${no ? `<i>${no}</i>` : ''}</button>`;
+    const rec = recent().filter(c => !schemeNo(c)).slice(0, 10);
+    const free = !!S.prefs.cpFree;
+    const p = openPop(anchor, `<div class="cp">
+      <div class="cp-h"><span>Couleurs du thème</span><small>${esc(theme().label || '')}</small></div>
+      <div class="cp-sch">${sch.slice(0, 20).map((c, i) => sw(c, i + 1)).join('')}</div>
+      ${rec.length ? `<div class="cp-h"><span>Récentes</span></div><div class="cp-rec">${rec.map(c => sw(c)).join('')}</div>` : ''}
+      <button class="cp-more" data-free aria-expanded="${free}">${icon('wheel', 'sm')}<span>Couleur libre</span>${icon('chevd', 'sm')}</button>
+      <div class="cp-free"${free ? '' : ' hidden'}>
+        <div class="cp-sv" role="slider" aria-label="Saturation et luminosité"><i></i></div>
+        <div class="cp-hue" role="slider" aria-label="Teinte"><i></i></div>
+        <div class="cp-row"><span class="cp-cur"></span><input class="cp-hex" maxlength="7" spellcheck="false" aria-label="Code couleur">${typeof hasEyeDropper === 'function' && hasEyeDropper() ? `<button class="cp-ic" data-drop title="Pipette : prendre une couleur à l’écran" aria-label="Pipette">${icon('drop', 'sm')}</button>` : ''}</div>
+      </div>
+      ${o.none ? `<button class="cp-none" data-none aria-pressed="${!cur}"><span class="sw fill-none"></span>Aucune couleur</button>` : ''}
+    </div>`, { cls: 'cppop', above: o.above, align: o.align, focus: false });
+    const svEl = p.querySelector('.cp-sv'), hueEl = p.querySelector('.cp-hue'), hexIn = p.querySelector('.cp-hex'), curEl = p.querySelector('.cp-cur');
     function paint() {
-      x.setTransform(2, 0, 0, 2, 0, 0); x.clearRect(0, 0, SZ, SZ);
-      x.save(); x.beginPath(); x.arc(C, C, (R + RI) / 2, 0, 7); x.lineWidth = R - RI; x.strokeStyle = '#000'; x.stroke(); x.restore();
-      x.drawImage(ring, 0, 0, SZ, SZ);
-      const x0 = C - SQ / 2, y0 = C - SQ / 2;
-      let g = x.createLinearGradient(x0, 0, x0 + SQ, 0); g.addColorStop(0, '#fff'); g.addColorStop(1, hsv2hex(h, 1, 1)); x.fillStyle = g; x.fillRect(x0, y0, SQ, SQ);
-      g = x.createLinearGradient(0, y0, 0, y0 + SQ); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, '#000'); x.fillStyle = g; x.fillRect(x0, y0, SQ, SQ);
-      x.strokeStyle = 'rgba(255,255,255,.9)'; x.lineWidth = 1; x.strokeRect(x0 + .5, y0 + .5, SQ - 1, SQ - 1);
-      const a = h * Math.PI / 180, rm = (R + RI) / 2;
-      x.beginPath(); x.arc(C + Math.cos(a) * rm, C + Math.sin(a) * rm, 7, 0, 7); x.lineWidth = 3; x.strokeStyle = '#fff'; x.stroke(); x.lineWidth = 1; x.strokeStyle = 'rgba(0,0,0,.5)'; x.stroke();
-      x.beginPath(); x.arc(x0 + s * SQ, y0 + (1 - v) * SQ, 6, 0, 7); x.lineWidth = 2.5; x.strokeStyle = v > .55 && s < .6 ? '#222' : '#fff'; x.stroke();
+      svEl.style.setProperty('--h', hsv2hex(h, 1, 1));
+      svEl.firstElementChild.style.cssText = `left:${s * 100}%;top:${(1 - v) * 100}%`;
+      hueEl.firstElementChild.style.left = (h / 360 * 100) + '%';
+      const c = cur || hsv2hex(h, s, v); curEl.style.background = c; if (document.activeElement !== hexIn) hexIn.value = cur || '';
+      p.querySelectorAll('.cp-sch .sw, .cp-rec .sw').forEach(b => b.setAttribute('aria-pressed', same(b.dataset.c)));
     }
-    const emit = (final) => { cur = hsv2hex(h, s, v); curEl.style.background = cur; if (document.activeElement !== hexIn) hexIn.value = cur; o.onPick && o.onPick(cur, final); };
-    let drag = null;
-    cv.addEventListener('pointerdown', e => {
-      const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, dx = px - C, dy = py - C, d = Math.hypot(dx, dy);
-      if (d >= RI - 4 && d <= R + 6) drag = 'ring'; else if (Math.abs(dx) <= SQ / 2 + 4 && Math.abs(dy) <= SQ / 2 + 4) drag = 'sq'; else return;
-      cv.setPointerCapture(e.pointerId); move(e); e.preventDefault();
+    const emit = final => { cur = hsv2hex(h, s, v); paint(); o.onPick && o.onPick(cur, final); };
+    const drag = (el, fn) => el.addEventListener('pointerdown', e => {
+      const r = el.getBoundingClientRect(), mv = ev => { fn(clamp((ev.clientX - r.left) / r.width, 0, 1), clamp((ev.clientY - r.top) / r.height, 0, 1)); emit(false); };
+      el.setPointerCapture(e.pointerId); mv(e); e.preventDefault();
+      el.onpointermove = mv; el.onpointerup = el.onpointercancel = () => { el.onpointermove = el.onpointerup = el.onpointercancel = null; emit(true); remember(cur); };
     });
-    const move = e => {
-      if (!drag) return;
-      const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, dx = px - C, dy = py - C;
-      if (drag === 'ring') h = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
-      else { s = clamp((dx + SQ / 2) / SQ, 0, 1); v = clamp(1 - (dy + SQ / 2) / SQ, 0, 1); }
-      paint(); emit(false);
-    };
-    cv.addEventListener('pointermove', move);
-    cv.addEventListener('pointerup', () => { if (drag) { drag = null; emit(true); remember(cur); } });
-    cv.addEventListener('pointercancel', () => { drag = null; });
-    hexIn.addEventListener('input', () => { const c = valid(hexIn.value.trim()); if (!c) return; [h, s, v] = hex2hsv(c); paint(); emit(true); });
-    hexIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { remember(cur); closePop(); } });
-    p.addEventListener('click', e => {
-      const b = e.target.closest('[data-c]'); if (b) { [h, s, v] = hex2hsv(b.dataset.c); paint(); emit(true); remember(cur); if (!o.keep) closePop(); return; }
-      if (e.target.closest('.cw-none')) { o.onPick && o.onPick(null, true); closePop(); }
+    drag(svEl, (x, y) => { s = x; v = 1 - y; });
+    drag(hueEl, x => { h = x * 359.9; });
+    hexIn.addEventListener('input', () => { const c = valid(hexIn.value.trim()); if (!c) return; [h, s, v] = hex2hsv(c); emit(true); });
+    hexIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { if (cur) remember(cur); closePop(); } });
+    p.addEventListener('click', async e => {
+      const b = e.target.closest('[data-c]'); if (b) { [h, s, v] = hex2hsv(b.dataset.c); cur = b.dataset.c.toUpperCase(); paint(); o.onPick && o.onPick(cur, true); if (!schemeNo(cur)) remember(cur); if (!o.keep) closePop(); return; }
+      if (e.target.closest('[data-free]')) { const f = p.querySelector('.cp-free'); f.hidden = !f.hidden; S.prefs.cpFree = !f.hidden; save(); e.target.closest('[data-free]').setAttribute('aria-expanded', !f.hidden); return; }
+      if (e.target.closest('[data-drop]')) { try { const r = await new EyeDropper().open(); const c = valid(r.sRGBHex); if (c) { [h, s, v] = hex2hsv(c); emit(true); remember(c); } } catch (err) {} return; }
+      if (e.target.closest('[data-none]')) { o.onPick && o.onPick(null, true); closePop(); }
     });
     paint();
     return p;

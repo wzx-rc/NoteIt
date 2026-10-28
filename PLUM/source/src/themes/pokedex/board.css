@@ -60,7 +60,7 @@
   [data-skin="pokedex"] .isl.bl { left: 14px; bottom: 14px; }
   [data-skin="pokedex"] .isl.bl.undo { left: 170px; }
   [data-skin="pokedex"] .isl.tr { top: 14px; right: 14px; }
-  [data-skin="pokedex"] .bwrap.drawing .isl.tr { right: 92px; }
+  [data-skin="pokedex"] .bwrap.drawing:not(.lite) .isl.tr { right: 92px; }
   [data-skin="pokedex"] .isl.br { right: 14px; bottom: 14px; }
 }
 /* "Style" is the blue action button of the bar, like "Partager" on the concept */
