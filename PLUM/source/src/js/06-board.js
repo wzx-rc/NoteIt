@@ -2547,7 +2547,7 @@ const Board = (() => {
     ev.preventDefault(); mmTrack(ev); if (!mm) return;
     if (mm.hover >= 0) { mmRun(); return; }
     if (mm.lvl1) { const p = mm.lvl1.parent; closeMarking(); if (p.run) { p.run(); schedule(); } return; }   // let go at the centre of level 2: the tool itself
-    if (mm.quick && !mm.moved) { const { items, mx, my } = mm; closeMarking(); mmList(items, mx, my); return; }   // a quick right click: a classic menu (0.2.22)
+    if (mm.quick && !mm.moved && !mm.shown) { const { items, mx, my } = mm; closeMarking(); mmList(items, mx, my); return; }   // a quick right click: a classic menu (0.2.22); once the marking menu showed, letting go just closes it
     closeMarking();
   }
   /* the same items as a plain drop-down list at (x, y); an item with options opens them as a second list */
