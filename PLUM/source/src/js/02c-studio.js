@@ -202,6 +202,8 @@ function variations(c, amt) {
    A painted hue ring around a triangle (hue, white, black), recent colours on the upper arc, favourites on the lower
    arc, tool buttons on the left, a size slider on the right. o: { get(), set(hex, final), size(), setSize(v), side: [...] } */
 const RAD = { W: 420, C: 210, R: 132, RI: 92, RB: 172 };
+/* the band of swatches: Minimal's flat wheel keeps it tight against the ring */
+const radBand = () => theme().ring === 'clean' ? RAD.R + 22 : RAD.RB;
 /* a painter's wheel, as in the concept: red on the right, yellow on top, green on the left, blue at the bottom.
    angToHue: angle on the wheel (degrees, counterclockwise from the right) → hue; hueToAng the other way */
 const WHEEL = [[0, 0], [45, 28], [90, 58], [180, 125], [270, 225], [360, 360]];
@@ -266,7 +268,7 @@ function radialFrame() {
   const band = (a0, a1) => { const [x0, y0] = P(a0, RB), [x1, y1] = P(a1, RB); return `<path d="M${x0} ${y0}A${RB} ${RB} 0 0 1 ${x1} ${y1}" class="rf-band"/><path d="M${x0} ${y0}A${RB} ${RB} 0 0 1 ${x1} ${y1}" class="rf-band-hi"/>`; };
   /* Minimal: a flat card in the theme's colours (light or dark), thin lines instead of bevels */
   if (theme().ring === 'clean') return `<svg class="rad-frame" viewBox="0 0 ${W} ${W}" aria-hidden="true">
-    <circle class="rf-plate" cx="${C}" cy="${C}" r="${RB + 26}"/>${band(244, 350)}${band(64, 140)}
+    <circle class="rf-plate" cx="${C}" cy="${C}" r="${radBand() + 22}"/>
     <circle class="rf-line" cx="${C}" cy="${C}" r="${R + 4}"/><circle class="rf-well" cx="${C}" cy="${C}" r="${RI - 4}"/></svg>`;
   return `<svg class="rad-frame" viewBox="0 0 ${W} ${W}" aria-hidden="true"><defs>
     <radialGradient id="rfPlate" cx="50%" cy="46%" r="52%"><stop offset="0" stop-color="#262723"/><stop offset=".72" stop-color="#1D1E1B"/><stop offset="1" stop-color="#171816"/></radialGradient>
@@ -281,16 +283,16 @@ function radialFrame() {
 }
 function Radial(el, o) {
   if (theme().wheel) return theme().wheel(el, o);
-  const { W, C, R, RI, RB } = RAD, TR = RI - 16;
+  const { W, C, R, RI } = RAD, RB = radBand(), TR = RI - 16;
   const pos = (deg, rad) => { const a = deg * Math.PI / 180; return `left:${(C + Math.cos(a) * rad).toFixed(1)}px;top:${(C + Math.sin(a) * rad).toFixed(1)}px`; };
   const clean = theme().ring === 'clean';
   el.classList.add('rad'); el.classList.toggle('clean', clean); el.style.setProperty('--W', W + 'px');
   const SIDE = [221, 199, 174, 151];
   el.innerHTML = `${o.leaves && leavesOn() ? leafDecor('wreath') : ''}${radialFrame()}<canvas class="rad-c" width="${W * 2}" height="${W * 2}" aria-label="Roue des couleurs : teinte sur l’anneau, saturation et luminosité dans le triangle" tabindex="0"></canvas>
     <div class="rad-rec"></div><div class="rad-fav"></div>
-    ${(o.side || []).map((b, i) => `<button class="rad-b" data-rb="${b[0]}" style="${pos(SIDE[i] ?? 151 - (i - 3) * 23, RB + 4)}" title="${b[2]}" aria-label="${b[2]}">${icon(b[1])}</button>`).join('')}
-    ${o.size ? `<div class="rad-sl" style="left:${C + R + 80}px;top:${C - 60}px"><span>${icon('brush', 'sm')}</span><input type="range" min="0" max="1" step=".005" aria-label="Taille du pinceau" orient="vertical"><b></b></div>` : ''}
-    <button class="rad-cur" style="${pos(41, RB + 22)}" title="Couleur actuelle : cliquez pour le code, glissez-la sur une palette" aria-label="Code couleur" draggable="true"><i></i><u></u></button>`;
+    ${(o.side || []).map((b, i) => `<button class="rad-b" data-rb="${b[0]}" style="${pos(SIDE[i] ?? 151 - (i - 3) * 23, RB + (clean ? 2 : 4))}" title="${b[2]}" aria-label="${b[2]}">${icon(b[1])}</button>`).join('')}
+    ${o.size ? `<div class="rad-sl" style="left:${C + R + (clean ? 66 : 80)}px;top:${C - 60}px"><span>${icon('brush', 'sm')}</span><input type="range" min="0" max="1" step=".005" aria-label="Taille du pinceau" orient="vertical"><b></b></div>` : ''}
+    <button class="rad-cur" style="${pos(41, RB + (clean ? 14 : 22))}" title="Couleur actuelle : cliquez pour le code, glissez-la sur une palette" aria-label="Code couleur" draggable="true"><i></i><u></u></button>`;
   const cv = $('.rad-c', el), x = cv.getContext('2d'), recEl = $('.rad-rec', el), favEl = $('.rad-fav', el), curEl = $('.rad-cur', el);
   let [h, s, v] = hsv(o.get()), prev = o.get(), drag = null;
   const tri = () => { const a = -hueToAng(h) * Math.PI / 180; return [0, 120, 240].map(d => { const b = a + d * Math.PI / 180; return [C + Math.cos(b) * TR, C + Math.sin(b) * TR]; }); };

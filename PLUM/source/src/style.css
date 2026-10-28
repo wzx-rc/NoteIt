@@ -1112,7 +1112,7 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .atl .rad.clean input[type="range"]::-webkit-slider-thumb { background: var(--card); border: 2px solid var(--accent); box-shadow: 0 1px 3px rgb(0 0 0 / .25); }
 .atl .rad.clean input[type="range"]::-moz-range-track { background: var(--line-2); }
 .atl .rad.clean input[type="range"]::-moz-range-thumb { background: var(--card); border: 2px solid var(--accent); }
-.atl-dock:has(.rad.clean) .dock-min { background: var(--card); border: 1px solid var(--line-2); color: var(--ink-3); box-shadow: var(--shadow-1, none); }
+.atl-dock:has(.rad.clean) .dock-min { left: 46px; top: 46px; background: var(--card); border: 1px solid var(--line-2); color: var(--ink-3); box-shadow: var(--shadow-1, none); }
 .atl-dock:has(.rad.clean) .dock-min:hover { color: var(--ink); background: var(--sunk); }
 
 /* cards */
