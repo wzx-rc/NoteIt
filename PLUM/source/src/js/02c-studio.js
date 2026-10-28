@@ -394,8 +394,8 @@ async function screenPick() { if (!hasEyeDropper()) { toast('La pipette d’écr
 /* the atelier is dark unless the theme draws its previews in a dark ink (atlInk) */
 const atlOnDark = () => lum(theme().atlInk) > .3;
 const _nibThumb = new Map();
-function nibThumb(sh) {
-  const ink = theme().atlInk, key = sh + ink; let v = _nibThumb.get(key); if (v) return v;
+function nibThumb(sh, ink = theme().atlInk) {
+  const key = sh + ink; let v = _nibThumb.get(key); if (v) return v;
   const c = mkCanvas(80), x = c.getContext('2d');
   if (sh === 'native') { v = ''; _nibThumb.set(key, v); return v; }
   x.translate(40, 40); x.rotate((NIBS[sh].ang || 0)); x.globalAlpha = .95; x.drawImage(nibTinted(sh, ink), -34, -34, 68, 68);
@@ -409,6 +409,8 @@ function texThumb(tx) {
   else applyTexture(x, tx, 0, 0, .55);
   v = c.toDataURL(); _texThumb.set(key, v); return v;
 }
+/* the simple panel's labels for DYNS (02-ink.js) */
+const DYN_SHORT = { ps: 'Taille à la pression', po: 'Opacité à la pression', rot: 'Suit le trait', sc: 'Dispersion' };
 const SLIDERS = [['s', 'Taille', 'sz-size'], ['o', 'Opacité', 'sz-op'], ['fl', 'Flux', 'sz-flow'], ['sp', 'Espacement', 'sz-space']];
 /* size: the slider runs on a square curve so that small sizes stay precise up to 200 */
 const sizeT = (k, sz) => { const d = PENS[k] || PENS.pen; return Math.sqrt(clamp((sz - d.min) / (d.max - d.min), 0, 1)); };
@@ -416,7 +418,7 @@ const sizeOf = (k, t) => { const d = PENS[k] || PENS.pen, v = d.min + (d.max - d
 const sizeText = v => String(+(+v).toFixed(v < 10 ? 1 : 0));
 const sliderText = (k, v) => k === 's' ? sizeText(v) : Math.round(v * 100) + ' %';
 /* the order of the brush menu: the four presets of the concept first */
-const ATL_PENS = ['natural', 'chalk', 'charcoal', 'inkfine', 'dry', 'gouache', 'spray'];
+const ATL_PENS = ['natural', 'chalk', 'charcoal', 'inkfine', 'dry', 'gouache', 'knife', 'spray'];
 const PRESET_KEYS = ['s', 'o', 'sm', 'sh', 'tx', 'fl', 'sp', 'dy'];
 function namePop(anchor, title, value, done) {
   const p = openPop(anchor, `<div class="namepop"><small>${esc(title)}</small><div><input value="${esc(value)}" maxlength="40" spellcheck="false" aria-label="${esc(title)}"><button class="btn sm pri" data-ok="1">OK</button></div></div>`, { cls: 'atl-pop', focus: false, align: 'right' });
@@ -439,6 +441,7 @@ const PenPanel = {
     const rng = (k, lab) => { const isS = k === 's', val = isS ? sizeT(pen, pr.s) : pr[k], off = nat && (k === 'fl' || k === 'sp');
       return `<label class="bp2-row${off ? ' off' : ''}" title="${off ? 'Choisissez une forme de pinceau pour régler le flux et l’espacement' : lab}"><span>${lab}</span><input type="range" data-k="${k}" min="${isS ? 0 : .01}" max="1" step="${isS ? .002 : .01}" value="${val}" aria-label="${lab}"${off ? ' disabled' : ''}><b data-v="${k}">${sliderText(k, pr[k])}</b></label>`; };
     const sch = scheme(), mine = !schemeNo(cur);
+    const ink = isDarkTheme() ? '#E6E4DF' : '#2A2A28';
     return `<div class="bp2">
       <button class="bp2-sel" data-bsel="1" aria-label="Choisir un pinceau"><span class="bp-pv">${PenPanel.preview(pen, 150, 30)}</span><span class="bp2-n">${def.name}</span>${icon('chevd', 'sm')}</button>${PenPanel.list(pen, true)}
       ${rng('s', 'Taille')}${rng('o', 'Opacité')}
@@ -446,14 +449,17 @@ const PenPanel = {
       <div class="bp2-cols">${sch.map((c, i) => `<button class="sw" data-pc="${c}" style="--c:${c}" aria-pressed="${c.toUpperCase() === cur}" title="${i + 1} · ${SCHEME_NAMES[i]}" aria-label="Couleur ${i + 1}, ${SCHEME_NAMES[i]}"></button>`).join('')}</div>
       <button class="bp2-free" data-pcw="1" title="Couleur libre"><span class="sw" style="--c:${mine ? cur : 'transparent'}"></span><span${mine ? ' class="hex"' : ''}>${mine ? cur : 'Couleur libre…'}</span></button>
       <details class="bp2-more"${S.prefs.bpMore ? ' open' : ''}><summary>Réglages avancés</summary>
-        ${rng('fl', 'Flux')}${rng('sp', 'Espacement')}
+        <div class="bp2-h">Pointe</div>
+        <div class="bp2-nibs">${NIB_ORDER.map(k => `<button class="bp2-nib" data-sh="${k}" aria-pressed="${pr.sh === k}" title="${NIBS[k].name}${k === 'native' ? ' : le tracé propre au pinceau' : ''}" aria-label="${NIBS[k].name}">${k === 'native' ? icon(def.icon) : `<img src="${nibThumb(k, ink)}" alt="">`}</button>`).join('')}</div>
+        <div class="bp2-h">Texture</div>
+        <div class="bp2-tex">${TEX_ORDER.map(k => `<button class="bp2-tx" data-tx="${k}" aria-pressed="${pr.tx === k}">${brushPreview(pen, Object.assign({}, pr, { tx: k, s: clamp(pr.s, 7, 12), o: 1 }), 96, 24, isDarkTheme())}<span>${TEXS[k].name}</span></button>`).join('')}</div>
+        ${nat ? '' : rng('fl', 'Flux') + rng('sp', 'Espacement')}
         <label class="bp2-row"><span>Lissage</span><input type="range" data-k="sm" min="0" max="1" step=".05" value="${pr.sm}" aria-label="Lissage"><b data-v="sm">${Math.round(pr.sm * 100)} %</b></label>
-        <div class="bp2-h">Forme</div><div class="bp-tiles">${NIB_ORDER.map(k => `<button class="bp-t${k === 'native' ? ' nat' : ''}" data-sh="${k}" aria-pressed="${pr.sh === k}" title="${NIBS[k].name}${k === 'native' ? ' : le tracé vectoriel du pinceau' : ''}">${k === 'native' ? icon(def.icon) : `<img src="${nibThumb(k)}" alt="">`}</button>`).join('')}</div>
-        <div class="bp2-h">Texture</div><div class="bp-tiles">${TEX_ORDER.map(k => `<button class="bp-t" data-tx="${k}" aria-pressed="${pr.tx === k}" title="${TEXS[k].name}"><img src="${texThumb(k)}" alt=""></button>`).join('')}</div>
-        <div class="bp2-h">Dynamique</div><div class="bp-dyn">${DYNS.map(([k, ic, l]) => `<button class="bp-d" data-dy="${k}" aria-pressed="${!!pr.dy[k]}" title="${l}" aria-label="${l}">${icon(ic)}</button>`).join('')}</div>
+        <div class="bp2-h">Dynamique</div>
+        <div class="bp2-chips">${DYNS.map(([k, , l]) => `<button class="bp2-chip" data-dy="${k}" aria-pressed="${!!pr.dy[k]}">${DYN_SHORT[k] || l}</button>`).join('')}</div>
         <div class="bp2-h">Pression</div><div class="seg sm" data-seg="pressure">${[['pen', 'Stylet'], ['speed', 'Vitesse'], ['fixed', 'Fixe']].map(([v, l]) => `<button data-pv="${v}" aria-pressed="${(S.prefs.pressure || 'pen') === v}">${l}</button>`).join('')}</div>
         <div class="pp-hint"><span id="ppDiag">${penDiagLine()}</span> <button class="lnk" data-diag="1">Tester</button></div>
-        <div class="bp2-acts"><button class="btn sm" data-presave="1">${icon('plus', 'sm')}Enregistrer en préréglage</button><button class="btn sm" data-breset="1" title="Revenir aux réglages d’origine de ce pinceau">Réinitialiser</button></div>
+        <div class="bp2-foot"><button class="lnk" data-presave="1">Enregistrer comme préréglage</button><button class="lnk" data-breset="1" title="Revenir aux réglages d’origine de ce pinceau">Réinitialiser</button></div>
       </details>
     </div>`;
   },
