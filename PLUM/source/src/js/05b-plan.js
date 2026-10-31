@@ -14,7 +14,16 @@ const minOf = s => s.length > 10 ? +s.slice(11, 13) * 60 + +s.slice(14, 16) : 0;
 const dAdd = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
 /* ---------- iCal reading ---------- */
-const icsText = v => v.replace(/\\n/gi, '\n').replace(/\\([,;\\])/g, '$1').trim();
+const icsText = v => v.replace(/\\n/gi, '\n').replace(/\\([,;\\])/g, '$1').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
+/* the labelled lines of a PRONOTE / HYPERPLANNING description: Matière, Promotion (or the class inside a TD's <...>), Salle, Type */
+function icsMeta(desc) {
+  const f = k => { const m = new RegExp('^' + k + '\\s*:\\s*(.+)$', 'mi').exec(desc); return m ? m[1].trim() : ''; };
+  const td = f('TD'), p = f('Promotion') || f('Classe') || f('Groupe') || (/<([^>]+)>/.exec(td) || [])[1] || td, m = f('Mati[èe]re');
+  if (!p && !m) return null;
+  const o = { p, m, r: f('Salle'), y: f('Type') }; for (const k in o) if (!o[k]) delete o[k]; return o;
+}
+/* 'BRATLS 3D2' -> '3D2': the short code a teacher uses */
+const planShort = p => { const t = String(p || '').trim().split(/\s+/); return t.length > 1 && t[t.length - 1].length <= 6 ? t[t.length - 1] : String(p || ''); };
 /* the offset (ms) of a time zone at a given instant, through Intl; 0 if the zone is unknown */
 function tzOffset(tz, t) {
   try {
@@ -76,7 +85,9 @@ function icsParse(text) {
     for (const st of starts) {
       if (r.RRULE && !r.rid && r.UID && moved.has(r.UID.v + '@' + +st)) continue;
       const en = new Date(+st + len);
-      ev.push([s.allDay ? ymd(st) : ymdhm(st), s.allDay ? ymd(dAdd(en, -1)) : ymdhm(en), sum, room, cancelled | (s.allDay ? 2 : 0), desc]);
+      const meta = s.allDay ? null : icsMeta(desc), row = [s.allDay ? ymd(st) : ymdhm(st), s.allDay ? ymd(dAdd(en, -1)) : ymdhm(en), sum, (meta && meta.r) || room, cancelled | (s.allDay ? 2 : 0), desc];
+      if (meta) row.push(meta);
+      ev.push(row);
     }
   }
   ev.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
@@ -99,10 +110,11 @@ const ferieOf = s => feries(+s.slice(0, 4)).get(s.slice(0, 10)) || '';
 
 /* ---------- what the block shows ---------- */
 const planParts = t => String(t || '').split(/\s+[-–]\s+/).map(s => s.trim()).filter(Boolean);
-const planKey = (it, t) => { const p = planParts(t); return (p[Math.min(it.ck || 0, p.length - 1)] || t || '').toUpperCase(); };
+/* colour key of a lesson: with labelled descriptions ck is 'p' (class), 'm' (subject) or 'y' (type); otherwise a part of the title */
+const planKey = (it, e) => { const M = e[6]; if (M && typeof it.ck === 'string') return (M[it.ck] || M.m || M.p || e[2] || '').toUpperCase(); const p = planParts(e[2]); return (p[Math.min(+it.ck || 0, p.length - 1)] || e[2] || '').toUpperCase(); };
 const planColor = (it, key) => (it.cols && it.cols[key]) || PLAN_COLORS[Math.floor(hashStr(key) * PLAN_COLORS.length)];
 /* the colour keys of a feed, most frequent first */
-function planKeys(it) { const n = new Map(); for (const e of it.ev || []) if (!(e[4] & 2)) { const k = planKey(it, e[2]); n.set(k, (n.get(k) || 0) + 1); } return [...n].sort((a, b) => b[1] - a[1]); }
+function planKeys(it) { const n = new Map(); for (const e of it.ev || []) if (!(e[4] & 2)) { const k = planKey(it, e); n.set(k, (n.get(k) || 0) + 1); } return [...n].sort((a, b) => b[1] - a[1]); }
 /* each key without a colour gets the first colour of the palette not used yet (most frequent keys first), so no two match */
 function planAssign(it) {
   const cols = Object.assign({}, it.cols), used = new Set(Object.values(cols));
@@ -115,7 +127,7 @@ function planAuto(ev) {
   if (!lessons.length) { const t = new Date(), m = dAdd(t, -((t.getDay() + 6) % 7)); return { d0: ymd(m), d1: ymd(dAdd(m, 4)), h0: 8, h1: 18, we: [1, 2, 3, 4, 5] }; }
   let a = 24 * 60, b = 0; const wd = new Set([1, 2, 3, 4, 5]);
   for (const e of lessons) { a = Math.min(a, minOf(e[0])); b = Math.max(b, e[1].slice(0, 10) > e[0].slice(0, 10) ? 24 * 60 : minOf(e[1])); wd.add(dOf(e[0]).getDay()); }
-  const first = dOf(lessons[0][0]), last = dOf(lessons[lessons.length - 1][0]);
+  const first = dOf(lessons[0][0]), lastK = ev.reduce((m, e) => { const k = (e[4] & 2 ? e[1] : e[0]).slice(0, 10); return k > m ? k : m; }, ''), last = dOf(lastK);
   return { d0: ymd(dAdd(first, -((first.getDay() + 6) % 7))), d1: ymd(last), h0: Math.max(0, Math.floor(a / 60)), h1: Math.min(24, Math.max(Math.floor(a / 60) + 1, Math.ceil(b / 60))), we: [...wd].sort((x, y) => ((x + 6) % 7) - ((y + 6) % 7)) };
 }
 function planDays(it) {
@@ -160,21 +172,24 @@ function planHTML(it) {
   for (const e of it.ev || []) { if (e[4] & 2) continue; const k = e[0].slice(0, 10); if (!idx.has(k)) continue; (byDay.get(k) || byDay.set(k, []).get(k)).push(e); }
   const today = ymd(new Date()), out = [];
   const X = i => A + i * dw;
+  const feedFer = new Map(), vac = [];   // the feed's own all-day days off: 'Férié' (school bridges too) and 'Vacances'
+  for (const e of it.ev || []) if (e[4] & 2) { if (/f[ée]ri[ée]|pont/i.test(e[2])) for (let d = dOf(e[0]); ymd(d) <= e[1]; d = dAdd(d, 1)) feedFer.set(ymd(d), e[2]); else if (/vacances|cong[ée]s/i.test(e[2])) vac.push([e[0], e[1]]); }
   /* header: weeks (number + first day), days; bands for holidays and all-day events */
   let wk = null;
   const weekCell = (a, b, d) => out.push(`<div class="pl-wk" style="left:${f(X(a))}px;top:${bh}px;width:${f((b - a + 1) * dw)}px;height:${wh}px"><span>S${isoWeek(d)} · ${d.getDate()} ${MONTHS[d.getMonth()]}${a === 0 || d.getDate() <= 7 ? ` ${d.getFullYear()}` : ''}</span></div>`);
   days.forEach((d, i) => {
     const mon = ymd(dAdd(d, -((d.getDay() + 6) % 7)));
     if (!wk || wk.k !== mon) { if (wk) weekCell(wk.a, i - 1, wk.d); wk = { k: mon, a: i, d }; }
-    const k = ymd(d), fer = ferieOf(k), cls = (fer ? ' fer' : '') + (k === today ? ' now' : '') + (wk.a === i ? ' w0' : '');
+    const k = ymd(d), fer = ferieOf(k) || feedFer.get(k) || '', cls = (fer ? ' fer' : '') + (k === today ? ' now' : '') + (wk.a === i ? ' w0' : '');
     out.push(`<div class="pl-day${cls}" style="left:${f(X(i))}px;width:${f(dw)}px"${fer ? ` title="${esc(fer)}"` : ''}>${fer ? `<i class="pl-fer" style="font-size:${f(Math.min(dw / 4.2, fs * 1.3))}px"><b>Férié</b><b>Férié</b><b>Férié</b></i>` : ''}</div>`);
     out.push(`<div class="pl-dh${cls}" style="left:${f(X(i))}px;top:${bh + wh}px;width:${f(dw)}px;height:${dh}px"><span>${WDAYS[d.getDay()]} ${d.getDate()}</span></div>`);
   });
   if (wk) weekCell(wk.a, days.length - 1, wk.d);
-  for (const r of planOff(it, days, byDay)) out.push(`<div class="pl-off" style="left:${f(X(r.a))}px;width:${f((r.b - r.a + 1) * dw)}px;top:${f(bh * .2)}px;height:${f(bh * .6)}px"><span>OFF · vacances</span></div><div class="pl-offc" style="left:${f(X(r.a))}px;width:${f((r.b - r.a + 1) * dw)}px;top:${H}px"></div>`);
-  for (const e of it.ev || []) if (e[4] & 2) {   // all-day events from the feed (holidays, trips...): a band in the top row
+  for (const r of planOff(it, days, byDay)) if (!vac.some(v => ymd(days[r.b]) >= v[0] && ymd(days[r.a]) <= v[1])) out.push(`<div class="pl-off" style="left:${f(X(r.a))}px;width:${f((r.b - r.a + 1) * dw)}px;top:${f(bh * .2)}px;height:${f(bh * .6)}px"><span>OFF · vacances</span></div><div class="pl-offc" style="left:${f(X(r.a))}px;width:${f((r.b - r.a + 1) * dw)}px;top:${H}px"></div>`);
+  for (const e of it.ev || []) if (e[4] & 2 && !/f[ée]ri[ée]|pont/i.test(e[2])) {   // all-day events from the feed (holidays, trips...): a band in the top row
     let a = -1, b = -1; days.forEach((d, i) => { const k = ymd(d); if (k >= e[0].slice(0, 10) && k <= e[1].slice(0, 10)) { if (a < 0) a = i; b = i; } });
-    if (a >= 0) out.push(`<div class="pl-off ev" style="left:${f(X(a))}px;width:${f((b - a + 1) * dw)}px;top:${f(bh * .2)}px;height:${f(bh * .6)}px" title="${esc(e[2])}"><span>${esc(e[2])}</span></div>`);
+    const off = /vacances|cong[ée]s/i.test(e[2]);
+    if (a >= 0) out.push(`<div class="pl-off${off ? '' : ' ev'}" style="left:${f(X(a))}px;width:${f((b - a + 1) * dw)}px;top:${f(bh * .2)}px;height:${f(bh * .6)}px" title="${esc(e[2])}"><span>${off ? 'OFF · ' : ''}${esc(e[2])}</span></div>` + (off ? `<div class="pl-offc" style="left:${f(X(a))}px;width:${f((b - a + 1) * dw)}px;top:${H}px"></div>` : ''));
   }
   /* hours on the left */
   for (let h = h0; h <= h1; h++) out.push(`<div class="pl-hr" style="top:${f(H + (h - h0) * hh)}px;width:${A}px"><span>${h}h</span></div>`);
@@ -189,7 +204,10 @@ function planHTML(it) {
     for (const e of list) {
       const m0 = Math.max(h0 * 60, minOf(e[0])), m1 = Math.min(h1 * 60, e[1].slice(0, 10) > k ? 24 * 60 : minOf(e[1])); if (m1 <= m0) continue;
       const pw = dw - 6, lw = pw / e._n, x = X(i) + 3 + e._l * lw, y = H + (m0 / 60 - h0) * hh + 1.5, h = (m1 - m0) / 60 * hh - 3;
-      const key = planKey(it, e[2]), col = planColor(it, key), parts = planParts(e[2]), main = parts[Math.min(it.ck || 0, parts.length - 1)] || e[2] || 'Cours', rest = parts.filter(p => p !== main).join(' · ');
+      const key = planKey(it, e), col = planColor(it, key), M = e[6], parts = planParts(e[2]);
+      let main, rest;
+      if (M && typeof it.ck === 'string') { main = M.p ? planShort(M.p) : M.m || e[2]; rest = M.p ? M.m || '' : ''; if (M.y && !/^cours$/i.test(M.y)) rest += (rest ? ' · ' : '') + M.y; }
+      else { main = parts[Math.min(+it.ck || 0, parts.length - 1)] || e[2] || 'Cours'; rest = parts.filter(p => p !== main).join(' · '); }
       const tip = `${e[2]}\n${WDAYS[dOf(k).getDay()]} ${dOf(k).getDate()} ${MONTHS[dOf(k).getMonth()]} · ${hm(e[0])} – ${hm(e[1])}${e[3] ? '\nSalle : ' + e[3] : ''}${e[4] & 1 ? '\nAnnulé' : ''}${e[5] ? '\n\n' + e[5] : ''}`;
       out.push(`<div class="pl-ev${e[4] & 1 ? ' x' : ''}" style="left:${f(x)}px;top:${f(y)}px;width:${f(Math.max(2, lw - 2))}px;height:${f(Math.max(2, h))}px;--pc:${col};font-size:${f(efs)}px" title="${esc(tip)}"><b>${esc(main)}</b>${rest ? `<span>${esc(rest)}</span>` : ''}<small>${hm(e[0])}${e[3] ? ' · ' + esc(e[3]) : ''}</small></div>`);
     }

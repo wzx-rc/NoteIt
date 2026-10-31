@@ -1493,7 +1493,7 @@ const Board = (() => {
     const say = (t, bad) => { stEl.textContent = t; stEl.classList.toggle('bad', !!bad); };
     const fmtD = s => { const d = dOf(s); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
     const got = (p, src) => {
-      st.ev = p.ev; st.src = src; if (p.name && (!it || st.title === 'Planning')) st.title = p.name;
+      st.ev = p.ev; st.src = src; if (st.ev.some(e => e[6]) && typeof st.ck !== 'string') { st.ck = 'p'; st.cols = {}; } if (p.name && (!it || st.title === 'Planning')) st.title = p.name;
       if (st.auto || !st.d0) Object.assign(st, planAuto(st.ev));
       const n = st.ev.filter(e => !(e[4] & 2)).length;
       say(n ? `${n} cours lus, du ${fmtD(st.ev[0][0])} au ${fmtD(st.ev[st.ev.length - 1][0])}.` : 'Aucun cours dans ce calendrier.', !n);
@@ -1510,14 +1510,14 @@ const Board = (() => {
         <label class="pl-f sm"><span>De</span><input type="number" min="0" max="23" data-k="h0" value="${st.h0}"></label><label class="pl-f sm"><span>À</span><input type="number" min="1" max="24" data-k="h1" value="${st.h1}"></label>
         <div class="pl-f"><span>Jours</span>${seg('we', wd === '12345' ? 'w5' : wd === '123456' ? 'w6' : wd === '1234560' ? 'w7' : '', [['w5', 'Lun–ven'], ['w6', '+ sam'], ['w7', '7 j']])}</div>
         <button class="btn sm pl-reset" data-auto="1" title="Reprendre la période, les heures et les jours du calendrier">Auto</button>
-        ${parts.length > 1 ? `<div class="pl-f wide"><span>Couleur selon</span>${seg('ck', st.ck, parts.slice(0, 4).map((t, i) => [i, esc(t.length > 18 ? t.slice(0, 17) + '…' : t), `Partie ${i + 1} du titre`]))}</div>` : ''}
+        ${typeof st.ck === 'string' ? `<div class="pl-f wide"><span>Couleur selon</span>${seg('ck', st.ck, [['p', 'Classe'], ['m', 'Matière'], ['y', 'Type de cours']])}</div>` : parts.length > 1 ? `<div class="pl-f wide"><span>Couleur selon</span>${seg('ck', st.ck, parts.slice(0, 4).map((t, i) => [i, esc(t.length > 18 ? t.slice(0, 17) + '…' : t), `Partie ${i + 1} du titre`]))}</div>` : ''}
         <div class="pl-keys">${keys.map(([k, n]) => `<button class="pl-key" data-key="${esc(k)}" style="--pc:${planColor(st, k)}" title="${n} cours · cliquer pour changer la couleur"><i></i>${esc(k)}</button>`).join('')}</div>`;
     }
     opts.addEventListener('change', e => { const k = e.target.dataset.k; if (!k) return; st[k] = k === 'h0' || k === 'h1' ? clamp(Math.round(+e.target.value || 0), 0, 24) : e.target.value; if (k !== 'title') st.auto = false; if (st.h1 <= st.h0) st.h1 = st.h0 + 1; });
     opts.addEventListener('keydown', e => e.stopPropagation());
     opts.addEventListener('click', e => {
       const sv = e.target.closest('[data-set] [data-v]');
-      if (sv) { const k = sv.closest('[data-set]').dataset.set; if (k === 'ck') st.ck = +sv.dataset.v; else { st.we = { w5: [1, 2, 3, 4, 5], w6: [1, 2, 3, 4, 5, 6], w7: [1, 2, 3, 4, 5, 6, 0] }[sv.dataset.v]; st.auto = false; } paintOpts(); return; }
+      if (sv) { const k = sv.closest('[data-set]').dataset.set; if (k === 'ck') { st.ck = /^\d+$/.test(sv.dataset.v) ? +sv.dataset.v : sv.dataset.v; st.cols = {}; } else { st.we = { w5: [1, 2, 3, 4, 5], w6: [1, 2, 3, 4, 5, 6], w7: [1, 2, 3, 4, 5, 6, 0] }[sv.dataset.v]; st.auto = false; } paintOpts(); return; }
       if (e.target.closest('[data-auto]')) { st.auto = true; Object.assign(st, planAuto(st.ev)); paintOpts(); return; }
       const kb = e.target.closest('[data-key]'); if (kb) { const k = kb.dataset.key, cur = planColor(st, k), i = PLAN_COLORS.indexOf(cur); st.cols[k] = PLAN_COLORS[(i + 1) % PLAN_COLORS.length]; kb.style.setProperty('--pc', st.cols[k]); }
     });
