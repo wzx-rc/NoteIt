@@ -3,6 +3,7 @@
    note {txt,c,fs,font,al} · text {txt,fs,font,color,bold,fw} · shape {sh,sc,fc,sw,sty,dash,fill,txt,fs}
    image {asset,frm,cap} · file {asset,name,size,mime} · link {url,title} · ink {p,t,c,s,o,w0,h0}
    mind {txt,root,parent,side,c,ord,lv} · frame {title} · task {task} · doc {doc} · todo {title,tasks[],c,font} · sheet {title,cols,rows,cells{A1:raw},fs,cw?[],rh?[]}
+   plan {title,src,ev[],d0,d1,h0,h1,we[],ck,cols{},dim,fs,v} (see 05b-plan.js)
    conn {a:{id|x,y}, b:{id|x,y}, pts:[[x,y]], route, sc, sw, sty, dash, h0, h1, txt}
    Every item may carry op (opacity 0..1) and hid (hidden from the Layers tab).
    Items are never mutated: an edit makes a new object, which keeps undo cheap. */
@@ -433,7 +434,7 @@ function fmtText(txt) {
   }).join('');
 }
 function toggleLine(txt, i) { const L = String(txt).split('\n'); if (L[i] == null) return txt; L[i] = L[i].replace(/^(\s*)\[( |x|X)\]/, (m, s, v) => `${s}[${v === ' ' ? 'x' : ' '}]`); return L.join('\n'); }
-const itemText = it => it.k === 'frame' ? it.title : it.k === 'link' ? (it.title || it.url) : it.k === 'file' ? it.name : it.k === 'task' ? ((taskById(it.task) || {}).t || '') : it.k === 'doc' ? ((docById(it.doc) || {}).title || '') : it.k === 'image' ? it.cap : it.k === 'sheet' ? (() => { const v = sheetEval(it.cells); return [it.title, ...Array.from({ length: it.rows }, (_, r) => Array.from({ length: it.cols }, (_, c) => sheetShow(v(colName(c) + (r + 1)))).join('\t').replace(/\t+$/, '')).filter(Boolean)].join('\n'); })() : it.k === 'todo' ? [it.title, ...it.tasks.map(id => { const t = taskById(id); return t ? `[${t.done ? 'x' : ' '}] ${t.t}` : ''; })].filter(Boolean).join('\n') : (it.txt || '');
+const itemText = it => it.k === 'frame' || it.k === 'plan' ? it.title : it.k === 'link' ? (it.title || it.url) : it.k === 'file' ? it.name : it.k === 'task' ? ((taskById(it.task) || {}).t || '') : it.k === 'doc' ? ((docById(it.doc) || {}).title || '') : it.k === 'image' ? it.cap : it.k === 'sheet' ? (() => { const v = sheetEval(it.cells); return [it.title, ...Array.from({ length: it.rows }, (_, r) => Array.from({ length: it.cols }, (_, c) => sheetShow(v(colName(c) + (r + 1)))).join('\t').replace(/\t+$/, '')).filter(Boolean)].join('\n'); })() : it.k === 'todo' ? [it.title, ...it.tasks.map(id => { const t = taskById(id); return t ? `[${t.done ? 'x' : ' '}] ${t.t}` : ''; })].filter(Boolean).join('\n') : (it.txt || '');
 const KIND_NAMES = { note: 'Post-it', text: 'Texte', shape: 'Forme', image: 'Image', file: 'Fichier', link: 'Lien', ink: 'Trait', mind: 'Idée', frame: 'Cadre', task: 'Tâche', doc: 'Document', todo: 'Liste', sheet: 'Tableur', conn: 'Flèche' };
 
 /* web links on the board */

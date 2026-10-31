@@ -135,6 +135,7 @@ const Board = (() => {
       case 'task': { const t = taskById(it.task) || {}; return `T${t.t}|${t.done}|${t.due}|${t.time}|${t.sp}`; }
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
       case 'sheet': return `g${it.w}|${it.h}|${it.cols}|${it.rows}|${it.fs}|${it.title}|${JSON.stringify(it.cells)}|${JSON.stringify(it.cw || 0)}|${JSON.stringify(it.rh || 0)}|${theme()}`;
+      case 'plan': return `P${Math.round(it.w)}|${Math.round(it.h)}|${it.fs}|${it.v}|${it.dim || 0}|${it.d0}|${it.d1}|${it.h0}|${it.h1}|${(it.we || []).join('')}|${it.ck || 0}|${JSON.stringify(it.cols || 0)}|${it.title}|${ymd(new Date())}|${new Date().getHours()}|${theme()}`;
       case 'todo': return `o${it.w}|${it.c}|${it.font}|${it.fs}|${it.title}|${it.tasks.map(id => { const t = taskById(id); return t ? `${t.id}:${t.done ? 1 : 0}:${t.t}` : ''; }).join('§')}|${theme()}`;
     }
     return it.k;
@@ -229,6 +230,8 @@ const Board = (() => {
         if (Math.abs(g.h - it.h) > .5 || (it.cw && Math.abs(g.w - it.w) > .5)) { const nx = Object.assign({}, it, { h: g.h }, it.cw ? { w: g.w } : {}); n._it = nx; items = items.map(x => x.id === it.id ? nx : x); reindex(); D.items = items; save(); s.height = g.h + 'px'; s.width = nx.w + 'px'; n._sig = sigOf(nx); }
         break;
       }
+      case 'plan':
+        n.className = 'it tplan'; n.innerHTML = planHTML(it); break;
       case 'todo': {
         n.className = 'it todo'; s.background = it.c || '#FFFFFF'; s.setProperty('--tc', it.c || '#FFFFFF');
         const sd = it.sd != null ? it.sd : hashStr(it.id), P = shapePoly('round', it.w, it.h), rough = roughD(P, true, sd, 2);
@@ -281,8 +284,9 @@ const Board = (() => {
   function render() {
     raf = 0; if (!mounted) return; drawn++;
     const fr = [], ot = [];
-    for (const it of items) { if (it.k === 'conn' || it.hid) continue; (it.k === 'frame' ? fr : ot).push(it); }
-    reconcile(framesL, fr); reconcile(itemsL, ot);
+    const pl = [];   // a planning sits under the other items, so what is written on it stays on top
+    for (const it of items) { if (it.k === 'conn' || it.hid) continue; (it.k === 'frame' ? fr : it.k === 'plan' ? pl : ot).push(it); }
+    reconcile(framesL, fr); reconcile(itemsL, pl.length ? pl.concat(ot) : ot);
     for (const [id, n] of nodes) { const it = byId.get(id); if (!it || it.k === 'conn' || it.hid) { n.remove(); nodes.delete(id); } }
     renderEdges(); renderOverlay();
   }
@@ -480,7 +484,8 @@ const Board = (() => {
     if (td) return g.join('<span class="vs"></span>');
     /* actions */
     const ac = [];
-    if (list.some(i => i.lock)) return qact('unlock', 'unlock', 'Déverrouiller', 'Déverrouiller');
+    if (list.some(i => i.lock)) return (one && one.k === 'plan' ? qact('pdim', 'moon', 'Assombrir le planning') : '') + qact('unlock', 'unlock', 'Déverrouiller', 'Déverrouiller');
+    if (one && one.k === 'plan') { ac.push(qact('pdim', 'moon', 'Assombrir le planning'), qact('pset', 'cal', 'Réglages du planning : lien iCal, période, heures, couleurs (double-clic)')); if (one.src) ac.push(qact('prefresh', 'restore', 'Mettre à jour depuis le lien iCal')); }
     if (one && one.k === 'mind') ac.push(qact('mchild', 'plus', 'Ajouter une idée (Tab)'));
     if (one && one.k === 'conn') ac.push(qact('label', 'text', 'Ajouter un texte sur la flèche'));
     if (one && ['link', 'doc', 'task'].includes(one.k)) ac.push(qact('open', 'ext', 'Ouvrir'));
@@ -761,7 +766,7 @@ const Board = (() => {
     return out.join('');
   }
   const FRAME_TFS = [12, 14, 20, 28];
-  const ZICON = { note: 'sticky', text: 'text', shape: 'rect', image: 'image', file: 'file', link: 'link', ink: 'pen', mind: 'mind', frame: 'frame', task: 'tasks', doc: 'note', todo: 'todo', sheet: 'sheet', conn: 'conn' };
+  const ZICON = { note: 'sticky', text: 'text', shape: 'rect', image: 'image', file: 'file', link: 'link', ink: 'pen', mind: 'mind', frame: 'frame', task: 'tasks', doc: 'note', todo: 'todo', sheet: 'sheet', plan: 'cal', conn: 'conn' };
   function layersHTML() {
     const rows = [];
     for (let i = items.length - 1; i >= 0; i--) {
@@ -902,6 +907,9 @@ const Board = (() => {
       case 'frameSel': frameAround(list.filter(i => i.k !== 'conn')); return;
       case 'tasks': go('tasks'); return;
       case 'multitext': multiText(); return;
+      case 'pdim': if (list[0] && list[0].k === 'plan') planDim(list[0], btn); return;
+      case 'pset': if (list[0] && list[0].k === 'plan') planModal(list[0]); return;
+      case 'prefresh': if (list[0] && list[0].k === 'plan') planRefresh(list[0]); return;
     }
   }
   function arrangeMenu(btn, inFrame) {
@@ -1009,6 +1017,7 @@ const Board = (() => {
     if (it.k === 'doc' && docById(it.doc)) go('doc:' + it.doc);
     if (it.k === 'task') { const t = taskById(it.task); if (t) setCurSpace(t.sp); go('tasks'); }
     if (it.k === 'image' && Assets.has(it.asset)) lightbox(it);
+    if (it.k === 'plan') planModal(it);
   }
   function lightbox(it) { const u = Assets.url(it.asset); if (!u) return; const l = document.createElement('div'); l.className = 'lightbox'; l.innerHTML = `<img src="${u}" alt="${esc(it.cap || 'Image')}">`; l.onclick = () => l.remove(); document.body.append(l); }
 
@@ -1465,6 +1474,91 @@ const Board = (() => {
     commit(items.concat(it)); sel = new Set([it.id]); setTool('select'); render(); startEdit(it.id);
     // a new text block starts with "Texte" selected, so typing replaces it
     if (kind === 'text' && editing === it.id) { const el = editEl(it); if (el) { const r = document.createRange(); r.selectNodeContents(el); const g = getSelection(); g.removeAllRanges(); g.addRange(r); } }
+  }
+  /* ---------- planning from an iCal feed (0.2.26): PRONOTE's "iCal" link or a .ics file, rebuilt as a timeline ---------- */
+  const PLAN_ERR = r => r.error === 'blocked' ? 'Le navigateur bloque ce lien. Ouvrez-le, enregistrez le fichier .ics puis choisissez-le avec « Fichier .ics ». Dans l’app Windows, le lien marche directement.'
+    : r.error === 'url' ? 'Ce n’est pas un lien http(s) ou webcal.' : r.error === 'notics' ? 'Ce lien ne renvoie pas un calendrier iCal.' : r.status ? `Le serveur a répondu ${r.status}. Le lien a peut-être expiré : recopiez-le depuis PRONOTE.` : 'Impossible de lire ce lien.';
+  async function planLoad(src) { const r = await Net.ics(src); if (!r.ok) return { err: PLAN_ERR(r) }; const p = icsParse(r.text); return p ? p : { err: 'Ce fichier n’est pas un calendrier iCal.' }; }
+  function planModal(it) {
+    const st = it ? { src: it.src || '', ev: it.ev, name: '', title: it.title, d0: it.d0, d1: it.d1, h0: it.h0, h1: it.h1, we: (it.we || [1, 2, 3, 4, 5]).slice(), ck: it.ck || 0, cols: Object.assign({}, it.cols), auto: !!it.auto }
+      : { src: S.prefs.planSrc || '', ev: null, name: '', title: 'Planning', ck: 0, cols: {}, auto: true };
+    const m = openModal(`<div class="mhd"><h2>${it ? 'Réglages du planning' : 'Planning depuis un calendrier'}</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
+      <p class="mt-sub">Collez le lien iCal de PRONOTE (Emploi du temps, bouton iCal) ou de tout agenda, ou choisissez un fichier .ics. Le planning se recrée sur le board en frise : un jour par colonne, un bloc par cours.</p>
+      <div class="pl-src"><input class="pl-url" type="url" placeholder="https://…pronote…/ical/Edt_….ics" value="${esc(st.src)}" spellcheck="false"><button class="btn sm pri" data-load="1">Charger</button><label class="btn sm">${icon('upload', 'sm')} Fichier .ics<input type="file" accept=".ics,text/calendar" hidden></label></div>
+      <div class="pl-st" role="status"></div>
+      <div class="pl-opts" hidden></div>
+      <div class="mt-foot"><button class="btn sm" data-sample="1"${it ? ' hidden' : ''}>Essayer avec un exemple</button><span class="mt-gap"></span><button class="btn sm pri" data-ok="1" disabled>${it ? 'Enregistrer' : 'Créer le planning'}</button></div>`);
+    m.classList.add('plmodal');
+    const url = $('.pl-url', m), stEl = $('.pl-st', m), opts = $('.pl-opts', m), okB = $('[data-ok]', m);
+    const say = (t, bad) => { stEl.textContent = t; stEl.classList.toggle('bad', !!bad); };
+    const fmtD = s => { const d = dOf(s); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
+    const got = (p, src) => {
+      st.ev = p.ev; st.src = src; if (p.name && (!it || st.title === 'Planning')) st.title = p.name;
+      if (st.auto || !st.d0) Object.assign(st, planAuto(st.ev));
+      const n = st.ev.filter(e => !(e[4] & 2)).length;
+      say(n ? `${n} cours lus, du ${fmtD(st.ev[0][0])} au ${fmtD(st.ev[st.ev.length - 1][0])}.` : 'Aucun cours dans ce calendrier.', !n);
+      paintOpts();
+    };
+    function paintOpts() {
+      if (!st.ev) { opts.hidden = true; okB.disabled = true; return; }
+      st.cols = planAssign(st);
+      const sample = (st.ev.find(e => planParts(e[2]).length > 1) || st.ev[0] || [0, 0, ''])[2], parts = planParts(sample), keys = planKeys(st).slice(0, 40);
+      const wd = (st.we || []).join('');
+      opts.hidden = false; okB.disabled = !st.ev.length;
+      opts.innerHTML = `<label class="pl-f wide"><span>Titre</span><input data-k="title" value="${esc(st.title)}"></label>
+        <label class="pl-f"><span>Du</span><input type="date" data-k="d0" value="${st.d0}"></label><label class="pl-f"><span>Au</span><input type="date" data-k="d1" value="${st.d1}"></label>
+        <label class="pl-f sm"><span>De</span><input type="number" min="0" max="23" data-k="h0" value="${st.h0}"></label><label class="pl-f sm"><span>À</span><input type="number" min="1" max="24" data-k="h1" value="${st.h1}"></label>
+        <div class="pl-f"><span>Jours</span>${seg('we', wd === '12345' ? 'w5' : wd === '123456' ? 'w6' : wd === '1234560' ? 'w7' : '', [['w5', 'Lun–ven'], ['w6', '+ sam'], ['w7', '7 j']])}</div>
+        <button class="btn sm pl-reset" data-auto="1" title="Reprendre la période, les heures et les jours du calendrier">Auto</button>
+        ${parts.length > 1 ? `<div class="pl-f wide"><span>Couleur selon</span>${seg('ck', st.ck, parts.slice(0, 4).map((t, i) => [i, esc(t.length > 18 ? t.slice(0, 17) + '…' : t), `Partie ${i + 1} du titre`]))}</div>` : ''}
+        <div class="pl-keys">${keys.map(([k, n]) => `<button class="pl-key" data-key="${esc(k)}" style="--pc:${planColor(st, k)}" title="${n} cours · cliquer pour changer la couleur"><i></i>${esc(k)}</button>`).join('')}</div>`;
+    }
+    opts.addEventListener('change', e => { const k = e.target.dataset.k; if (!k) return; st[k] = k === 'h0' || k === 'h1' ? clamp(Math.round(+e.target.value || 0), 0, 24) : e.target.value; if (k !== 'title') st.auto = false; if (st.h1 <= st.h0) st.h1 = st.h0 + 1; });
+    opts.addEventListener('keydown', e => e.stopPropagation());
+    opts.addEventListener('click', e => {
+      const sv = e.target.closest('[data-set] [data-v]');
+      if (sv) { const k = sv.closest('[data-set]').dataset.set; if (k === 'ck') st.ck = +sv.dataset.v; else { st.we = { w5: [1, 2, 3, 4, 5], w6: [1, 2, 3, 4, 5, 6], w7: [1, 2, 3, 4, 5, 6, 0] }[sv.dataset.v]; st.auto = false; } paintOpts(); return; }
+      if (e.target.closest('[data-auto]')) { st.auto = true; Object.assign(st, planAuto(st.ev)); paintOpts(); return; }
+      const kb = e.target.closest('[data-key]'); if (kb) { const k = kb.dataset.key, cur = planColor(st, k), i = PLAN_COLORS.indexOf(cur); st.cols[k] = PLAN_COLORS[(i + 1) % PLAN_COLORS.length]; kb.style.setProperty('--pc', st.cols[k]); }
+    });
+    const load = async () => { const src = url.value.trim(); if (!src) { url.focus(); return; } say('Lecture du calendrier…'); okB.disabled = true; const p = await planLoad(src); if (!m.isConnected) return; if (p.err) { say(p.err, true); okB.disabled = !st.ev; return; } S.prefs.planSrc = src; save(); got(p, src); };
+    $('[data-load]', m).onclick = load;
+    url.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') load(); });
+    $('input[type=file]', m).onchange = async e => { const f = e.target.files[0]; if (!f) return; const p = icsParse(await f.text()); if (!p) { say('Ce fichier n’est pas un calendrier iCal.', true); return; } got(p, url.value.trim() && st.src === url.value.trim() ? st.src : ''); };
+    $('[data-sample]', m).onclick = () => { st.title = 'Planning (exemple)'; got(icsParse(planSample()), ''); };
+    okB.onclick = () => {
+      if (!st.ev) return;
+      const o = { title: st.title || 'Planning', src: st.src, ev: st.ev, d0: st.d0, d1: st.d1 < st.d0 ? st.d0 : st.d1, h0: st.h0, h1: st.h1, we: st.we, ck: st.ck, cols: st.cols, auto: st.auto || undefined, at: Date.now() };
+      closeModal();
+      if (it) { const cur = byId.get(it.id) || it, nx = planRefit(cur, Object.assign({}, cur, o, { v: (cur.v || 1) + 1 })); commit(items.map(x => x.id === it.id ? nx : x)); return; }
+      const c = centerW(), p = mkPlan(0, 0, Object.assign(o, { fs: Math.round(14 * clamp(1 / view.k, .5, 4)) }));
+      p.x = c.x - Math.min(p.w, 1600) / 2; p.y = c.y - p.h / 2;
+      setTool('select'); commit(items.concat(p)); sel = new Set([p.id]); render();
+      toast('Planning créé. Verrouillez-le (Ctrl Maj L) puis annotez dessus.', { label: 'Verrouiller', run: () => { sel = new Set([p.id]); action('lock'); } });
+    };
+    if (it && !it.ev.length && it.src) load();
+    else if (it) paintOpts();
+    setTimeout(() => { if (!it) url.focus(); }, 30);
+  }
+  async function planRefresh(it) {
+    tapFlash('Mise à jour…');
+    const p = await planLoad(it.src); if (!mounted) return;
+    if (p.err) { toast(p.err); return; }
+    const cur = byId.get(it.id); if (!cur) return;
+    const nx = Object.assign({}, cur, { ev: p.ev, v: (cur.v || 1) + 1, at: Date.now() }, cur.auto ? planAuto(p.ev) : {});
+    nx.cols = planAssign(nx);
+    commit(items.map(x => x.id === cur.id ? planRefit(cur, nx) : x));
+    toast(`Planning mis à jour : ${p.ev.filter(e => !(e[4] & 2)).length} cours`);
+  }
+  /* darker or lighter, so what is written on top stands out; the slider shows it live, the change is one undo step */
+  function planDim(it, btn) {
+    const v = it.dim || 0;
+    const p = openPop(btn, `<div class="pl-dimp"><div class="seg sm">${[[0, 'Normal'], [.4, 'Sombre'], [.65, 'Nuit']].map(([d, l]) => `<button data-d="${d}" aria-pressed="${Math.abs(v - d) < .01}">${l}</button>`).join('')}</div><input type="range" min="0" max="85" step="1" value="${Math.round(v * 100)}" aria-label="Assombrir"><b>${Math.round(v * 100)} %</b></div>`);
+    const r = $('input', p), lab = $('b', p);
+    const live = d => { const n = nodes.get(it.id); if (!n) return; let o = n.querySelector('.pl-dim'); if (!o) { o = document.createElement('div'); o.className = 'pl-dim'; n.append(o); } o.style.opacity = d; lab.textContent = Math.round(d * 100) + ' %'; };
+    const set = d => { const cur = byId.get(it.id); if (!cur || Math.abs((cur.dim || 0) - d) < .001) return; commit(replace(items, cur, { dim: d || undefined })); };
+    r.oninput = () => live(+r.value / 100); r.onchange = () => set(+r.value / 100);
+    p.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const d = +b.dataset.d; r.value = Math.round(d * 100); live(d); set(d); $$('[data-d]', p).forEach(x => x.setAttribute('aria-pressed', x === b)); });
   }
   /* MultiText (0.2.25): one window, the formatting once at the top, as many text slots as wanted; validating places one
      text block per slot on the board, all with the same formatting, in a column, a row or a grid */
@@ -2584,7 +2678,7 @@ const Board = (() => {
   }
   function pickFiles() { const i = $('#fileIn'); i.accept = ''; i.onchange = async () => { const files = [...i.files]; i.value = ''; if (files.length) await ingest({ files, getData: () => '' }, centerW()); }; i.click(); }
   function moreMenu(btn) {
-    openPop(btn, [{ head: 'Insérer' }, { label: 'Tâche de l’espace', icon: 'tasks', run: () => insertTask() }, { label: 'Lien vers une note ou un board', icon: 'note', run: () => insertDocRef(btn) }, { label: 'Lien web…', icon: 'link', run: () => insertLink(btn) },
+    openPop(btn, [{ head: 'Insérer' }, { label: 'Tâche de l’espace', icon: 'tasks', run: () => insertTask() }, { label: 'Lien vers une note ou un board', icon: 'note', run: () => insertDocRef(btn) }, { label: 'Lien web…', icon: 'link', run: () => insertLink(btn) }, { label: 'Planning (iCal, PRONOTE)…', icon: 'cal', run: () => planModal(null) },
       '-', { head: 'Fond' }, ...[['dots', 'Points'], ['grid', 'Quadrillage'], ['plain', 'Uni']].map(([b, l]) => ({ label: l, small: (D.bg || 'dots') === b ? 'actuel' : '', run: () => setProp('bg', b) })),
       '-', { label: 'Raccourcis clavier', icon: 'help', small: '?', run: helpModal }]);
   }

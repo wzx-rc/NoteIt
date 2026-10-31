@@ -166,6 +166,13 @@ ipcMain.handle('fetch-url', async (e, req) => {
   const doFetch = net && net.fetch ? net.fetch.bind(net) : fetch;
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
   try {
+    if (as === 'ics') {   // a calendar feed (PRONOTE, Google, Outlook...): text only, 8 MB at most
+      const r = await doFetch(url, { signal: ctl.signal, credentials: 'omit', headers: { 'User-Agent': BROWSER_UA, Accept: 'text/calendar,text/plain;q=0.9,*/*;q=0.5' } });
+      if (!r.ok) return { ok: false, status: r.status };
+      const buf = await r.arrayBuffer(); if (buf.byteLength > 8 * 1024 * 1024) return { ok: false, error: 'size' };
+      const text = Buffer.from(buf).toString('utf8');
+      return /BEGIN:VCALENDAR/i.test(text.slice(0, 4096)) ? { ok: true, text } : { ok: false, error: 'notics' };
+    }
     if (as === 'meta') {
       const ask = async ua => {
         const r = await doFetch(url, { signal: ctl.signal, credentials: 'omit', headers: { 'User-Agent': ua, Accept: 'text/html,application/xhtml+xml,image/*;q=0.8', 'Accept-Language': 'fr,en;q=0.8' } });

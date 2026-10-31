@@ -107,6 +107,15 @@ const Net = {
       const r = await fetch(url, { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' }); return r.ok ? await r.blob() : null;
     } catch (e) { return null; }
   },
+  /* the text of a calendar feed (.ics): the Windows app reads it through its main process, a browser only when the site allows it */
+  async ics(url) {
+    url = String(url || '').trim().replace(/&amp;/g, '&').replace(/^webcals?:\/\//i, 'https://');
+    if (!/^https?:\/\//i.test(url)) return { ok: false, error: 'url' };
+    try {
+      if (Net.native()) { const r = await window.notely.fetchUrl({ url, as: 'ics' }); return r || { ok: false }; }
+      const r = await fetch(url, { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' }); return r.ok ? { ok: true, text: await r.text() } : { ok: false, status: r.status };
+    } catch (e) { return { ok: false, error: 'blocked' }; }
+  },
   /* { title, desc, image, site, isImage } read from the page's Open Graph tags */
   async meta(url) {
     if (!Net.native()) return null;
