@@ -137,10 +137,10 @@ function planDays(it) {
 }
 function planGeom(it) {
   const fs = it.fs || 14, days = planDays(it), nh = Math.max(1, (it.h1 ?? 18) - (it.h0 ?? 8));
-  const A = Math.round(fs * 3.6), bh = Math.round(fs * 1.9), wh = Math.round(fs * 1.9), dh = Math.round(fs * 2.1), H = bh + wh + dh;
+  const A = Math.round(fs * 2.6), bh = Math.round(fs * 1.15), wh = Math.round(fs * 1.35), dh = Math.round(fs * 1.35), H = bh + wh + dh;   // a compact header (0.2.29)
   return { fs, days, nh, A, bh, wh, dh, H, dw: Math.max(4, (it.w - A) / days.length), hh: Math.max(4, (it.h - H) / nh) };
 }
-const PLAN_DW = 8, PLAN_HH = 3.4;   // default day width and hour height, in units of the text size
+const PLAN_DW = 9, PLAN_HH = 4.2;   // default day width and hour height, in units of the text size
 function mkPlan(x, y, o) {
   const it = Object.assign({ id: uid('p'), k: 'plan', x, y, w: 0, h: 0, title: 'Planning', src: '', ev: [], ck: 0, cols: {}, dim: 0, fs: 14, v: 1 }, o);
   if (!it.d0) Object.assign(it, planAuto(it.ev));
@@ -185,16 +185,16 @@ function planHTML(it) {
     out.push(`<div class="pl-dh${cls}" style="left:${f(X(i))}px;top:${bh + wh}px;width:${f(dw)}px;height:${dh}px"><span>${WDAYS[d.getDay()]} ${d.getDate()}</span></div>`);
   });
   if (wk) weekCell(wk.a, days.length - 1, wk.d);
-  for (const r of planOff(it, days, byDay)) if (!vac.some(v => ymd(days[r.b]) >= v[0] && ymd(days[r.a]) <= v[1])) out.push(`<div class="pl-off" style="left:${f(X(r.a))}px;width:${f((r.b - r.a + 1) * dw)}px;top:${f(bh * .2)}px;height:${f(bh * .6)}px"><span>OFF · vacances</span></div><div class="pl-offc" style="left:${f(X(r.a))}px;width:${f((r.b - r.a + 1) * dw)}px;top:${H}px"></div>`);
+  for (const r of planOff(it, days, byDay)) if (!vac.some(v => ymd(days[r.b]) >= v[0] && ymd(days[r.a]) <= v[1])) out.push(`<div class="pl-off" style="left:${f(X(r.a))}px;width:${f((r.b - r.a + 1) * dw)}px;top:${f(bh * .12)}px;height:${f(bh * .76)}px"><span>OFF · vacances</span></div><div class="pl-offc" style="left:${f(X(r.a))}px;width:${f((r.b - r.a + 1) * dw)}px;top:${H}px"></div>`);
   for (const e of it.ev || []) if (e[4] & 2 && !/f[ée]ri[ée]|pont/i.test(e[2])) {   // all-day events from the feed (holidays, trips...): a band in the top row
     let a = -1, b = -1; days.forEach((d, i) => { const k = ymd(d); if (k >= e[0].slice(0, 10) && k <= e[1].slice(0, 10)) { if (a < 0) a = i; b = i; } });
     const off = /vacances|cong[ée]s/i.test(e[2]);
-    if (a >= 0) out.push(`<div class="pl-off${off ? '' : ' ev'}" style="left:${f(X(a))}px;width:${f((b - a + 1) * dw)}px;top:${f(bh * .2)}px;height:${f(bh * .6)}px" title="${esc(e[2])}"><span>${off ? 'OFF · ' : ''}${esc(e[2])}</span></div>` + (off ? `<div class="pl-offc" style="left:${f(X(a))}px;width:${f((b - a + 1) * dw)}px;top:${H}px"></div>` : ''));
+    if (a >= 0) out.push(`<div class="pl-off${off ? '' : ' ev'}" style="left:${f(X(a))}px;width:${f((b - a + 1) * dw)}px;top:${f(bh * .12)}px;height:${f(bh * .76)}px" title="${esc(e[2])}"><span>${off ? 'OFF · ' : ''}${esc(e[2])}</span></div>` + (off ? `<div class="pl-offc" style="left:${f(X(a))}px;width:${f((b - a + 1) * dw)}px;top:${H}px"></div>` : ''));
   }
   /* hours on the left */
   for (let h = h0; h <= h1; h++) out.push(`<div class="pl-hr" style="top:${f(H + (h - h0) * hh)}px;width:${A}px"><span>${h}h</span></div>`);
   /* lessons: overlapping ones share the column */
-  const efs = Math.max(7, Math.min(fs * 1.05, dw / 5.6, hh / 2.2));
+  const efs = Math.max(7, Math.min(fs * 1.45, dw / 4.4, hh / 1.75));
   for (const [k, list] of byDay) {
     const i = idx.get(k); list.sort((a, b) => a[0] < b[0] ? -1 : 1);
     let group = [], end = '';
@@ -203,7 +203,7 @@ function planHTML(it) {
     flush();
     for (const e of list) {
       const m0 = Math.max(h0 * 60, minOf(e[0])), m1 = Math.min(h1 * 60, e[1].slice(0, 10) > k ? 24 * 60 : minOf(e[1])); if (m1 <= m0) continue;
-      const pw = dw - 6, lw = pw / e._n, x = X(i) + 3 + e._l * lw, y = H + (m0 / 60 - h0) * hh + 1.5, h = (m1 - m0) / 60 * hh - 3;
+      const pw = dw - 3, lw = pw / e._n, x = X(i) + 1.5 + e._l * lw, y = H + (m0 / 60 - h0) * hh + 1, h = (m1 - m0) / 60 * hh - 2;
       const key = planKey(it, e), col = planColor(it, key), M = e[6], parts = planParts(e[2]);
       let main, rest;
       if (M && typeof it.ck === 'string') { main = M.p ? planShort(M.p) : M.m || e[2]; rest = M.p ? M.m || '' : ''; if (M.y && !/^cours$/i.test(M.y)) rest += (rest ? ' · ' : '') + M.y; }
