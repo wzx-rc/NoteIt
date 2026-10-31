@@ -6,7 +6,7 @@
    the watercolour gets a wet ragged edge and the airbrush is blurred. */
 const PENS = {
   pencil: { name: 'Crayon', icon: 'pencil', hint: 'Grain du papier, s’affine sous la main légère', size: 3, min: 1, max: 12, thin: .55, gamma: 1.1, o: .95, smooth: .3, grain: true },
-  pen: { name: 'Plume', icon: 'pen', hint: 'Trait fin qui s’élargit avec la pression, pointes effilées', size: 3.5, min: 1, max: 12, thin: .8, gamma: 1, taper: true, o: 1, smooth: .5 },
+  pen: { name: 'Stylo', icon: 'pen', hint: 'Trait fin qui s’élargit avec la pression, pointes effilées', size: 3.5, min: 1, max: 12, thin: .8, gamma: 1, taper: true, o: 1, smooth: .5 },
   fine: { name: 'Feutre', icon: 'fine', hint: 'Trait régulier, bouts ronds', size: 4, min: 1, max: 14, thin: .08, gamma: 1, o: 1, smooth: .45 },
   brush: { name: 'Pinceau', icon: 'brush', hint: 'Pleins et déliés très marqués', size: 14, min: 3, max: 40, thin: .93, gamma: 1.3, taper: true, taperLen: 3.2, o: 1, smooth: .55 },
   marker: { name: 'Marqueur', icon: 'marker', hint: 'Pointe biseautée, encre translucide', size: 22, min: 6, max: 60, thin: .15, gamma: 1, o: .6, multiply: true, chisel: true, smooth: .4 },
@@ -30,6 +30,9 @@ const PEN_DEFAULT_COLORS = { pencil: '#3A3F46', pen: '#1B1E22', fine: '#1971C2',
 const INK_COLORS = ['#1B1E22', '#E03131', '#F08C00', '#2F9E44', '#1971C2', '#6E56F0', '#D9467E', '#8B5E3C'];
 const HL_COLORS = ['#FDE047', '#86EFAC', '#93C5FD', '#F9A8D4', '#FDBA74', '#C4B5FD'];
 const easeT = t => Math.sin(clamp(t, 0, 1) * Math.PI / 2);
+/* the three brushes of the simple drawing module (0.2.25): pen, felt tip, highlighter; the others stay for old strokes
+   and for the full atelier (Réglages > Board > Atelier de dessin : complet) */
+const FAST_PENS = ['pen', 'fine', 'highlight'];
 const radiusFor = (def, s, p) => s * .5 * ((1 - def.thin) + def.thin * Math.pow(clamp(p, 0, 1), def.gamma));
 const STAMP_DEF = { sh: 'native', tx: 'none', fl: 1, sp: .1, dy: { ps: 1, po: 0, rot: 0, sc: 0 } };
 /* a pen not given a colour yet takes this number of the theme's scheme (00-util.js) */
@@ -318,8 +321,11 @@ class InkCapture {
     const w = this.map.toLocal(ev.clientX, ev.clientY), p0 = this.pressure(ev), def = PENS[st.t] || PENS.pen;
     this.cur = { t: st.t, c: st.c, s: st.s, o: st.o ?? def.o, p: [w.x, w.y, p0] }; if (st.b) this.cur.b = st.b;
     this.walk = null;
+    /* the three simple brushes (0.2.25) are drawn live piece by piece: each frame only adds the new bits of the line,
+       instead of rebuilding the whole outline of the stroke; the finished stroke gets its exact outline */
+    this.fast = !st.b && FAST_PENS.includes(st.t); this.li = 0; this.len = 0;
     this.sm = { x: w.x, y: w.y, p: p0, f: 1 - (st.smooth ?? def.smooth) * .9, k: st.k || 1, last: { x: w.x, y: w.y, p: p0 } };
-    this.resize();
+    this.resize(); if (this.fast) { this.cx.setTransform(1, 0, 0, 1, 0, 0); this.cx.clearRect(0, 0, this.cv.width, this.cv.height); }
     const px = st.s * (st.k || 1);
     this.cv.style.opacity = this.cur.o; this.cv.style.mixBlendMode = def.multiply ? (isDarkTheme() ? 'screen' : 'multiply') : 'normal';
     this.cv.style.filter = st.b ? '' : def.blur ? `blur(${(px * .3).toFixed(1)}px)` : def.wet ? `blur(${(px * .06).toFixed(1)}px)` : def.grain ? 'url(#grain)' : '';
@@ -354,22 +360,42 @@ class InkCapture {
   resize() {
     const pe = this.cv.parentElement, r = { width: pe.clientWidth, height: pe.clientHeight }, dpr = Math.min(2.5, devicePixelRatio || 1);   // its own size, even when the board is turned
     const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
-    if (this.cv.width !== W || this.cv.height !== H) { this.cv.width = W; this.cv.height = H; this.cv.style.width = r.width + 'px'; this.cv.style.height = r.height + 'px'; }
+    if (this.cv.width !== W || this.cv.height !== H) { this.cv.width = W; this.cv.height = H; this.cv.style.width = r.width + 'px'; this.cv.style.height = r.height + 'px'; this.li = 0; this.len = 0; }
     this.dpr = dpr;
+  }
+  /* page px of the stroke -> canvas pixels; m.r turns it around (m.W, m.H) when the board is turned (the canvas itself is not) */
+  xform(x) {
+    const m = this.map.xf(), d = this.dpr;
+    x.setTransform(d, 0, 0, d, 0, 0);
+    if (m.r) { x.translate(m.W, m.H); x.rotate(m.r * Math.PI / 180); x.translate(-m.W, -m.H); }
+    x.translate(m.ox, m.oy); x.scale(m.k, m.k);
+  }
+  drawFast() {
+    const x = this.cx, c = this.cur, a = c.p, n = (a.length / 3) | 0, def = PENS[c.t] || PENS.pen;
+    if (!this.li) { x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, this.cv.width, this.cv.height); }
+    this.xform(x); x.fillStyle = x.strokeStyle = inkColor(c.c); x.lineCap = 'round'; x.lineJoin = 'round';
+    const TL = c.s * (def.taperLen || 2.6), rad = i => { let r = radiusFor(def, c.s, a[i * 3 + 2]); if (def.taper) r *= .12 + .88 * easeT(this.len / TL); return Math.max(r, c.s * .04); };
+    if (!this.li) { const r = rad(0); x.beginPath(); x.arc(a[0], a[1], r, 0, 7); x.fill(); this.li = 1; }
+    for (let i = this.li; i < n; i++) {
+      const x0 = a[i * 3 - 3], y0 = a[i * 3 - 2], x1 = a[i * 3], y1 = a[i * 3 + 1];
+      this.len += Math.hypot(x1 - x0, y1 - y0);
+      x.lineWidth = rad(i) * 2; x.beginPath(); x.moveTo(x0, y0); x.lineTo(x1, y1); x.stroke();
+    }
+    this.li = Math.max(1, n);
   }
   draw() {
     const x = this.cx, c = this.cur; if (!c) return;
+    if (this.fast) return this.drawFast();
     x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, this.cv.width, this.cv.height);
-    const m = this.map.xf(), d = this.dpr;
-    x.setTransform(d * m.k, 0, 0, d * m.k, d * m.ox, d * m.oy);
+    this.xform(x);
     if (c.b) {
       /* stamped brush: new dabs go onto a layer, the texture is cut from the copy on screen */
       const L = this.layer, lx = L.getContext('2d');
       if (L.width !== this.cv.width || L.height !== this.cv.height) { L.width = this.cv.width; L.height = this.cv.height; this.walk = null; }
-      if (c.b.sh === 'native') { lx.setTransform(1, 0, 0, 1, 0, 0); lx.clearRect(0, 0, L.width, L.height); lx.setTransform(d * m.k, 0, 0, d * m.k, d * m.ox, d * m.oy); lx.fillStyle = inkColor(c.c); try { lx.fill(new Path2D(inkOutline(c.p, c))); } catch (e) {} }
-      else { lx.setTransform(d * m.k, 0, 0, d * m.k, d * m.ox, d * m.oy); this.walk = stampWalk(lx, c, this.walk); }
+      if (c.b.sh === 'native') { lx.setTransform(1, 0, 0, 1, 0, 0); lx.clearRect(0, 0, L.width, L.height); this.xform(lx); lx.fillStyle = inkColor(c.c); try { lx.fill(new Path2D(inkOutline(c.p, c))); } catch (e) {} }
+      else { this.xform(lx); this.walk = stampWalk(lx, c, this.walk); }
       x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(L, 0, 0);
-      x.setTransform(d * m.k, 0, 0, d * m.k, d * m.ox, d * m.oy); applyTexture(x, c.b.tx, 0, 0, texScale(c));
+      this.xform(x); applyTexture(x, c.b.tx, 0, 0, texScale(c));
       return;
     }
     x.fillStyle = inkColor(c.c);

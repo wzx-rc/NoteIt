@@ -201,7 +201,10 @@ function mkInk(stroke) {
 }
 
 /* ---------- geometry ---------- */
-const boxOf = it => [it.x, it.y, it.x + it.w, it.y + it.h];
+/* a turned element (it.rot, degrees around its centre) takes the box around its turned corners */
+const boxOf = it => { if (!it.rot || it.k === 'conn' || it.k === 'mind') return [it.x, it.y, it.x + it.w, it.y + it.h];
+  const t = it.rot * Math.PI / 180, c = Math.abs(Math.cos(t)), s = Math.abs(Math.sin(t)), hw = (it.w * c + it.h * s) / 2, hh = (it.w * s + it.h * c) / 2, cx = it.x + it.w / 2, cy = it.y + it.h / 2;
+  return [cx - hw, cy - hh, cx + hw, cy + hh]; };
 function unionBox(list) { let b = null; for (const it of list) { const q = it.k === 'conn' ? null : boxOf(it); if (!q) continue; if (!b) b = q.slice(); else { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[2]); b[3] = Math.max(b[3], q[3]); } } return b; }
 const boxHit = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
 const inBox = (x, y, b) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3];

@@ -795,8 +795,16 @@ const UI_SCALES = ['50', '75', '100', '125'];
 function applyUiScale() {
   const v = UI_SCALES.includes(String(S.prefs.uiScale)) ? +S.prefs.uiScale : 100;
   if (window.notely && window.notely.setZoom) window.notely.setZoom(v / 100);
+  else if (IPAD) {
+    /* iPad: the page scale of the web view, like the browser zoom, so touches and the pencil land where they should
+       (CSS zoom left the board's coordinates off and made it misbehave) */
+    let m = document.querySelector('meta[name=viewport]'); if (!m) { m = document.createElement('meta'); m.name = 'viewport'; document.head.append(m); }
+    const z = v / 100; m.content = z === 1 ? 'width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover' : `initial-scale=${z},minimum-scale=${z},maximum-scale=${z},user-scalable=no,viewport-fit=cover`;
+    document.documentElement.style.zoom = '';
+  }
   else document.documentElement.style.zoom = v === 100 ? '' : v / 100;
-  if (typeof Board !== 'undefined' && Board.mounted) Board.layoutChanged();
+  /* the board keeps the size of what it shows: only the interface around it changes */
+  if (typeof Board !== 'undefined' && Board.mounted) { Board.uiScaled(); Board.layoutChanged(); }
 }
 let themeCssOn = null;
 function applyTheme() {

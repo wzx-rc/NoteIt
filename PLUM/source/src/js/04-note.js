@@ -8,7 +8,8 @@
 const Note = (() => {
   const SW = 820;
   /* the pens shown in the toolbar; the others are one click away in the brush panel */
-  const NOTE_PENS = ['natural', 'pencil', 'pen', 'fine', 'brush', 'marker', 'water', 'highlight'];
+  const NOTE_PENS_FULL = ['natural', 'pencil', 'pen', 'fine', 'brush', 'marker', 'water', 'highlight'];
+  const notePens = () => atelierFull() ? NOTE_PENS_FULL : FAST_PENS;   // the simple drawing module: three brushes (0.2.25)
   let D = null, wrap, tool, sheet, body, inkSvg, pad, liveBox, liveCv, ink, titleIn, sub, ro = null, view = null;
   /* the page views; sheet, body, inkSvg, pad and P (the page's data) follow the page being written or drawn on */
   let PG = [], cur = null, P = null, spr = 0, spreadOn = false, fillH = 0;
@@ -554,7 +555,7 @@ const Note = (() => {
     const pr = penPref(pen);
     placeLive();
     drawing = e.pointerId;
-    ink.begin(e, { t: pen, c: pr.c, s: pr.s, o: pr.o, smooth: pr.sm, k: scale(), b: brushOf(pr, scale()) });
+    ink.begin(e, { t: pen, c: pr.c, s: pr.s, o: pr.o, smooth: pr.sm, k: scale(), b: atelierFull() ? brushOf(pr, scale()) : null });
   }
   function eraseAt(e) {
     const p = toLocal(e.clientX, e.clientY), r = 10 / scale();
@@ -592,7 +593,8 @@ const Note = (() => {
     const textG = `<div class="grp">${b('h1', '<span class="txt">T1</span>', 'Grand titre (#)')}${b('h2', '<span class="txt">T2</span>', 'Sous-titre (##)')}${b('bold', icon('bold'), 'Gras (Ctrl B)')}${b('italic', icon('ital'), 'Italique (Ctrl I)')}${b('mark', icon('hl'), 'Surligner')}</div><span class="vs"></span>
       <div class="grp tfmt"><button class="nb tx" data-tx="font" title="Police" aria-label="Police"><span class="txt" style="font-family:'Instrument Serif',Georgia,serif;font-size:17px">Aa</span>${icon('chevd', 'sm')}</button><button class="nb tx" data-tx="size" title="Taille du texte" aria-label="Taille du texte"><span class="txt tsz">T<small>T</small></span>${icon('chevd', 'sm')}</button><button class="nb tx" data-tx="color" title="Couleur du texte" aria-label="Couleur du texte"><span class="tca">A<i style="background:${S.prefs.noteColor || '#E03131'}"></i></span>${icon('chevd', 'sm')}</button></div><span class="vs"></span>
       <div class="grp">${b('ul', icon('list'), 'Liste (-)')}${b('chk', icon('chk'), 'Cases à cocher ([])')}${b('quote', icon('sticky'), 'Post-it (>)')}${b('hand', '<span class="txt" style="font-family:var(--font-hand);font-size:17px">Aa</span>', 'Écriture manuscrite')}</div>`;
-    const drawG = `<div class="grp">${NOTE_PENS.concat(NOTE_PENS.includes(pen) || !PENS[pen] ? [] : [pen]).map(k => `<button class="nb" data-pen="${k}" title="${PENS[k].name}${PEN_ORDER.indexOf(k) < 9 ? ` (${PEN_ORDER.indexOf(k) + 1})` : ''}" aria-label="${PENS[k].name}" aria-pressed="${pen === k}">${icon(PENS[k].icon)}</button>`).join('')}<button class="nb" data-pen="eraser" title="Gomme (E)" aria-label="Gomme" aria-pressed="${pen === 'eraser'}">${icon('eraser')}</button></div><span class="vs"></span>
+    if (PENS[pen] && !notePens().includes(pen)) pen = 'pen';
+    const drawG = `<div class="grp">${notePens().map(k => `<button class="nb" data-pen="${k}" title="${PENS[k].name} (${notePens().indexOf(k) + 1})" aria-label="${PENS[k].name}" aria-pressed="${pen === k}">${icon(PENS[k].icon)}</button>`).join('')}<button class="nb" data-pen="eraser" title="Gomme (E)" aria-label="Gomme" aria-pressed="${pen === 'eraser'}">${icon('eraser')}</button></div><span class="vs"></span>
       ${pen === 'eraser' ? '' : `<button class="pchip" data-pp="1" title="${PENS[pen].name} : pinceau, taille, flux, forme, texture">${brushPreview(pen, Object.assign({}, pr, { s: Math.min(pr.s, 14) }), 96, 26)}<span>${pr.s}</span>${icon('chevd', 'sm')}</button>
       <div class="grp">${cols.slice(0, 6).map(c => `<button class="sw" data-col="${c}" style="background:${c}" aria-label="Couleur ${c}" aria-pressed="${pr.c.toUpperCase() === c.toUpperCase()}"></button>`).join('')}<button class="sw cur" data-wheel="1" style="background:${pr.c}" title="Roue des couleurs" aria-label="Roue des couleurs">${icon('wheel', 'sm')}</button></div><span class="vs"></span>`}
       <div class="grp"><button class="nb" data-a="undo" title="Annuler le dernier trait" aria-label="Annuler" ${hist.length ? '' : 'disabled'}>${icon('undo')}</button><button class="nb" data-a="redo" title="Rétablir" aria-label="Rétablir" ${fut.length ? '' : 'disabled'}>${icon('redo')}</button></div>`;
@@ -805,7 +807,7 @@ const Note = (() => {
       if (!inText && spreadOn && (e.key === 'PageDown' || e.key === 'PageUp')) { e.preventDefault(); turn(e.key === 'PageDown' ? 1 : -1); return true; }
       if (!inText && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redoInk() : undoInk(); return true; }
       if (!inText && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redoInk(); return true; }
-      if (!inText && !e.ctrlKey && !e.metaKey && !e.altKey) { const k = e.key.toLowerCase(); if (k === 'p') { pen = PENS[pen] ? pen : 'pen'; setMode('draw'); return true; } if (k === 'e') { pen = 'eraser'; setMode('draw'); return true; } if (k === 't') { setMode('text'); body.focus(); return true; } if (/^[1-9]$/.test(k) && PEN_ORDER[+k - 1]) { pen = PEN_ORDER[+k - 1]; setMode('draw'); return true; } }
+      if (!inText && !e.ctrlKey && !e.metaKey && !e.altKey) { const k = e.key.toLowerCase(); if (k === 'p') { pen = PENS[pen] ? pen : 'pen'; setMode('draw'); return true; } if (k === 'e') { pen = 'eraser'; setMode('draw'); return true; } if (k === 't') { setMode('text'); body.focus(); return true; } if (/^[1-9]$/.test(k) && (atelierFull() ? PEN_ORDER : FAST_PENS)[+k - 1]) { pen = (atelierFull() ? PEN_ORDER : FAST_PENS)[+k - 1]; setMode('draw'); return true; } }
       return false;
     },
     text() { return mounted ? PG.map(g => g.body.innerText).join('\n\n') : '' },
