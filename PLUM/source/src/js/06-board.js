@@ -1540,16 +1540,23 @@ const Board = (() => {
     else if (it) paintOpts();
     setTimeout(() => { if (!it) url.focus(); }, 30);
   }
-  async function planRefresh(it) {
-    tapFlash('Mise à jour…');
-    const p = await planLoad(it.src); if (!mounted) return;
-    if (p.err) { toast(p.err); return; }
+  /* quiet: the automatic update when the board opens (no undo step, no message unless something changed) */
+  async function planRefresh(it, quiet) {
+    if (!quiet) tapFlash('Mise à jour…');
+    const doc = D, p = await planLoad(it.src); if (!mounted || D !== doc) return;
+    if (p.err) { if (!quiet) toast(p.err); return; }
     const cur = byId.get(it.id); if (!cur) return;
-    const nx = Object.assign({}, cur, { ev: p.ev, v: (cur.v || 1) + 1, at: Date.now() }, cur.auto ? planAuto(p.ev) : {});
+    const same = JSON.stringify(p.ev) === JSON.stringify(cur.ev);
+    const nx = Object.assign({}, cur, same ? {} : { ev: p.ev, v: (cur.v || 1) + 1 }, { at: Date.now() }, cur.auto && !same ? planAuto(p.ev) : {});
     nx.cols = planAssign(nx);
-    commit(items.map(x => x.id === cur.id ? planRefit(cur, nx) : x));
-    toast(`Planning mis à jour : ${p.ev.filter(e => !(e[4] & 2)).length} cours`);
+    const next = items.map(x => x.id === cur.id ? (same ? nx : planRefit(cur, nx)) : x);
+    if (quiet) { silent(next); schedule(); } else commit(next);
+    const n = p.ev.filter(e => !(e[4] & 2)).length;
+    if (!quiet) toast(same ? `Planning à jour : ${n} cours, rien n’a changé` : `Planning mis à jour : ${n} cours`);
+    else if (!same) toast(`${cur.title || 'Planning'} mis à jour depuis le lien iCal`);
   }
+  /* a planning with a link updates itself when its board opens, at most once an hour */
+  function planAutoRefresh() { for (const it of items) if (it.k === 'plan' && it.src && Date.now() - (it.at || 0) > 36e5) planRefresh(it, true); }
   /* darker or lighter, so what is written on top stands out; the slider shows it live, the change is one undo step */
   function planDim(it, btn) {
     const v = it.dim || 0;
@@ -2704,6 +2711,7 @@ const Board = (() => {
     wrap = container.firstElementChild; host = $('.bhost', wrap); world = $('.world', host);
     [framesL, edges, itemsL, edgesTop, labelsL] = world.children; ovl = $('.ovl', host); liveCv = $('.blive', host); stage = $('.bstage', host); bgrid = $('.bgrid', host); meas = $('.measure', host);
     // mind maps are laid out from the measured size of their words: again once the fonts are in
+    setTimeout(() => { if (mounted && D === doc) planAutoRefresh(); }, 1200);
     const lay = () => { if (!mounted || D !== doc || !hasMind(items)) return; measCache.clear(); items = relayout(items); reindex(); D.items = items; schedule(); };
     toolsEl = $('.tools', wrap); optsEl = $('.topts', wrap); dockEl = $('.tdock', wrap); trEl = $('.tr', wrap); propsEl = $('.props', wrap); qbarEl = $('.qbar', wrap); zoomEl = $('.isl.zoom', wrap); undoEl = $('.isl.undo', wrap); brEl = $('.isl.br', wrap);
     /* the live stroke's canvas is not in the turned stage: a turned full-screen layer was slow to draw on (iPad) */
