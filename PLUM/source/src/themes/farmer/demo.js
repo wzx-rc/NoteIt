@@ -1,20 +1,27 @@
 /* Farmer: the example boards, made once the first time the Farmer theme is on, in the current space; the user can
-   delete them like any board. S.prefs.fmDemo counts what was made: 1 = "Plan de la ferme", laid out like the user's
-   farm concept board (the painted farm, the doodles on the sticky notes, the pencil sketches and the polaroid come
-   from assets/); 2 = also the mind map "Ferme durable" like the concept close-up. Going from 1 to 2, the older plan
-   board (smaller notes, pencil arrows) goes to the trash, where it can be restored, and is made again. */
+   delete them like any board. S.prefs.fmDemo counts what was made: 2 = the mind map "Ferme durable" like the concept
+   close-up; 3 = "Plan de la ferme" redone (0.2.30) as four framed sections on a tidy grid: the plan (painted farm with
+   one note per place around it, each arrow landing on its building), the four seasons, the work in progress as cards
+   in three columns, and the budget with ideas and pieces left to place. Pictures come from assets/ (pr-*, sa-*,
+   compass and farm-hd were painted with Gemini in the kit's style). A plan board from an older version goes to the
+   trash, where it can be restored, and is made again. */
 const FM_DEMO_IMG = {
-  farm: 'asset:farm.webp', idee: 'asset:idee.webp', leaf: 'asset:leaf-2.webp',
-  maison: 'asset:dd-maison.webp', carottes: 'asset:dd-carottes.webp', cuve: 'asset:dd-cuve.webp', robot: 'asset:dd-robot.webp',
-  poule: 'asset:dd-poule.webp', panier: 'asset:dd-panier.webp',
-  ghGrange: 'asset:gh-grange.webp', ghMoulin: 'asset:gh-moulin.webp', ghArbre: 'asset:gh-arbre.webp', ghMaison: 'asset:gh-maison.webp'
+  farm: 'asset:farm-hd.webp', idee: 'asset:idee.webp', leaf: 'asset:leaf-2.webp', compass: 'asset:compass.webp',
+  barn: 'asset:st-barn.webp', house: 'asset:st-house.webp', chicken: 'asset:st-chicken.webp',
+  greenhouse: 'asset:st-greenhouse.webp', well: 'asset:st-well.webp', tractor: 'asset:st-tractor.webp',
+  sunflower: 'asset:st-sunflower.webp', crate: 'asset:st-crate.webp', ruche: 'asset:pr-ruche.webp',
+  compost: 'asset:pr-compost.webp', solaire: 'asset:pr-solaire.webp', epouv: 'asset:pr-epouvantail.webp',
+  pommier: 'asset:pr-pommier.webp', mare: 'asset:pr-mare.webp', brouette: 'asset:pr-brouette.webp',
+  cuve: 'asset:pr-cuve.webp', panneau: 'asset:pr-panneau.webp', foin: 'asset:pr-foin.webp',
+  printemps: 'asset:sa-printemps.webp', ete: 'asset:sa-ete.webp', automne: 'asset:sa-automne.webp',
+  hiver: 'asset:sa-hiver.webp'
 };
 const FM_INK = '#3B2A1C';
 async function fmDemo() {
-  if (!S || !S.prefs || S.prefs.fmDemo >= 2 || theme().id !== 'farmer') return;
-  const had = S.prefs.fmDemo || 0; S.prefs.fmDemo = 2; save();
-  if (had === 1) for (const d of S.docs) if (d.type === 'board' && d.title === 'Plan de la ferme' && !d.trash) d.trash = true;
-  await fmDemoPlan(); fmDemoMind(); save();
+  if (!S || !S.prefs || S.prefs.fmDemo >= 3 || theme().id !== 'farmer') return;
+  const had = S.prefs.fmDemo || 0; S.prefs.fmDemo = 3; save();
+  if (had) for (const d of S.docs) if (d.type === 'board' && d.title === 'Plan de la ferme' && !d.trash) d.trash = true;
+  await fmDemoPlan(); if (had < 2) fmDemoMind(); save();
 }
 function fmDemoMind() {
   const it = mkMind(0, 0, 'Ferme durable', [
@@ -33,35 +40,95 @@ async function fmDemoPlan() {
       const b = await (await fetch(u)).blob();
       img[k] = await importImage(new File([b], k + '.webp', { type: 'image/webp' }));
     }
-    const INK = FM_INK, G = '#5B8A3C';
+    const INK = FM_INK, G = '#5B8A3C', PAPER = '#EFE3C8', EDGE = '#D8C6A2';
+    const C = { yellow: '#F8E7A8', green: '#D9E8B6', blue: '#C4DFF0', peach: '#F7C7A6', cream: '#F7F0E0', rose: '#F3D3D0' };
     const pic = (k, x, y, w, o = {}) => mkImage(x, y, w, Math.round(w * img[k].h / img[k].w), img[k].id, { frm: o.frm || 'none', cap: o.cap || '' });
-    const note = (x, y, w, h, txt, c) => mkNote(x, y, txt, c, { w, h, fs: 22, font: HAND, al: 'left' });
+    const note = (x, y, w, h, txt, c, fs = 28) => mkNote(x, y, txt, c, { w, h, fs, font: HAND, al: 'left' });
+    const text = (x, y, txt, fs, o = {}) => mkText(x, y, txt, { fs, font: HAND, color: o.color || INK, bold: o.bold !== false, ...o });
+    const strip = (x, y, w, h, c = PAPER) => mkShape(x, y, w, h, 'rect', { sc: EDGE, fc: c, sw: 1, sty: 'clean', fill: 'solid' });
+    const pill = (x, y, w, h, c, txt) => mkShape(x, y, w, h, 'round', { sc: EDGE, fc: c, sw: 1, sty: 'clean', fill: 'solid', txt, fs: 24, font: HAND, color: INK });
+    const arrow = (a, b, o = {}) => mkConn(a, b, { route: 'curve', sc: INK, sw: 3, sty: 'clean', ...o });
     const it = [];
-    /* pencil sketches behind everything */
-    it.push(pic('ghMaison', 470, 150, 150), pic('ghArbre', 300, 200, 120), pic('ghGrange', 880, 230, 170), pic('ghMoulin', 1000, 420, 120), pic('ghArbre', 240, 600, 110));
-    const farm = pic('farm', 300, 150, 740);
+
+    /* 1. the plan: the painted farm in the middle, one note per place around it, each arrow lands on its building */
+    const F1 = { x: 0, y: 0, w: 1960, h: 1240 };
+    it.push(mkFrame(F1.x, F1.y, F1.w, F1.h, 'Plan'));
+    it.push(strip(60, 60, 520, 100), text(84, 74, 'Plan de la ferme', 54), pic('leaf', 526, 58, 50));
+    it.push(text(64, 176, 'Saison 2027 · une ferme durable, autonome en eau', 24, { bold: false, color: '#6B5440' }));
+    it.push(pic('compass', 1770, 50, 140));
+    const farm = pic('farm', 400, 230, 1160);
     it.push(farm);
-    /* the title on its strip of paper, a leaf after it */
-    it.push(mkShape(100, 70, 430, 88, 'rect', { sc: '#D8C6A2', fc: '#EFE3C8', sw: 1, sty: 'clean', fill: 'solid' }));
-    it.push(mkText(122, 84, 'Plan de la ferme', { fs: 44, font: HAND, color: INK, bold: true }));
-    it.push(pic('leaf', 478, 68, 46));
-    /* sticky notes with their doodles */
-    const house = note(96, 212, 228, 196, 'Maison principale\n- Cuisine\n- Réserve\n- Atelier\n- Agrandir ?', '#F8E7A8');
-    const crops = note(540, 64, 190, 178, 'Rotation\n- Blé\n- Carotte\n- Tomate\n- Potiron', '#D9E8B6');
-    const water = note(746, 104, 228, 156, 'Système d’eau\n- Récupérateur\n- Réservoir\n- Irrigation', '#C4DFF0');
-    const auto = note(996, 166, 238, 172, 'Plus tard\n☐ Pompe solaire\n☐ Capteurs\n☐ Arrosage auto', '#F8E7A8');
-    const coop = note(116, 470, 206, 160, 'Poulailler\n- Œufs\n- Engrais\n- Mangeoire ?', '#F3E8CF');
-    const garden = note(676, 482, 216, 178, 'Potager\n- Salade\n- Carotte\n- Tomate\n- Potiron', '#F7C7A6');
-    it.push(house, crops, water, auto, coop, garden);
-    it.push(pic('maison', 238, 262, 72), pic('carottes', 660, 130, 56), pic('cuve', 908, 178, 56), pic('robot', 1178, 232, 50), pic('poule', 252, 540, 56), pic('panier', 820, 560, 64));
-    /* ideas: a lightbulb title, the polaroid and a list */
-    it.push(mkText(1050, 352, '💡 Idées', { fs: 40, font: HAND, color: INK, bold: true }));
-    const photo = pic('idee', 1050, 410, 165, { frm: 'polaroid' });
-    const ideas = note(1036, 560, 228, 150, 'À essayer\n☐ Des arbres\n☐ Un chemin\n☐ Plus de détails', '#F7F0E0');
-    it.push(photo, ideas);
-    /* the arrows of the concept, in dark brown ink */
-    const arrow = (a, b, o = {}) => mkConn({ id: a.id }, { id: b.id }, { route: 'curve', sc: INK, sw: 3, sty: 'clean', ...o });
-    it.push(arrow(house, farm), arrow(water, auto), arrow(coop, farm), arrow(garden, farm), arrow(photo, auto, { sc: G }));
+    const at = (fx, fy) => ({ id: farm.id, fx, fy });
+    const place = [
+      // note, sticker, where the arrow lands on the farm
+      [note(60, 270, 290, 250, 'Grange & moulin\n- Foin, outils\n- Atelier\n- Éolienne à réviser', C.yellow), 'barn', at(.37, .42)],
+      [note(60, 660, 290, 230, 'Poulailler\n- 12 poules\n- Œufs, engrais\n- Mangeoire auto ?', C.cream), 'chicken', at(.15, .66)],
+      [note(1610, 270, 290, 250, 'Maison principale\n- Cuisine\n- Réserve\n- Agrandir ?', C.peach), 'house', at(.6, .26)],
+      [note(1610, 660, 290, 230, 'Système d’eau\n- Récupérateur\n- Château d’eau\n- Irrigation', C.blue), 'well', at(.92, .42)],
+      [note(560, 980, 300, 220, 'Potager\n- Salade, carotte\n- Tomate\n- Potiron', C.green), 'sunflower', at(.56, .66)],
+      [note(1100, 980, 300, 220, 'Serre\n- Semis d’hiver\n- Agrandir en 2028\n- Bac à compost', C.yellow), 'greenhouse', at(.79, .5)]
+    ];
+    for (const [n, st, end] of place) {
+      it.push(n, pic(st, n.x + n.w - 62, n.y - 26, 84));
+      const side = n.y >= 980 ? { id: n.id, fx: .5, fy: 0 } : n.x < 400 ? { id: n.id, fx: 1, fy: .5 } : { id: n.id, fx: 0, fy: .5 };
+      it.push(arrow(side, end));
+    }
+    /* the rotation, beside the garden, dashed because it is a rule and not a place */
+    const rot = note(60, 980, 420, 220, 'Rotation (4 ans)\n1. Feuilles   2. Racines\n3. Fruits   4. Engrais vert', C.rose, 26);
+    it.push(rot, pic('foin', 400, 952, 84), arrow({ id: rot.id, fx: 1, fy: .5 }, { id: place[4][0].id, fx: 0, fy: .5 }, { dash: 'dash', sc: G }));
+    const later = note(1470, 980, 430, 220, 'Plus tard\n☐ Pompe solaire\n☐ Capteurs d’humidité\n☐ Arrosage auto', C.cream, 26);
+    it.push(later, pic('solaire', 1826, 952, 80), arrow({ id: place[3][0].id, fx: .5, fy: 1 }, { id: later.id, fx: .7, fy: 0 }, { dash: 'dash', sc: G }));
+
+    /* 2. the four seasons, one column each */
+    const F2 = { x: 0, y: 1320, w: 1960, h: 600 };   // picture, then the season's note
+    it.push(mkFrame(F2.x, F2.y, F2.w, F2.h, 'Saisons'));
+    const seasons = [
+      ['printemps', 'Printemps', C.green, '☐ Semer blé et carottes\n☐ Planter les tomates (mai)\n☐ Installer les ruches\n☐ Nettoyer le poulailler'],
+      ['ete', 'Été', C.yellow, '☐ Arroser tôt le matin\n☐ Récolter salades, tomates\n☐ Faire les foins (juillet)\n☐ Vérifier la cuve'],
+      ['automne', 'Automne', C.peach, '☐ Potirons et pommes\n☐ Semer l’engrais vert\n☐ Retourner le compost\n☐ Réparer les clôtures'],
+      ['hiver', 'Hiver', C.blue, '☐ Tailler le verger\n☐ Rotation 2028\n☐ Entretenir les outils\n☐ Commander les semences']
+    ];
+    seasons.forEach(([k, t, c, body], i) => {
+      const x = 60 + i * 470;
+      it.push(pic(k, x + 120, F2.y + 50, 180));
+      it.push(note(x, F2.y + 250, 420, 290, t + '\n' + body, c, 28));
+    });
+
+    /* 3. the work in progress, cards in three columns */
+    const F3 = { x: 0, y: 2000, w: 1200, h: 740 };
+    it.push(mkFrame(F3.x, F3.y, F3.w, F3.h, 'Chantier'));
+    const cols = [
+      ['À faire', C.yellow, [['Agrandir la serre', 'greenhouse'], ['Goutte à goutte', 'cuve'], ['Trois ruches', 'ruche'], ['Verger', 'pommier']]],
+      ['En cours', C.blue, [['Potager en carrés', 'brouette'], ['Château d’eau', 'well'], ['Poulailler', 'chicken'], ['Composteur', 'compost']]],
+      ['Fait', C.green, [['Plan du terrain', 'compass'], ['Grange', 'barn'], ['Clôtures', 'panneau'], ['Tracteur révisé', 'tractor']]]
+    ];
+    cols.forEach(([t, c, cards], i) => {
+      const x = 60 + i * 370;
+      it.push(pill(x, F3.y + 60, 340, 60, c, t));
+      cards.forEach(([label, st], j) => {
+        const y = F3.y + 140 + j * 146;
+        it.push(note(x, y, 340, 126, label, C.cream, 26), pic(st, x + 252, y + 22, 76));
+      });
+    });
+
+    /* 4. the money, the ideas and the pieces left to place on the plan */
+    const F4 = { x: 1280, y: 2000, w: 680, h: 1200 };
+    const f4 = mkFrame(F4.x, F4.y, F4.w, F4.h, 'Budget & idées');
+    it.push(f4);
+    const sheet = mkSheet(F4.x + 40, F4.y + 60, { title: 'Budget 2027', cols: 3, rows: 7, fs: 20, w: 600,
+      cells: { A1: 'Poste', B1: 'Prévu (€)', C1: 'Dépensé (€)', A2: 'Serre', B2: '1200', C2: '0', A3: 'Irrigation', B3: '450', C3: '120',
+        A4: 'Ruches', B4: '300', C4: '0', A5: 'Clôtures', B5: '380', C5: '380', A6: 'Semences', B6: '150', C6: '60', A7: 'Total', B7: '=SOMME(B2:B6)', C7: '=SOMME(C2:C6)' } });
+    it.push(sheet);
+    const iy = sheet.y + sheet.h + 50;
+    it.push(text(F4.x + 40, iy, '💡 Idées', 40));
+    const photo = pic('idee', F4.x + 40, iy + 70, 250, { frm: 'polaroid', cap: 'La ferme rêvée' });
+    const ideas = note(F4.x + 330, iy + 70, 310, 230, 'À essayer\n☐ Une mare\n☐ Un chemin\n☐ Un épouvantail', C.cream, 26);
+    it.push(photo, ideas, arrow({ id: photo.id, fx: 1, fy: .35 }, { id: ideas.id, fx: 0, fy: .35 }, { sc: G }));
+    const py = iy + 340;
+    it.push(text(F4.x + 40, py, 'À placer sur le plan', 26));
+    ['mare', 'epouv', 'pommier', 'ruche', 'compost', 'crate'].forEach((k, i) => it.push(pic(k, F4.x + 40 + (i % 3) * 200, py + 56 + Math.floor(i / 3) * 150, 120)));
+    f4.h = py + 56 + 150 + 150 - F4.y;   // the frame ends under the last row, whatever the sheet's height
+
     newDoc('board', { title: 'Plan de la ferme', items: it, bg: 'grid' });
     save();
   } catch (e) { console.warn('farmer demo board', e); }
