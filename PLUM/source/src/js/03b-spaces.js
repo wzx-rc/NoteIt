@@ -24,6 +24,7 @@ function renderWelcome(v) {
           <form class="wl-form" id="wlForm" hidden><input id="wlName" placeholder="Nom de l’espace" autocomplete="off" maxlength="60" aria-label="Nom de l’espace"><button class="btn pri" type="submit">Créer</button></form></div>
       </div></section>
     <button class="wl-skip" id="wlSkip">Commencer sans espace : vos notes iront dans « Non classées », à ranger plus tard</button>
+    <button class="wl-skip wl-sync" id="wlSync">Déjà PLUM sur un autre appareil ? Se connecter pour récupérer mes données</button>
   </div></div>`;
   const box = $('#wlCreate', v), form = $('#wlForm', v), name = $('#wlName', v);
   const ask = () => { box.classList.add('on'); form.hidden = false; name.focus(); };
@@ -31,6 +32,7 @@ function renderWelcome(v) {
   $('.wl-txt b', v).onclick = ask;
   form.onsubmit = e => { e.preventDefault(); if (name.value.trim()) createSpace(name.value); else name.focus(); };
   name.onkeydown = e => { if (e.key === 'Escape') { form.hidden = true; box.classList.remove('on'); } };
+  $('#wlSync', v).onclick = () => openSettings('sync');
   $('#wlSkip', v).onclick = () => { S.prefs.welcomed = true; S.prefs.cur = DEF_SPACE; save(); go('all'); };
   $('.wl-themes', v).onclick = e => {
     const b = e.target.closest('[data-th]'); if (!b) return;

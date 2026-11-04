@@ -96,7 +96,7 @@ function bindShell() {
     e.preventDefault(); Mood.drop(e.dataTransfer, spaceById(ctxSpace()) || curSpace());
   });
 
-  window.__nh = { S: () => S, go, save, applyTheme, applyUiScale, openSettings, spaceMedia, Board, Ink, PENS, migrateState, importJSON, exportJSON, newDoc, Mood, createSpace, ink: { inkSVG, sampleStroke, brushPreview, penPref, TEX_ORDER, NIB_ORDER, texTile, nibImage } };
+  window.__nh = { S: () => S, Sync, Assets, go, save, applyTheme, applyUiScale, openSettings, spaceMedia, Board, Ink, PENS, migrateState, importJSON, exportJSON, newDoc, Mood, createSpace, ink: { inkSVG, sampleStroke, brushPreview, penPref, TEX_ORDER, NIB_ORDER, texTile, nibImage } };
   const flush = () => { try { window.__flushSave(); } catch (e) {} };
   addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
@@ -120,6 +120,7 @@ async function boot() {
   $('#focusAi').hidden = !S.prefs.aiOn;
   Mood.mount();
   go(S.prefs.last || 'home');
+  Sync.start();
   if (!ok) setTimeout(() => toast("Ce navigateur n'enregistre pas vos changements : exportez avant de fermer."), 600);
 }
 boot().catch(e => { console.error(e); document.body.insertAdjacentHTML('beforeend', `<div style="position:fixed;inset:auto 16px 16px;background:#E5484D;color:#fff;padding:12px 14px;border-radius:12px;z-index:999">PLUM n'a pas pu démarrer : ${esc(e.message || e)}</div>`); });

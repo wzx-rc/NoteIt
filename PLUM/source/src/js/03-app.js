@@ -11,7 +11,7 @@ let saveT = 0, saving = null;
 const STATE_KEY = 'plum-0.2';
 let LEGACY = null;
 function save() { clearTimeout(saveT); saveT = setTimeout(persist, 450); }
-async function persist() { clearTimeout(saveT); try { saving = DB.put('kv', STATE_KEY, S); await saving; } catch (e) { console.warn(e); } }
+async function persist() { clearTimeout(saveT); try { saving = DB.put('kv', STATE_KEY, S); await saving; } catch (e) { console.warn(e); } if (typeof Sync !== 'undefined') Sync.touched(); }
 window.__flushSave = () => { if (typeof Note !== 'undefined') Note.flush(); return persist(); };
 
 const docById = id => S.docs.find(d => d.id === id);
@@ -933,6 +933,7 @@ let settingsTab = 'ui';
 function openSettings(section) {
   const p = S.prefs;
   if (section === 'pen') settingsTab = 'board';
+  if (section === 'sync') settingsTab = 'account';
   const tab = settingsTab;
   const seg = (id, val, opts) => `<div class="seg" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" aria-pressed="${val === v}">${l}</button>`).join('')}</div>`;
   openModal(`<div class="mhd"><h2>Réglages</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
@@ -940,6 +941,7 @@ function openSettings(section) {
     <div class="spane" data-pane="account"${tab === 'account' ? '' : ' hidden'}>
     <div class="srow"><div class="l"><b>Prénom</b><small>Pour l'accueil.</small></div><input type="text" id="stName" value="${esc(p.name)}" aria-label="Prénom"></div>
     <div class="srow"><div class="l"><b>ChatGPT (clé personnelle)</b><small>${AI.keyInfo()}</small></div><button class="btn sm" id="stKey">${icon('key', 'sm')}Configurer</button></div>
+    <div id="stSync">${syncPane()}</div>
     </div>
     <div class="spane" data-pane="ui"${tab === 'ui' ? '' : ' hidden'}>
     <div class="srow skinrow"><div class="l"><b>Thème</b><small>Couleurs, icônes et habillage de l’interface. Tes données ne changent pas.</small></div>
@@ -986,16 +988,16 @@ function openSettings(section) {
     $('#stPen', m).onchange = e => { p.autoPen = e.target.checked; save(); };
     $('#stAi', m).onchange = e => { p.aiOn = e.target.checked; save(); applyAi(); };
     $('#stSens', m).oninput = e => { p.sens = +e.target.value; $('#stSensV', m).textContent = Math.round(p.sens * 100) + ' %'; save(); };
-    bindPenTest(m);
+    bindPenTest(m); bindSyncPane(m);
     if (section === 'pen') setTimeout(() => $('#stPenSec', m).scrollIntoView({ block: 'start', behavior: 'smooth' }), 30);
     $('#stKey', m).onclick = () => { closeModal(); AI.setup(); };
     $('#stExp', m).onclick = () => exportJSON(S, 'PLUM-espace.json');
     $('#stImp', m).onclick = () => $('#importIn').click();
     $('#stPrefs', m).onclick = () => exportPrefs();
     $('#stReset', m).onclick = () => {
-      $('#stConfirm', m).innerHTML = `<div class="confirm" style="margin-top:12px"><span>Effacer toutes les notes, boards et tâches de cet appareil ?</span><button class="btn sm" id="rsNo">Annuler</button><button class="btn sm pri" id="rsYes" style="background:var(--err);border-color:var(--err)">Tout effacer</button></div>`;
+      $('#stConfirm', m).innerHTML = `<div class="confirm" style="margin-top:12px"><span>Effacer toutes les notes, boards et tâches de cet appareil ?${Sync.info().on ? ' La synchro sera coupée ici, le cloud n’est pas touché.' : ''}</span><button class="btn sm" id="rsNo">Annuler</button><button class="btn sm pri" id="rsYes" style="background:var(--err);border-color:var(--err)">Tout effacer</button></div>`;
       $('#rsNo', m).onclick = () => $('#stConfirm', m).innerHTML = '';
-      $('#rsYes', m).onclick = async () => { S.docs = []; S.tasks = []; S.spaces = []; ensureDefaultSpace(S); S.prefs.cur = DEF_SPACE; S.prefs.welcomed = false; save(); await gcAssets(); closeModal(); go('welcome'); toast('Espace de travail vidé'); };
+      $('#rsYes', m).onclick = async () => { if (Sync.info().on) Sync.logout(true); S.docs = []; S.tasks = []; S.spaces = []; ensureDefaultSpace(S); S.prefs.cur = DEF_SPACE; S.prefs.welcomed = false; save(); await gcAssets(); closeModal(); go('welcome'); toast('Espace de travail vidé'); };
     };
     const lg = $('#stLegacy', m); if (lg) lg.onclick = () => { closeModal(); restoreLegacy(); };
   });

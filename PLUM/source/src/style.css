@@ -354,6 +354,15 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .srow:last-child { border-bottom: 0; }
 .srow .l { display: grid; gap: 2px; min-width: 0; }
 .srow .l small { color: var(--ink-3); font-size: 12px; }
+.syncform { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; padding: 4px 0 10px; }
+.syncform label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-3); min-width: 0; }
+.syncform input { height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--raise); color: var(--ink); padding: 0 10px; outline: 0; font: inherit; font-size: 13px; min-width: 0; }
+.syncform input:focus { border-color: var(--accent); }
+.syncform .syact { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.syncform .syact small { flex: 1; color: var(--err); font-size: 12px; }
+#syLine[data-st="err"], #syLine[data-st="auth"] { color: var(--err); }
+#syLine[data-st="ok"]::before, #syLine[data-st="idle"]::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #2E9E6A; margin-right: 6px; vertical-align: 1px; }
+@media (max-width: 560px) { .syncform { grid-template-columns: 1fr; } }
 .srow input[type="text"] { height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--raise); padding: 0 10px; outline: 0; }
 .tg { position: relative; width: 40px; height: 24px; flex: none; }
 .tg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
