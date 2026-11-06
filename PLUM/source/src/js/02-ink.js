@@ -6,7 +6,7 @@
    the watercolour gets a wet ragged edge and the airbrush is blurred. */
 const PENS = {
   pencil: { name: 'Crayon', icon: 'pencil', hint: 'Grain du papier, s’affine sous la main légère', size: 3, min: 1, max: 12, thin: .55, gamma: 1.1, o: .95, smooth: .3, grain: true },
-  pen: { name: 'Stylo', icon: 'pen', hint: 'Trait fin qui s’élargit avec la pression, pointes effilées', size: 3.5, min: 1, max: 12, thin: .8, gamma: 1, taper: true, o: 1, smooth: .5 },
+  pen: { name: 'Stylo', icon: 'pen', hint: 'Trait fin qui s’élargit avec la pression, pointes effilées', size: 3.5, min: 1, max: 12, thin: .92, gamma: 1.15, taper: true, o: 1, smooth: .5 },
   fine: { name: 'Feutre', icon: 'fine', hint: 'Trait régulier, bouts ronds', size: 4, min: 1, max: 14, thin: .08, gamma: 1, o: 1, smooth: .45 },
   brush: { name: 'Pinceau', icon: 'brush', hint: 'Pleins et déliés très marqués', size: 14, min: 3, max: 40, thin: .93, gamma: 1.3, taper: true, taperLen: 3.2, o: 1, smooth: .55 },
   marker: { name: 'Marqueur', icon: 'marker', hint: 'Pointe biseautée, encre translucide', size: 22, min: 6, max: 60, thin: .15, gamma: 1, o: .6, multiply: true, chisel: true, smooth: .4 },
@@ -27,14 +27,14 @@ const PENS = {
      fx = how the dab reacts: tl tilt shading, vs/vo speed on size/opacity, tp taper at the start (× size), pm smallest size under
      light pressure, jt/oj size/opacity jitter, rj turn jitter, rd roundness, sa scatter, cnt dabs per step, cj colour jitter,
      wet darker wet edge, td how deep the paper grain cuts */
-  graphite: { name: 'Graphite', icon: 'pencil', hint: 'Mine tendre : appuyez pour foncer, inclinez le stylet pour ombrer', size: 5, min: 1, max: 60, thin: .5, gamma: 1, o: .92, smooth: .3, alpha: 1, stamp: { sh: 't_graphite', tx: 'paper', fl: .42, sp: .06, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { tl: 1, pm: .35, jt: .12, td: .75 } } },
-  inkbrush: { name: 'Pinceau encre', icon: 'brush', hint: 'Pointe souple : plein en appuyant, délié en accélérant', size: 12, min: 2, max: 90, thin: .9, gamma: 1.2, o: 1, smooth: .55, alpha: 1, stamp: { sh: 't_ink', tx: 'none', fl: 1, sp: .035, dy: { ps: 1, po: 0, rot: 1, sc: 0 }, fx: { pm: .07, vs: -.55, tp: 2.2, rd: .82 } } },
-  fusain: { name: 'Fusain', icon: 'pencil', hint: 'Poudreux et sec, le grain du papier ressort', size: 22, min: 2, max: 140, thin: .5, gamma: 1, o: .95, smooth: .4, alpha: 1, stamp: { sh: 't_charcoal', tx: 'paper', fl: .26, sp: .05, dy: { ps: 1, po: 1, rot: 0, sc: 1 }, fx: { tl: .8, pm: .4, jt: .18, sa: .25, td: .9 } } },
-  aqua: { name: 'Aquarelle', icon: 'water', hint: 'Lavis transparent, bords chargés, papier torchon', size: 38, min: 4, max: 200, thin: .5, gamma: 1, o: .62, multiply: true, smooth: .55, alpha: 1, stamp: { sh: 't_water', tx: 'rough', fl: .16, sp: .08, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { pm: .45, jt: .14, wet: 1, td: .32, cj: .05, vo: -.3 } } },
-  crayon: { name: 'Craie grasse', icon: 'marker', hint: 'Cire qui saute sur le grain', size: 16, min: 2, max: 120, thin: .4, gamma: 1, o: 1, smooth: .4, alpha: 1, stamp: { sh: 't_crayon', tx: 'paper', fl: .7, sp: .07, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { pm: .5, jt: .08, td: .65, tl: .5 } } },
-  bristle: { name: 'Brosse', icon: 'brush', hint: 'Poils secs qui suivent le geste, sur toile', size: 30, min: 4, max: 200, thin: .5, gamma: 1, o: 1, smooth: .55, alpha: 1, stamp: { sh: 't_bristle', tx: 'linen', fl: .5, sp: .035, dy: { ps: 1, po: 0, rot: 1, sc: 0 }, fx: { pm: .4, rj: .06, td: .45, tp: 1.2, cj: .04 } } },
+  graphite: { name: 'Graphite', icon: 'pencil', hint: 'Mine tendre : appuyez pour foncer, inclinez le stylet pour ombrer', size: 5, min: 1, max: 60, thin: .5, gamma: 1, o: .92, smooth: .3, alpha: 1, stamp: { sh: 't_graphite', tx: 'paper', fl: .42, sp: .06, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { tl: 1, pm: .08, jt: .1, td: .75 } } },
+  inkbrush: { name: 'Pinceau encre', icon: 'brush', hint: 'Pointe souple : plein en appuyant, délié en accélérant', size: 12, min: 2, max: 90, thin: .9, gamma: 1.2, o: 1, smooth: .55, alpha: 1, stamp: { sh: 't_ink', tx: 'none', fl: 1, sp: .035, dy: { ps: 1, po: 0, rot: 1, sc: 0 }, fx: { pm: .04, vs: -.5, tp: 2.2, rd: .82 } } },
+  fusain: { name: 'Fusain', icon: 'pencil', hint: 'Poudreux et sec, le grain du papier ressort', size: 22, min: 2, max: 140, thin: .5, gamma: 1, o: .95, smooth: .4, alpha: 1, stamp: { sh: 't_charcoal', tx: 'paper', fl: .26, sp: .05, dy: { ps: 1, po: 1, rot: 0, sc: 1 }, fx: { tl: .8, pm: .1, jt: .15, sa: .25, td: .9 } } },
+  aqua: { name: 'Aquarelle', icon: 'water', hint: 'Lavis transparent, bords chargés, papier torchon', size: 38, min: 4, max: 200, thin: .5, gamma: 1, o: .62, multiply: true, smooth: .55, alpha: 1, stamp: { sh: 't_water', tx: 'rough', fl: .16, sp: .08, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { pm: .15, jt: .12, wet: 1, td: .32, cj: .05, vo: -.3 } } },
+  crayon: { name: 'Craie grasse', icon: 'marker', hint: 'Cire qui saute sur le grain', size: 16, min: 2, max: 120, thin: .4, gamma: 1, o: 1, smooth: .4, alpha: 1, stamp: { sh: 't_crayon', tx: 'paper', fl: .7, sp: .07, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { pm: .12, jt: .08, td: .65, tl: .5 } } },
+  bristle: { name: 'Brosse', icon: 'brush', hint: 'Poils secs qui suivent le geste, sur toile', size: 30, min: 4, max: 200, thin: .5, gamma: 1, o: 1, smooth: .55, alpha: 1, stamp: { sh: 't_bristle', tx: 'linen', fl: .5, sp: .035, dy: { ps: 1, po: 0, rot: 1, sc: 0 }, fx: { pm: .1, rj: .06, td: .45, tp: 1.2, cj: .04 } } },
   airsoft: { name: 'Aérographe', icon: 'air', hint: 'Voile pulvérisé, se charge en repassant', size: 70, min: 6, max: 300, thin: .3, gamma: 1, o: .9, smooth: .6, alpha: 1, stamp: { sh: 't_spray', tx: 'none', fl: .1, sp: .07, dy: { ps: 0, po: 1, rot: 0, sc: 0 }, fx: { jt: .1 } } },
-  sponge: { name: 'Éponge', icon: 'water', hint: 'Tampon poreux, irrégulier', size: 56, min: 8, max: 240, thin: .4, gamma: 1, o: 1, smooth: .5, alpha: 1, stamp: { sh: 't_sponge', tx: 'none', fl: .75, sp: .32, dy: { ps: 1, po: 1, rot: 0, sc: 1 }, fx: { jt: .35, oj: .45, sa: .5, cj: .08 } } },
+  sponge: { name: 'Éponge', icon: 'water', hint: 'Tampon poreux, irrégulier', size: 56, min: 8, max: 240, thin: .4, gamma: 1, o: 1, smooth: .5, alpha: 1, stamp: { sh: 't_sponge', tx: 'none', fl: .75, sp: .32, dy: { ps: 1, po: 1, rot: 0, sc: 1 }, fx: { pm: .15, jt: .35, oj: .45, sa: .5, cj: .08 } } },
   alcohol: { name: 'Marqueur à alcool', icon: 'marker', hint: 'Pointe biseau, encre qui fonce en repassant', size: 22, min: 4, max: 90, thin: .1, gamma: 1, o: .7, multiply: true, smooth: .45, alpha: 1, stamp: { sh: 't_marker', tx: 'none', fl: .9, sp: .03, dy: { ps: 0, po: 0, rot: 0, sc: 0 }, fx: { rd: .3, wet: .25 } } }
 };
 /* the alpha brushes, in the order of the drawing bar */
@@ -256,7 +256,8 @@ function stampWalk(ctx, st, w) {
   const b = st.b, p = st.p, n = p.length, nib = NIBS[b.sh] || NIBS.grain, sh = NIBS[b.sh] ? b.sh : 'grain', col = inkColor(st.c), img = nibTinted(sh, col), dy = b.dy || {};
   const fx = b.fx || null, F = fx || {}, D = st.d && st.d.length >= (n / 3) * 2 - 2 ? st.d : null, pm = F.pm ?? .18;
   const imgs = F.cj ? [-1, -.5, 0, .5, 1].map(t => nibTinted(sh, shadeHex(col, t * F.cj))) : null;
-  const sizeAt = pp => st.s * (dy.ps ? pm + (1 - pm) * clamp(pp, 0, 1) : 1), step = pp => Math.max(.12 / (b.k || 1), (b.sp || .1) * sizeAt(pp));
+  /* alpha brushes (fx): a curve that spreads the usual hand pressures (.3–.8) over the whole width range */
+  const pc = fx ? 1.3 : 1, sizeAt = pp => st.s * (dy.ps ? pm + (1 - pm) * Math.pow(clamp(pp, 0, 1), pc) : 1), step = pp => Math.max(.12 / (b.k || 1), (b.sp || .1) * sizeAt(pp));
   const sq = img.height / img.width;
   if (!w) w = { i: 3, acc: 1e9, px: p[0], py: p[1], pp: p[2], pv: D ? D[0] : 0, pt: D ? D[1] : 0, ang: n >= 6 ? Math.atan2(p[4] - p[1], p[3] - p[0]) : 0, r: rng(b.sd || .5), len: 0, bb: null };
   const dab = (x, y, pp, ang, vv, tt) => {

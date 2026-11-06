@@ -22,6 +22,7 @@ const BrushLib = (() => {
       ${slider('s', 'Taille', sizeT(k, pr.s), sizeText(pr.s))}
       ${slider('o', 'Opacité', pr.o, pct(pr.o))}
       ${slider('sm', 'Lissage', pr.sm, pct(pr.sm))}
+      ${d.stamp.dy && d.stamp.dy.ps ? slider('pm', 'Pression', 1 - (pr.fx.pm ?? .18), pct(1 - (pr.fx.pm ?? .18))) : ''}
       ${tex ? slider('td', 'Grain', pr.fx.td ?? 1, pct(pr.fx.td ?? 1)) : ''}
     </div>`;
   }
@@ -50,6 +51,7 @@ const BrushLib = (() => {
       if (r.dataset.bs === 's') { p.s = sizeOf(k, v); b.textContent = sizeText(p.s); }
       else if (r.dataset.bs === 'o') { p.o = Math.max(.05, v); b.textContent = pct(p.o); }
       else if (r.dataset.bs === 'sm') { p.sm = v; b.textContent = pct(v); }
+      else if (r.dataset.bs === 'pm') { p.fx = Object.assign({}, p.fx, { pm: Math.round((1 - v) * 100) / 100 }); b.textContent = pct(v); }
       else if (r.dataset.bs === 'td') { p.fx = Object.assign({}, p.fx, { td: v }); b.textContent = pct(v); }
       o.changed(false);
     });
