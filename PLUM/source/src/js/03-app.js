@@ -152,7 +152,6 @@ function go(route, opts = {}) {
   /* everything lives in a space: the space's home replaces the old home page, opening a page of another space switches to it */
   if (R.name === 'doc') { const d = docById(R.id); if (!d) R = { name: 'space' }; else if (d.trash) R = { name: 'trash' }; else setCurSpace(d.sp); }
   if (R.name === 'home') R = { name: 'hub' };
-  if (R.name !== 'hub' && typeof hubEdit !== 'undefined' && hubEdit) { hubEdit = false; document.documentElement.removeAttribute('data-hubedit'); }
   if (R.name === 'space') { if (spaceById(R.id)) setCurSpace(R.id); R = { name: 'space', id: curSpace().id }; }
   if (!S.prefs.welcomed) R = { name: 'welcome' };
   else if (R.name === 'welcome') R = { name: 'all' };
