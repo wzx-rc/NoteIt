@@ -50,6 +50,7 @@ const Sync = (() => {
     for (const d of S.docs) m.set('doc:' + d.id, payload('doc', d));
     for (const t of S.tasks) m.set('task:' + t.id, t);
     m.set('meta:order', { spaces: S.spaces.map(s => s.id), docs: S.docs.map(d => d.id), tasks: S.tasks.map(t => t.id), taskOrder: S.prefs.taskOrder || [] });
+    if (S.hub) m.set('meta:hub', S.hub);
     return m;
   }
   /* what changed on this device since the last agreement with the cloud */
@@ -149,7 +150,7 @@ const Sync = (() => {
     const [kind, id] = split(k);
     snap[k] = r.deleted ? { h: '', t: r.updated_at, del: true } : { h: rh, t: r.updated_at };
     delete dirty[k];
-    if (kind === 'meta') { if (id === 'order' && r.data && !r.deleted) order(r.data); return; }
+    if (kind === 'meta') { if (id === 'order' && r.data && !r.deleted) order(r.data); if (id === 'hub' && r.data && !r.deleted) { S.hub = r.data; if (R.name === 'hub') renderHubMods(); } return; }
     const arr = kind === 'space' ? S.spaces : kind === 'doc' ? S.docs : kind === 'task' ? S.tasks : null;
     if (!arr) return;
     const i = arr.findIndex(o => o.id === id);

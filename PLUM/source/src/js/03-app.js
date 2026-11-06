@@ -30,7 +30,7 @@ function ensureDefaultSpace(st) {
   return st;
 }
 /* the pages that cover every space: there, what is created goes to « Non classées » (or to the space picked in the filter) */
-const GLOBAL_ROUTES = ['all', 'todo', 'favs', 'trash', 'search'];
+const GLOBAL_ROUTES = ['hub', 'all', 'todo', 'favs', 'trash', 'search'];
 const isGlobal = () => GLOBAL_ROUTES.includes(R.name);
 const curSpace = () => spaceById(S.prefs.cur) || spaceById(DEF_SPACE) || S.spaces[0];
 const userSpaces = () => S.spaces.filter(s => s.id !== DEF_SPACE);
@@ -151,7 +151,8 @@ function go(route, opts = {}) {
   R = typeof route === 'string' ? parseRoute(route) : route;
   /* everything lives in a space: the space's home replaces the old home page, opening a page of another space switches to it */
   if (R.name === 'doc') { const d = docById(R.id); if (!d) R = { name: 'space' }; else if (d.trash) R = { name: 'trash' }; else setCurSpace(d.sp); }
-  if (R.name === 'home') R = { name: 'all' };
+  if (R.name === 'home') R = { name: 'hub' };
+  if (R.name !== 'hub' && typeof hubEdit !== 'undefined' && hubEdit) { hubEdit = false; document.documentElement.removeAttribute('data-hubedit'); }
   if (R.name === 'space') { if (spaceById(R.id)) setCurSpace(R.id); R = { name: 'space', id: curSpace().id }; }
   if (!S.prefs.welcomed) R = { name: 'welcome' };
   else if (R.name === 'welcome') R = { name: 'all' };
@@ -166,6 +167,7 @@ function go(route, opts = {}) {
     case 'welcome': renderWelcome(v); break;
     case 'notes': case 'boards': case 'favs': case 'trash': renderDocList(v, R.name); break;
     case 'tasks': renderTasks(v); break;
+    case 'hub': renderHub(v); break;
     case 'all': renderAll(v); break;
     case 'todo': renderAllTasks(v); break;
     case 'mood': renderMood(v); break;
@@ -187,7 +189,7 @@ function openDoc(v, d) {
 /* ================= sidebar =================
    0.2.14, Evernote-like: a « Nouvelle note » button on top, the pages that cover everything (Toutes les notes, Tâches,
    Non classées, Favoris), then the spaces like notebooks: the open one shows its sections and its pages. */
-const NAV = [['all', 'notes', 'Toutes les notes'], ['todo', 'tasks', 'Tâches'], ['space:' + 'default', 'inbox', 'Non classées'], ['favs', 'star', 'Favoris']];
+const NAV = [['hub', 'layout', 'HUB'], ['all', 'notes', 'Toutes les notes'], ['todo', 'tasks', 'Tâches'], ['space:' + 'default', 'inbox', 'Non classées'], ['favs', 'star', 'Favoris']];
 const SP_NAV = [['tasks', 'tasks', 'Tâches'], ['notes', 'note', 'Notes'], ['boards', 'board', 'Boards'], ['mood', 'image', 'Moodboard']];
 const NAV2 = [['trash', 'trash', 'Corbeille']];
 function renderSide() {
@@ -570,7 +572,8 @@ function sortable(root, o) {
 }
 function refreshTaskViews() {
   renderSide();
-  if (R.name === 'tasks' || R.name === 'space' || R.name === 'todo') { const v = $('#view'), st = v.scrollTop; go(R, { keepFocus: true }); v.scrollTop = st; }
+  if (R.name === 'hub') renderHubMods();
+  else if (R.name === 'tasks' || R.name === 'space' || R.name === 'todo') { const v = $('#view'), st = v.scrollTop; go(R, { keepFocus: true }); v.scrollTop = st; }
   else if (R.name === 'doc' && typeof Board !== 'undefined') Board.refreshRefs();
 }
 
@@ -1032,7 +1035,7 @@ function bindPenTest(m) {
 async function blobToDataURL(b) { return new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.onerror = () => r(''); f.readAsDataURL(b); }); }
 // every page of a note (the first one is d.html, the others d.pages)
 const noteHTML = (d, sep = '') => [d.html || ''].concat((d.pages || []).map(p => p.html || '')).join(sep);
-function usedAssets(docs, spaces = S.spaces, tasks = S.tasks) { const ids = new Set(); for (const t of tasks || []) for (const id of t.res || []) ids.add(id); for (const d of docs) { if (d.type === 'board') for (const it of d.items || []) if (it.asset) ids.add(it.asset); if (d.type === 'note') for (const m of noteHTML(d).matchAll(/data-asset="([^"]+)"/g)) ids.add(m[1]); } for (const sp of spaces || []) for (const m of sp.media || []) if (m.asset) ids.add(m.asset); return ids; }
+function usedAssets(docs, spaces = S.spaces, tasks = S.tasks) { const ids = new Set(); for (const t of tasks || []) for (const id of t.res || []) ids.add(id); for (const d of docs) { if (d.type === 'board') for (const it of d.items || []) if (it.asset) ids.add(it.asset); if (d.type === 'note') for (const m of noteHTML(d).matchAll(/data-asset="([^"]+)"/g)) ids.add(m[1]); } for (const sp of spaces || []) { if (sp.cover) ids.add(sp.cover); for (const m of sp.media || []) if (m.asset) ids.add(m.asset); } return ids; }
 /* the workspace saved before 0.2 (kv "state"): kept as it was, its files are never collected, and it can be merged back */
 function legacyInfo() {
   const L = LEGACY, n = (a, w) => `${a} ${w}${a > 1 ? 's' : ''}`;
