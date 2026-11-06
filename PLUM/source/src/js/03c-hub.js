@@ -3,7 +3,7 @@
    or, folded with the arrow next to the title, small capsules. Then Récents. On the right: today's planning
    and the Moodboard Général (a tray for anything dropped, filed into a project later).
    Project Card: cover image, main colour with two shades derived from it, pinned note, two tasks, a small « Board ↗ ».
-   S.hub (synced as meta:hub): { fold, off: [space ids hidden from the HUB], note, city, ics }. */
+   S.hub (synced as meta:hub): { fold, sideFold (right panel reduced to a thin rail, 0.2.35), off: [space ids hidden from the HUB], note, city, ics }. */
 const hubPhone = () => innerWidth < 700;
 function hubState() {
   const H = S.hub || (S.hub = {});
@@ -221,13 +221,13 @@ function renderHub(v) {
   const nEv = hubEvents().length, name = (S.prefs.name || '').trim();
   v.innerHTML = `<div class="hubpage cc">
     <div class="hub-qs" role="toolbar" aria-label="Quick Start"><span class="lab">Quick Start</span>${QS.map(([k, ic, l]) => `<button class="qsb" data-qs="${k}"><span class="qsi">${icon(ic)}</span>${l}</button>`).join('')}</div>
-    <div class="hub-main">
+    <div class="hub-main${H.sideFold ? ' side-off' : ''}">
       <div class="hub-col">
         <div class="hub-hello"><h1>${name ? `Bonjour ${esc(name)}` : 'Bonjour'}</h1><span>${date.charAt(0).toUpperCase() + date.slice(1)}${wxs}${nEv ? ` · ${nEv} évènement${nEv > 1 ? 's' : ''} aujourd’hui` : ''}</span></div>
         <section class="hub-sec" id="hubProj"></section>
         <section class="hub-sec" id="hubRec"></section>
       </div>
-      <aside class="hub-side"><section class="hmod hm-cal" id="hubCal"></section><section class="hmod hm-mood" id="hubMood"></section></aside>
+      <aside class="hub-side"><button class="hub-sfold" data-hsfold aria-expanded="${!H.sideFold}" aria-label="${H.sideFold ? 'Ouvrir le panneau' : 'Réduire le panneau'}" title="${H.sideFold ? 'Ouvrir Aujourd’hui et le Moodboard' : 'Réduire le panneau'}">${icon('chev', 'sm')}</button><button class="hub-srail" data-hsfold aria-hidden="true" tabindex="-1"><span>Moodboard</span></button><section class="hmod hm-cal" id="hubCal"></section><section class="hmod hm-mood" id="hubMood"></section></aside>
     </div></div>`;
   renderHubMods();
   bindHub(v);
@@ -288,6 +288,7 @@ function bindHub(v) {
   root.addEventListener('click', e => {
     if (Date.now() - dragged < 250) { e.preventDefault(); e.stopPropagation(); return; }
     const qs = e.target.closest('[data-qs]'); if (qs) { quickStart(qs.dataset.qs, qs); return; }
+    if (e.target.closest('[data-hsfold]')) { const H = hubState(); H.sideFold = !H.sideFold; save(); const m = $('.hub-main', root), b = $('.hub-sfold', root); m.classList.toggle('side-off', H.sideFold); b.setAttribute('aria-expanded', !H.sideFold); b.title = H.sideFold ? 'Ouvrir Aujourd’hui et le Moodboard' : 'Réduire le panneau'; b.setAttribute('aria-label', H.sideFold ? 'Ouvrir le panneau' : 'Réduire le panneau'); return; }
     if (e.target.closest('[data-hfold]')) { const H = hubState(); H.fold = !H.fold; save(); renderHubMods(); return; }
     if (e.target.closest('[data-hopts]')) { hubOptions(e.target.closest('[data-hopts]')); return; }
     const mv = e.target.closest('[data-hmv]'); if (mv) { moodFileMenu(mv, mv.dataset.hmv); return; }

@@ -1672,7 +1672,7 @@ const Board = (() => {
   let viewT = 0;
   /* the interface size (Réglages > UI) zooms the whole page: the board divides its own zoom by it, so what is drawn keeps
      its size on screen. view.* stays in page px; the saved view and the % shown are in screen px (z: 1 marks it) */
-  const uz = () => { const v = +S.prefs.uiScale; return [50, 75, 125].includes(v) ? v / 100 : 1; };
+  const uz = () => { const v = +S.prefs.uiScale; return [50, 75, 85, 125].includes(v) ? v / 100 : 1; };
   let uzNow = 1;
   const viewOut = () => { const z = uz(); return { x: Math.round(view.x * z), y: Math.round(view.y * z), k: +(view.k * z).toFixed(4), r: +view.r.toFixed(2), z: 1 }; };
   function uiScaled() { const z = uz(), f = uzNow / z; if (!mounted || f === 1) { uzNow = z; return; } uzNow = z; view.k = clamp(view.k * f, MINK, MAXK); view.x *= f; view.y *= f; viewChanged(); }
@@ -2660,8 +2660,21 @@ const Board = (() => {
   function renderOpts() {
     if (!optsEl) return;
     const h = ctxHTML([]);
-    if (optsEl._h !== h) { optsEl._h = h; optsEl.innerHTML = h; }
+    if (optsEl._h !== h) { optsEl._h = h; optsEl.innerHTML = h ? OGRIP + h : ''; }
     optsEl.hidden = !h;
+    if (h) placeOpts();
+  }
+  /* the tool options bar has its own grip too (0.2.35): S.prefs.optsOff = { x, y } moves it from its usual place
+     (under the tools, so it still follows the dock); double-click the grip to put it back */
+  const OGRIP = '<button class="ogrip" title="Glisser pour déplacer cette barre · double-clic pour la remettre en place" aria-label="Déplacer la barre d’options"></button>';
+  function placeOpts() {
+    if (!optsEl) return; const o = S.prefs.optsOff;
+    optsEl.classList.toggle('moved', !!o);
+    optsEl.style.translate = '';
+    if (!o || optsEl.hidden) return;
+    const r = optsEl.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+    const x = clamp(o.x, wr.left + 8 - r.left, Math.max(wr.left + 8 - r.left, wr.right - 8 - r.right)), y = clamp(o.y, wr.top + 8 - r.top, Math.max(wr.top + 8 - r.top, wr.bottom - 8 - r.bottom));
+    optsEl.style.translate = `${Math.round(x)}px ${Math.round(y)}px`;
   }
   function optsClick(e) { ctxClick(e); }
   /* the dock floats where it was left (S.prefs.dock = { x, y } in px from the board's top left); double-click the grip to put it back */
@@ -2677,12 +2690,24 @@ const Board = (() => {
     grip.addEventListener('pointerdown', e => {
       e.preventDefault(); grip.setPointerCapture(e.pointerId);
       const r = dockEl.getBoundingClientRect(), wr = wrap.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
-      const mv = ev => { S.prefs.dock = { x: Math.round(clamp(ev.clientX - wr.left - dx, 8, wr.width - r.width - 8)), y: Math.round(clamp(ev.clientY - wr.top - dy, 8, wr.height - r.height - 8)) }; placeDock(); };
+      const mv = ev => { S.prefs.dock = { x: Math.round(clamp(ev.clientX - wr.left - dx, 8, wr.width - r.width - 8)), y: Math.round(clamp(ev.clientY - wr.top - dy, 8, wr.height - r.height - 8)) }; placeDock(); placeOpts(); };
       const up = () => { grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up); dockEl.classList.remove('dragging'); save(); };
       dockEl.classList.add('dragging'); grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
     });
-    grip.addEventListener('dblclick', () => { delete S.prefs.dock; save(); placeDock(); });
-    optsEl.addEventListener('pointerdown', e => { if (!e.target.closest('input')) e.preventDefault(); });
+    grip.addEventListener('dblclick', () => { delete S.prefs.dock; save(); placeDock(); placeOpts(); });
+    optsEl.addEventListener('pointerdown', e => {
+      const g = e.target.closest('.ogrip');
+      if (g) {
+        e.preventDefault(); e.stopPropagation(); g.setPointerCapture(e.pointerId);
+        const o0 = S.prefs.optsOff || { x: 0, y: 0 }, x0 = e.clientX, y0 = e.clientY;
+        const mv = ev => { S.prefs.optsOff = { x: Math.round(o0.x + ev.clientX - x0), y: Math.round(o0.y + ev.clientY - y0) }; placeOpts(); };
+        const up = () => { g.removeEventListener('pointermove', mv); g.removeEventListener('pointerup', up); g.removeEventListener('pointercancel', up); optsEl.classList.remove('dragging'); save(); };
+        optsEl.classList.add('dragging'); g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
+        return;
+      }
+      if (!e.target.closest('input')) e.preventDefault();
+    });
+    optsEl.addEventListener('dblclick', e => { if (e.target.closest('.ogrip')) { delete S.prefs.optsOff; save(); placeOpts(); } });
     optsEl.addEventListener('click', optsClick);
     optsEl.addEventListener('input', e => { const r = e.target.closest('[data-psize]'); if (!r) return; const k = penKind; if (!S.prefs.pens[k]) S.prefs.pens[k] = {}; const sz = sizeOf(k, +r.value); S.prefs.pens[k].s = sz; const lab = r.parentElement, dot = $('.qdot', lab), d = clamp(sz, 2, 22); $('b', lab).textContent = sizeText(sz); dot.style.width = dot.style.height = d + 'px'; });
     optsEl.addEventListener('change', e => { if (!e.target.closest('[data-psize]')) return; save(); refreshTools(); Studio.sync(); });
@@ -2770,7 +2795,7 @@ const Board = (() => {
     zoomEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a; if (a === 'zin') zoomCenter(1.25); if (a === 'zout') zoomCenter(.8); if (a === 'z100') zoomTo(1); };
     brEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; if (b.dataset.a === 'fit') fitAll(); if (b.dataset.a === 'help') helpModal(); if (b.dataset.a === 'snap') { S.prefs.snap = S.prefs.snap === false; save(); syncSnap(); toast(S.prefs.snap ? 'Alignement automatique activé' : 'Alignement automatique coupé (Alt en glissant fait pareil)'); } };
     syncSnap();
-    ro = new ResizeObserver(() => { if (mounted) { ink.resize(); renderOverlay(); placeDock(); } }); ro.observe(host);
+    ro = new ResizeObserver(() => { if (mounted) { ink.resize(); renderOverlay(); placeDock(); placeOpts(); } }); ro.observe(host);
     tool = 'select'; setTool('select');
     items = relayout(items); reindex(); D.items = items;
     render();

@@ -793,7 +793,7 @@ function placeDecor(th) {
 }
 /* the size of the whole interface (Réglages > UI): the desktop app zooms its page like the browser zoom, so the
    pointer and the pen still land where they should; a browser gets CSS zoom */
-const UI_SCALES = ['50', '75', '100', '125'];
+const UI_SCALES = ['50', '75', '85', '100', '125'];
 function applyUiScale() {
   const v = UI_SCALES.includes(String(S.prefs.uiScale)) ? +S.prefs.uiScale : 100;
   if (window.notely && window.notely.setZoom) window.notely.setZoom(v / 100);

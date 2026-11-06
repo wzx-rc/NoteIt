@@ -2365,3 +2365,60 @@ html[data-hubedit] .pc-menu { pointer-events: auto; }
 .hub-row::-webkit-scrollbar { display: none; }
 .hubpage.cc .pc-plate b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 13px; letter-spacing: .02em; line-height: 1.1; }
 @media (max-width: 699px) { .hub-sec .h2 small { display: none; } .hub-hello span { font-size: 13px; } }
+
+/* ================= 0.2.35: finer project cards, options bar grip, HUB side panel fold, quieter welcome ================= */
+/* project cards: a thin frame in the project's colour */
+.pcard { border-width: 1.5px; }
+.pc-note { border-width: 1px !important; }
+.hcap-i { border-width: 1.5px; }
+.pcard.add { border-width: 1.5px; }
+
+/* the tool options bar has a grip of its own (S.prefs.optsOff) */
+.topts .ogrip { flex: none; align-self: stretch; width: 14px; min-height: 26px; margin: -4px 2px -4px -4px; padding: 0; border: 0; border-radius: 9px 0 0 9px; background: none; cursor: grab; touch-action: none; position: relative; }
+.topts .ogrip::before { content: ""; position: absolute; left: 4.5px; top: 50%; width: 2.4px; height: 2.4px; margin-top: -1.2px; border-radius: 50%; background: var(--ink-3); box-shadow: 4px 0 var(--ink-3), 0 -4.6px var(--ink-3), 4px -4.6px var(--ink-3), 0 4.6px var(--ink-3), 4px 4.6px var(--ink-3); opacity: .85; }
+.topts .ogrip:hover { background-color: var(--sunk); }
+.topts.dragging { opacity: .94; }
+.topts.dragging .ogrip { cursor: grabbing; }
+[data-skin="farmer"] .topts .ogrip { margin: -6px 4px -6px -12px; width: 18px; border-radius: 18px 0 0 18px; }
+[data-skin="farmer"] .topts .ogrip::before { left: 7px; background: #BFAF95; box-shadow: 4px 0 #BFAF95, 0 -4.6px #BFAF95, 4px -4.6px #BFAF95, 0 4.6px #BFAF95, 4px 4.6px #BFAF95; }
+[data-skin="farmer"] .topts .ogrip:hover { background-color: rgb(255 255 255 / .06); }
+[data-skin="keyboard"] .topts .ogrip { margin: -5px 2px -5px -10px; border-radius: 13px 0 0 13px; }
+
+/* HUB: the right panel (Aujourd'hui + Moodboard) folds into a thin rail with the arrow on its left edge */
+.hub-main { transition: grid-template-columns .25s cubic-bezier(.2,.8,.2,1); }
+.hub-side { position: sticky; }
+.hub-sfold { position: absolute; z-index: 3; left: -21px; top: 6px; width: 18px; height: 30px; padding: 0; border: 1px solid var(--line-2); border-radius: 7px; background: var(--card); color: var(--ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: .75; transition: opacity .15s, color .15s; }
+.hub-sfold:hover { opacity: 1; color: var(--ink); }
+.hub-sfold svg { width: 13px; height: 13px; transition: transform .2s; }
+.hub-sfold[aria-expanded="false"] svg { transform: rotate(180deg); }
+.hub-srail { display: none; }
+.hub-main.side-off { grid-template-columns: minmax(0, 1fr) 34px; }
+.hub-main.side-off .hub-side > .hmod { display: none; }
+.hub-main.side-off .hub-sfold { left: 8px; top: 0; }
+.hub-main.side-off .hub-srail { display: flex; align-items: flex-start; justify-content: center; width: 34px; height: min(320px, calc(100vh - 220px)); margin-top: 38px; padding: 12px 0 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink-3); cursor: pointer; font: 600 10.5px/1 "Figtree", sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.hub-main.side-off .hub-srail span { writing-mode: vertical-rl; }
+.hub-main.side-off .hub-srail:hover { color: var(--ink); border-color: var(--line-2); }
+@media (max-width: 1100px) {
+  .hub-sfold, .hub-main.side-off .hub-srail { display: none; }
+  .hub-main.side-off { grid-template-columns: minmax(0, 1fr); }
+  .hub-main.side-off .hub-side > .hmod { display: block; }
+}
+
+/* welcome: logo, one line, the theme, one button */
+.wl2 .wl-in { width: min(560px, 100%); gap: 0; }
+.wl2 .wl-mark { width: 56px; height: 56px; border-radius: 16px; margin-bottom: 22px; }
+.wl2 .wl-h { font-size: 34px; }
+.wl2 .wl-sub { margin: 10px 0 36px; font-size: 14.5px; }
+.wl2 .wl-pick { display: grid; justify-items: center; gap: 14px; width: 100%; }
+.wl2 .wl-themes { grid-template-columns: repeat(4, minmax(0, 118px)); gap: 10px; }
+.wl2 .wl-th { padding: 6px 6px 8px; border-width: 1px; gap: 6px; justify-items: center; text-align: center; }
+.wl2 .wl-th .skin-pv { height: 64px; width: 100%; margin: 0; border-radius: 7px; }
+.wl2 .wl-th b { font-size: 12.5px; font-weight: 500; }
+.wl2 .wl-mode .seg { transform: scale(.94); }
+.wl2 .wl-go { margin-top: 34px; height: 44px; min-width: 200px; border-radius: 22px; font-size: 15px; font-weight: 600; justify-content: center; }
+.wl2 .wl-foot { margin-top: 26px; display: grid; gap: 4px; justify-items: center; color: var(--ink-3); font-size: 12px; }
+.wl2 .wl-sync { font: inherit; font-size: 12px; color: var(--ink-3); background: none; border: 0; padding: 4px 8px; border-radius: 6px; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
+.wl2 .wl-sync:hover { color: var(--ink); }
+[data-skin="farmer"] .wl2 .wl-mark { width: 300px; height: 182px; margin-bottom: 8px; }
+[data-skin="farmer"] .wl2 .wl-h { font-size: 40px; }
+@media (max-width: 560px) { .wl2 .wl-themes { grid-template-columns: repeat(2, minmax(0, 132px)); } .wl2 .wl-h { font-size: 28px; } }

@@ -1,39 +1,28 @@
 /* ================= spaces: first launch and moodboard =================
-   0.2 puts everything in spaces. The first launch shows a welcome page (choose a theme, create the first space);
+   0.2 puts everything in spaces. The first launch shows a welcome page (choose a theme, then the HUB);
    each space has its moodboard, a sandbox of images, links, files and bits of text, as a page (route "mood") and as
    a drawer that opens over any page, notes, boards and drawing included (Ctrl M). Its elements drag into a board or
    a note, or go there with a click from the drawer. */
 
-/* ---------- welcome ---------- */
+/* ---------- welcome ----------
+   0.2.35: a quieter first launch. The logo, one line, the theme (four small cards, light/dark when the theme has both)
+   and one button: Commencer opens the HUB. No more asking for a first project here: the HUB has its own « Nouveau projet ». */
 const WELCOME_THEMES = ['minimal', 'adjust', 'plum', 'farmer'];
 function renderWelcome(v) {
   const ths = WELCOME_THEMES.map(id => THEMES[id]).filter(Boolean), cur = theme().id, p = S.prefs;
-  const mark = '';
-  v.innerHTML = `<div class="welcome"><div class="wl-in">
-    <div class="wl-mark">${mark}</div>
+  v.innerHTML = `<div class="welcome wl2"><div class="wl-in">
+    <div class="wl-mark"></div>
     <h1 class="wl-h">Bienvenue dans PLUM</h1>
-    <p class="wl-sub">Notes, tâches, boards et dessin. Rangés dans des espaces, ou pas.</p>
-    <section class="wl-step"><div class="wl-k"><span class="wl-n">1</span>Choisissez un thème</div>
-      <div class="wl-themes">${ths.map(t => `<button class="skin-c wl-th sk-${t.id}" data-th="${t.id}" aria-pressed="${t.id === cur}"><span class="skin-pv" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>${esc(t.label)}</b><small>${esc(t.desc || '')}</small></button>`).join('')}</div>
+    <p class="wl-sub">Notes, tâches, boards et dessin, au même endroit.</p>
+    <div class="wl-pick">
+      <div class="wl-themes" aria-label="Thème">${ths.map(t => `<button class="skin-c wl-th sk-${t.id}" data-th="${t.id}" aria-pressed="${t.id === cur}"><span class="skin-pv" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>${esc(t.label)}</b></button>`).join('')}</div>
       <div class="wl-mode"${theme().mode === 'user' ? '' : ' hidden'}><div class="seg" id="wlMode">${[['auto', 'Système'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => `<button data-v="${k}" aria-pressed="${p.theme === k}">${l}</button>`).join('')}</div></div>
-      <small class="wl-more">D’autres thèmes vous attendent dans Réglages.</small></section>
-    <section class="wl-step"><div class="wl-k"><span class="wl-n">2</span>Créez un espace, si vous voulez</div>
-      <div class="wl-create" id="wlCreate">
-        <button class="wl-plus" id="wlPlus" aria-label="Créer votre premier espace"><span class="wl-ring"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 12v24M12 24h24"/></svg></span></button>
-        <div class="wl-txt"><b>Créer votre premier espace</b><small>Un projet, un client, une idée : par exemple « Brassart ». Ses tâches, notes, boards et son moodboard y seront réunis.</small>
-          <form class="wl-form" id="wlForm" hidden><input id="wlName" placeholder="Nom de l’espace" autocomplete="off" maxlength="60" aria-label="Nom de l’espace"><button class="btn pri" type="submit">Créer</button></form></div>
-      </div></section>
-    <button class="wl-skip" id="wlSkip">Commencer sans espace : vos notes iront dans « Non classées », à ranger plus tard</button>
-    <button class="wl-skip wl-sync" id="wlSync">Déjà PLUM sur un autre appareil ? Se connecter pour récupérer mes données</button>
+    </div>
+    <button class="btn pri wl-go" id="wlGo">Commencer</button>
+    <small class="wl-foot">Le thème se change à tout moment dans Réglages.<button class="wl-sync" id="wlSync">Déjà PLUM sur un autre appareil ? Se connecter</button></small>
   </div></div>`;
-  const box = $('#wlCreate', v), form = $('#wlForm', v), name = $('#wlName', v);
-  const ask = () => { box.classList.add('on'); form.hidden = false; name.focus(); };
-  $('#wlPlus', v).onclick = ask;
-  $('.wl-txt b', v).onclick = ask;
-  form.onsubmit = e => { e.preventDefault(); if (name.value.trim()) createSpace(name.value); else name.focus(); };
-  name.onkeydown = e => { if (e.key === 'Escape') { form.hidden = true; box.classList.remove('on'); } };
   $('#wlSync', v).onclick = () => openSettings('sync');
-  $('#wlSkip', v).onclick = () => { S.prefs.welcomed = true; S.prefs.cur = DEF_SPACE; save(); go('all'); };
+  $('#wlGo', v).onclick = () => { S.prefs.welcomed = true; S.prefs.cur = DEF_SPACE; save(); go('hub'); };
   $('.wl-themes', v).onclick = e => {
     const b = e.target.closest('[data-th]'); if (!b) return;
     switchTheme(b.dataset.th);
