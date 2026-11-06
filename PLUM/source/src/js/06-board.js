@@ -451,7 +451,7 @@ const Board = (() => {
     const c = ctxOf(list), { td, T, has, only, first, val, one, bd } = c, g = [];
     if (td && (PENS[tool] || tool === 'eraser') && !atelierFull()) {
       const pr = penPref(penKind), t = sizeT(penKind, pr.s), d = clamp(pr.s, 2, 22);
-      g.push(`<div class="seg sm ic qpens">${FAST_PENS.map((k, i) => `<button data-tool="${k}" title="${PENS[k].name} (${i + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme à traits : n’efface que le dessin" aria-pressed="${tool === 'eraser' && !eraseAll}">${icon('eraser')}</button></div>`);
+      g.push(`<div class="seg sm ic qpens">${FAST_PENS.map((k, i) => `<button data-tool="${k}" title="${PENS[k].name} (${i + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme à traits : n’efface que le dessin" aria-pressed="${tool === 'eraser' && !eraseAll}">${icon('eraser')}</button></div>` + BrushLib.chip(tool));
       if (tool !== 'eraser') g.push(`<label class="qsize" title="Taille du trait (Ctrl + glisser sur le board)"><span class="qdw"><i class="qdot" style="width:${d}px;height:${d}px;background:${pr.c}"></i></span><input type="range" class="prange" data-psize="1" min="0" max="1" step=".01" value="${t.toFixed(3)}" aria-label="Taille du trait"><b>${sizeText(pr.s)}</b></label>` + qsw('pen', pr.c, 'Couleur du trait'));
       return g.join('<span class="vs"></span>');
     }
@@ -531,6 +531,7 @@ const Board = (() => {
     const qc = t.closest('[data-qc]'); if (qc) { ctxColor(qc.dataset.qc, qc); return; }
     const qp = t.closest('[data-qp]'); if (qp) { ctxPop(qp.dataset.qp, qp); return; }
     const qa = t.closest('[data-qa]'); if (qa) { if (qa.dataset.qa === 'more') ctxMore(qa); else action(qa.dataset.qa, qa); return; }
+    const bl = t.closest('[data-blib]'); if (bl) { if (!ALPHA_PENS.includes(tool)) setTool(BrushLib.lastAlpha()); const btn = $('[data-blib]', optsEl) || bl; BrushLib.open(btn, { pen: () => tool, setPen: k => setTool(k), changed: final => { if (final) { if (optsEl) optsEl._h = ''; refreshTools(); Studio.sync(); } } }); return; }
     const pp = t.closest('[data-opp]'); if (pp) { const pop = openPop(pp, `<div class="pp-wrap">${PenPanel.html(penKind)}</div>`, { cls: 'pppop', focus: false }); PenPanel.bind(pop, { pen: () => penKind, setPen: k => { closePop(); setTool(k); }, changed: partial => { if (!partial) { refreshTools(); propSig = ''; renderProps(); const k = penKind; const w = $('.pp-wrap', pop); if (w && pop.isConnected) w.innerHTML = PenPanel.html(k); } } }); return; }
   }
   function ctxColor(prop, btn) {
@@ -921,7 +922,7 @@ const Board = (() => {
     ], { align: 'right' });
   }
   function helpModal() {
-    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O', 'Rectangle · Ellipse'], ['A', 'Flèche'], ['L', 'Ligne'], ['D ou P', 'Dessin'], ['Ctrl + glisser (clic ou molette)', 'Taille du pinceau (en dessin)'], [atelierFull() ? '1 … 9' : '1 · 2 · 3', atelierFull() ? 'Choisir un pinceau (9 : crayon naturel)' : 'Stylo · Feutre · Surligneur'], ['K · Alt maintenu', 'Pipette sur le board'], ['E', 'Gomme : efface tout élément touché (celle du dessin : les traits seulement)'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
+    const K = [['Outils', [['V', 'Sélection'], ['H / Espace', 'Main'], ['R · O', 'Rectangle · Ellipse'], ['A', 'Flèche'], ['L', 'Ligne'], ['D ou P', 'Dessin'], ['Ctrl + glisser (clic ou molette)', 'Taille du pinceau (en dessin)'], [atelierFull() ? '1 … 9' : '1 · 2 · 3 · 4 … 9', atelierFull() ? 'Choisir un pinceau (9 : crayon naturel)' : 'Stylo · Feutre · Surligneur, puis les pinceaux (Graphite, Pinceau encre…)'], ['K · Alt maintenu', 'Pipette sur le board'], ['E', 'Gomme : efface tout élément touché (celle du dessin : les traits seulement)'], ['T', 'Texte'], ['N', 'Post-it'], ['C', 'Liste à faire'], ['G', 'Tableur'], ['F', 'Zoom sur la sélection, ou tout voir'], ['I', 'Image ou fichier']]],
       ['Édition', [['Ctrl Z / Y', 'Annuler / Rétablir'], ['Ctrl D', 'Dupliquer'], ['Ctrl G', 'Grouper (Alt + clic : un seul élément du groupe)'], ['Ctrl Alt G', 'Dégrouper'], ['Ctrl C / X / V', 'Copier, couper, coller'], ['Ctrl A', 'Tout sélectionner'], ['Ctrl Maj L', 'Verrouiller / déverrouiller'], ['Poignée ronde au-dessus', 'Tourner (Maj : par 15°)'], ['Suppr', 'Supprimer'], ['Entrée', 'Modifier le texte'], ['Flèches', 'Déplacer (Maj : par 10)'], ['Alt + glisser', 'Déplacer sans aimant'], ['Maj + glisser', 'Dupliquer et déplacer la copie'], ['Page ↑ / ↓', 'Avancer / reculer d’un plan'], ['Ctrl + Page ↑ / ↓', 'Tout devant / tout au fond'], ['Clic droit maintenu · appui long', 'Marking menu : outils, puis options (▸)'], ['Glisser un outil sur le board', 'Poser l’élément à cet endroit']]],
       ['Vue', [['Molette', S.prefs.wheel === 'zoom' ? 'Zoomer (Maj : défiler)' : 'Défiler (Ctrl : zoomer)'], ['Ctrl + / −', 'Zoomer / dézoomer'], ['0', 'Tout voir'], ['Ctrl 0', 'Zoom 100 %'], ['Ctrl .', 'Mode focus'], ['?', 'Cette aide']]],
       ['iPad', [['Toucher à deux doigts', 'Annuler'], ['Double tap au doigt', 'Modifier le texte'], ['Doigt sur un élément', 'Le prendre (outil Sélection)'], ['Deux doigts', 'Zoomer, tourner le board'], ['Appui long sur une couleur', 'Glisser sur la couleur, relâcher']]],
@@ -2230,7 +2231,7 @@ const Board = (() => {
   function startInk(e) {
     grab(e); if (sel.size) { sel.clear(); schedule(); }
     const pk = penKind, pr = penPref(pk), def = PENS[pk];
-    ink.begin(e, { t: pk, c: pr.c, s: pr.s / view.k, o: pr.o, smooth: pr.sm, k: view.k, b: atelierFull() ? brushOf(pr, view.k) : null });
+    ink.begin(e, { t: pk, c: pr.c, s: pr.s / view.k, o: pr.o, smooth: pr.sm, k: view.k, b: strokeBrush(pk, pr, view.k) });
     op = { id: e.pointerId, kind: 'ink', move(ev) { if (ev.pointerId === this.id) ink.feed(ev); },
       up() { op = null; const st = ink.end(); if (st && st.p.length >= 3) { if (st.p.length === 3) st.p.push(st.p[0] + .4 / view.k, st.p[1] + .2 / view.k, st.p[2]); commit(items.concat(mkInk(st))); useColor(st.c); if (Studio.on) Studio.refresh('history'); } },
       cancel() { ink.cancel(); } };
@@ -2618,7 +2619,7 @@ const Board = (() => {
     if (k === '0' || (e.shiftKey && k === '!')) { fitAll(); return true; }
     if (k === '+' || k === '=') { zoomCenter(1.25); return true; }
     if (k === '-') { zoomCenter(.8); return true; }
-    if (/^[1-9]$/.test(k) && !e.altKey) { const pk = (atelierFull() ? PEN_ORDER : FAST_PENS)[+k - 1]; if (pk) { setTool(pk); return true; } }
+    if (/^[1-9]$/.test(k) && !e.altKey) { const pk = (atelierFull() ? PEN_ORDER : LITE_PENS)[+k - 1]; if (pk) { setTool(pk); return true; } }
     const lk = k.toLowerCase();
     if (lk === 'i') { pickFiles(); return true; }
     if (TOOL_KEYS[lk]) { if (lk === 'o') shapeKind = 'ellipse'; if (lk === 'r') shapeKind = 'rect'; setTool(TOOL_KEYS[lk] === 'pen' ? penKind : TOOL_KEYS[lk]); return true; }
@@ -2629,13 +2630,13 @@ const Board = (() => {
 
   /* ---------- tools and islands ---------- */
   function setTool(t) {
-    if (PENS[t] && !FAST_PENS.includes(t) && !atelierFull()) t = 'pen';   // the simple drawing module has three brushes
+    if (PENS[t] && !LITE_PENS.includes(t) && !atelierFull()) t = 'pen';   // the simple drawing module: three quick pens and the alpha brushes
     if (t === 'eraser' && tool !== 'pick') eraseAll = true;   // E and the tool bar: everything; the drawing bar's eraser sets it back to strokes only
     if (editing) finishEdit();
     if (op && op.keep) cancelOp();
     attachHi = null;
     if (t === 'pick' && tool !== 'pick') pickBack = tool;
-    tool = t; if (PENS[t]) penKind = t;
+    tool = t; if (PENS[t]) penKind = t; if (ALPHA_PENS.includes(t)) S.prefs.lastAlpha = t;
     /* drawing never acts on a selection: a shape left selected would take the colour and size changes */
     if ((PENS[t] || t === 'eraser') && sel.size) sel.clear();
     if (!['select', 'hand', 'pick'].includes(t)) lastTool = t;
@@ -2898,7 +2899,7 @@ const Board = (() => {
       { label: 'Texte', run: () => setTool('text'), sub: () => around(FONTS.map(([f, l]) => ({ label: l, on: (BD().font || HAND) === f, font: f, run: pickOpt('text', 'font', f) }))) },
       { label: SHAPES[shapeKind] || 'Forme', run: () => setTool('shape'), sub: () => around(['rect', 'round', 'ellipse', 'diamond', 'tri', 'hex', 'starsh', 'cloud'].map(k => ({ label: SHAPES[k], on: shapeKind === k, run: () => { shapeKind = k; setTool('shape'); } }))) },
       { label: 'Post-it', sw: noteColor, run: () => setTool('note'), sub: () => around(themeColors('note', NOTE_COLORS).map((c, i) => ({ label: SCHEME_NAMES[SCHEME_SETS.note[i] - 1] || c, sw: c, on: c === noteColor, run: () => { noteColor = c; setTool('note'); } }))) },
-      { label: PENS[penKind].name, run: () => setTool(penKind), sub: () => around((atelierFull() ? PEN_ORDER : FAST_PENS).filter(k => PENS[k]).slice(0, 8).map(k => ({ label: PENS[k].name, on: k === penKind, run: () => setTool(k) }))) },
+      { label: PENS[penKind].name, run: () => setTool(penKind), sub: () => around((atelierFull() ? PEN_ORDER : LITE_PENS).filter(k => PENS[k]).slice(0, 8).map(k => ({ label: PENS[k].name, on: k === penKind, run: () => setTool(k) }))) },
       { label: 'Flèche', run: () => setTool('conn'), sub: () => around([...Object.entries(ROUTES).map(([k, l]) => ({ label: l, on: tool === 'conn' && (BD().route || 'curve') === k, run: pickOpt('conn', 'route', k) })), { label: 'Ligne', on: tool === 'line', run: () => setTool('line') }]) },
       { label: 'Sélection', run: () => setTool('select') },
       { label: 'Plus', run: null, sub: () => around([

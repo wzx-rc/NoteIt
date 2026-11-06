@@ -2422,3 +2422,33 @@ html[data-hubedit] .pc-menu { pointer-events: auto; }
 [data-skin="farmer"] .wl2 .wl-mark { width: 300px; height: 182px; margin-bottom: 8px; }
 [data-skin="farmer"] .wl2 .wl-h { font-size: 40px; }
 @media (max-width: 560px) { .wl2 .wl-themes { grid-template-columns: repeat(2, minmax(0, 132px)); } .wl2 .wl-h { font-size: 28px; } }
+
+/* ---- brush library (0.2.36): the alpha brushes after Concepts, opened from one chip of the drawing bar ---- */
+.bl-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 6px 0 4px; border-radius: 8px; font: 600 11.5px/1 var(--font-ui); color: var(--ink-2); background: none; white-space: nowrap; }
+.bl-chip:hover { background: var(--sunk); color: var(--ink); }
+.bl-chip[aria-pressed="true"] { background: color-mix(in oklab, var(--accent, var(--ink)) 14%, transparent); color: var(--ink); }
+.bl-chip svg.pvs { height: 22px; width: auto; }
+.bl-chip .qchev { width: 8px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .6; }
+.nt-opts .bl-chip { margin-left: 2px; }
+.pop.blpop { width: 452px; max-width: calc(100vw - 24px); max-height: min(86vh, 720px); padding: 10px; border-radius: 14px; }
+.bl-h { display: flex; align-items: baseline; gap: 8px; padding: 2px 4px 8px; }
+.bl-h b { font: 600 13px/1 var(--font-ui); color: var(--ink); }
+.bl-h small { font: 500 11.5px/1 var(--font-ui); color: var(--ink-3, var(--ink-2)); }
+.bl-x { margin-left: auto; font: 500 11px/1 var(--font-ui); color: var(--ink-2); padding: 5px 8px; border-radius: 7px; }
+.bl-x:hover { background: var(--sunk); color: var(--ink); }
+.bl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.bl-card { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 5px 4px 6px; border-radius: 10px; font: 500 11px/1.1 var(--font-ui); color: var(--ink-2); text-align: center; border: 1px solid transparent; transition: background-color .12s, border-color .12s; }
+.bl-card svg.pvs { width: 100%; height: 40px; display: block; }
+.bl-card:hover { background: var(--raise); color: var(--ink); }
+.bl-card[aria-pressed="true"] { background: var(--sunk); border-color: var(--line); color: var(--ink); }
+.bl-set-w { margin-top: 8px; padding: 8px 6px 2px; border-top: 1px solid var(--line); }
+.bl-hint { font: 400 11.5px/1.35 var(--font-ui); color: var(--ink-2); margin: 0 0 8px; }
+.bl-sl { display: grid; grid-template-columns: 64px 1fr 44px; align-items: center; gap: 8px; height: 26px; font: 500 11.5px/1 var(--font-ui); color: var(--ink-2); }
+.bl-sl input { width: 100%; }
+.bl-sl b { font: 600 11px/1 var(--font-ui); text-align: right; color: var(--ink); }
+.bl-pad { position: relative; height: 110px; margin-top: 8px; border-radius: 10px; background: var(--paper); border: 1px dashed var(--line); overflow: hidden; touch-action: none; cursor: crosshair; }
+.bl-pad canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.bl-try { position: absolute; inset: 0; display: grid; place-items: center; font: 500 12px/1 var(--font-ui); color: var(--ink-3, var(--ink-2)); opacity: .7; pointer-events: none; transition: opacity .2s; }
+.bl-pad.used .bl-try { opacity: 0; }
+.bl-clr { position: absolute; right: 6px; top: 6px; font: 500 10.5px/1 var(--font-ui); color: var(--ink-2); padding: 4px 7px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); opacity: 0; transition: opacity .15s; }
+.bl-pad.used .bl-clr { opacity: 1; }

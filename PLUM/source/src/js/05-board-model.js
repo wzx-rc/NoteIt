@@ -193,10 +193,11 @@ function sheetEval(cells) {
 const sheetShow = v => v == null ? '' : v.err ? v.err : typeof v === 'number' ? (isFinite(v) ? v.toLocaleString('fr-FR', { maximumFractionDigits: 4 }) : '#NUM!') : typeof v === 'boolean' ? (v ? 'VRAI' : 'FAUX') : String(v);
 function mkInk(stroke) {
   /* stamped brushes scatter past the line, so their box is wider; b.ox/oy keep the paper texture where it was drawn */
-  const [x0, y0, x1, y1] = inkBounds(stroke.p, stroke.b ? stroke.s * 1.9 : stroke.s);
+  const [x0, y0, x1, y1] = inkBounds(stroke.p, inkPad(stroke));
   const p = stroke.p.map((v, i) => Math.round((i % 3 === 0 ? v - x0 : i % 3 === 1 ? v - y0 : v) * 100) / 100);
   const w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
   const it = { id: uid('k'), k: 'ink', x: x0, y: y0, w, h, w0: w, h0: h, t: stroke.t, c: stroke.c, s: stroke.s, o: stroke.o, p };
+  if (stroke.d) it.d = stroke.d.slice();
   if (stroke.b) it.b = Object.assign({}, stroke.b, { ox: Math.round(((stroke.b.ox || 0) + x0) * 100) / 100, oy: Math.round(((stroke.b.oy || 0) + y0) * 100) / 100 });
   return it;
 }

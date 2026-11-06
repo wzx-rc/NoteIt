@@ -9,7 +9,7 @@ const Note = (() => {
   const SW = 820;
   /* the pens shown in the toolbar; the others are one click away in the brush panel */
   const NOTE_PENS_FULL = ['natural', 'pencil', 'pen', 'fine', 'brush', 'marker', 'water', 'highlight'];
-  const notePens = () => atelierFull() ? NOTE_PENS_FULL : FAST_PENS;   // the simple drawing module: three brushes (0.2.25)
+  const notePens = () => atelierFull() ? NOTE_PENS_FULL : LITE_PENS;   // the simple drawing module: three brushes (0.2.25)
   let D = null, wrap, tool, sheet, body, inkSvg, pad, liveBox, liveCv, ink, titleIn, sub, ro = null, view = null;
   /* the page views; sheet, body, inkSvg, pad and P (the page's data) follow the page being written or drawn on */
   let PG = [], cur = null, P = null, spr = 0, spreadOn = false, fillH = 0;
@@ -555,7 +555,7 @@ const Note = (() => {
     const pr = penPref(pen);
     placeLive();
     drawing = e.pointerId;
-    ink.begin(e, { t: pen, c: pr.c, s: pr.s, o: pr.o, smooth: pr.sm, k: scale(), b: atelierFull() ? brushOf(pr, scale()) : null });
+    ink.begin(e, { t: pen, c: pr.c, s: pr.s, o: pr.o, smooth: pr.sm, k: scale(), b: strokeBrush(pen, pr, scale()) });
   }
   function eraseAt(e) {
     const p = toLocal(e.clientX, e.clientY), r = 10 / scale();
@@ -578,7 +578,7 @@ const Note = (() => {
   }
   function onUp(e) {
     if (ndOp && ndOp.id === e.pointerId) { ndEnd(e); return; }
-    if (drawing === e.pointerId) { drawing = null; const st = ink.end(); if (st && st.p.length >= 3) { if (st.p.length === 3) st.p.push(st.p[0] + .4, st.p[1] + .2, st.p[2]); const nst = Object.assign({ t: st.t, c: st.c, s: st.s, o: st.o, p: st.p }, st.b ? { b: st.b } : {}); fresh.add(nst); commitInk((P.ink || []).concat([nst])); useColor(st.c); }
+    if (drawing === e.pointerId) { drawing = null; const st = ink.end(); if (st && st.p.length >= 3) { if (st.p.length === 3) st.p.push(st.p[0] + .4, st.p[1] + .2, st.p[2]); const nst = Object.assign({ t: st.t, c: st.c, s: st.s, o: st.o, p: st.p }, st.b ? { b: st.b } : {}, st.d ? { d: st.d } : {}); fresh.add(nst); commitInk((P.ink || []).concat([nst])); useColor(st.c); }
       // a stylus writing in text mode: the drawing settles into the text after a pause
       if (mode === 'text') { clearTimeout(autoFin); autoFin = setTimeout(finalizeDrawing, 1400); } }
     else if (erasing && erasing.id === e.pointerId) { const er = erasing; erasing = null;
@@ -594,7 +594,8 @@ const Note = (() => {
       <div class="grp tfmt"><button class="nb tx" data-tx="font" title="Police" aria-label="Police"><span class="txt" style="font-family:'Instrument Serif',Georgia,serif;font-size:17px">Aa</span>${icon('chevd', 'sm')}</button><button class="nb tx" data-tx="size" title="Taille du texte" aria-label="Taille du texte"><span class="txt tsz">T<small>T</small></span>${icon('chevd', 'sm')}</button><button class="nb tx" data-tx="color" title="Couleur du texte" aria-label="Couleur du texte"><span class="tca">A<i style="background:${S.prefs.noteColor || '#E03131'}"></i></span>${icon('chevd', 'sm')}</button></div><span class="vs"></span>
       <div class="grp">${b('ul', icon('list'), 'Liste (-)')}${b('chk', icon('chk'), 'Cases à cocher ([])')}${b('quote', icon('sticky'), 'Post-it (>)')}${b('hand', '<span class="txt" style="font-family:var(--font-hand);font-size:17px">Aa</span>', 'Écriture manuscrite')}</div>`;
     if (PENS[pen] && !notePens().includes(pen)) pen = 'pen';
-    const drawG = `<div class="grp">${notePens().map(k => `<button class="nb" data-pen="${k}" title="${PENS[k].name} (${notePens().indexOf(k) + 1})" aria-label="${PENS[k].name}" aria-pressed="${pen === k}">${icon(PENS[k].icon)}</button>`).join('')}<button class="nb" data-pen="eraser" title="Gomme (E)" aria-label="Gomme" aria-pressed="${pen === 'eraser'}">${icon('eraser')}</button></div><span class="vs"></span>
+    const btnPens = atelierFull() ? notePens() : FAST_PENS;   // simple module: the alpha brushes live in the library chip
+    const drawG = `<div class="grp">${btnPens.map(k => `<button class="nb" data-pen="${k}" title="${PENS[k].name} (${notePens().indexOf(k) + 1})" aria-label="${PENS[k].name}" aria-pressed="${pen === k}">${icon(PENS[k].icon)}</button>`).join('')}<button class="nb" data-pen="eraser" title="Gomme (E)" aria-label="Gomme" aria-pressed="${pen === 'eraser'}">${icon('eraser')}</button>${atelierFull() ? '' : BrushLib.chip(pen)}</div><span class="vs"></span>
       ${pen === 'eraser' ? '' : `<button class="pchip" data-pp="1" title="${PENS[pen].name} : pinceau, taille, flux, forme, texture">${brushPreview(pen, Object.assign({}, pr, { s: Math.min(pr.s, 14) }), 96, 26)}<span>${pr.s}</span>${icon('chevd', 'sm')}</button>
       <div class="grp">${cols.slice(0, 6).map(c => `<button class="sw" data-col="${c}" style="background:${c}" aria-label="Couleur ${c}" aria-pressed="${pr.c.toUpperCase() === c.toUpperCase()}"></button>`).join('')}<button class="sw cur" data-wheel="1" style="background:${pr.c}" title="Roue des couleurs" aria-label="Roue des couleurs">${icon('wheel', 'sm')}</button></div><span class="vs"></span>`}
       <div class="grp"><button class="nb" data-a="undo" title="Annuler le dernier trait" aria-label="Annuler" ${hist.length ? '' : 'disabled'}>${icon('undo')}</button><button class="nb" data-a="redo" title="Rétablir" aria-label="Rétablir" ${fut.length ? '' : 'disabled'}>${icon('redo')}</button></div>`;
@@ -608,9 +609,10 @@ const Note = (() => {
     const m = e.target.closest('[data-mode]'); if (m) { setMode(m.dataset.mode); return; }
     const c = e.target.closest('[data-cmd]'); if (c) { if (c.dataset.cmd === 'dictate') dictateHere(c); else cmd(c.dataset.cmd); return; }
     const tx = e.target.closest('[data-tx]'); if (tx) { textPop(tx); return; }
-    const p = e.target.closest('[data-pen]'); if (p) { pen = p.dataset.pen; if (mode !== 'draw') setMode('draw'); else renderToolbar(); return; }
+    const p = e.target.closest('[data-pen]'); if (p) { pen = p.dataset.pen; if (ALPHA_PENS.includes(pen)) S.prefs.lastAlpha = pen; if (mode !== 'draw') setMode('draw'); else renderToolbar(); return; }
     const sw = e.target.closest('[data-col]'); if (sw) { S.prefs.pens[pen].c = sw.dataset.col; save(); renderToolbar(); return; }
     const wh = e.target.closest('[data-wheel]'); if (wh) { radialPop(wh, { get: () => penPref(pen).c, set: (v, final) => { S.prefs.pens[pen].c = v; save(); const cur = $('[data-wheel]', tool); if (cur) cur.style.background = v; } }); return; }
+    const bl = e.target.closest('[data-blib]'); if (bl) { if (!ALPHA_PENS.includes(pen)) { pen = BrushLib.lastAlpha(); if (mode !== 'draw') setMode('draw'); else renderToolbar(); } BrushLib.open($('[data-blib]', tool) || bl, { pen: () => pen, setPen: k => { pen = k; renderToolbar(); }, changed: final => { if (final) renderToolbar(); } }); return; }
     const pp = e.target.closest('[data-pp]'); if (pp) { const pop = openPop(pp, `<div class="pp-wrap">${PenPanel.html(pen, { note: true })}</div>`, { cls: 'pppop', focus: false }); PenPanel.bind(pop, { pen: () => pen, setPen: k => { pen = k; closePop(); renderToolbar(); }, changed: partial => { if (!partial) renderToolbar(); } }); return; }
     const a = e.target.closest('[data-a]'); if (!a) return;
     if (a.dataset.a === 'undo') undoInk(); if (a.dataset.a === 'redo') redoInk();
@@ -807,7 +809,7 @@ const Note = (() => {
       if (!inText && spreadOn && (e.key === 'PageDown' || e.key === 'PageUp')) { e.preventDefault(); turn(e.key === 'PageDown' ? 1 : -1); return true; }
       if (!inText && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redoInk() : undoInk(); return true; }
       if (!inText && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redoInk(); return true; }
-      if (!inText && !e.ctrlKey && !e.metaKey && !e.altKey) { const k = e.key.toLowerCase(); if (k === 'p') { pen = PENS[pen] ? pen : 'pen'; setMode('draw'); return true; } if (k === 'e') { pen = 'eraser'; setMode('draw'); return true; } if (k === 't') { setMode('text'); body.focus(); return true; } if (/^[1-9]$/.test(k) && (atelierFull() ? PEN_ORDER : FAST_PENS)[+k - 1]) { pen = (atelierFull() ? PEN_ORDER : FAST_PENS)[+k - 1]; setMode('draw'); return true; } }
+      if (!inText && !e.ctrlKey && !e.metaKey && !e.altKey) { const k = e.key.toLowerCase(); if (k === 'p') { pen = PENS[pen] ? pen : 'pen'; setMode('draw'); return true; } if (k === 'e') { pen = 'eraser'; setMode('draw'); return true; } if (k === 't') { setMode('text'); body.focus(); return true; } if (/^[1-9]$/.test(k) && (atelierFull() ? PEN_ORDER : LITE_PENS)[+k - 1]) { pen = (atelierFull() ? PEN_ORDER : LITE_PENS)[+k - 1]; setMode('draw'); return true; } }
       return false;
     },
     text() { return mounted ? PG.map(g => g.body.innerText).join('\n\n') : '' },

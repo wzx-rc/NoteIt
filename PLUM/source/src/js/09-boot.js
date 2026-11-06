@@ -96,13 +96,14 @@ function bindShell() {
     e.preventDefault(); Mood.drop(e.dataTransfer, spaceById(ctxSpace()) || curSpace());
   });
 
-  window.__nh = { S: () => S, Sync, Assets, go, save, applyTheme, applyUiScale, openSettings, spaceMedia, Board, Ink, PENS, migrateState, importJSON, exportJSON, newDoc, Mood, createSpace, ink: { inkSVG, sampleStroke, brushPreview, penPref, TEX_ORDER, NIB_ORDER, texTile, nibImage } };
+  window.__nh = { S: () => S, Sync, Assets, go, save, applyTheme, applyUiScale, openSettings, spaceMedia, Board, Ink, PENS, migrateState, importJSON, exportJSON, newDoc, Mood, createSpace, ink: { inkSVG, stampPicture, tipsLoaded: () => tipGen, BrushLib, sampleStroke, brushPreview, penPref, TEX_ORDER, NIB_ORDER, texTile, nibImage } };
   const flush = () => { try { window.__flushSave(); } catch (e) {} };
   addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
   addEventListener('resize', debounce(() => { if (Board.mounted) Board.layoutChanged(); }, 120));
 }
 async function boot() {
+  try { loadTips(); } catch (e) {}   // the brush engine's alpha tips decode while the app starts
   applyTheme();
   const ok = await DB.open();
   await Assets.load();
