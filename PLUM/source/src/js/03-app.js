@@ -1035,7 +1035,7 @@ function bindPenTest(m) {
 async function blobToDataURL(b) { return new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.onerror = () => r(''); f.readAsDataURL(b); }); }
 // every page of a note (the first one is d.html, the others d.pages)
 const noteHTML = (d, sep = '') => [d.html || ''].concat((d.pages || []).map(p => p.html || '')).join(sep);
-function usedAssets(docs, spaces = S.spaces, tasks = S.tasks) { const ids = new Set(); for (const t of tasks || []) for (const id of t.res || []) ids.add(id); for (const d of docs) { if (d.type === 'board') for (const it of d.items || []) if (it.asset) ids.add(it.asset); if (d.type === 'note') for (const m of noteHTML(d).matchAll(/data-asset="([^"]+)"/g)) ids.add(m[1]); } for (const sp of spaces || []) { if (sp.cover) ids.add(sp.cover); for (const m of sp.media || []) if (m.asset) ids.add(m.asset); } return ids; }
+function usedAssets(docs, spaces = S.spaces, tasks = S.tasks) { const ids = new Set(); for (const t of tasks || []) for (const id of t.res || []) ids.add(id); for (const d of docs) { if (d.type === 'board') for (const it of d.items || []) if (it.asset) ids.add(it.asset); if (d.type === 'note') for (const m of noteHTML(d).matchAll(/data-asset="([^"]+)"/g)) ids.add(m[1]); } for (const sp of spaces || []) { if (sp.cover) ids.add(sp.cover); for (const m of sp.media || []) { if (m.asset) ids.add(m.asset); if (m.pic) ids.add(m.pic); } } return ids; }
 /* the workspace saved before 0.2 (kv "state"): kept as it was, its files are never collected, and it can be merged back */
 function legacyInfo() {
   const L = LEGACY, n = (a, w) => `${a} ${w}${a > 1 ? 's' : ''}`;

@@ -2228,3 +2228,43 @@ html[data-hubedit] .pc-menu { pointer-events: auto; }
   .hm-new { min-height: 90px !important; }
 }
 @media (max-width: 699px) { .pc-M .pc-plate b { font-size: 14px; } .pc-M .pc-plate small { font-size: 10px; } }
+
+/* HUB Moodboard Général (0.2.33) */
+.hm-mood:not(.hm-proj) { padding: 14px 14px 12px; }
+.hmd-add { margin-left: 6px; width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--sunk); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; align-self: center; }
+.hm-h small + .hmd-add { margin-left: 8px; }
+.hm-mood .hm-h small { margin-left: auto; }
+.hmd-wall { flex: 1; min-height: 0; overflow: hidden auto; columns: 2 130px; column-gap: 8px; scrollbar-width: thin; padding-right: 2px; }
+.hs-S .hmd-wall { columns: 1; }
+.hs-L .hmd-wall { columns: 3 130px; }
+.hmd-it { position: relative; break-inside: avoid; margin: 0 0 8px; border-radius: 12px; overflow: hidden; background: var(--sunk); border: 1px solid var(--line); cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.hmd-it:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.18); }
+.hmd-it.dragging { opacity: .4; }
+.hmd-it img { display: block; width: 100%; height: auto; }
+.hmd-link img { aspect-ratio: 16/10; object-fit: cover; }
+.hmd-link figcaption { padding: 7px 9px 8px; display: flex; flex-direction: column; gap: 2px; }
+.hmd-link figcaption b { font-size: 12px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hmd-link figcaption small { display: flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; }
+.hmd-link figcaption small svg { width: 11px; height: 11px; flex: none; }
+.hmd-ini { display: flex; align-items: center; justify-content: center; aspect-ratio: 16/9; background: var(--c); color: #fff; font: 700 30px/1 "Figtree", sans-serif; }
+.hmd-file { padding: 9px 10px; }
+.hmd-fh { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.hmd-fh b { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hmd-ext { flex: none; padding: 3px 5px; border-radius: 5px; background: var(--ink-2); color: var(--paper); font: 700 9.5px/1 "Figtree", sans-serif; letter-spacing: .04em; }
+.hmd-file pre { margin: 7px 0 0; max-height: 110px; overflow: hidden; white-space: pre-wrap; word-break: break-word; font: 11px/1.4 ui-monospace, Consolas, monospace; color: var(--ink-2); -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+.hmd-file small { display: block; margin-top: 4px; font-size: 10.5px; color: var(--ink-3); }
+.hmd-text { padding: 10px 12px; background: color-mix(in srgb, #F1E3B8 30%, var(--card)); }
+:root[data-resolved="dark"] .hmd-text { background: #2A2720; }
+.hmd-text p { margin: 0; font: 400 20px/1.15 "Caveat", cursive; color: var(--ink); max-height: 160px; overflow: hidden; }
+.hmd-mv { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 8px; border: 0; background: rgba(0,0,0,.55); color: #fff; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.hmd-it:hover .hmd-mv, .hmd-mv:focus-visible { opacity: 1; }
+@media (hover: none) { .hmd-mv { opacity: 1; } }
+.hmd-empty { height: 100%; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; border: 2px dashed var(--line-2); border-radius: 14px; padding: 16px; color: var(--ink-2); column-span: all; box-sizing: border-box; }
+.hmd-empty small { color: var(--ink-3); font-size: 12px; line-height: 1.4; }
+.hmd-more { flex: none; height: 30px; border-radius: 9px; border: 0; background: var(--sunk); color: var(--ink-2); font: 600 12px/1 "Figtree", sans-serif; cursor: pointer; }
+.hmd-over { display: none; position: absolute; inset: 0; border-radius: inherit; background: color-mix(in srgb, var(--accent) 16%, var(--card)); border: 2px dashed var(--accent); color: var(--accent); font-weight: 700; font-size: 14px; align-items: center; justify-content: center; gap: 8px; z-index: 3; pointer-events: none; }
+.hm-mood.hdrop .hmd-over { display: flex; }
+.hm-proj.hdrop .pcard { box-shadow: 0 0 0 4px color-mix(in srgb, var(--pc1) 45%, transparent), 0 24px 60px rgba(0,0,0,.4); transform: scale(1.01); }
+.pcard { transition: box-shadow .15s, transform .15s; }
+.hubtable.hmd-dragging .hm-proj .pcard { outline: 2px dashed color-mix(in srgb, var(--pc1) 60%, transparent); outline-offset: 4px; }
+@media (max-width: 699px) { .hm-mood { height: 460px !important; } }

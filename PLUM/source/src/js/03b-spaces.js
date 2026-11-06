@@ -109,6 +109,7 @@ const Mood = (() => {
   /* ---- actions ---- */
   function refresh() {
     renderSide();
+    if (R.name === 'hub' && typeof renderHubMods === 'function') renderHubMods();
     if (R.name === 'mood' || R.name === 'space') { const vw = $('#view'), st = vw.scrollTop; go(R, { keepFocus: true }); vw.scrollTop = st; }
     if (open) renderDrawer();
     if (R.name === 'doc' && Board.mounted && Board.refreshProps) Board.refreshProps();
@@ -120,7 +121,7 @@ const Mood = (() => {
     let n = 0;
     if (files.length) n = (await addMedia(sp.id, files, fid)).length;
     else if (!dt.getData('application/x-notely')) n = addMediaItems(sp.id, mediaFromData(dt), fid);
-    if (n) { toast(`${n} élément${n > 1 ? 's' : ''} ajouté${n > 1 ? 's' : ''} au moodboard de ${sp.name}`); refresh(); }
+    if (n) { toast(`${n} élément${n > 1 ? 's' : ''} ajouté${n > 1 ? "s" : ""} au ${sp.id === DEF_SPACE ? "Moodboard Général" : "moodboard de " + sp.name}`); refresh(); }
     return n;
   }
   function addFromField(inp, sp, fid) {
@@ -304,15 +305,15 @@ const Mood = (() => {
     const pn = e.target.closest('#moodDrawer [data-mpin]'); if (pn) { S.prefs.moodPin = !pinned(); save(); renderDrawer(); toast(pinned() ? 'Moodboard épinglé' : 'Le moodboard se repliera quand la souris en sort'); }
   }); }
   return {
-    mount, toggle, preview, bindPreview, drop, renderPage, layout,
+    mount, toggle, preview, bindPreview, drop, renderPage, layout, view,
     isOpen: () => open,
     dragging: () => !!dragging && Date.now() - dragging < 60000,
     /* after a page change: the drawer follows the space, and has no place on the moodboard page or the welcome */
     sync() { if (!open) return; if (R.name === 'mood' || R.name === 'welcome') toggle(false); else renderDrawer(); },
     /* Ctrl V on the moodboard page adds what the clipboard holds */
     paste(e) {
-      if (R.name !== 'mood' || !e.clipboardData) return false;
-      e.preventDefault(); const cd = e.clipboardData, sp = curSpace();
+      if ((R.name !== 'mood' && R.name !== 'hub') || !e.clipboardData) return false;
+      e.preventDefault(); const cd = e.clipboardData, sp = R.name === 'hub' ? spaceById(DEF_SPACE) : curSpace();
       const files = [...(cd.files || [])];
       if (files.length) { addMedia(sp.id, files).then(n => { if (n.length) { toast(`${n.length} élément${n.length > 1 ? 's' : ''} collé${n.length > 1 ? 's' : ''}`); refresh(); } }); return true; }
       const n = addMediaItems(sp.id, mediaFromData(cd)); if (n) { toast('Ajouté au moodboard'); refresh(); }

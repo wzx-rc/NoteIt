@@ -1,4 +1,4 @@
-/* ================= HUB, 0.2.32 =================
+/* ================= HUB, 0.2.32 (Moodboard Général 0.2.33) =================
    The home page: one Project Card per space (cover image, main colour with two shades derived from it, pinned note,
    last board, tasks) and modules (Calendrier, Météo, Note du HUB, Tâches en cours, Nouveau projet).
    Personnaliser = Custom mode: drag a module, it snaps to a 20 px grid and never lands on another one;
@@ -12,9 +12,10 @@ const HUB_SIZES = {
   wx: { S: [200, 200], M: [380, 200], L: [540, 300] },
   note: { S: [300, 220], M: [420, 340], L: [560, 440] },
   tasks: { S: [240, 200], M: [420, 340], L: [560, 440] },
-  new: { S: [240, 200], M: [340, 220], L: [340, 220] }
+  new: { S: [240, 200], M: [340, 220], L: [340, 220] },
+  mood: { S: [260, 360], M: [360, 600], L: [520, 720] }
 };
-const HUB_MODS = [['cal', 'cal', 'Calendrier', 'Ton planning du jour (PRONOTE ou iCal)'], ['wx', 'sun', 'Météo', 'La météo de ta ville'], ['note', 'pencil', 'Note du HUB', 'Un brouillon, sans choisir d’espace'], ['tasks', 'tasks', 'Tâches en cours', 'Les tâches de tous tes projets'], ['new', 'plus', 'Nouveau projet', 'Un raccourci pour créer un espace']];
+const HUB_MODS = [['mood', 'image', 'Moodboard Général', 'Dépose liens, images et fichiers, range-les ensuite'], ['cal', 'cal', 'Calendrier', 'Ton planning du jour (PRONOTE ou iCal)'], ['wx', 'sun', 'Météo', 'La météo de ta ville'], ['note', 'pencil', 'Note du HUB', 'Un brouillon, sans choisir d’espace'], ['tasks', 'tasks', 'Tâches en cours', 'Les tâches de tous tes projets'], ['new', 'plus', 'Nouveau projet', 'Un raccourci pour créer un espace']];
 const hubPhone = () => innerWidth < 700;
 let hubEdit = false;
 
@@ -80,7 +81,13 @@ function hubSync(W) {
   const missing = userSpaces().filter(s => !H.off.includes(s.id) && !H.mods.some(m => m.t === 'proj' && m.sp === s.id)).sort((a, b) => projRecent(b) - projRecent(a));
   let add = missing.map((s, i) => ({ id: uid('h'), t: 'proj', sp: s.id, sz: first ? (i === 0 ? 'L' : 'M') : 'M' }));
   if (first) add = [...add.slice(0, 1), { id: uid('h'), t: 'cal', sz: 'M' }, { id: uid('h'), t: 'wx', sz: 'S' }, ...add.slice(1), { id: uid('h'), t: 'note', sz: 'M' }, { id: uid('h'), t: 'tasks', sz: 'M' }, { id: uid('h'), t: 'new', sz: 'M' }];
-  for (const m of add) { const p = hubFit(m, H.mods, W); m.x = p.x; m.y = p.y; m.o = H.mods.length; H.mods.push(m); }
+  /* a new table: the Moodboard Général takes the right column when there is room for it */
+  let W2 = W;
+  if (first && !H.moodV) { const mm = { id: uid('h'), t: 'mood', sz: 'M' }, w = hubSize(mm).w, x = Math.floor((W - w) / HUB_GRID) * HUB_GRID; if (x - HUB_GRID >= 540) { mm.x = x; mm.y = 0; mm.o = 0; H.mods.push(mm); W2 = x - HUB_GRID; } }
+  if (W2 < 780) for (const m of add) if (m.sz === 'L') m.sz = 'M';
+  for (const m of add) { const p = hubFit(m, H.mods, W2); m.x = p.x; m.y = p.y; m.o = H.mods.length; H.mods.push(m); }
+  /* 0.2.33: the Moodboard Général arrives once on the right of the table */
+  if (!H.moodV) { H.moodV = 1; if (!H.mods.some(m => m.t === 'mood')) { const m = { id: uid('h'), t: 'mood', sz: 'M', o: H.mods.length }, w = hubSize(m).w; const p = hubNear(m, H.mods, Math.max(W, w), Math.max(0, Math.floor((W - w) / HUB_GRID) * HUB_GRID), 0); m.x = p.x; m.y = p.y; H.mods.push(m); } add.push(1); }
   if (add.length) save();
   return H;
 }
@@ -174,11 +181,66 @@ function tasksMod(m) {
   const col = t => { const sp = spaceById(t.sp); return sp && sp.id !== DEF_SPACE ? sp.color : 'var(--ink-3)'; };
   return `<div class="hm-h"><span class="lab">Tâches en cours</span><small>${open.length} à faire</small></div><div class="ht-list">${open.slice(0, m.sz === 'L' ? 9 : 5).map(t => `<button class="pc-tk" data-hdone="${t.id}" style="--pc1:${col(t)}"><i class="pc-bx"></i><span>${esc(t.t)}</span>${tag(t)}</button>`).join('') || '<span class="pc-none">Tout est fait.</span>'}</div><form class="ht-add" data-hadd><input placeholder="Ajouter une tâche…" aria-label="Ajouter une tâche" autocomplete="off"></form>`;
 }
+/* ---------- Moodboard Général: the moodboard of « Non classées », a tray for anything dropped; ⇢ files it into a project ---------- */
+const moodHost = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
+const moodExt = n => (/\.([a-z0-9]{1,5})$/i.exec(n || '') || [, 'fichier'])[1].slice(0, 4).toUpperCase();
+const moodList = () => ((spaceById(DEF_SPACE) || {}).media || []).filter(m => m.type === 'link' || m.type === 'text' || Assets.has(m.asset));
+function moodTile(m) {
+  const mv = `<button class="hmd-mv" data-hmv="${m.id}" title="Ranger dans un projet" aria-label="Ranger dans un projet">${icon('folder', 'sm')}</button>`;
+  const a = `class="hmd-it hmd-${m.type}" data-hmi="${m.id}" draggable="true"`;
+  if (m.type === 'image') return `<figure ${a}><img src="${Assets.url(m.asset)}" alt="${esc(m.name || '')}" loading="lazy" draggable="false"${m.w && m.h ? ` style="aspect-ratio:${m.w}/${m.h}"` : ''}>${mv}</figure>`;
+  if (m.type === 'link') { const h = moodHost(m.url), pic = m.pic && Assets.has(m.pic) ? Assets.url(m.pic) : '';
+    return `<figure ${a} title="${esc(m.url)}">${pic ? `<img src="${pic}" alt="" loading="lazy" draggable="false">` : `<span class="hmd-ini" style="--c:${SPACE_COLORS[Math.floor(hashStr(h) * SPACE_COLORS.length)]}">${esc((h[0] || '?').toUpperCase())}</span>`}<figcaption><b>${esc(m.title || h)}</b><small>${icon('link', 'sm')}${esc(m.site || h)}</small></figcaption>${mv}</figure>`; }
+  if (m.type === 'file') { const e = moodExt(m.name); return `<figure ${a}><div class="hmd-fh"><span class="hmd-ext">${esc(e)}</span><b>${esc(m.name || 'Fichier')}</b></div>${m.snip ? `<pre>${esc(m.snip)}</pre>` : `<small>${m.size ? fmtSize(m.size) : ''}</small>`}${mv}</figure>`; }
+  if (m.type === 'text') return `<figure ${a}><p>${esc(m.txt).replace(/\n/g, '<br>')}</p>${mv}</figure>`;
+  return '';
+}
+function moodMod(m) {
+  const list = moodList(), n = m.sz === 'S' ? 6 : m.sz === 'M' ? 14 : 30;
+  return `<div class="hm-h"><span class="lab">Moodboard · Général</span><small>${list.length || ''}</small><button class="hmd-add" data-hmadd title="Ajouter des fichiers" aria-label="Ajouter des fichiers">${icon('plus', 'sm')}</button></div>
+    <div class="hmd-wall">${list.slice(0, n).map(moodTile).join('') || `<div class="hmd-empty">${icon('upload')}<b>Dépose ici</b><small>Un lien depuis Chrome (ArtStation…), une image, un .txt, n’importe quel fichier. Tu le rangeras dans un projet ensuite.</small></div>`}</div>
+    ${list.length > n ? `<button class="hmd-more" data-hgo="space:${DEF_SPACE}">Voir les ${list.length} éléments</button>` : ''}
+    <div class="hmd-over">${icon('upload')}Déposer dans le Moodboard Général</div>`;
+}
+/* move one element from the Général tray to a project's moodboard */
+function moodFile(id, spId) {
+  const from = spaceById(DEF_SPACE), to = spaceById(spId); if (!from || !to || spId === DEF_SPACE) return;
+  const k = (from.media || []).findIndex(x => x.id === id); if (k < 0) return;
+  const [m] = from.media.splice(k, 1); (to.media = to.media || []).unshift(m); save(); renderHubMods(); renderSide();
+  toast(`Rangé dans le moodboard de ${to.name}`, { label: 'Annuler', run: () => { const j = to.media.indexOf(m); if (j >= 0) to.media.splice(j, 1); from.media.splice(k, 0, m); save(); renderHubMods(); renderSide(); } });
+}
+function moodFileMenu(anchor, id) {
+  const sps = userSpaces();
+  if (!sps.length) { toast('Crée d’abord un projet'); return; }
+  openPop(anchor, [{ head: 'Ranger dans' }, ...sps.map(s => ({ label: s.name, dot: s.color, run: () => moodFile(id, s.id) }))], { align: 'right' });
+}
+/* previews: a link gets its page's title and picture, a text file its first lines (once, saved in the element) */
+let moodBusy = false;
+async function moodUnfurl() {
+  if (moodBusy) return; moodBusy = true;
+  try {
+    for (const m of moodList()) {
+      if (m.pv) continue;
+      if (m.type === 'link') {
+        const r = await Net.meta(m.url);
+        if (r) {
+          if (r.title && !m.title) m.title = String(r.title).trim().slice(0, 140);
+          if (r.site) m.site = String(r.site).slice(0, 60);
+          const src = r.isImage ? m.url : r.image;
+          if (src) { const b = await Net.blob(src); if (b && /^image\//.test(b.type) && b.size > 120) { try { const t = await importImage(b, 720); m.pic = t.id; } catch (e) {} } }
+        }
+      } else if (m.type === 'file' && (/^text\//.test(m.mime || '') || /\.(txt|md|csv|json|js|py|log)$/i.test(m.name || ''))) {
+        const b = Assets.blobs.get(m.asset); if (b && b.size < 2e6) { try { m.snip = (await b.text()).slice(0, 400); } catch (e) {} }
+      }
+      m.pv = 1; save(); if (R.name === 'hub') renderHubMods();
+    }
+  } finally { moodBusy = false; }
+}
 const newMod = () => `<button class="hn-new" data-hnewsp>${icon('plus', 'lg')}<b>Nouveau projet</b><small>Une carte de plus sur ta table</small></button>`;
 function modHTML(m) {
   let inner = '', cls = 'hmod hm-' + m.t + ' hs-' + (hubPhone() && m.sz === 'L' && m.t === 'proj' ? 'M' : m.sz);
   if (m.t === 'proj') { const sp = spaceById(m.sp); if (!sp) return ''; inner = projCard(m, sp); }
-  else if (m.t === 'cal') inner = calMod(m); else if (m.t === 'wx') inner = wxMod(m); else if (m.t === 'note') inner = noteMod(m); else if (m.t === 'tasks') inner = tasksMod(m); else if (m.t === 'new') inner = newMod();
+  else if (m.t === 'cal') inner = calMod(m); else if (m.t === 'wx') inner = wxMod(m); else if (m.t === 'note') inner = noteMod(m); else if (m.t === 'tasks') inner = tasksMod(m); else if (m.t === 'new') inner = newMod(); else if (m.t === 'mood') inner = moodMod(m);
   const s = hubSize(m);
   const edit = `<div class="hm-edit"><button class="hm-rm" data-hrm="${m.id}" aria-label="Retirer">${icon('x', 'sm')}</button>${m.t === 'new' ? '' : `<div class="hm-sz">${['S', 'M', 'L'].map(z => `<button data-hsz="${z}" aria-pressed="${m.sz === z}">${z}</button>`).join('')}</div>`}</div>`;
   return `<section class="${cls}" data-hmod="${m.id}" style="left:${m.x}px;top:${m.y}px;width:${s.w}px;height:${s.h}px;order:${m.o ?? 0}">${inner}${edit}</section>`;
@@ -208,6 +270,7 @@ function renderHubMods() {
   }
   t.innerHTML = H.mods.map(modHTML).join('');
   hubFrame();
+  if (moodList().some(x => !x.pv)) moodUnfurl();
 }
 function hubFrame() {
   const t = $('#hubTable'); if (!t) return;
@@ -291,6 +354,9 @@ function bindHub(v) {
     const dn = e.target.closest('[data-hdone]'); if (dn && !hubEdit) { const tk = taskById(dn.dataset.hdone); if (!tk) return; dn.classList.add('ticked'); setTimeout(() => { setTaskDone(tk, true); renderHubMods(); toast('Tâche terminée', { label: 'Annuler', run: () => { setTaskDone(tk, false); renderHubMods(); } }); }, 280); return; }
     const nw = e.target.closest('[data-hnew]'); if (nw && !hubEdit) { const d = newDoc(nw.dataset.hnew, { sp: nw.dataset.sp }); go('doc:' + d.id); return; }
     const ns = e.target.closest('[data-hnewsp]'); if (ns && !hubEdit) { askSpaceName(name => { createSpace(name, { stay: true }); go('hub'); }); return; }
+    const mv = e.target.closest('[data-hmv]'); if (mv) { moodFileMenu(mv, mv.dataset.hmv); return; }
+    if (e.target.closest('[data-hmadd]')) { const i = $('#fileIn'); i.accept = ''; i.onchange = async () => { const f = [...i.files]; i.value = ''; if (f.length && (await addMedia(DEF_SPACE, f)).length) { renderHubMods(); renderSide(); } }; i.click(); return; }
+    const mi = e.target.closest('[data-hmi]'); if (mi && !hubEdit) { const it = moodList().find(x => x.id === mi.dataset.hmi); if (it) Mood.view(it); return; }
     const mn = e.target.closest('[data-hmenu]'); if (mn) { projMenu(mn, hubMod(mn.dataset.hmenu)); return; }
     const rm = e.target.closest('[data-hrm]'); if (rm) { hubRemove(hubMod(rm.dataset.hrm)); return; }
     const sz = e.target.closest('[data-hsz]'); if (sz) { const m = hubMod(sz.closest('[data-hmod]').dataset.hmod); m.sz = sz.dataset.hsz; hubPlace(m, m.x, m.y); save(); renderHubMods(); return; }
@@ -304,6 +370,26 @@ function bindHub(v) {
     const i = e.target.querySelector('input'), val = i && i.value.trim(); if (!val) return;
     if (e.target.matches('[data-hcity]')) hubSetCity(val);
     if (e.target.matches('[data-hadd]')) { newTask({ t: val, sp: DEF_SPACE }); renderHubMods(); renderSide(); const n = $('[data-hadd] input'); if (n) n.focus(); }
+  });
+  const MT = 'application/x-plum-mood';
+  t.addEventListener('dragstart', e => { const it = e.target.closest('[data-hmi]'); if (!it || hubEdit) return; e.dataTransfer.setData(MT, it.dataset.hmi); const m = moodList().find(x => x.id === it.dataset.hmi); if (m && m.url) e.dataTransfer.setData('text/uri-list', m.url); e.dataTransfer.effectAllowed = 'copyMove'; it.classList.add('dragging'); t.classList.add('hmd-dragging'); });
+  t.addEventListener('dragend', e => { t.classList.remove('hmd-dragging'); $$('.dragging, .hdrop', t).forEach(x => x.classList.remove('dragging', 'hdrop')); });
+  const cardAt = e => { const c = e.target.closest && e.target.closest('.hm-proj'); return c && hubMod(c.dataset.hmod); };
+  const moodAt = e => e.target.closest && e.target.closest('.hm-mood');
+  t.addEventListener('dragover', e => {
+    if (hubEdit) return;
+    const ty = [...(e.dataTransfer.types || [])], m = cardAt(e), md = moodAt(e);
+    $$('.hdrop', t).forEach(x => { if (x !== (m && e.target.closest('.hm-proj')) && x !== md) x.classList.remove('hdrop'); });
+    if (m && (ty.includes(MT) || ty.some(x => x === 'Files' || x === 'text/uri-list' || x === 'text/plain'))) { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = ty.includes(MT) ? 'move' : 'copy'; e.target.closest('.hm-proj').classList.add('hdrop'); }
+    else if (md && !ty.includes(MT)) md.classList.add('hdrop');
+  });
+  t.addEventListener('dragleave', e => { const c = e.target.closest && e.target.closest('.hdrop'); if (c && !c.contains(e.relatedTarget)) c.classList.remove('hdrop'); });
+  t.addEventListener('drop', async e => {
+    $$('.hdrop', t).forEach(x => x.classList.remove('hdrop'));
+    const m = cardAt(e); if (!m || hubEdit) { setTimeout(() => { if (R.name === 'hub') renderHubMods(); }, 30); return; }
+    e.preventDefault(); e.stopPropagation();
+    const id = e.dataTransfer.getData(MT); if (id) { moodFile(id, m.sp); return; }
+    const sp = spaceById(m.sp); if (sp) { await Mood.drop(e.dataTransfer, sp); renderHubMods(); }
   });
   /* Custom mode: drag a module, it snaps to the grid; a free place is searched from where it is dropped */
   t.addEventListener('pointerdown', e => {
