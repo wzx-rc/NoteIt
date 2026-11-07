@@ -32,8 +32,14 @@ function bindShell() {
     go(g.dataset.go);
   });
   /* 0.2.14: a note can be written from anywhere, it goes to the space of the page or to « Non classées » */
-  $('#quickNote').onclick = () => createFrom('note');
-  $('#quickMore').onclick = e => openPop(e.currentTarget, [{ head: 'Créer' }, { label: 'Note', icon: 'note', run: () => createFrom('note') }, { label: 'Board', icon: 'board', run: () => createFrom('board') },
+  // 0.2.50: on the folded rail the pen opens the Créer menu; unfolded, a click writes a note and a long press opens the menu
+  let qnHold = 0, qnT = 0;
+  $('#quickNote').addEventListener('pointerdown', e => { if (e.button) return; qnHold = 0; clearTimeout(qnT); qnT = setTimeout(() => { qnHold = 1; createMenu($('#quickNote')); }, 420); });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) $('#quickNote').addEventListener(ev, () => clearTimeout(qnT));
+  $('#quickNote').addEventListener('contextmenu', e => { e.preventDefault(); createMenu(e.currentTarget); });
+  $('#quickNote').onclick = e => { if (qnHold) { qnHold = 0; return; } if (S.prefs.sideFold && innerWidth > 760) createMenu(e.currentTarget); else createFrom('note'); };
+  $('#quickMore').onclick = e => createMenu(e.currentTarget);
+  const createMenu = anchor => openPop(anchor, [{ head: 'Créer' }, { label: 'Note', icon: 'note', run: () => createFrom('note') }, { label: 'Board', icon: 'board', run: () => createFrom('board') },
     { label: 'Tâche', icon: 'tasks', run: () => { go(isGlobal() || curSpace().id === DEF_SPACE ? 'todo' : 'tasks'); setTimeout(() => $('#tAdd') && $('#tAdd').focus(), 30); } }, '-',
     { label: 'Espace', icon: 'folder', run: () => askSpaceName(n => createSpace(n)) }]);
   /* 0.2.21: the sidebar folds away (the page takes the whole width; unlike focus mode, the top bar stays) */
