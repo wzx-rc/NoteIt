@@ -1,170 +1,328 @@
-/* ================= UI Design (0.2.38) =================
-   A zone of the board (a frame with `ui`) where software interfaces are laid out from blocks: windows, docked panels,
-   inspectors, trees, timelines, fields… Each block is an item { k: 'uic', t: <type>, txt, v }, drawn here as plain HTML
-   whose look follows the zone's rendering (sketch, wireframe, or the dark "theme" tokens). Its words live in it.txt,
-   one line per row; each type reads its lines its own way (see UIKIT[t].hint). */
-const UI_FIDS = [['sketch', 'Croquis'], ['wire', 'Wireframe'], ['theme', 'Thème']];
-const UI_CATS = ['Fenêtre', 'Commandes', 'Données', 'Saisie', 'Vues', 'Retour'];
-/* t: [category, name, w, h, default text, hint for the text editor, dock sides it accepts] */
-const UIKIT = {};
-[
-  ['window', 0, 'Fenêtre', 960, 600, 'WZX Engine · Niveau_01\nFichier|Édition|Vue|Objet|Rendu|Aide\nPrêt|128 objets · 60 i/s', 'Ligne 1 : titre · ligne 2 : menus séparés par | · ligne 3 : barre d’état (gauche|droite)'],
-  ['dialog', 0, 'Dialogue', 420, 230, 'Exporter la scène\nChoisissez le format et le dossier d’export.\nAnnuler|Exporter', 'Titre · texte · boutons séparés par | (le dernier est le principal)'],
-  ['panel', 0, 'Panneau', 260, 360, 'Hiérarchie|Calques', 'Onglets séparés par | (le premier est actif)', 'lrtbc'],
-  ['menubar', 0, 'Barre de menus', 480, 24, 'Fichier|Édition|Vue|Aide', 'Menus séparés par |', 't'],
-  ['tabs', 0, 'Onglets', 320, 28, 'Console|Assets|Timeline', 'Onglets séparés par | (* devant : actif)'],
-  ['statusbar', 0, 'Barre d’état', 480, 22, 'Prêt|128 objets', 'Gauche|droite', 'b'],
-  ['splitter', 0, 'Séparateur', 6, 240, '', ''],
-  ['toolbar', 1, 'Barre d’outils', 520, 36, 'Déplacer|Tourner|Échelle', 'Groupe segmenté séparé par | (le premier est actif)', 't'],
-  ['button', 1, 'Bouton', 104, 28, 'Valider', 'Libellé'],
-  ['iconbtn', 1, 'Bouton icône', 28, 28, '', ''],
-  ['segmented', 1, 'Groupe segmenté', 220, 28, 'Déplacer|Tourner|Échelle', 'Choix séparés par | (* devant : actif)'],
-  ['menu', 1, 'Menu', 220, 190, 'Nouveau|Ctrl N\nOuvrir…|Ctrl O\nEnregistrer|Ctrl S\n-\n*Exporter…|Ctrl E\n-\nQuitter|Alt F4', 'Une ligne par entrée : libellé|raccourci · - : séparateur · * devant : survolée'],
-  ['ctxmenu', 1, 'Menu contextuel', 180, 150, 'Couper\nCopier\nColler\n-\nSupprimer', 'Une ligne par entrée · - : séparateur'],
-  ['cmdpal', 1, 'Palette de commandes', 380, 190, 'Rechercher une commande…\n*Ouvrir le projet\nExporter la scène\nBasculer la grille\nRecharger les shaders', 'Ligne 1 : champ · puis une commande par ligne (* : choisie)'],
-  ['tree', 2, 'Arborescence', 240, 280, 'Scène\n Caméra principale\n Lumière soleil\n Bâtiments\n  *Maison_01\n  Maison_02\n Végétation\n PNJ', 'Une ligne par nœud · espaces devant : niveau · * : sélectionné', 'lrc'],
-  ['inspector', 2, 'Inspecteur', 280, 320, 'Maison_01\n#Transformation\nPosition|12|0|-4,5\nRotation|0|35|0\nÉchelle|1|1|1\n#Matériau\nShader:Standard PBR\nRugosité~0,62\nMétal~0,10\n[x] Projette des ombres', 'Ligne 1 : nom · #Section · Nom|x|y|z · Nom:valeur · Nom~0,5 (curseur) · [x] case', 'lrc'],
-  ['table', 2, 'Tableau', 380, 200, 'Nom|Type|Taille\nMaison_01|Mesh|2,4 Mo\nGrange|Mesh|1,1 Mo\nSoleil|Lumière|—', 'Ligne 1 : en-têtes · une ligne par rangée, colonnes séparées par |', 'lrbc'],
-  ['console', 2, 'Console', 420, 160, '> Build terminé en 2,3 s\n! 2 textures manquantes\n> 128 objets chargés', '> message · ! avertissement · x erreur', 'bc'],
-  ['assets', 2, 'Liste d’assets', 380, 220, 'Bois\nPierre\nTuiles\nHerbe\nEau\nSable', 'Un asset par ligne', 'lrbc'],
-  ['breadcrumb', 2, 'Fil d’Ariane', 260, 22, 'Projet›Niveaux›Niveau_01', 'Étapes séparées par ›'],
-  ['label', 2, 'Libellé', 160, 20, 'Libellé', 'Texte'],
-  ['title', 2, 'Titre de section', 220, 28, 'Titre de section', 'Texte'],
-  ['field', 3, 'Champ texte', 220, 26, 'Nom:Maison_01', 'Libellé:valeur'],
-  ['number', 3, 'Champ numérique', 140, 24, 'Taille:1,00', 'Libellé:valeur'],
-  ['xyz', 3, 'Champ XYZ', 280, 24, 'Position|12|0|-4,5', 'Libellé|x|y|z'],
-  ['slider', 3, 'Curseur', 220, 22, 'Opacité~0,62', 'Libellé~valeur entre 0 et 1'],
-  ['color', 3, 'Couleur', 220, 26, 'Couleur:#C98B62', 'Libellé:#hex'],
-  ['dropdown', 3, 'Liste déroulante', 220, 26, 'Shader:Standard PBR', 'Libellé:valeur'],
-  ['checkbox', 3, 'Case à cocher', 180, 20, '[x] Projette des ombres', '[x] ou [ ] puis le libellé'],
-  ['toggle', 3, 'Interrupteur', 160, 22, '[x] Grille', '[x] ou [ ] puis le libellé'],
-  ['path', 3, 'Chemin de fichier', 320, 26, 'D:/Export/Niveau_01|Parcourir…', 'Chemin|bouton'],
-  ['curve', 3, 'Éditeur de courbe', 240, 150, 'Accélération', 'Titre'],
-  ['viewport', 4, 'Viewport 3D', 480, 300, 'Perspective · Éclairé', 'Libellé de la vue', 'c'],
-  ['timeline', 4, 'Timeline', 600, 180, 'Caméra\nSoleil\nMaison_01\nPNJ', 'Une piste par ligne', 'bc'],
-  ['nodes', 4, 'Graphe de nœuds', 420, 260, 'Texture|Mélange|Sortie', 'Nœuds séparés par |', 'c'],
-  ['canvas2d', 4, 'Canvas 2D', 360, 240, 'Canvas 2D', 'Libellé', 'c'],
-  ['histogram', 4, 'Histogramme', 240, 120, 'Histogramme', 'Titre'],
-  ['gizmo', 4, 'Gizmo d’axes', 64, 64, '', ''],
-  ['toast', 5, 'Notification', 280, 44, 'Scène enregistrée', 'Message'],
-  ['progress', 5, 'Barre de progression', 240, 30, 'Export…~0,62', 'Libellé~valeur entre 0 et 1'],
-  ['badge', 5, 'Badge', 44, 20, '3', 'Texte'],
-  ['alert', 5, 'Alerte', 340, 140, 'Fichier modifié\nEnregistrer les changements avant de fermer ?\nNe pas enregistrer|Annuler|Enregistrer', 'Titre · message · boutons séparés par |'],
-  ['spinner', 5, 'Chargement', 36, 36, '', ''],
-  ['empty', 5, 'État vide', 260, 170, 'Aucun objet\nGlissez un modèle ici', 'Titre · aide']
-].forEach(([t, c, name, w, h, txt, hint, dock]) => { UIKIT[t] = { t, cat: UI_CATS[c], name, w, h, txt, hint, dock: dock || '' }; });
-const UI_CONTAINERS = ['window', 'dialog', 'panel'];
-/* the part of a window that panels dock into: under the title and menu bars, above the status bar */
-const UI_WIN_TOP = 52, UI_WIN_BOT = 22;
-const mkUic = (t, x, y) => { const d = UIKIT[t]; return { id: uid('u'), k: 'uic', t, x: Math.round(x / 4) * 4, y: Math.round(y / 4) * 4, w: d.w, h: d.h, txt: d.txt }; };
-
-/* ---------- drawing the blocks ---------- */
-const ukLines = it => String(it.txt ?? '').split('\n');
-const ukNum = s => { const v = parseFloat(String(s || '').replace(',', '.')); return isFinite(v) ? clamp(v, 0, 1) : .5; };
-const ukChk = s => /^\s*\[[xX✓]\]/.test(s), ukUnchk = s => String(s).replace(/^\s*\[[ xX✓]?\]\s*/, '');
-const ukStar = s => /^\s*\*/.test(s), ukUnstar = s => String(s).replace(/^\s*\*\s*/, '');
-const ukBtns = (list, cls = '') => list.map((b, i) => `<span class="uk-btn${i === list.length - 1 ? ' pri' : ''} ${cls}" data-ukbtn="1">${esc(b.trim())}</span>`).join('');
-const ukRow = (l) => {   // one line of an inspector-like list
-  if (/^#/.test(l)) return `<div class="uk-sec">${esc(l.slice(1))}</div>`;
-  if (/^\s*\[[ xX✓]?\]/.test(l)) return `<div class="uk-r"><i class="uk-cb${ukChk(l) ? ' on' : ''}"></i><span>${esc(ukUnchk(l))}</span></div>`;
-  const p = l.split('|');
-  if (p.length >= 4) return `<div class="uk-r"><span class="uk-l">${esc(p[0])}</span><span class="uk-n x">${esc(p[1])}</span><span class="uk-n y">${esc(p[2])}</span><span class="uk-n z">${esc(p[3])}</span></div>`;
-  const sl = l.indexOf('~'); if (sl > 0) { const v = ukNum(l.slice(sl + 1)); return `<div class="uk-r"><span class="uk-l">${esc(l.slice(0, sl))}</span><span class="uk-tr"><i style="width:${(v * 100).toFixed(0)}%"></i></span><span class="uk-v">${esc(l.slice(sl + 1).trim())}</span></div>`; }
-  const c = l.indexOf(':'); if (c > 0) { const v = l.slice(c + 1).trim(), col = /^#[0-9a-f]{3,8}$/i.test(v); return `<div class="uk-r"><span class="uk-l">${esc(l.slice(0, c))}</span>${col ? `<i class="uk-sw" style="background:${v}"></i>` : ''}<span class="uk-f${/^\S+ ?▾?$/.test(v) || !col ? '' : ''}">${esc(v)}</span></div>`; }
-  return l.trim() ? `<div class="uk-r"><span>${esc(l)}</span></div>` : '';
+/* ================= UI Design (0.2.40) =================
+   A zone of the board (a frame with `ui`) where software interfaces are built the Qt Designer way, from few blocks:
+   - box     « Conteneur » : a widget that holds others through a layout (none, horizontal, vertical, grid), with margins and spacing
+   - button  « Bouton »    : a very rich style (type, icon, fill, gradient, border, corner radii, shadows, states hover / pressed / disabled)
+   - text    « Texte »     : a label
+   - spacer  « Espaceur »  : the layout's spring
+   Item: { k: 'uic', t, x, y, w, h, p: parent box id, o: order in the parent, lp: layout item props, hw / hh: preferred size (0 = from the content) }
+   The geometry of every block inside a layout is computed by uiLayout (Qt's size policies, minimum / maximum sizes, stretch factors). */
+const UI_FIDS = [['sketch', 'Croquis'], ['wire', 'Wireframe'], ['theme', 'Visuel']];
+const UI_TYPES = { box: 'Conteneur', button: 'Bouton', text: 'Texte', spacer: 'Espaceur' };
+const UI_HINTS = { box: 'Contient d’autres blocs, rangés par un layout', button: 'Un bouton au style entièrement réglable', text: 'Un libellé, un titre, un paragraphe', spacer: 'Le ressort du layout : pousse les blocs' };
+const UI_INF = 1e6;
+const UI_FONTS = ['Figtree', 'Inter', 'Segoe UI', 'Jost', 'Georgia', 'Instrument Serif', 'JetBrains Mono', 'Caveat', 'Arial', 'Verdana', 'Courier New'];
+/* the button's style; a state (h: survol, p: pressé, d: désactivé) overrides any of these keys */
+const UI_BTN = {
+  ff: 'Figtree', fs: 13, fw: 600, fi: 0, ls: 0, lh: 1.2, tt: 'none', ta: 'center', td: 'none', fg: '#FFFFFFFF',
+  ic: '', ip: 'l', isz: 16, ig: 8, icc: '',
+  px: 16, py: 8, r: [8, 8, 8, 8],
+  ft: 'solid', c1: '#E8955CFF', c2: '#C96A3AFF', ga: 180,
+  bw: 0, bst: 'solid', bc: '#00000026',
+  sho: 1, shx: 0, shy: 2, shb: 6, shs: 0, shc: '#0000002E',
+  iso: 0, isx: 0, isy: 1, isb: 0, iss: 0, isc: '#FFFFFF59',
+  tso: 0, tsx: 0, tsy: 1, tsb: 2, tsc: '#00000040',
+  op: 1, bl: 0, dy: 0, sc: 1, tr: 120
 };
-const ukLabeled = (l, inner) => { const c = l.indexOf(':'); return c > 0 ? `<span class="uk-l">${esc(l.slice(0, c))}</span>${inner(l.slice(c + 1).trim())}` : inner(l.trim()); };
-function uicHTML(it) {
-  const L = ukLines(it), a = L[0] || '';
-  switch (it.t) {
-    case 'window': {
-      const menus = (L[1] || '').split('|').filter(Boolean), st = (L[2] || '').split('|');
-      return `<div class="uk-win"><div class="uk-tb"><i class="uk-logo"></i><span class="uk-tt">${esc(a)}</span><span class="uk-wc"><i></i><i></i><i></i></span></div><div class="uk-mb">${menus.map(m => `<span>${esc(m)}</span>`).join('')}</div><div class="uk-wb"></div><div class="uk-sb"><span>${esc(st[0] || '')}</span><span>${esc(st[1] || '')}</span></div></div>`;
-    }
-    case 'dialog': return `<div class="uk-dlg"><div class="uk-dh">${esc(a)}<i class="uk-x"></i></div><div class="uk-dt">${esc(L[1] || '')}</div><div class="uk-sp"></div><div class="uk-dbtn">${ukBtns((L[2] || 'OK').split('|'))}</div></div>`;
-    case 'alert': return `<div class="uk-dlg uk-alert"><div class="uk-dh"><i class="uk-warn">!</i>${esc(a)}</div><div class="uk-dt">${esc(L[1] || '')}</div><div class="uk-sp"></div><div class="uk-dbtn">${ukBtns((L[2] || 'OK').split('|'))}</div></div>`;
-    case 'panel': { const tabs = a.split('|').filter(Boolean); return `<div class="uk-pan"><div class="uk-tabs">${tabs.map((t, i) => `<span class="${i ? '' : 'on'}">${esc(t)}</span>`).join('')}<i class="uk-pm"></i></div><div class="uk-pb"></div></div>`; }
-    case 'menubar': return `<div class="uk-mb solo">${a.split('|').map(m => `<span>${esc(m)}</span>`).join('')}</div>`;
-    case 'tabs': { const t = a.split('|'), act = t.some(ukStar) ? t.findIndex(ukStar) : 0; return `<div class="uk-tabs solo">${t.map((s, i) => `<span class="${i === act ? 'on' : ''}">${esc(ukUnstar(s))}</span>`).join('')}</div>`; }
-    case 'statusbar': { const p = a.split('|'); return `<div class="uk-sb solo"><span>${esc(p[0] || '')}</span><span>${esc(p[1] || '')}</span></div>`; }
-    case 'splitter': return `<div class="uk-split"><i></i></div>`;
-    case 'toolbar': { const s = a.split('|').filter(Boolean); return `<div class="uk-tool"><i class="uk-ib"></i><i class="uk-ib"></i><i class="uk-ib"></i><b class="uk-vs"></b><span class="uk-seg">${s.map((x, i) => `<span class="${i ? '' : 'on'}">${esc(x)}</span>`).join('')}</span><span class="uk-sp"></span><i class="uk-play"></i><span class="uk-sp"></span><span class="uk-dd">Perspective</span></div>`; }
-    case 'button': return `<span class="uk-btn solo ${it.v || 'pri'}" data-ukbtn="1">${esc(a)}</span>`;
-    case 'iconbtn': return `<i class="uk-ib solo"></i>`;
-    case 'segmented': { const s = a.split('|'), act = s.some(ukStar) ? s.findIndex(ukStar) : 0; return `<span class="uk-seg solo">${s.map((x, i) => `<span class="${i === act ? 'on' : ''}">${esc(ukUnstar(x))}</span>`).join('')}</span>`; }
-    case 'menu': case 'ctxmenu': return `<div class="uk-menu">${L.map(l => l.trim() === '-' ? '<i class="uk-ms"></i>' : (() => { const p = ukUnstar(l).split('|'); return `<div class="uk-mi${ukStar(l) ? ' on' : ''}"><span>${esc(p[0])}</span><small>${esc(p[1] || '')}</small></div>`; })()).join('')}</div>`;
-    case 'cmdpal': return `<div class="uk-menu uk-pal"><div class="uk-q">${esc(a)}</div>${L.slice(1).map(l => `<div class="uk-mi${ukStar(l) ? ' on' : ''}"><span>${esc(ukUnstar(l))}</span></div>`).join('')}</div>`;
-    case 'tree': return `<div class="uk-list uk-tree">${L.map(l => { const lv = (l.match(/^ */) || [''])[0].length, s = ukStar(l.trim()); return l.trim() ? `<div class="uk-tr${s ? ' on' : ''}" style="padding-left:${8 + lv * 14}px"><i class="uk-ti"></i>${esc(ukUnstar(l.trim()))}</div>` : ''; }).join('')}</div>`;
-    case 'inspector': return `<div class="uk-list uk-insp"><div class="uk-r uk-name"><i class="uk-cb on"></i><span class="uk-f">${esc(a)}</span></div>${L.slice(1).map(ukRow).join('')}</div>`;
-    case 'table': { const head = a.split('|'); return `<div class="uk-table"><div class="uk-th">${head.map(h => `<span>${esc(h)}</span>`).join('')}</div>${L.slice(1).map((l, i) => `<div class="uk-td${i === 0 ? ' on' : ''}">${l.split('|').map(c => `<span>${esc(c)}</span>`).join('')}</div>`).join('')}</div>`; }
-    case 'console': return `<div class="uk-con">${L.map(l => `<div class="${/^!/.test(l) ? 'w' : /^x/i.test(l) ? 'e' : ''}">${esc(l)}</div>`).join('')}</div>`;
-    case 'assets': return `<div class="uk-assets">${L.filter(s => s.trim()).map(s => `<div><i></i><span>${esc(s)}</span></div>`).join('')}</div>`;
-    case 'breadcrumb': return `<div class="uk-bc">${a.split('›').map(s => `<span>${esc(s.trim())}</span>`).join('<b>›</b>')}</div>`;
-    case 'label': return `<div class="uk-lab">${esc(a)}</div>`;
-    case 'title': return `<div class="uk-ttl">${esc(a)}</div>`;
-    case 'field': case 'number': return `<div class="uk-r solo">${ukLabeled(a, v => `<span class="uk-f${it.t === 'number' ? ' num' : ''}">${esc(v)}</span>`)}</div>`;
-    case 'dropdown': return `<div class="uk-r solo">${ukLabeled(a, v => `<span class="uk-f dd">${esc(v)}</span>`)}</div>`;
-    case 'color': return `<div class="uk-r solo">${ukLabeled(a, v => `<i class="uk-sw" style="background:${/^#[0-9a-f]{3,8}$/i.test(v) ? v : '#C98B62'}"></i><span class="uk-f">${esc(v)}</span>`)}</div>`;
-    case 'xyz': case 'slider': return `<div class="solo-r">${ukRow(a)}</div>`;
-    case 'checkbox': return `<div class="uk-r solo"><i class="uk-cb${ukChk(a) ? ' on' : ''}"></i><span>${esc(ukUnchk(a))}</span></div>`;
-    case 'toggle': return `<div class="uk-r solo"><i class="uk-tg${ukChk(a) ? ' on' : ''}"><b></b></i><span>${esc(ukUnchk(a))}</span></div>`;
-    case 'path': { const p = a.split('|'); return `<div class="uk-r solo"><span class="uk-f">${esc(p[0])}</span>${p[1] ? `<span class="uk-btn sec">${esc(p[1])}</span>` : ''}</div>`; }
-    case 'curve': return `<div class="uk-box uk-curve"><div class="uk-bh">${esc(a)}</div><svg viewBox="0 0 100 60" preserveAspectRatio="none"><path d="M2 58 C 40 58, 45 4, 98 2" fill="none" stroke="currentColor" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg></div>`;
-    case 'viewport': return `<div class="uk-vp"><span class="uk-vl">${esc(a)}</span><i class="uk-o o1"></i><i class="uk-o o2"></i><i class="uk-o o3"></i><i class="uk-gx"></i><i class="uk-gy"></i><span class="uk-axis">XYZ</span></div>`;
-    case 'timeline': { const tr = L.filter(s => s.trim()); return `<div class="uk-tl"><div class="uk-tln"><div class="uk-rul"></div>${tr.map(t => `<div>${esc(t)}</div>`).join('')}</div><div class="uk-tlb"><div class="uk-rul g"></div>${tr.map((t, i) => `<div><i style="left:${(8 + i * 17) % 60}%;width:${22 + (i * 13) % 30}%"></i></div>`).join('')}<b class="uk-ph"></b></div></div>`; }
-    case 'nodes': { const n = a.split('|').filter(Boolean); return `<div class="uk-nodes">${n.map((s, i) => `<div class="uk-node" style="left:${6 + i * (88 / Math.max(1, n.length)) }%;top:${i % 2 ? 46 : 18}%"><b>${esc(s)}</b><i></i><i></i></div>`).join('')}<svg viewBox="0 0 100 100" preserveAspectRatio="none">${n.slice(1).map((s, i) => { const x0 = 6 + i * (88 / n.length) + 22, x1 = 6 + (i + 1) * (88 / n.length), y0 = i % 2 ? 58 : 30, y1 = (i + 1) % 2 ? 58 : 30; return `<path d="M${x0} ${y0} C ${x0 + 8} ${y0}, ${x1 - 8} ${y1}, ${x1} ${y1}" fill="none" stroke="currentColor" stroke-width="1.4" vector-effect="non-scaling-stroke"/>`; }).join('')}</svg></div>`; }
-    case 'canvas2d': return `<div class="uk-box uk-c2d"><span class="uk-vl">${esc(a)}</span></div>`;
-    case 'histogram': return `<div class="uk-box uk-hist"><div class="uk-bh">${esc(a)}</div><div class="uk-bars">${[22, 38, 55, 70, 62, 80, 58, 44, 30, 46, 64, 36].map(h => `<i style="height:${h}%"></i>`).join('')}</div></div>`;
-    case 'gizmo': return `<div class="uk-giz"><i class="x"></i><i class="y"></i><i class="z"></i></div>`;
-    case 'toast': return `<div class="uk-toast"><i class="uk-cb on"></i><span>${esc(a)}</span></div>`;
-    case 'progress': { const sl = a.indexOf('~'), v = sl > 0 ? ukNum(a.slice(sl + 1)) : .5; return `<div class="uk-prog"><span>${esc(sl > 0 ? a.slice(0, sl) : a)}<b>${Math.round(v * 100)} %</b></span><span class="uk-tr"><i style="width:${(v * 100).toFixed(0)}%"></i></span></div>`; }
-    case 'badge': return `<span class="uk-badge">${esc(a)}</span>`;
-    case 'spinner': return `<i class="uk-spin"></i>`;
-    case 'empty': return `<div class="uk-empty"><i></i><b>${esc(a)}</b><span>${esc(L[1] || '')}</span></div>`;
-  }
-  return `<div class="uk-box"></div>`;
+const UI_BTN_ST = () => ({ h: { c1: '#F0A470FF', c2: '#D2783FFF' }, p: { c1: '#D27E48FF', c2: '#B45C2EFF', dy: 1, shy: 1, shb: 2 }, d: { op: .45, sho: 0 } });
+const UI_TXT = { ff: 'Figtree', fs: 13, fw: 400, fi: 0, fg: '#2B2B2BFF', ta: 'left', va: 'center', lh: 1.35, ls: 0, tt: 'none', td: 'none', wr: 'wrap' };
+const UI_BOX = { sk: 'panel', title: 'Panneau', lay: 'v', m: [12, 12, 12, 12], sp: 8, sv: 8, cols: 2, cst: '', ca: 'start', bg: '#FFFFFFFF', bc: '#0000001F', bw: 1, r: 8, sh: 0, tb: '#F2F1EEFF', tf: '#2B2B2BFF' };
+const UI_SKINS = [['none', 'Nu'], ['panel', 'Panneau'], ['group', 'Groupe'], ['window', 'Fenêtre'], ['dialog', 'Dialogue']];
+const UI_LAYS = [['none', 'Aucun', 'Les blocs restent où vous les posez'], ['h', 'Horizontal', 'Les blocs se rangent en ligne'], ['v', 'Vertical', 'Les blocs se rangent en colonne'], ['grid', 'Grille', 'Les blocs se rangent en grille']];
+/* Qt's size policies */
+const UI_POL = [['fix', 'Fixe', 'Toujours sa taille préférée'], ['min', 'Minimum', 'Au moins sa taille préférée, peut grandir'], ['max', 'Maximum', 'Au plus sa taille préférée, peut rétrécir'], ['pref', 'Préférée', 'Sa taille préférée, peut grandir ou rétrécir'], ['exp', 'Extensible', 'Prend toute la place libre'], ['ign', 'Ignorée', 'Ignore sa taille préférée, prend la place libre']];
+const UI_LP = { button: { ph: 'min', pv: 'fix' }, text: { ph: 'pref', pv: 'pref' }, box: { ph: 'pref', pv: 'pref' } };
+/* icons: 24 px strokes */
+const UI_ICONS = {
+  plus: 'M12 5v14M5 12h14', check: 'M5 12.5l4.5 4.5L19 7.5', x: 'M6 6l12 12M18 6L6 18', right: 'M5 12h14M13 6l6 6-6 6', left: 'M19 12H5M11 6l-6 6 6 6',
+  down: 'M6 9l6 6 6-6', search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4', play: 'M8 5l11 7-11 7z', pause: 'M8 5v14M16 5v14',
+  save: 'M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6', dl: 'M12 4v11M7 10l5 5 5-5M5 20h14', ul: 'M12 20V9M7 14l5-5 5 5M5 4h14',
+  gear: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13', star: 'M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z',
+  heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z', folder: 'M3 6h6l2 2h10v11H3z', user: 'M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21c1-4 4-6 8-6s7 2 8 6',
+  home: 'M3 11l9-7 9 7M6 9v11h12V9', edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+  lock: 'M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3', bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0', menu: 'M4 6h16M4 12h16M4 18h16',
+  dots: 'M5 12h.01M12 12h.01M19 12h.01', link: 'M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1', refresh: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5'
+};
+const ukIcon = (k, sz, col) => UI_ICONS[k] ? `<svg class="uk-ic" viewBox="0 0 24 24" width="${sz}" height="${sz}" fill="none" stroke="${col || 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${UI_ICONS[k]}"/></svg>` : '';
+/* ready-made button styles: a starting point, everything stays editable */
+const UI_PRESETS = [
+  ['Principal', {}, null],
+  ['Secondaire', { ft: 'solid', c1: '#FFFFFFFF', fg: '#2B2B2BFF', bw: 1, bc: '#D3CFC7FF', shy: 1, shb: 2, shc: '#0000001A' }, { h: { c1: '#F6F4F0FF' }, p: { c1: '#ECE9E3FF', dy: 1, sho: 0 }, d: { op: .45 } }],
+  ['Contour', { ft: 'none', fg: '#E8955CFF', bw: 1.5, bc: '#E8955CFF', sho: 0 }, { h: { ft: 'solid', c1: '#E8955C1F' }, p: { ft: 'solid', c1: '#E8955C33' }, d: { op: .4 } }],
+  ['Fantôme', { ft: 'none', fg: '#2B2B2BFF', sho: 0, bw: 0 }, { h: { ft: 'solid', c1: '#0000000F' }, p: { ft: 'solid', c1: '#0000001C' }, d: { op: .4 } }],
+  ['Lien', { ft: 'none', fg: '#3D6FD8FF', sho: 0, bw: 0, px: 4, py: 2, fw: 500, td: 'underline' }, { h: { fg: '#2752B0FF' }, p: { fg: '#1C3D85FF' }, d: { op: .4 } }],
+  ['Danger', { c1: '#D9483BFF', c2: '#B8352AFF' }, { h: { c1: '#E35A4DFF' }, p: { c1: '#B8352AFF', dy: 1 }, d: { op: .45, sho: 0 } }],
+  ['Pilule', { r: [999, 999, 999, 999], px: 22, c1: '#2B2B2BFF', shy: 4, shb: 12, shc: '#00000033' }, { h: { c1: '#444444FF' }, p: { c1: '#111111FF', sc: .97 }, d: { op: .4 } }],
+  ['Dégradé', { ft: 'lin', c1: '#7B5CFFFF', c2: '#E8558FFF', ga: 120, r: [10, 10, 10, 10], shy: 6, shb: 16, shc: '#7B5CFF55' }, { h: { ga: 160, shb: 22 }, p: { dy: 1, shy: 2, shb: 6 }, d: { op: .45, sho: 0 } }],
+  ['Verre', { ft: 'solid', c1: '#FFFFFF2E', fg: '#FFFFFFFF', bw: 1, bc: '#FFFFFF59', bl: 12, r: [12, 12, 12, 12], shy: 8, shb: 24, shc: '#00000040', iso: 1, isy: 1, isc: '#FFFFFF66' }, { h: { c1: '#FFFFFF47' }, p: { c1: '#FFFFFF1F' }, d: { op: .4 } }],
+  ['Néon', { ft: 'none', fg: '#4FF5D2FF', bw: 1.5, bc: '#4FF5D2FF', r: [6, 6, 6, 6], shx: 0, shy: 0, shb: 14, shs: 0, shc: '#4FF5D299', tso: 1, tsy: 0, tsb: 8, tsc: '#4FF5D2CC', tt: 'uppercase', ls: 1.5, ff: 'JetBrains Mono', fw: 500 }, { h: { shb: 24, shc: '#4FF5D2DD' }, p: { c1: '#4FF5D226', ft: 'solid' }, d: { op: .35, sho: 0, tso: 0 } }],
+  ['Rétro 3D', { c1: '#F2C94CFF', fg: '#2B2B2BFF', bw: 2, bc: '#2B2B2BFF', r: [6, 6, 6, 6], shx: 4, shy: 4, shb: 0, shc: '#2B2B2BFF', fw: 800 }, { h: { c1: '#F7D56BFF' }, p: { dy: 3, shx: 1, shy: 1 }, d: { op: .45 } }],
+  ['Doux', { c1: '#ECE9E4FF', fg: '#5B574FFF', r: [14, 14, 14, 14], shx: 5, shy: 5, shb: 12, shc: '#C9C4BAFF', iso: 1, isx: -4, isy: -4, isb: 10, isc: '#FFFFFFCC' }, { h: { shx: 3, shy: 3 }, p: { shx: 0, shy: 0, shb: 0, iso: 1, isx: 3, isy: 3, isb: 8, isc: '#C9C4BAFF' }, d: { op: .45 } }]
+];
+const ukClone = o => JSON.parse(JSON.stringify(o));
+function mkUic(t, x, y, o = {}) {
+  const it = { id: uid('u'), k: 'uic', t, x: Math.round(x / 4) * 4, y: Math.round(y / 4) * 4, w: 120, h: 32 };
+  if (t === 'box') { it.c = Object.assign(ukClone(UI_BOX), o.c || {}); it.w = o.w || 360; it.h = o.h || 240; }
+  if (t === 'button') { it.txt = 'Valider'; it.b = ukClone(UI_BTN); it.bs = UI_BTN_ST(); }
+  if (t === 'text') { it.txt = 'Libellé'; it.f = ukClone(UI_TXT); }
+  if (t === 'spacer') { it.w = 40; it.h = 20; }
+  return it;
 }
-/* the library tile: a small picture of the block */
+/* colours are stored as #RRGGBBAA */
+const ukHex = c => { c = String(c || '#000000'); if (/^#[0-9a-f]{3}$/i.test(c)) c = '#' + [...c.slice(1)].map(x => x + x).join(''); if (/^#[0-9a-f]{6}$/i.test(c)) c += 'FF'; return /^#[0-9a-f]{8}$/i.test(c) ? c.toUpperCase() : '#000000FF'; };
+const ukRgb = c => ukHex(c).slice(0, 7), ukAlpha = c => parseInt(ukHex(c).slice(7), 16) / 255;
+const ukMix = (rgb, a) => ukHex(rgb).slice(0, 7) + Math.round(clamp(a, 0, 1) * 255).toString(16).padStart(2, '0').toUpperCase();
+const ukCss = c => { const h = ukHex(c), a = ukAlpha(h); return a >= 1 ? h.slice(0, 7) : `rgba(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)},${+a.toFixed(3)})`; };
+const ukFont = f => /\s/.test(f) ? `"${f}"` : f;
+
+/* ---------- styles ---------- */
+const ukBtnStyle = (it, st) => Object.assign({}, UI_BTN, it.b || {}, st && st !== 'n' && it.bs ? it.bs[st] || {} : {});
+function ukBtnDecl(s) {
+  const r = (s.r || [0, 0, 0, 0]).map(v => (+v || 0) + 'px').join(' ');
+  const bg = s.ft === 'none' ? 'transparent' : s.ft === 'lin' ? `linear-gradient(${+s.ga || 0}deg, ${ukCss(s.c1)}, ${ukCss(s.c2)})` : s.ft === 'rad' ? `radial-gradient(circle at 50% 35%, ${ukCss(s.c1)}, ${ukCss(s.c2)})` : ukCss(s.c1);
+  const sh = []; if (+s.sho) sh.push(`${s.shx}px ${s.shy}px ${s.shb}px ${s.shs}px ${ukCss(s.shc)}`); if (+s.iso) sh.push(`inset ${s.isx}px ${s.isy}px ${s.isb}px ${s.iss}px ${ukCss(s.isc)}`);
+  const dir = { l: 'row', r: 'row-reverse', t: 'column', b: 'column-reverse', o: 'row' }[s.ip] || 'row', jc = { left: 'flex-start', center: 'center', right: 'flex-end' }[s.ta] || 'center';
+  return `background:${bg};color:${ukCss(s.fg)};font:${+s.fi ? 'italic ' : ''}${s.fw} ${s.fs}px/${s.lh} ${ukFont(s.ff)},var(--font-ui);letter-spacing:${s.ls}px;text-transform:${s.tt};text-decoration:${s.td};`
+    + `flex-direction:${dir};justify-content:${jc};gap:${s.ig}px;padding:${s.py}px ${s.px}px;border-radius:${r};border:${s.bw}px ${s.bst} ${ukCss(s.bc)};box-shadow:${sh.join(',') || 'none'};`
+    + `text-shadow:${+s.tso ? `${s.tsx}px ${s.tsy}px ${s.tsb}px ${ukCss(s.tsc)}` : 'none'};opacity:${s.op};backdrop-filter:${+s.bl ? `blur(${s.bl}px)` : 'none'};transform:translateY(${s.dy}px) scale(${s.sc});transition:all ${s.tr}ms ease;`;
+}
+const ukTxtStyle = it => Object.assign({}, UI_TXT, it.f || {});
+const ukBoxStyle = it => Object.assign({}, UI_BOX, it.c || {});
+/* the part of a box above its content: a title bar, a group title */
+const ukChrome = c => ({ window: 32, dialog: 38, group: 20 }[c.sk] || 0);
+
+/* ---------- drawing ---------- */
+const ukMulti = s => esc(s).replace(/\n/g, '<br>');
+function uicHTML(it, dir) {
+  if (it.t === 'button') {
+    const st = it.dis ? 'd' : it.pv || 'n', s = ukBtnStyle(it, st), id = esc(it.id);
+    const css = `[data-b="${id}"]{${ukBtnDecl(s)}}` + (it.dis ? '' : `.uitest [data-b="${id}"]{${ukBtnDecl(ukBtnStyle(it, 'n'))}}.uitest [data-b="${id}"]:hover{${ukBtnDecl(ukBtnStyle(it, 'h'))}}.uitest [data-b="${id}"]:active{${ukBtnDecl(ukBtnStyle(it, 'p'))}}`);
+    const ic = s.ic ? ukIcon(s.ic, s.isz, s.icc ? ukCss(s.icc) : '') : '', lab = s.ip === 'o' && ic ? '' : `<span class="uk-bl">${ukMulti(it.txt)}</span>`;
+    return `<style>${css}</style><div class="uk-b" data-b="${id}"${it.dis ? '' : ' data-ukbtn="1"'}>${ic}${lab}</div>`;
+  }
+  if (it.t === 'text') {
+    const f = ukTxtStyle(it), jc = { top: 'flex-start', center: 'center', bottom: 'flex-end' }[f.va] || 'center';
+    const ws = f.wr === 'wrap' ? 'pre-wrap' : 'pre', ell = f.wr === 'elide' ? 'overflow:hidden;text-overflow:ellipsis;' : '';
+    return `<div class="uk-t" style="justify-content:${jc};color:${ukCss(f.fg)};font:${+f.fi ? 'italic ' : ''}${f.fw} ${f.fs}px/${f.lh} ${ukFont(f.ff)},var(--font-ui);letter-spacing:${f.ls}px;text-transform:${f.tt};text-decoration:${f.td};text-align:${f.ta}"><span style="white-space:${ws};${ell}">${esc(it.txt)}</span></div>`;
+  }
+  if (it.t === 'box') {
+    const c = ukBoxStyle(it), ch = ukChrome(c), r = +c.r || 0;
+    const base = c.sk === 'none' ? `background:${ukCss(c.bg)};border:${c.bw}px solid ${ukCss(c.bc)};border-radius:${r}px` : `background:${ukCss(c.bg)};border:${c.bw}px solid ${ukCss(c.bc)};border-radius:${r}px;box-shadow:${+c.sh || c.sk === 'dialog' ? '0 18px 44px rgba(0,0,0,.22)' : c.sk === 'window' ? '0 8px 26px rgba(0,0,0,.14)' : 'none'}`;
+    let chrome = '';
+    if (c.sk === 'window') chrome = `<div class="uk-wt" style="height:${ch}px;background:${ukCss(c.tb)};color:${ukCss(c.tf)};border-radius:${r}px ${r}px 0 0"><i class="uk-wl"></i><span>${esc(c.title)}</span><span class="uk-wc"><i></i><i></i><i></i></span></div>`;
+    if (c.sk === 'dialog') chrome = `<div class="uk-wt dlg" style="height:${ch}px;background:${ukCss(c.tb)};color:${ukCss(c.tf)};border-radius:${r}px ${r}px 0 0"><span>${esc(c.title)}</span><span class="uk-dx">${ukIcon('x', 14)}</span></div>`;
+    if (c.sk === 'group') chrome = `<div class="uk-gt" style="color:${ukCss(c.tf)}">${esc(c.title)}</div>`;
+    return `<div class="uk-bx sk-${c.sk}" style="${base}">${chrome}</div>`;
+  }
+  if (it.t === 'spacer') return `<div class="uk-sp ${dir === 'v' ? 'v' : 'h'}"><svg viewBox="0 0 40 20" preserveAspectRatio="none"><path d="M0 10h4l3-6 5 12 5-12 5 12 5-12 5 12 3-6h5" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg></div>`;
+  return `<div class="uk-old">Ancien bloc (${esc(it.t)})</div>`;
+}
+/* the library tile */
 function uicThumb(t) {
-  const it = { t, txt: UIKIT[t].txt, w: UIKIT[t].w, h: UIKIT[t].h }, W = 96, H = 52, s = Math.min(W / it.w, H / it.h, 1);
-  return `<span class="uk-thumb uic uf-wire" style="width:${it.w}px;height:${it.h}px;left:${((W - it.w * s) / 2).toFixed(1)}px;top:${((H - it.h * s) / 2).toFixed(1)}px;transform:scale(${s.toFixed(3)})">${uicHTML(it)}</span>`;
+  if (t === 'box') return `<span class="uk-thumb"><span class="uk-tbx"><i></i><i></i><i></i></span></span>`;
+  if (t === 'button') return `<span class="uk-thumb"><span class="uk-tbt">Valider</span></span>`;
+  if (t === 'text') return `<span class="uk-thumb"><span class="uk-ttx">Aa<small>Libellé</small></span></span>`;
+  return `<span class="uk-thumb"><span class="uk-tsp">${uicHTML({ t: 'spacer' }, 'h')}</span></span>`;
 }
 
-/* ---------- docking: panels snap to a side of a window and share it ---------- */
-/* where a block dropped at (px, py) would dock in window W: 't' 'l' 'r' 'b' 'c', or null */
-function uiDockSide(it, W, px, py) {
-  const d = UIKIT[it.t]; if (!d || !d.dock || !W) return null;
-  const top = W.y + UI_WIN_TOP, bot = W.y + W.h - UI_WIN_BOT; if (!inBox(px, py, [W.x, top, W.x + W.w, bot])) return null;
-  const fx = (px - W.x) / W.w, fy = (py - top) / Math.max(1, bot - top), ok = s => d.dock.includes(s);
-  if (fy < .18 && ok('t')) return 't';
-  if (fx < .26 && ok('l')) return 'l';
-  if (fx > .74 && ok('r')) return 'r';
-  if (fy > .7 && ok('b')) return 'b';
-  if (ok('c')) return 'c';
-  return ok('b') ? 'b' : ok('l') ? 'l' : null;
+/* ---------- sizes from the content (Qt's sizeHint) ---------- */
+let ukCtx = null; const ukMeasured = new Map();
+function ukMeasure(font, s, ls) {
+  const k = font + '|' + ls + '|' + s; let v = ukMeasured.get(k); if (v != null) return v;
+  if (!ukCtx) ukCtx = document.createElement('canvas').getContext('2d');
+  ukCtx.font = font; v = ukCtx.measureText(s).width + (+ls || 0) * s.length;
+  if (ukMeasured.size > 4000) ukMeasured.clear(); ukMeasured.set(k, v); return v;
 }
-/* lays out every docked block of every window: top bars, then bottom docks, then left / right columns, the centre takes what is left */
-function uiDockLayout(arr) {
-  const wins = arr.filter(i => i.k === 'uic' && i.t === 'window'); if (!wins.length && !arr.some(i => i.dock)) return arr;
-  const pos = new Map(), byWin = new Map();
-  for (const i of arr) if (i.k === 'uic' && i.dock) { const w = wins.find(x => x.id === i.dock.w); if (!w) { pos.set(i.id, { dock: undefined }); continue; } if (!byWin.has(w.id)) byWin.set(w.id, []); byWin.get(w.id).push(i); }
-  for (const W of wins) {
-    const list = byWin.get(W.id); if (!list) continue;
-    let x0 = W.x, x1 = W.x + W.w, y0 = W.y + UI_WIN_TOP, y1 = W.y + W.h - UI_WIN_BOT;
-    const side = s => list.filter(i => i.dock.s === s);
-    for (const i of side('t').sort((a, b) => a.y - b.y)) { const h = clamp(i.h, 18, (y1 - y0) * .4); pos.set(i.id, { x: x0, y: y0, w: x1 - x0, h }); y0 += h; }
-    for (const i of side('b').sort((a, b) => b.y - a.y)) { const h = clamp(i.h, 40, (y1 - y0) * .6); pos.set(i.id, { x: x0, y: y1 - h, w: x1 - x0, h }); y1 -= h; }
-    for (const i of side('l').sort((a, b) => a.x - b.x)) { const w = clamp(i.w, 80, (x1 - x0) * .45); pos.set(i.id, { x: x0, y: y0, w, h: y1 - y0 }); x0 += w; }
-    for (const i of side('r').sort((a, b) => b.x - a.x)) { const w = clamp(i.w, 80, (x1 - x0) * .45); pos.set(i.id, { x: x1 - w, y: y0, w, h: y1 - y0 }); x1 -= w; }
-    const cs = side('c'); cs.forEach((i, k) => { const h = (y1 - y0) / cs.length; pos.set(i.id, { x: x0, y: y0 + k * h, w: x1 - x0, h }); });
+const ukTx = (s, tt) => tt === 'uppercase' ? s.toUpperCase() : tt === 'lowercase' ? s.toLowerCase() : s;
+function ukTextBox(txt, f) {
+  const font = `${+f.fi ? 'italic ' : ''}${f.fw} ${f.fs}px ${ukFont(f.ff)}, sans-serif`, lines = String(txt ?? '').split('\n');
+  const w = Math.max(0, ...lines.map(l => ukMeasure(font, ukTx(l, f.tt), f.ls)));
+  const word = Math.max(0, ...lines.join(' ').split(/\s+/).map(x => ukMeasure(font, ukTx(x, f.tt), f.ls)));
+  return { w: Math.ceil(w) + 1, word: Math.ceil(word) + 1, h: Math.ceil(lines.length * f.fs * f.lh), lh: f.fs * f.lh, font, lines };
+}
+/* hint and minimum hint of a leaf block (boxes are computed from their content in uiLayout) */
+function ukLeafHint(it, dir) {
+  if (it.t === 'button') {
+    const s = ukBtnStyle(it, it.dis ? 'd' : 'n'), tb = s.ip === 'o' && s.ic ? { w: 0, h: 0 } : ukTextBox(it.txt, s), I = s.ic ? +s.isz : 0, g = I && tb.w ? +s.ig : 0;
+    const vert = s.ip === 't' || s.ip === 'b', cw = vert ? Math.max(tb.w, I) : tb.w + g + I, chh = vert ? tb.h + g + I : Math.max(tb.h, I);
+    const w = Math.ceil(cw + 2 * s.px + 2 * s.bw), h = Math.ceil(chh + 2 * s.py + 2 * s.bw);
+    return { w, h, mw: w, mh: h };
   }
-  if (!pos.size) return arr;
-  return arr.map(i => { const p = pos.get(i.id); if (!p) return i; const r = (v, o) => v == null ? o : Math.round(v * 100) / 100; const n = { x: r(p.x, i.x), y: r(p.y, i.y), w: r(p.w, i.w), h: r(p.h, i.h) }; if ('dock' in p && !p.dock) return Object.assign({}, i, { dock: undefined }); return n.x === i.x && n.y === i.y && n.w === i.w && n.h === i.h ? i : Object.assign({}, i, n); });
+  if (it.t === 'text') {
+    const f = ukTxtStyle(it), tb = ukTextBox(it.txt, f), w = f.wr === 'wrap' ? Math.min(tb.w, 320) : tb.w;
+    const lines = f.wr === 'wrap' ? Math.max(tb.lines.length, Math.ceil(tb.w / Math.max(1, w) - .001) + tb.lines.length - 1) : tb.lines.length;
+    return { w, h: Math.ceil(lines * tb.lh), mw: f.wr === 'wrap' ? tb.word : f.wr === 'elide' ? Math.min(tb.w, 24) : tb.w, mh: Math.ceil(tb.lh) };
+  }
+  if (it.t === 'spacer') return dir === 'v' ? { w: 20, h: 40, mw: 0, mh: 0 } : { w: 40, h: 20, mw: 0, mh: 0 };
+  return { w: it.w, h: it.h, mw: it.w, mh: it.h };   // an old block: its own size
 }
-/* the screens of a zone, for the test mode: its windows and dialogs, by rows then left to right */
+/* the layout item's props: policy, sizes, stretch, alignment, span */
+function ukLp(it, dir) {
+  const d = it.t === 'spacer' ? (dir === 'v' ? { ph: 'min', pv: 'exp' } : { ph: 'exp', pv: 'min' }) : UI_LP[it.t] || { ph: 'fix', pv: 'fix' };
+  return Object.assign({ ph: d.ph, pv: d.pv, mnw: 0, mnh: 0, mxw: 0, mxh: 0, sth: 0, stv: 0, ah: 'auto', av: 'auto', cs: 1, rs: 1 }, it.lp || {});
+}
+/* one axis of an item, for the layout: { min, hint, max, exp, grow, st } */
+function ukAxis(hint, minHint, pol, mn, mx, st, user) {
+  let h = user > 0 ? user : hint, min = minHint, max = UI_INF, exp = false, grow = true;
+  if (user > 0) min = Math.min(min, h);
+  if (pol === 'fix') { min = max = h; grow = false; }
+  else if (pol === 'min') min = h;
+  else if (pol === 'max') { max = h; grow = false; }
+  else if (pol === 'exp') exp = true;
+  else if (pol === 'ign') { exp = true; h = min; }
+  if (mn > 0) { min = Math.max(min, mn); if (max < min) max = min; }
+  if (mx > 0) { max = Math.min(max, mx); if (min > max) min = max; grow = grow && max > h; }
+  h = clamp(h, min, max);
+  return { min, hint: h, max, exp, grow: grow && max > h, st: +st || 0 };
+}
+/* Qt's distribution: below the hints everyone shrinks towards its minimum; above, the free space goes to the stretch factors,
+   else to the expanding items, else to whoever can grow. Returns the sizes and what is left over. */
+function ukDistribute(total, L) {
+  const n = L.length; if (!n) return { s: [], left: Math.max(0, total) };
+  const sumMin = L.reduce((a, i) => a + i.min, 0), sumHint = L.reduce((a, i) => a + i.hint, 0);
+  if (total <= sumMin) return { s: L.map(i => i.min), left: 0 };
+  if (total < sumHint) { const room = sumHint - sumMin, f = (sumHint - total) / Math.max(1e-6, room); return { s: L.map(i => i.hint - (i.hint - i.min) * f), left: 0 }; }
+  const s = L.map(i => i.hint); let extra = total - sumHint;
+  const groups = [L.map((i, k) => i.st > 0 && i.max > i.hint ? k : -1), L.map((i, k) => i.exp && i.max > i.hint ? k : -1), L.map((i, k) => (i.grow || i.exp) && i.max > i.hint ? k : -1)].map(g => g.filter(k => k >= 0));
+  for (const g of groups) {
+    let open = g.filter(k => s[k] < L[k].max);
+    while (extra > .01 && open.length) {
+      const wsum = open.reduce((a, k) => a + (L[k].st || 1), 0); let used = 0;
+      for (const k of open) { const add = extra * (L[k].st || 1) / wsum, nv = Math.min(L[k].max, s[k] + add); used += nv - s[k]; s[k] = nv; }
+      extra -= used; open = open.filter(k => s[k] < L[k].max - .01); if (used < .01) break;
+    }
+    if (extra <= .01) break;
+  }
+  return { s, left: Math.max(0, extra) };
+}
+const ukFit = (ax, cell, al) => { const size = al === 'auto' ? clamp(cell, ax.min, ax.max) : clamp(ax.hint, ax.min, Math.max(ax.min, Math.min(ax.max, cell))); const free = cell - size; return { size, off: al === 'start' ? 0 : al === 'end' ? free : free / 2 }; };
+/* grid placement: row-major auto flow with spans */
+function ukGridPlace(kids, cols, lp) {
+  const occ = new Set(), pos = []; let r = 0, c = 0;
+  for (const k of kids) {
+    const L = lp(k), cs = clamp(L.cs | 0 || 1, 1, cols), rs = Math.max(1, L.rs | 0 || 1);
+    for (;;) { if (c + cs > cols) { c = 0; r++; } let free = true; for (let y = r; y < r + rs && free; y++) for (let x = c; x < c + cs; x++) if (occ.has(y + ',' + x)) { free = false; break; } if (free) break; c++; }
+    for (let y = r; y < r + rs; y++) for (let x = c; x < c + cs; x++) occ.add(y + ',' + x);
+    pos.push({ r, c, rs, cs }); c += cs;
+  }
+  return { pos, rows: pos.reduce((a, p) => Math.max(a, p.r + p.rs), 0) };
+}
+/* ---------- the layout engine ---------- */
+let uiFloat = null;   // blocks being dragged: out of their layout while the pointer holds them
+function uiLayout(arr) {
+  if (!arr.some(i => i.k === 'uic')) return arr;
+  const byId = new Map(), kids = new Map();
+  for (const i of arr) if (i.k === 'uic') byId.set(i.id, i);
+  /* a parent must be an existing box, without cycles */
+  const fixP = new Map();
+  const pOf = i => { if (fixP.has(i.id)) return fixP.get(i.id); let p = i.p && byId.get(i.p) && byId.get(i.p).t === 'box' ? i.p : null; if (p) { const seen = new Set([i.id]); let q = p; while (q) { if (seen.has(q)) { p = null; break; } seen.add(q); const Q = byId.get(q); q = Q && Q.p && byId.get(Q.p) ? Q.p : null; } } fixP.set(i.id, p); return p; };
+  for (const i of byId.values()) { const p = pOf(i); if (p && !(uiFloat && uiFloat.has(i.id))) { if (!kids.has(p)) kids.set(p, []); kids.get(p).push(i); } }
+  for (const l of kids.values()) l.sort((a, b) => (a.o ?? 0) - (b.o ?? 0) || arr.indexOf(a) - arr.indexOf(b));
+  const lay = b => b.t === 'box' ? ukBoxStyle(b).lay : 'none';
+  const dirOf = i => { const p = pOf(i); return p && lay(byId.get(p)) === 'v' ? 'v' : 'h'; };
+  const H = new Map();
+  /* hint of any block: leaves from their content, boxes from their layout */
+  function hint(i) {
+    if (H.has(i.id)) return H.get(i.id);
+    let r;
+    if (i.t !== 'box') r = ukLeafHint(i, dirOf(i));
+    else {
+      const c = ukBoxStyle(i), m = c.m.map(v => +v || 0), ch = ukChrome(c), K = kids.get(i.id) || [], L = c.lay;
+      const padW = m[0] + m[2], padH = m[1] + m[3] + ch;
+      if (L === 'none' || !K.length) r = L === 'none' ? { w: i.hw || i.w, h: i.hh || i.h, mw: padW, mh: padH } : { w: Math.max(120, padW + 40), h: Math.max(80, padH + 30), mw: padW, mh: padH };
+      else if (L === 'h' || L === 'v') {
+        const ax = K.map(k => itemAx(k)), sp = (+c.sp || 0) * (K.length - 1), mainH = L === 'h';
+        const sum = (f) => ax.reduce((a, x) => a + f(x), 0), mx = (f) => ax.reduce((a, x) => Math.max(a, f(x)), 0);
+        r = mainH ? { w: padW + sp + sum(x => x.h.hint), h: padH + mx(x => x.v.hint), mw: padW + sp + sum(x => x.h.min), mh: padH + mx(x => x.v.min) }
+          : { w: padW + mx(x => x.h.hint), h: padH + sp + sum(x => x.v.hint), mw: padW + mx(x => x.h.min), mh: padH + sp + sum(x => x.v.min) };
+      } else {
+        const g = gridAxes(i, c, K);
+        const tot = (A, sp) => A.reduce((a, x) => a + x.hint, 0) + sp * Math.max(0, A.length - 1), totm = (A, sp) => A.reduce((a, x) => a + x.min, 0) + sp * Math.max(0, A.length - 1);
+        r = { w: padW + tot(g.cols, +c.sp || 0), h: padH + tot(g.rows, +c.sv || 0), mw: padW + totm(g.cols, +c.sp || 0), mh: padH + totm(g.rows, +c.sv || 0) };
+      }
+    }
+    H.set(i.id, r); return r;
+  }
+  function itemAx(k) {
+    const h = hint(k), L = ukLp(k, dirOf(k));
+    return { h: ukAxis(h.w, h.mw, L.ph, L.mnw, L.mxw, L.sth, k.hw), v: ukAxis(h.h, h.mh, L.pv, L.mnh, L.mxh, L.stv, k.hh), L };
+  }
+  function gridAxes(b, c, K) {
+    const cols = Math.max(1, c.cols | 0 || 1), P = ukGridPlace(K, cols, k => ukLp(k, 'h')), ax = K.map(itemAx);
+    const cst = String(c.cst || '').split(/[,; ]+/).map(Number);
+    const mk = (n, key, span, idx, sp, stOf) => {
+      const A = Array.from({ length: n }, (_, j) => ({ min: 0, hint: 0, max: 0, exp: false, grow: false, st: stOf(j) }));
+      K.forEach((k, q) => { if (P.pos[q][span] !== 1) return; const a = ax[q][key], C = A[P.pos[q][idx]]; C.min = Math.max(C.min, a.min); C.hint = Math.max(C.hint, a.hint); C.max = Math.max(C.max, a.max); C.exp = C.exp || a.exp; C.grow = C.grow || a.grow; });
+      K.forEach((k, q) => { const s = P.pos[q][span]; if (s === 1) return; const a = ax[q][key], j0 = P.pos[q][idx], seg = A.slice(j0, j0 + s), have = seg.reduce((x, y) => x + y.min, 0) + sp * (s - 1), haveH = seg.reduce((x, y) => x + y.hint, 0) + sp * (s - 1), last = seg[seg.length - 1];
+        if (a.min > have) last.min += a.min - have; if (a.hint > haveH) last.hint += a.hint - haveH; last.max = Math.max(last.max, last.hint, a.max === UI_INF ? UI_INF : 0); last.exp = last.exp || a.exp; last.grow = last.grow || a.grow; });
+      for (const C of A) { C.hint = Math.max(C.hint, C.min); if (C.max < C.hint) C.max = C.hint; if (C.grow || C.exp) C.max = Math.max(C.max, UI_INF); C.grow = C.grow && C.max > C.hint; }
+      return A;
+    };
+    return { P, ax, cols: mk(cols, 'h', 'cs', 'c', +c.sp || 0, j => +cst[j] || 0), rows: mk(P.rows, 'v', 'rs', 'r', +c.sv || 0, () => 0) };
+  }
+  const out = new Map();
+  const put = (i, x, y, w, h) => out.set(i.id, { x, y, w: Math.max(0, w), h: Math.max(0, h) });
+  /* place a box's content inside its rectangle */
+  function place(b, X, Y, W, Hh) {
+    const c = ukBoxStyle(b), K = kids.get(b.id) || [], L = c.lay; if (!K.length) return;
+    if (L === 'none') { for (const k of K) if (k.t === 'box') place(k, k.x, k.y, k.w, k.h); return; }
+    const m = c.m.map(v => +v || 0), ch = ukChrome(c), x0 = X + m[0], y0 = Y + m[1] + ch, w0 = Math.max(0, W - m[0] - m[2]), h0 = Math.max(0, Hh - m[1] - m[3] - ch);
+    if (L === 'h' || L === 'v') {
+      const ax = K.map(itemAx), sp = +c.sp || 0, mainH = L === 'h', D = ukDistribute((mainH ? w0 : h0) - sp * (K.length - 1), ax.map(a => mainH ? a.h : a.v));
+      const gaps = c.ca === 'between' && K.length > 1 ? D.left / (K.length - 1) : 0;
+      let at = (mainH ? x0 : y0) + (c.ca === 'center' ? D.left / 2 : c.ca === 'end' ? D.left : 0);
+      K.forEach((k, q) => {
+        const s = D.s[q], cr = ukFit(mainH ? ax[q].v : ax[q].h, mainH ? h0 : w0, mainH ? ax[q].L.av : ax[q].L.ah);
+        const mal = ukFit(mainH ? ax[q].h : ax[q].v, s, 'auto');
+        if (mainH) put(k, at + mal.off, y0 + cr.off, mal.size, cr.size); else put(k, x0 + cr.off, at + mal.off, cr.size, mal.size);
+        at += s + sp + gaps;
+      });
+    } else {
+      const g = gridAxes(b, c, K), sp = +c.sp || 0, sv = +c.sv || 0;
+      const DW = ukDistribute(w0 - sp * (g.cols.length - 1), g.cols), DH = ukDistribute(h0 - sv * Math.max(0, g.rows.length - 1), g.rows);
+      const ox = c.ca === 'center' ? DW.left / 2 : c.ca === 'end' ? DW.left : 0, oy = c.ca === 'center' ? DH.left / 2 : c.ca === 'end' ? DH.left : 0;
+      const xs = [x0 + ox], ys = [y0 + oy]; DW.s.forEach((v, j) => xs.push(xs[j] + v + sp)); DH.s.forEach((v, j) => ys.push(ys[j] + v + sv));
+      K.forEach((k, q) => { const p = g.P.pos[q], cx = xs[p.c], cy = ys[p.r], cw = xs[p.c + p.cs] - sp - cx, chh = ys[p.r + p.rs] - sv - cy;
+        const fx = ukFit(g.ax[q].h, cw, g.ax[q].L.ah), fy = ukFit(g.ax[q].v, chh, g.ax[q].L.av); put(k, cx + fx.off, cy + fy.off, fx.size, fy.size); });
+    }
+    for (const k of K) if (k.t === 'box') { const r = out.get(k.id); place(k, r.x, r.y, r.w, r.h); }
+  }
+  /* the roots (free boxes, and boxes being dragged) keep their place; a box never gets smaller than its content allows */
+  for (const i of byId.values()) {
+    if (i.t !== 'box') continue;
+    const p = pOf(i); if (p && !(uiFloat && uiFloat.has(i.id))) continue;
+    const parentFree = p && lay(byId.get(p)) === 'none';
+    if (parentFree && !(uiFloat && uiFloat.has(i.id))) continue;
+    const h = hint(i), w = Math.max(i.w, h.mw), hh = Math.max(i.h, h.mh);
+    if (w !== i.w || hh !== i.h) put(i, i.x, i.y, w, hh);
+    place(i, i.x, i.y, w, hh);
+  }
+  /* free children of a free-layout box: they stay, a box among them lays out its own content */
+  for (const i of byId.values()) { if (i.t !== 'box' || out.has(i.id)) continue; const p = pOf(i); if (p && lay(byId.get(p)) === 'none' && !(uiFloat && uiFloat.has(i.id))) { const h = hint(i), w = Math.max(i.w, h.mw), hh = Math.max(i.h, h.mh); if (w !== i.w || hh !== i.h) put(i, i.x, i.y, w, hh); place(i, i.x, i.y, w, hh); } }
+  const r2 = v => Math.round(v * 100) / 100;
+  let res = arr.map(i => {
+    if (i.k !== 'uic') return i;
+    let n = i; const p = pOf(i);
+    if ((i.p || null) !== p) n = Object.assign({}, n, { p: undefined, o: undefined });
+    const q = out.get(i.id); if (q) { const g = { x: r2(q.x), y: r2(q.y), w: r2(q.w), h: r2(q.h) }; if (g.x !== n.x || g.y !== n.y || g.w !== n.w || g.h !== n.h) n = Object.assign(n === i ? Object.assign({}, i) : n, g); }
+    return n;
+  });
+  /* children are drawn above their parent */
+  const at = new Map(res.map((i, k) => [i.id, k]));
+  if (res.some(i => i.k === 'uic' && i.p && at.get(i.p) > at.get(i.id))) {
+    const done = new Set(), wait = new Map(), o2 = [];
+    const emit = i => { o2.push(i); done.add(i.id); const w = wait.get(i.id); if (w) { wait.delete(i.id); w.forEach(emit); } };
+    for (const i of res) { if (i.k === 'uic' && i.p && !done.has(i.p) && at.has(i.p)) { if (!wait.has(i.p)) wait.set(i.p, []); wait.get(i.p).push(i); } else emit(i); }
+    for (const w of wait.values()) w.forEach(i => { if (!done.has(i.id)) emit(i); });
+    res = o2;
+  }
+  return res;
+}
+/* the boxes and blocks inside a box, at any depth */
+function uiDesc(arr, id, set = new Set()) { for (const i of arr) if (i.k === 'uic' && i.p === id && !set.has(i.id)) { set.add(i.id); uiDesc(arr, i.id, set); } return set; }
+/* the screens of a zone, for the test mode: its free windows and dialogs, by rows then left to right */
 function uiScreens(zone, arr) {
-  const b = boxOf(zone), cIn = (i, q) => inBox(i.x + i.w / 2, i.y + i.h / 2, q);
-  const wins = arr.filter(i => i.k === 'uic' && (i.t === 'window' || i.t === 'dialog' || i.t === 'alert') && !i.hid && cIn(i, b));
-  const top = wins.filter(w => !wins.some(o => o !== w && o.t === 'window' && w.t !== 'window' && cIn(w, boxOf(o))));   // a dialog drawn inside a window belongs to that window's picture
-  return top.sort((p, q) => Math.abs(p.y - q.y) > 120 ? p.y - q.y : p.x - q.x);
+  const b = boxOf(zone);
+  const s = arr.filter(i => i.k === 'uic' && i.t === 'box' && !i.p && !i.hid && ['window', 'dialog'].includes(ukBoxStyle(i).sk) && inBox(i.x + i.w / 2, i.y + i.h / 2, b));
+  return s.sort((p, q) => Math.abs(p.y - q.y) > 120 ? p.y - q.y : p.x - q.x);
 }

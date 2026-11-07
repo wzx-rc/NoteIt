@@ -8,7 +8,7 @@ const Board = (() => {
   const view = { x: 0, y: 0, k: 1, r: 0 };   // r: the board turned by two fingers, in degrees (iPad, as in Concepts)
   let tool = 'select', shapeKind = 'rect', penKind = 'pen', noteColor = SCHEME_BASE[14];
   let sel = new Set(), editing = null, editSub = null, hist = [], fut = [], op = null, guides = null, marquee = null, attachHi = null, attachSock = null, eraserAt = null, eraseAll = true;
-  let uiDockHi = null, uiLib = null;
+  let uiIns = null, uiLib = null, uiInsp = null;
   let spaceDown = false, penSeen = false, clip = null, raf = 0, propSig = '', qSig = '', lastClient = null, mounted = false, propsTab = 'style', propsHold = false, liveBefore = null;
   const touches = new Map(), nodes = new Map(), fitCache = new Map(), measCache = new Map();
   const MINK = .08, MAXK = 8;
@@ -31,11 +31,11 @@ const Board = (() => {
   /* ---------- history ---------- */
   function commit(next, o = {}) {
     if (o.hist !== false) { hist.push(o.before || items); if (hist.length > 250) hist.shift(); fut.length = 0; }
-    next = uiDockLayout(next); items = hasMind(next) ? relayout(next) : next; reindex();
+    next = uiLayout(next); items = hasMind(next) ? relayout(next) : next; reindex();
     for (const id of [...sel]) if (!byId.has(id)) sel.delete(id);
     D.items = items; touch(D); updateUndo(); schedule();
   }
-  function setLive(next) { items = uiDockLayout(next); reindex(); D.items = items; schedule(); }
+  function setLive(next) { items = uiLayout(next); reindex(); D.items = items; schedule(); }
   function silent(next) { items = next; reindex(); D.items = items; save(); }
   const hasMind = arr => arr.some(i => i.k === 'mind');
   function undo() { if (editing) finishEdit(); const p = hist.pop(); if (!p) return; fut.push(items); items = p; reindex(); sel = new Set([...sel].filter(id => byId.has(id))); D.items = items; touch(D); updateUndo(); schedule(); }
@@ -133,7 +133,7 @@ const Board = (() => {
       case 'ink': return `k${pv(it.p)}|${it.c}|${it.o}|${it.t}|${it.w0}|${it.h0}|${theme()}|${it.b ? JSON.stringify(it.b) : ''}`;
       case 'mind': return `m${it.lv}|${it.c}|${it.txt}|${skin()}|${it.side}|${it.ms || 1}|${it.lv === 1 && MT().mindArt ? artOff(it) : ''}`;
       case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}|${it.ui || ''}`;
-      case 'uic': return `u${it.t}|${Math.round(it.w)}|${Math.round(it.h)}|${it.txt}|${it.v || ''}|${uiFid(it)}`;
+      case 'uic': return `u${it.t}|${Math.round(it.w)}|${Math.round(it.h)}|${uiFid(it)}|${uiDir(it)}|${JSON.stringify([it.txt, it.b, it.bs, it.c, it.f, it.pv, it.dis])}`;
       case 'task': { const t = taskById(it.task) || {}; return `T${t.t}|${t.done}|${t.due}|${t.time}|${t.sp}`; }
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
       case 'sheet': return `g${it.w}|${it.h}|${it.cols}|${it.rows}|${it.fs}|${it.title}|${JSON.stringify(it.cells)}|${JSON.stringify(it.cw || 0)}|${JSON.stringify(it.rh || 0)}|${theme()}`;
@@ -206,7 +206,7 @@ const Board = (() => {
       case 'frame':
         n.className = 'frame-it' + (it.nt ? ' nt' : '') + (it.ui ? ' uiz' : ''); n.innerHTML = `<div class="ftitle" style="font-size:${FRAME_TFS[it.tfs ?? 1]}px">${esc(it.title)}</div>` + (it.ui ? uzHeadHTML(it) : ''); break;
       case 'uic':
-        n.className = 'it uic uf-' + uiFid(it) + ' ut-' + it.t; n.innerHTML = uicHTML(it); break;
+        n.className = 'it uic uf-' + uiFid(it) + ' ut-' + it.t + (it.p ? ' uin' : ''); n.innerHTML = uicHTML(it, uiDir(it)); break;
       case 'task': {
         const t = taskById(it.task);
         n.className = 'it card-it task' + (t && t.done ? ' done' : '');
@@ -348,7 +348,9 @@ const Board = (() => {
     if (guides) for (const g of guides) { if (g.v != null) { const p = toS(g.v, 0); h += `<div class="guide v" style="left:${p.x}px;top:0;bottom:0"></div>`; } else { const p = toS(0, g.h); h += `<div class="guide h" style="top:${p.y}px;left:0;right:0"></div>`; } }
     if (attachHi) { const it = byId.get(attachHi); if (it) { const a = toS(it.x, it.y); h += `<div class="attach" style="left:${a.x - 4}px;top:${a.y - 4}px;width:${it.w * view.k + 8}px;height:${it.h * view.k + 8}px"></div>`;
       if (op && (op.kind === 'conn' || op.kind === 'ep')) for (const [k, [fx, fy]] of Object.entries(SOCKS)) { const q = toS(it.x + fx * it.w, it.y + fy * it.h); h += `<div class="sock${attachSock === k ? ' on' : ''}" style="left:${q.x}px;top:${q.y}px"></div>`; } } }
-    if (uiDockHi) { const a = toS(uiDockHi.x, uiDockHi.y); h += `<div class="uidock" style="left:${a.x}px;top:${a.y}px;width:${uiDockHi.w * view.k}px;height:${uiDockHi.h * view.k}px"><b>${uiDockHi.label}</b></div>`; }
+    { const one = sel.size === 1 ? byId.get([...sel][0]) : null, lb = one && one.k === 'uic' ? (one.t === 'box' && ukBoxStyle(one).lay !== 'none' ? one : uiLaidOut(one) ? byId.get(one.p) : null) : null;
+      if (lb && !uiIns) { const c = ukBoxStyle(lb), m = c.m.map(v => +v || 0), a = toS(lb.x + m[0], lb.y + m[1] + ukChrome(c)); h += `<div class="uilay" style="left:${a.x}px;top:${a.y}px;width:${Math.max(0, lb.w - m[0] - m[2]) * view.k}px;height:${Math.max(0, lb.h - m[1] - m[3] - ukChrome(c)) * view.k}px"></div>`; }
+      if (uiIns) { const a = toS(uiIns.x, uiIns.y), w = uiIns.w * view.k, hh = uiIns.h * view.k; h += uiIns.box ? `<div class="uiins box" style="left:${a.x}px;top:${a.y}px;width:${w}px;height:${hh}px"></div>` : `<div class="uiins" style="left:${a.x - (w ? 0 : 1.5)}px;top:${a.y - (hh ? 0 : 1.5)}px;width:${w || 3}px;height:${hh || 3}px"></div>`; } }
     if (eraserAt && tool === 'eraser') { const r = 12; h += `<div class="erasecur" style="left:${eraserAt.x}px;top:${eraserAt.y}px;width:${r * 2}px;height:${r * 2}px"></div>`; }
     const list = selItems(), dragging = op && op.moved;
     if (list.length === 1 && list[0].k === 'conn') {
@@ -405,6 +407,7 @@ const Board = (() => {
     ovl.innerHTML = h;
     renderQuick(list, dragging);
     renderProps();
+    uiInspSync();
     $('.zv', zoomEl).textContent = Math.round(view.k * uz() * 100) + ' %';
   }
 
@@ -492,7 +495,9 @@ const Board = (() => {
     if (list.some(i => i.lock)) return (one && one.k === 'plan' ? qact('pdim', 'moon', 'Assombrir le planning') : '') + qact('unlock', 'unlock', 'Déverrouiller', 'Déverrouiller');
     if (one && one.k === 'plan') { ac.push(qact('pdim', 'moon', 'Assombrir le planning'), qact('pset', 'cal', 'Réglages du planning : lien iCal, période, heures, couleurs (double-clic)')); if (one.src) ac.push(qact('prefresh', 'restore', 'Mettre à jour depuis le lien iCal')); }
     if (one && one.k === 'frame' && one.ui) { g.push(`<div class="seg sm uqs">${UI_FIDS.map(([v, l]) => `<button data-qa="uif-${v}" aria-pressed="${one.ui === v}" title="Rendu de la zone : ${l}">${l}</button>`).join('')}</div>`); ac.push(qact('uilib', 'layout', 'Bibliothèque de blocs', 'Blocs'), qact('uitest', 'play', 'Tester les interactions de la zone', 'Tester')); }
-    if (one && one.k === 'uic') { ac.push(qact('uiedit', 'text', 'Modifier le texte du bloc (double-clic, Entrée)', 'Texte')); if (one.t === 'button') g.push(`<div class="seg sm uqs">${[['pri', 'Principal'], ['sec', 'Secondaire'], ['ghost', 'Fantôme']].map(([v, l]) => `<button data-qa="uiv-${v}" aria-pressed="${(one.v || 'pri') === v}">${l}</button>`).join('')}</div>`); if (one.dock) ac.push(qact('uiundock', 'ext', 'Détacher du dock : le panneau redevient flottant', 'Détacher')); }
+    if (one && one.k === 'uic' && one.t === 'box') g.push(`<div class="seg sm uqs" title="Layout du conteneur">${UI_LAYS.map(([v, l, t]) => `<button data-qa="uil-${v}" aria-pressed="${ukBoxStyle(one).lay === v}" title="${esc(t)}">${l}</button>`).join('')}</div>`);
+    if (list.length > 1 && list.every(i => i.k === 'uic')) g.push(`<div class="seg sm uqs" title="Mettre en layout, comme Qt Designer">${[['h', 'Ligne', 'Ctrl 1'], ['v', 'Colonne', 'Ctrl 2'], ['grid', 'Grille', 'Ctrl 5']].map(([v, l, k]) => `<button data-qa="uiwrap-${v}" title="Mettre en layout : ${l.toLowerCase()} (${k})">${l}</button>`).join('')}</div>`);
+    if (one && one.k === 'uic' && one.t !== 'spacer') ac.push(qact('uiedit', 'text', 'Modifier le texte (double-clic, Entrée)', 'Texte'));
     if (one && one.k === 'mind') ac.push(qact('mchild', 'plus', 'Ajouter une idée (Tab)'));
     if (one && one.k === 'conn') ac.push(qact('label', 'text', 'Ajouter un texte sur la flèche'));
     if (one && ['link', 'doc', 'task'].includes(one.k)) ac.push(qact('open', 'ext', 'Ouvrir'));
@@ -895,7 +900,8 @@ const Board = (() => {
   function action(a, btn) {
     const list = selItems();
     if (a.startsWith('uif-')) { if (list[0] && list[0].ui) uiSetFid(list[0], a.slice(4)); return; }
-    if (a.startsWith('uiv-')) { if (list[0] && list[0].k === 'uic') { commit(replace(items, list[0], { v: a.slice(4) })); qSig = ''; } return; }
+    if (a.startsWith('uil-')) { if (list[0] && list[0].k === 'uic' && list[0].t === 'box') uiSetLay(list[0], a.slice(4)); return; }
+    if (a.startsWith('uiwrap-')) { uiWrap(a.slice(7)); return; }
     switch (a) {
       case 'help': helpModal(); return;
       case 'front': case 'back': case 'fwd': case 'bwd': zMove(a); return;
@@ -917,7 +923,7 @@ const Board = (() => {
       case 'frameSel': frameAround(list.filter(i => i.k !== 'conn')); return;
       case 'tasks': go('tasks'); return;
       case 'multitext': multiText(); return;
-      case 'uiedit': if (list[0] && list[0].k === 'uic') uicEdit(list[0]); return;
+      case 'uiedit': if (list[0] && list[0].k === 'uic') uiFocusText(list[0]); return;
       case 'uilib': uiLibOpen(list[0] && list[0].ui ? list[0].id : null); return;
       case 'uitest': if (list[0] && list[0].ui) uiTest(list[0]); return;
       case 'uiundock': if (list[0] && list[0].dock) { const it = list[0]; commit(replace(items, it, { dock: undefined, x: it.x + 24, y: it.y + 24 })); } return;
@@ -1003,6 +1009,7 @@ const Board = (() => {
   function cloneItems(list, dx, dy) {
     const ids = new Set(list.map(i => i.id));
     for (const i of list) if (i.k === 'mind') { const r = i.parent ? null : i; if (r) mindDesc(r.id, ids); }
+    for (const i of list) if (i.k === 'uic' && i.t === 'box') uiDesc(items, i.id, ids);
     const src = items.filter(i => ids.has(i.id) || (i.k === 'conn' && ids.has(i.a.id) && ids.has(i.b.id)));
     const map = new Map(src.map(i => [i.id, uid(i.id[0])])), gmap = new Map();
     return src.map(i => {
@@ -1011,7 +1018,7 @@ const Board = (() => {
       if (o.k === 'conn') { for (const e of ['a', 'b']) { if (o[e].id) { o[e].id = map.get(o[e].id) || null; if (!o[e].id) delete o[e].fx, delete o[e].fy; } else { if (o[e].on) { o[e].on = map.get(o[e].on); if (!o[e].on) delete o[e].on; } o[e].x += dx; o[e].y += dy; } } o.pts = (o.pts || []).map(p => [p[0] + dx, p[1] + dy]); o.sd = Math.random(); }
       else { o.x += dx; o.y += dy; }
       if (o.k === 'mind') { if (o.parent && map.has(o.parent)) o.parent = map.get(o.parent); else if (o.parent) o.parent = null; o.root = map.get(o.root) || o.id; if (!o.parent) o.root = o.id; }
-      if (o.dock) { const m = map.get(o.dock.w); if (m) o.dock = { w: m, s: o.dock.s }; else delete o.dock; }
+      if (o.k === 'uic' && o.p) { const m = map.get(o.p); if (m) o.p = m; else o.o = (o.o ?? 0) + .5; }
       if (o.k === 'ink') o.p = i.p;
       if (o.k === 'shape') o.sd = Math.random();
       if (o.k === 'todo') { o.sd = Math.random(); o.tasks = o.tasks.map(id => { const t = taskById(id); if (!t) return null; const n = newTask({ t: t.t || 'Nouvelle tâche', sp: t.sp, due: t.due, time: t.time }); n.done = t.done; return n.id; }).filter(Boolean); }
@@ -1021,7 +1028,7 @@ const Board = (() => {
   function deleteSel() {
     if (!sel.size) return;
     const del = new Set([...sel].filter(id => !(byId.get(id) || {}).lock)); if (!del.size) { toast('Élément verrouillé : déverrouillez-le pour le supprimer'); return; }
-    for (const id of sel) { const i = byId.get(id); if (i && i.k === 'mind') mindDesc(id, del); }
+    for (const id of sel) { const i = byId.get(id); if (i && i.k === 'mind') mindDesc(id, del); if (i && i.k === 'uic' && i.t === 'box') uiDesc(items, id, del); }
     if (editing && del.has(editing)) { editing = null; editSub = null; }
     commit(items.filter(i => !del.has(i.id) && !(i.k === 'conn' && (del.has(i.a.id) || del.has(i.b.id)))));
     sel.clear(); schedule();
@@ -1491,32 +1498,47 @@ const Board = (() => {
     if (kind === 'text' && editing === it.id) { const el = editEl(it); if (el) { const r = document.createRange(); r.selectNodeContents(el); const g = getSelection(); g.removeAllRanges(); g.addRange(r); } }
   }
 
-  /* ---------- UI Design zones (0.2.38): software interfaces from blocks, docked panels, a test mode ---------- */
-  /* a block's rendering is its zone's: the frame with `ui` its centre falls in (wireframe outside any zone) */
+  /* ---------- UI Design zones (0.2.42): Qt Designer–like blocks and layouts, a property inspector, a test mode ---------- */
+  /* a block's rendering is its zone's: the frame with `ui` its centre falls in (visual outside any zone) */
   function uiZoneOf(it) { const cx = it.x + it.w / 2, cy = it.y + it.h / 2; let z = null; for (const f of items) if (f.k === 'frame' && f.ui && !f.hid && inBox(cx, cy, boxOf(f))) z = f; return z; }
-  const uiFid = it => (uiZoneOf(it) || {}).ui || 'wire';
+  const uiFid = it => (uiZoneOf(it) || {}).ui || 'theme';
   function uzHeadHTML(z) {
     return `<div class="uzh"><span class="uztag">UI DESIGN</span><span class="uzinfo">Fenêtres et dialogues = écrans · flèches = clics</span><span class="uzsp"></span><div class="uzseg" role="group" aria-label="Rendu">${UI_FIDS.map(([v, l]) => `<button data-uz="${v}" aria-pressed="${z.ui === v}">${l}</button>`).join('')}</div><button class="uzb" data-uz="lib">${icon('layout')}Blocs</button><button class="uzb pri" data-uz="test">${icon('play')}Tester</button></div>`;
   }
-  /* what a window, dialog or panel holds: the blocks drawn over it (after it in the list) whose centre is inside */
-  function uicKids(c) { const b = boxOf(c), at = items.indexOf(c); return items.filter((i, k) => k > at && i.k !== 'conn' && i.k !== 'frame' && !i.hid && inBox(i.x + i.w / 2, i.y + i.h / 2, b)); }
-  const uiWinAt = (x, y, skip) => { let w = null; for (const i of items) if (i.k === 'uic' && i.t === 'window' && !i.hid && !(skip && skip.has(i.id)) && inBox(x, y, boxOf(i))) w = i; return w; };
-  const UI_SIDES = { t: 'Docker en haut', l: 'Docker à gauche', r: 'Docker à droite', b: 'Docker en bas', c: 'Remplir le centre' };
-  /* while a dockable block is dragged: where it would dock, drawn as a blue box */
-  function uiDockAt(id, p, ids) {
-    const it = byId.get(id), W = it && uiWinAt(p.x, p.y, ids), s = W && uiDockSide(it, W, p.x, p.y);
-    if (!s) { uiDockHi = null; return; }
-    const sim = uiDockLayout(items.map(i => i.id === id ? Object.assign({}, i, { dock: { w: W.id, s } }) : i)).find(i => i.id === id);
-    uiDockHi = { win: W.id, s, id, x: sim.x, y: sim.y, w: sim.w, h: sim.h, label: UI_SIDES[s] };
+  const uiKids = id => items.filter(i => i.k === 'uic' && i.p === id).sort((a, b) => (a.o ?? 0) - (b.o ?? 0));
+  const uiLayOf = id => { const b = byId.get(id); return b && b.t === 'box' ? ukBoxStyle(b).lay : 'none'; };
+  const uiLaidOut = it => !!(it && it.k === 'uic' && it.p && uiLayOf(it.p) !== 'none');
+  const uiDir = it => it.p && uiLayOf(it.p) === 'v' ? 'v' : 'h';
+  const uiName = it => it.t === 'box' ? (ukBoxStyle(it).title || 'Conteneur') : it.t === 'spacer' ? 'Espaceur' : String(it.txt || UI_TYPES[it.t] || 'Bloc').split('\n')[0].slice(0, 32) || UI_TYPES[it.t];
+  const uiRoot = it => { let r = it, n = 0; while (r && r.p && byId.get(r.p) && n++ < 50) r = byId.get(r.p); return r; };
+  /* where a block dropped at p would go: the deepest box under the pointer, and the place in its layout (a blue line) */
+  function uiInsAt(p, skip) {
+    let box = null;
+    for (let k = items.length - 1; k >= 0; k--) { const i = items[k]; if (i.k !== 'uic' || i.t !== 'box' || i.hid || (skip && skip.has(i.id))) continue; if (inBox(p.x, p.y, [i.x, i.y, i.x + i.w, i.y + i.h])) { box = i; break; } }
+    if (!box) return null;
+    const c = ukBoxStyle(box), L = c.lay;
+    if (L === 'none') return { c: box.id, idx: null, x: box.x, y: box.y, w: box.w, h: box.h, box: 1 };
+    const m = c.m.map(v => +v || 0), ch = ukChrome(c), X = box.x + m[0], Y = box.y + m[1] + ch, W = box.w - m[0] - m[2], Hh = box.h - m[1] - m[3] - ch, sp = +c.sp || 0;
+    const K = uiKids(box.id).filter(i => !(skip && skip.has(i.id)));
+    if (L === 'h' || L === 'v') {
+      const Hz = L === 'h', idx = K.filter(k => Hz ? k.x + k.w / 2 < p.x : k.y + k.h / 2 < p.y).length;
+      let at; if (!K.length) at = Hz ? X : Y; else if (idx === 0) at = (Hz ? K[0].x : K[0].y) - sp / 2; else if (idx === K.length) { const l = K[K.length - 1]; at = (Hz ? l.x + l.w : l.y + l.h) + sp / 2; } else { const a = K[idx - 1], b = K[idx]; at = Hz ? (a.x + a.w + b.x) / 2 : (a.y + a.h + b.y) / 2; }
+      return Hz ? { c: box.id, idx, x: at, y: Y, w: 0, h: Hh } : { c: box.id, idx, x: X, y: at, w: W, h: 0 };
+    }
+    if (!K.length) return { c: box.id, idx: 0, x: X, y: Y, w: 0, h: Math.min(Hh, 40) };
+    let best = 0, bd = Infinity; K.forEach((k, q) => { const dx = Math.max(k.x - p.x, 0, p.x - k.x - k.w), dy = Math.max(k.y - p.y, 0, p.y - k.y - k.h), d = dx * dx + dy * dy; if (d < bd) { bd = d; best = q; } });
+    const k = K[best], after = p.x > k.x + k.w / 2;
+    return { c: box.id, idx: best + (after ? 1 : 0), x: after ? k.x + k.w + sp / 2 : k.x - sp / 2, y: k.y, w: 0, h: k.h };
   }
-  /* after a move: dock the block where the blue box showed, snap loose blocks to 4 px, and put what lands on a window above it */
-  function uiDrop(next, ids, dk) {
-    if (dk && ids.has(dk.id)) next = next.map(i => i.id === dk.id ? Object.assign({}, i, { dock: { w: dk.win, s: dk.s } }) : i);
-    next = next.map(i => ids.has(i.id) && i.k === 'uic' && !i.dock ? Object.assign({}, i, { x: Math.round(i.x / 4) * 4, y: Math.round(i.y / 4) * 4 }) : i);
-    const moved = next.filter(i => ids.has(i.id) && i.k !== 'conn'), conts = next.filter(i => i.k === 'uic' && UI_CONTAINERS.includes(i.t) && !ids.has(i.id));
-    const under = moved.some(m => conts.some(c => next.indexOf(c) > next.indexOf(m) && inBox(m.x + m.w / 2, m.y + m.h / 2, boxOf(c))));
-    if (under) next = next.filter(i => !ids.has(i.id) || i.k === 'conn').concat(next.filter(i => ids.has(i.id) && i.k !== 'conn'));
-    return next;
+  /* put the blocks `roots` where the insertion says: in a layout (an order), in a free box, or loose on the board */
+  function uiApplyIns(next, roots, ins) {
+    const R = new Set(roots), s4 = v => Math.round(v / 4) * 4;
+    if (!ins || ins.idx == null) { const pid = ins ? ins.c : undefined; return next.map(i => R.has(i.id) ? Object.assign({}, i, { p: pid, o: pid ? 1e6 : undefined, x: s4(i.x), y: s4(i.y) }) : i); }
+    const L = ukBoxStyle(next.find(i => i.id === ins.c) || {}).lay;
+    const sib = next.filter(i => i.k === 'uic' && i.p === ins.c && !R.has(i.id)).sort((a, b) => (a.o ?? 0) - (b.o ?? 0));
+    const mv = next.filter(i => R.has(i.id)).sort((a, b) => L === 'v' ? a.y - b.y : a.x - b.x);
+    const order = sib.slice(0, ins.idx).concat(mv, sib.slice(ins.idx)), o = new Map(order.map((i, k) => [i.id, k]));
+    return next.map(i => o.has(i.id) ? Object.assign({}, i, { p: ins.c, o: o.get(i.id) }) : i);
   }
   /* the zone's rendering: its blocks are redrawn (a new object each, so they repaint) */
   function uiSetFid(z, v) {
@@ -1525,95 +1547,279 @@ const Board = (() => {
     commit(items.map(i => i.id === z.id ? Object.assign({}, i, { ui: v }) : i.k === 'uic' && inBox(i.x + i.w / 2, i.y + i.h / 2, b) ? Object.assign({}, i) : i));
     qSig = '';
   }
-  function uicEdit(it) {
-    const d = UIKIT[it.t] || {}; if (!d.hint) { toast('Ce bloc n’a pas de texte'); return; }
-    const m = openModal(`<div class="mhd"><h2>${esc(d.name)}</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
-      <p class="mt-sub">${esc(d.hint)}</p><textarea class="uted" spellcheck="false" style="width:100%;min-height:${Math.min(320, 60 + ukLines(it).length * 22)}px;box-sizing:border-box;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);color:var(--ink);padding:10px 12px;font:500 13px/1.6 'JetBrains Mono',ui-monospace,monospace;outline:0;resize:vertical">${esc(it.txt)}</textarea>
-      <div class="mt-foot"><button class="btn sm" data-reset="1">Texte d’exemple</button><span class="mt-gap"></span><button class="btn sm pri" data-ok="1">Enregistrer</button></div>`);
-    const ta = $('.uted', m); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
-    const ok = () => { const cur = byId.get(it.id); closeModal(); if (cur && cur.txt !== ta.value) commit(replace(items, cur, { txt: ta.value })); host.focus({ preventScroll: true }); };
-    $('[data-ok]', m).onclick = ok; $('[data-reset]', m).onclick = () => { ta.value = d.txt; ta.focus(); };
-    ta.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ok(); } if (e.key === 'Escape') closeModal(); });
+  /* Qt Designer's « Lay out horizontally / vertically / in a grid »: the selected blocks go into a new box with that layout;
+     a single box selected gets the layout itself */
+  function uiWrap(L) {
+    let list = selItems().filter(i => i.k === 'uic'); list = list.filter(i => !list.some(o => o !== i && uiDesc(items, o.id).has(i.id)));
+    if (!list.length) { toast('Sélectionnez des blocs UI'); return; }
+    if (list.length === 1 && list[0].t === 'box') { uiSetLay(list[0], L); return; }
+    const p = list[0].p; if (list.some(i => i.p !== p)) { toast('Ces blocs ne sont pas dans le même conteneur'); return; }
+    let ord;
+    if (L === 'grid') { const rows = []; for (const i of list.slice().sort((a, b) => a.y - b.y)) { const r = rows.find(r => Math.abs(r[0].y - i.y) < Math.min(r[0].h, i.h) / 2); r ? r.push(i) : rows.push([i]); } rows.forEach(r => r.sort((a, b) => a.x - b.x)); ord = rows.flat(); var cols = Math.max(...rows.map(r => r.length)); }
+    else ord = list.slice().sort((a, b) => L === 'v' ? a.y - b.y : a.x - b.x);
+    const bb = unionBox(list), o0 = Math.min(...list.map(i => i.o ?? 0));
+    const box = Object.assign(mkUic('box', bb[0], bb[1], { w: bb[2] - bb[0], h: bb[3] - bb[1], c: { sk: 'none', title: L === 'h' ? 'Ligne' : L === 'v' ? 'Colonne' : 'Grille', lay: L, m: [0, 0, 0, 0], sp: 6, sv: 6, cols: cols || 2, bg: '#00000000', bw: 0, r: 0 } }), { x: bb[0], y: bb[1] });
+    if (p) { box.p = p; box.o = o0; }
+    const om = new Map(ord.map((i, k) => [i.id, k])), first = items.findIndex(i => om.has(i.id));
+    const next = items.map(i => om.has(i.id) ? Object.assign({}, i, { p: box.id, o: om.get(i.id) }) : i); next.splice(first, 0, box);
+    commit(next); sel = new Set([box.id]); qSig = ''; toast(`Mis en layout ${L === 'h' ? 'horizontal' : L === 'v' ? 'vertical' : 'en grille'}`);
   }
-  /* ---------- the block library: a panel on the left, click a tile or drag it onto the board ---------- */
+  /* a box's layout changes: coming from « none », its blocks are ordered by where they are */
+  function uiSetLay(box, L) {
+    const cur = ukBoxStyle(box); if (cur.lay === L) return;
+    let next = replace(items, box, { c: Object.assign({}, box.c, { lay: L }) });
+    if (cur.lay === 'none' && L !== 'none') { const K = uiKids(box.id).sort((a, b) => L === 'v' ? a.y - b.y || a.x - b.x : Math.abs(a.y - b.y) > 20 && L === 'grid' ? a.y - b.y : a.x - b.x), om = new Map(K.map((i, k) => [i.id, k])); next = next.map(i => om.has(i.id) ? Object.assign({}, i, { o: om.get(i.id) }) : i); }
+    commit(next); qSig = '';
+  }
+  /* ---------- the block library: four tiles ---------- */
   function uiLibOpen(zid) {
     if (!wrap) return;
-    if (!uiLib) { uiLib = { el: document.createElement('div'), cat: S.prefs.uiCat || 'Fenêtre', q: '' }; uiLib.el.className = 'uilib'; uiLib.el.setAttribute('role', 'dialog'); uiLib.el.setAttribute('aria-label', 'Bibliothèque de blocs UI'); wrap.append(uiLib.el); uiLibBind(); }
+    if (!uiLib) { uiLib = { el: document.createElement('div') }; uiLib.el.className = 'uilib'; uiLib.el.setAttribute('role', 'dialog'); uiLib.el.setAttribute('aria-label', 'Blocs UI'); wrap.append(uiLib.el); uiLibBind(); }
     if (zid) uiLib.zone = zid;
-    uiLibPaint();
+    uiLib.el.innerHTML = `<div class="ulh"><b>Blocs</b><small>façon Qt Designer</small><button data-ulx="1" title="Fermer" aria-label="Fermer">${icon('x', 'sm')}</button></div>
+      <div class="ulg">${Object.keys(UI_TYPES).map(t => `<div class="ult" data-ult="${t}" title="${esc(UI_HINTS[t])} · cliquer pour l’ajouter, ou glisser"><span class="ulp">${uicThumb(t)}</span><span class="ln">${UI_TYPES[t]}</span></div>`).join('')}</div>
+      <div class="ulf"><b>Glisser</b> un bloc dans un conteneur : un trait bleu montre où il se range.<br><b>Ctrl 1 / 2 / 5</b> : mettre la sélection en ligne, en colonne ou en grille.<br>Le réglage de chaque bloc est dans l’<b>inspecteur</b> à droite.</div>`;
   }
   function uiLibClose() { if (uiLib) { uiLib.el.remove(); uiLib = null; } }
-  function uiLibPaint() {
-    const L = uiLib, q = L.q.trim().toLowerCase(), n = Object.keys(UIKIT).length;
-    const list = Object.values(UIKIT).filter(d => q ? (d.name + ' ' + d.cat).toLowerCase().includes(q) : d.cat === L.cat);
-    L.el.innerHTML = `<div class="ulh"><b>Blocs logiciel</b><small>${n} blocs</small><button data-ulx="1" title="Fermer" aria-label="Fermer">${icon('x', 'sm')}</button></div>
-      <input class="ulq" type="search" placeholder="Inspecteur, timeline, arbre…" value="${esc(L.q)}" aria-label="Chercher un bloc">
-      <div class="ulc">${UI_CATS.map(c => `<button data-ulc="${c}" aria-pressed="${!q && c === L.cat}">${c}</button>`).join('')}</div>
-      <div class="ulg">${list.map(d => `<div class="ult" data-ult="${d.t}" title="${esc(d.name)} · cliquer pour l’ajouter, ou glisser sur le board"><span class="ulp">${uicThumb(d.t)}</span><span class="ln">${esc(d.name)}</span></div>`).join('') || '<small style="grid-column:1/-1;color:var(--ink-2)">Aucun bloc ne correspond.</small>'}</div>
-      <div class="ulf">Un panneau lâché sur une fenêtre s’y docke (gauche, droite, haut, bas, centre). Double-clic sur un bloc : son texte. Une flèche d’un bloc vers une fenêtre ou un dialogue = un clic dans le test.</div>`;
-  }
   function uiLibBind() {
     const el = uiLib.el;
     el.addEventListener('keydown', e => e.stopPropagation());
-    el.addEventListener('input', e => { if (e.target.classList.contains('ulq')) { uiLib.q = e.target.value; const pos = e.target.selectionStart; uiLibPaint(); const i = $('.ulq', el); i.focus(); i.setSelectionRange(pos, pos); } });
-    el.addEventListener('click', e => {
-      if (e.target.closest('[data-ulx]')) { uiLibClose(); return; }
-      const c = e.target.closest('[data-ulc]'); if (c) { uiLib.cat = c.dataset.ulc; uiLib.q = ''; S.prefs.uiCat = uiLib.cat; save(); uiLibPaint(); }
-    });
+    el.addEventListener('click', e => { if (e.target.closest('[data-ulx]')) uiLibClose(); });
     el.addEventListener('pointerdown', e => {
       const tile = e.target.closest('[data-ult]'); if (!tile || e.button !== 0) return;
-      e.preventDefault(); const t = tile.dataset.ult, x0 = e.clientX, y0 = e.clientY, pid = e.pointerId; let gh = null;
+      e.preventDefault(); const t = tile.dataset.ult, x0 = e.clientX, y0 = e.clientY, pid = e.pointerId; let gh = null, ins = null;
       const over = ev => { const r = hostRect(), q = el.getBoundingClientRect(), x = ev.clientX, y = ev.clientY; return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom && !(x >= q.left && x <= q.right && y >= q.top && y <= q.bottom); };
+      const sample = mkUic(t, 0, 0, t === 'box' ? { w: 200, h: 120, c: { title: 'Panneau' } } : {}), hh = ukLeafHint(sample, 'h'); if (t !== 'box') { sample.w = hh.w; sample.h = hh.h; }
       const move = ev => {
         if (ev.pointerId !== pid) return;
-        if (!gh) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return; const d = UIKIT[t]; gh = document.createElement('div'); gh.className = 'uidrag'; gh.innerHTML = `<div class="it uic uf-wire ut-${t}" style="width:${d.w}px;height:${d.h}px">${uicHTML({ t, txt: d.txt, w: d.w, h: d.h })}</div>`; document.body.append(gh); }
-        const k = view.k, d = UIKIT[t]; gh.style.transform = `translate(${ev.clientX - d.w * k / 2}px,${ev.clientY - d.h * k / 2}px) scale(${k})`; gh.style.opacity = over(ev) ? .9 : .45;
-        if (over(ev) && d.dock) { const p = toW(ev.clientX, ev.clientY), W = uiWinAt(p.x, p.y), s = W && uiDockSide({ t }, W, p.x, p.y); if (s) { const tmp = Object.assign(mkUic(t, p.x - d.w / 2, p.y - d.h / 2), { id: '__uidrag', dock: { w: W.id, s } }); const sim = uiDockLayout(items.concat(tmp)).find(i => i.id === '__uidrag'); uiDockHi = { id: '__uidrag', win: W.id, s, x: sim.x, y: sim.y, w: sim.w, h: sim.h, label: UI_SIDES[s] }; } else uiDockHi = null; renderOverlay(); }
+        if (!gh) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return; gh = document.createElement('div'); gh.className = 'uidrag'; gh.innerHTML = `<div class="it uic uf-theme ut-${t}" style="width:${sample.w}px;height:${sample.h}px">${uicHTML(sample, 'h')}</div>`; document.body.append(gh); }
+        const k = view.k; gh.style.transform = `translate(${ev.clientX - sample.w * k / 2}px,${ev.clientY - sample.h * k / 2}px) scale(${k})`; gh.style.opacity = over(ev) ? .9 : .45;
+        ins = over(ev) ? uiInsAt(toW(ev.clientX, ev.clientY), null) : null; uiIns = ins; renderOverlay();
       };
       const end = ev => {
         if (ev.pointerId !== pid) return;
         removeEventListener('pointermove', move); removeEventListener('pointerup', end); removeEventListener('pointercancel', end);
-        const dk = uiDockHi; uiDockHi = null;
-        if (!gh) { if (ev.type === 'pointerup') uiPlace(t, null); return; }
-        gh.remove(); if (ev.type === 'pointerup' && over(ev)) uiPlace(t, toW(ev.clientX, ev.clientY), dk); else renderOverlay();
+        uiIns = null;
+        if (!gh) { if (ev.type === 'pointerup') uiPlace(t, null, null); return; }
+        gh.remove(); if (ev.type === 'pointerup' && over(ev)) uiPlace(t, toW(ev.clientX, ev.clientY), ins); else renderOverlay();
       };
       addEventListener('pointermove', move); addEventListener('pointerup', end); addEventListener('pointercancel', end);
     });
   }
-  /* a new block: at the drop point, else inside the selected window or panel, else in the zone, under what is already there */
-  function uiPlace(t, at, dk) {
-    const d = UIKIT[t]; if (!d) return;
-    let x, y;
-    if (at) { x = at.x - d.w / 2; y = at.y - d.h / 2; }
-    else {
-      const s1 = sel.size === 1 ? byId.get([...sel][0]) : null, host0 = s1 && s1.k === 'uic' && UI_CONTAINERS.includes(s1.t) ? s1 : s1 && s1.k === 'uic' ? items.find(c => c.k === 'uic' && UI_CONTAINERS.includes(c.t) && c !== s1 && inBox(s1.x + s1.w / 2, s1.y + s1.h / 2, boxOf(c))) : null;
-      const z = (uiLib && uiLib.zone && byId.get(uiLib.zone)) || (s1 && s1.ui ? s1 : s1 ? uiZoneOf(s1) : null);
-      if (host0 && t !== 'window') { const k = uicKids(host0).length; x = host0.x + 16 + (k % 6) * 12; y = host0.y + (host0.t === 'window' ? UI_WIN_TOP + 12 : 40) + (k % 6) * 12; }
-      else if (z) { const inZ = items.filter(i => i.k === 'uic' && inBox(i.x + i.w / 2, i.y + i.h / 2, boxOf(z))), bb = unionBox(inZ); x = z.x + 32; y = bb ? bb[3] + 40 : z.y + 76; if (y + d.h > z.y + z.h - 16) { x = bb ? bb[2] + 40 : z.x + 32; y = z.y + 76; } }
-      else { const c = centerW(); x = c.x - d.w / 2; y = c.y - d.h / 2; }
+  /* a new block: where it was dropped, else in the selected box (or after the selected block), else in the zone */
+  function uiPlace(t, at, ins) {
+    if (!UI_TYPES[t]) return;
+    const s1 = sel.size === 1 ? byId.get([...sel][0]) : null;
+    if (!at && !ins && s1 && s1.k === 'uic') {
+      if (s1.t === 'box') ins = { c: s1.id, idx: ukBoxStyle(s1).lay === 'none' ? null : uiKids(s1.id).length };
+      else if (s1.p) ins = { c: s1.p, idx: uiLayOf(s1.p) === 'none' ? null : uiKids(s1.p).indexOf(s1) + 1 };
     }
-    let it = mkUic(t, x, y);
-    if (dk && dk.id === '__uidrag') it.dock = { w: dk.win, s: dk.s };
-    else if (d.dock) { const W = uiWinAt(it.x + it.w / 2, it.y + it.h / 2), s = W && at && uiDockSide(it, W, at.x, at.y); if (s) it.dock = { w: W.id, s }; }
-    commit(items.concat(it)); sel = new Set([it.id]); if (tool !== 'select') setTool('select'); render();
+    const host0 = ins && byId.get(ins.c);
+    if (!host0 && t === 'spacer') { toast('L’espaceur se pose dans un conteneur qui a un layout'); return; }
+    const it = t === 'box' ? mkUic('box', 0, 0, host0 ? { w: 200, h: 120, c: { sk: 'panel', title: 'Panneau' } } : { w: 640, h: 420, c: { sk: 'window', title: 'Nouvelle fenêtre', bg: '#FAFAF8FF' } }) : mkUic(t, 0, 0);
+    if (t !== 'box') { const h = ukLeafHint(it, 'h'); it.w = h.w; it.h = h.h; }
+    if (at) { it.x = Math.round((at.x - it.w / 2) / 4) * 4; it.y = Math.round((at.y - it.h / 2) / 4) * 4; }
+    else if (host0) { const c = ukBoxStyle(host0), n = uiKids(host0.id).length; it.x = host0.x + 16 + (n % 6) * 12; it.y = host0.y + ukChrome(c) + 16 + (n % 6) * 12; }
+    else {
+      const z = (uiLib && uiLib.zone && byId.get(uiLib.zone)) || (s1 && s1.ui ? s1 : s1 ? uiZoneOf(s1) : null);
+      if (z) { const inZ = items.filter(i => i.k === 'uic' && !i.p && inBox(i.x + i.w / 2, i.y + i.h / 2, boxOf(z))), bb = unionBox(inZ); it.x = z.x + 32; it.y = bb ? bb[3] + 40 : z.y + 76; if (it.y + it.h > z.y + z.h - 16) { it.x = bb ? bb[2] + 40 : z.x + 32; it.y = z.y + 76; } }
+      else { const c = centerW(); it.x = c.x - it.w / 2; it.y = c.y - it.h / 2; }
+    }
+    let next = items.concat(it); if (host0) next = uiApplyIns(next, [it.id], ins);
+    commit(next); sel = new Set([it.id]); if (tool !== 'select') setTool('select'); render();
     const nb = byId.get(it.id); if (nb && !at) reveal(boxOf(nb));
+  }
+  /* ---------- the property inspector (Qt Designer's property editor) ---------- */
+  const UI_STATES = [['n', 'Normal'], ['h', 'Survol'], ['p', 'Pressé'], ['d', 'Désactivé']];
+  const UI_W8 = [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Extra bold'], [900, 'Black']];
+  function uiGet(it, k) {
+    const [a, b] = k.split('.');
+    if (!b) return it[a];
+    if (a === 'b') return ukBtnStyle(it, uiInsp && uiInsp.st || 'n')[b];
+    if (a === 'f') return ukTxtStyle(it)[b];
+    if (a === 'c') return ukBoxStyle(it)[b];
+    if (a === 'lp') return ukLp(it, uiDir(it))[b];
+  }
+  const uiOver = (it, k) => { const [a, b] = k.split('.'), st = uiInsp && uiInsp.st || 'n'; return a === 'b' && st !== 'n' && it.bs && it.bs[st] && b in it.bs[st]; };
+  function uiPatch(it, k, v) {
+    const [a, b] = k.split('.');
+    if (!b) return { [a]: v };
+    if (a === 'b') { const st = uiInsp && uiInsp.st || 'n'; if (st === 'n') return { b: Object.assign({}, UI_BTN, it.b, { [b]: v }) }; const bs = Object.assign({}, it.bs || {}); bs[st] = Object.assign({}, bs[st] || {}, { [b]: v }); return { bs }; }
+    if (a === 'f') return { f: Object.assign({}, UI_TXT, it.f, { [b]: v }) };
+    if (a === 'c') return { c: Object.assign({}, UI_BOX, it.c, { [b]: v }) };
+    if (a === 'lp') return { lp: Object.assign({}, it.lp || {}, { [b]: v }) };
+    return {};
+  }
+  function uiInspHTML(it) {
+    const st = uiInsp.st, open = s => !((S.prefs.uiSec || {})[s]);
+    const ov = k => uiOver(it, k) ? `<button class="urst" data-rst="${k}" title="Revenir à la valeur Normal">↺</button>` : '';
+    const row = (k, lab, ctl, cls = '') => `<div class="uif${uiOver(it, k) ? ' ov' : ''} ${cls}"><label${k ? ` data-scrub="${k}"` : ''}>${lab}</label><div class="uic2">${ctl}</div>${k ? ov(k) : ''}</div>`;
+    const num = (k, lab, o = {}) => row(k, lab, `<span class="uin"><input type="number" data-k="${k}" data-ty="n" value="${+(+uiGet(it, k) || 0).toFixed(2)}" step="${o.step || 1}"${o.min != null ? ` min="${o.min}"` : ''}${o.max != null ? ` max="${o.max}"` : ''}${o.ph ? ` placeholder="${o.ph}"` : ''}><i>${o.u || ''}</i></span>`);
+    const nums = (lab, list) => row('', lab, list.map(([k, u, o = {}]) => `<span class="uin sm" title="${o.t || ''}"><input type="number" data-k="${k}" data-ty="n" value="${+(+uiGet(it, k) || 0).toFixed(2)}" step="${o.step || 1}"${o.min != null ? ` min="${o.min}"` : ''}><i>${u}</i></span>`).join(''), 'multi');
+    const sel = (k, lab, opts) => row(k, lab, `<select data-k="${k}" data-ty="${typeof opts[0][0] === 'number' ? 'n' : 's'}">${opts.map(([v, l]) => `<option value="${v}"${String(uiGet(it, k)) === String(v) ? ' selected' : ''}>${l}</option>`).join('')}</select>`);
+    const seg = (k, lab, opts) => row(k, lab, `<div class="useg" data-k="${k}">${opts.map(([v, l, t]) => `<button data-v="${v}" aria-pressed="${String(uiGet(it, k)) === String(v)}"${t ? ` title="${esc(t)}"` : ''}>${l}</button>`).join('')}</div>`);
+    const tog = (k, lab) => row(k, lab, `<button class="utog" data-tog="${k}" aria-pressed="${!!+uiGet(it, k)}"><b></b></button>`);
+    const col = (k, lab) => { const v = ukHex(uiGet(it, k)); return row(k, lab, `<span class="ucol" data-k="${k}"><span class="usw" style="--c:${ukCss(v)}"><input type="color" data-cp value="${ukRgb(v)}"></span><input class="uhex" data-hx value="${v}" spellcheck="false" maxlength="9"><span class="uin al"><input type="number" data-al min="0" max="100" value="${Math.round(ukAlpha(v) * 100)}"><i>%</i></span></span>`); };
+    const quad = (k, lab, names) => { const v = uiGet(it, k) || [0, 0, 0, 0], lk = uiInsp.link[k] !== false; return row(k, lab, `<span class="uquad${lk ? ' lk' : ''}">${names.map((n, i) => `<span class="uin sm" title="${n}"><input type="number" data-k="${k}" data-i="${i}" data-ty="n" value="${+v[i] || 0}" min="0"><i>${n[0]}</i></span>`).join('')}<button class="ulink" data-link="${k}" aria-pressed="${lk}" title="Lier les quatre valeurs">${icon('link', 'sm')}</button></span>`); };
+    const txt = (k, lab, multi) => row(k, lab, multi ? `<textarea data-k="${k}" data-ty="s" rows="${Math.min(6, String(uiGet(it, k) || '').split('\n').length + 1)}" spellcheck="false">${esc(uiGet(it, k) || '')}</textarea>` : `<input data-k="${k}" data-ty="s" value="${esc(uiGet(it, k) || '')}" spellcheck="false">`);
+    const sec = (id, title, body, extra = '') => `<section class="usec${open(id) ? ' open' : ''}"><h4 data-sec="${id}">${icon('chevd', 'sm')}<span>${title}</span>${extra}</h4><div class="usb">${body}</div></section>`;
+    const font = k => row(k, 'Police', `<select data-k="${k}" data-ty="s">${(UI_FONTS.includes(uiGet(it, k)) ? UI_FONTS : [uiGet(it, k)].concat(UI_FONTS)).map(f => `<option value="${esc(f)}" style="font-family:${esc(ukFont(f))}"${uiGet(it, k) === f ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>`);
+    const typo = (p, extra = '') => sec('typo', 'Typographie', font(p + '.ff')
+      + row('', 'Taille · graisse', `<span class="uin sm"><input type="number" data-k="${p}.fs" data-ty="n" value="${+uiGet(it, p + '.fs') || 0}" min="4" step="1"><i>px</i></span><select data-k="${p}.fw" data-ty="n">${UI_W8.map(([v, l]) => `<option value="${v}"${+uiGet(it, p + '.fw') === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`, 'multi')
+      + nums('Interlettrage · interligne', [[p + '.ls', 'px', { step: .1 }], [p + '.lh', '×', { step: .05, min: .5 }]])
+      + seg(p + '.tt', 'Casse', [['none', 'Aa', 'Comme écrit'], ['uppercase', 'AA', 'Majuscules'], ['lowercase', 'aa', 'Minuscules'], ['capitalize', 'Ab Cd', 'Initiales']])
+      + seg(p + '.td', 'Décoration', [['none', '—', 'Aucune'], ['underline', '<u>S</u>', 'Souligné'], ['line-through', '<s>S</s>', 'Barré']])
+      + tog(p + '.fi', 'Italique')
+      + seg(p + '.ta', 'Alignement', [['left', '⇤', 'Gauche'], ['center', '↔', 'Centre'], ['right', '⇥', 'Droite']]) + extra
+      + col(p + '.fg', 'Couleur'));
+    /* the structure: the window or box this block belongs to, as a tree */
+    const root = uiRoot(it), tree = [];
+    const walk = (n, d) => { tree.push([n, d]); for (const k of uiKids(n.id)) walk(k, d + 1); };
+    if (root) walk(root, 0);
+    const LB = { none: '', h: '▤ ligne', v: '▥ colonne', grid: '▦ grille' };
+    const treeHTML = sec('tree', 'Structure', `<div class="utree">${tree.map(([n, d]) => `<button data-tsel="${n.id}" aria-pressed="${n.id === it.id}" style="padding-left:${8 + d * 14}px"><i class="ut-${n.t}"></i><span>${esc(uiName(n))}</span>${n.t === 'box' ? `<small>${LB[ukBoxStyle(n).lay]}</small>` : ''}</button>`).join('')}</div>`);
+    let h = '';
+    if (it.t === 'button') {
+      h += sec('pre', 'Styles prêts', `<div class="upre">${UI_PRESETS.map(([n, b], i) => { const s = Object.assign({}, UI_BTN, b, { ic: '', px: 10, py: 5, fs: 11, dy: 0, sc: 1, tr: 0 }); return `<button data-pre="${i}" title="${n}"><span style="display:inline-flex;align-items:center;${ukBtnDecl(s)}">${n}</span></button>`; }).join('')}</div>`);
+      h += `<div class="ustates" role="tablist">${UI_STATES.map(([v, l]) => `<button data-st="${v}" aria-pressed="${st === v}">${l}${v !== 'n' && it.bs && it.bs[v] && Object.keys(it.bs[v]).length ? '<b></b>' : ''}</button>`).join('')}</div>
+        <p class="ustn">${st === 'n' ? 'Les réglages ci-dessous font le bouton au repos.' : `Les réglages changés ici ne valent que pour l’état <b>${UI_STATES.find(s => s[0] === st)[1]}</b> (pastille ↺ : revenir à Normal). Le board montre cet état.`}</p>`;
+      h += sec('content', 'Contenu', txt('txt', 'Texte') + row('b.ic', 'Icône', `<div class="uicons"><button data-ic="" aria-pressed="${!uiGet(it, 'b.ic')}" title="Aucune">—</button>${Object.keys(UI_ICONS).map(k => `<button data-ic="${k}" aria-pressed="${uiGet(it, 'b.ic') === k}" title="${k}">${ukIcon(k, 14)}</button>`).join('')}</div>`, 'tall')
+        + seg('b.ip', 'Position', [['l', '◧ ', 'Icône à gauche'], ['r', ' ◨', 'Icône à droite'], ['t', '⬒', 'Icône au-dessus'], ['b', '⬓', 'Icône en dessous'], ['o', '●', 'Icône seule']])
+        + nums('Taille · écart', [['b.isz', 'px', { min: 6 }], ['b.ig', 'px', { min: 0 }]]) + col('b.icc', 'Couleur icône') + tog('dis', 'Désactivé dans le test'));
+      h += typo('b');
+      h += sec('fill', 'Fond', seg('b.ft', 'Type', [['none', 'Aucun'], ['solid', 'Uni'], ['lin', 'Linéaire'], ['rad', 'Radial']]) + col('b.c1', uiGet(it, 'b.ft') === 'solid' ? 'Couleur' : 'Couleur 1') + (['lin', 'rad'].includes(uiGet(it, 'b.ft')) ? col('b.c2', 'Couleur 2') : '') + (uiGet(it, 'b.ft') === 'lin' ? num('b.ga', 'Angle', { u: '°' }) : ''));
+      h += sec('border', 'Bordure et coins', nums('Épaisseur', [['b.bw', 'px', { min: 0, step: .5 }]]) + seg('b.bst', 'Trait', [['solid', 'Plein'], ['dashed', 'Tirets'], ['dotted', 'Points'], ['double', 'Double']]) + col('b.bc', 'Couleur') + quad('b.r', 'Rayons', ['Haut gauche', 'Haut droit', 'Bas droit', 'Bas gauche']));
+      h += sec('pad', 'Marges internes', nums('Horiz. · vert.', [['b.px', 'px', { min: 0 }], ['b.py', 'px', { min: 0 }]]));
+      h += sec('shadow', 'Ombre portée', tog('b.sho', 'Activer') + nums('X · Y', [['b.shx', 'px'], ['b.shy', 'px']]) + nums('Flou · étendue', [['b.shb', 'px', { min: 0 }], ['b.shs', 'px']]) + col('b.shc', 'Couleur'));
+      h += sec('inner', 'Ombre interne', tog('b.iso', 'Activer') + nums('X · Y', [['b.isx', 'px'], ['b.isy', 'px']]) + nums('Flou · étendue', [['b.isb', 'px', { min: 0 }], ['b.iss', 'px']]) + col('b.isc', 'Couleur'));
+      h += sec('tshadow', 'Ombre du texte', tog('b.tso', 'Activer') + nums('X · Y · flou', [['b.tsx', 'px'], ['b.tsy', 'px'], ['b.tsb', 'px', { min: 0 }]]) + col('b.tsc', 'Couleur'));
+      h += sec('fx', 'Effets', nums('Opacité · flou du fond', [['b.op', '', { step: .05, min: 0 }], ['b.bl', 'px', { min: 0 }]]) + nums('Décalage Y · échelle', [['b.dy', 'px', { step: .5 }], ['b.sc', '×', { step: .01, min: .1 }]]) + num('b.tr', 'Transition', { u: 'ms', min: 0, step: 10 }));
+    }
+    if (it.t === 'text') {
+      h += sec('content', 'Contenu', txt('txt', 'Texte', true) + seg('f.wr', 'Retour', [['wrap', 'À la ligne'], ['elide', 'Couper…'], ['none', 'Aucun']]));
+      h += typo('f', seg('f.va', 'Vertical', [['top', 'Haut'], ['center', 'Milieu'], ['bottom', 'Bas']]));
+    }
+    if (it.t === 'box') {
+      const c = ukBoxStyle(it);
+      h += sec('lay', 'Layout', seg('c.lay', 'Type', UI_LAYS.map(([v, l, t]) => [v, l, t])) + (c.lay !== 'none' ? quad('c.m', 'Marges', ['Gauche', 'Haut', 'Droite', 'Bas'])
+        + (c.lay === 'grid' ? nums('Espacement H · V', [['c.sp', 'px', { min: 0 }], ['c.sv', 'px', { min: 0 }]]) + num('c.cols', 'Colonnes', { min: 1, max: 24 }) + txt('c.cst', 'Étirement colonnes') : num('c.sp', 'Espacement', { u: 'px', min: 0 }))
+        + seg('c.ca', 'Place libre', [['start', 'Début'], ['center', 'Centre'], ['end', 'Fin'], ['between', 'Répartir']]) : ''));
+      h += sec('look', 'Conteneur', seg('c.sk', 'Style', UI_SKINS) + (['window', 'dialog', 'group', 'panel'].includes(c.sk) ? txt('c.title', 'Titre') : '') + col('c.bg', 'Fond') + nums('Bordure · rayon', [['c.bw', 'px', { min: 0, step: .5 }], ['c.r', 'px', { min: 0 }]]) + col('c.bc', 'Couleur bordure')
+        + (['window', 'dialog'].includes(c.sk) ? col('c.tb', 'Barre de titre') : '') + (['window', 'dialog', 'group'].includes(c.sk) ? col('c.tf', 'Couleur du titre') : '') + tog('c.sh', 'Ombre'));
+    }
+    /* how the block sits in its parent's layout (Qt: sizePolicy, minimumSize, maximumSize, stretch, alignment) */
+    if (uiLaidOut(it)) {
+      const L = uiLayOf(it.p), pol = UI_POL.map(([v, l, t]) => [v, l, t]), auto = ukLeafHint(it, uiDir(it));
+      h += sec('pos', 'Disposition dans le layout', sel('lp.ph', 'Politique H', pol) + sel('lp.pv', 'Politique V', pol)
+        + nums('Taille préférée', [['hw', 'L', { min: 0, t: '0 = d’après le contenu' }], ['hh', 'H', { min: 0, t: '0 = d’après le contenu' }]])
+        + nums('Minimum', [['lp.mnw', 'L', { min: 0 }], ['lp.mnh', 'H', { min: 0 }]]) + nums('Maximum', [['lp.mxw', 'L', { min: 0, t: '0 = pas de maximum' }], ['lp.mxh', 'H', { min: 0, t: '0 = pas de maximum' }]])
+        + nums('Étirement H · V', [['lp.sth', '', { min: 0 }], ['lp.stv', '', { min: 0 }]])
+        + seg('lp.ah', 'Aligner H', [['auto', 'Auto', 'Remplit la case si sa politique le permet'], ['start', '⇤'], ['center', '↔'], ['end', '⇥']]) + seg('lp.av', 'Aligner V', [['auto', 'Auto'], ['start', '⤒'], ['center', '↕'], ['end', '⤓']])
+        + (L === 'grid' ? nums('Cases occupées', [['lp.cs', 'col', { min: 1 }], ['lp.rs', 'rg', { min: 1 }]]) : '')
+        + `<div class="uord"><button data-ord="-1">${icon(L === 'v' ? 'up' : 'chev', 'sm')}Avant</button><button data-ord="1">Après${icon(L === 'v' ? 'down' : 'chev', 'sm')}</button><button data-out="1" title="Sortir du layout">Sortir</button></div>`
+        + `<p class="ustn">Taille calculée : ${Math.round(it.w)} × ${Math.round(it.h)} px${it.t !== 'box' ? ` · d’après le contenu ${auto.w} × ${auto.h}` : ''}</p>`);
+    } else h += sec('geo', 'Position et taille', nums('X · Y', [['x', 'px'], ['y', 'px']]) + nums('L · H', [['w', 'px', { min: 4 }], ['h', 'px', { min: 4 }]]) + (it.p ? `<div class="uord"><button data-out="1">Sortir du conteneur</button></div>` : ''));
+    return `<div class="uih"><i class="ut-${it.t}"></i><b>${UI_TYPES[it.t] || 'Bloc'}</b><small>${esc(uiName(it))}</small><button data-uix="1" title="Fermer l’inspecteur" aria-label="Fermer">${icon('x', 'sm')}</button></div><div class="uib">${treeHTML}${h}</div>`;
+  }
+  function uiInspSync(force) {
+    const one = sel.size === 1 ? byId.get([...sel][0]) : null, show = one && one.k === 'uic' && mounted && UI_TYPES[one.t] && !(uiInsp && uiInsp.hide === one.id) && !(op && op.kind === 'move');
+    if (!show) { if (uiInsp && uiInsp.el) { uiInsp.el.remove(); uiInsp.el = null; } if (uiInsp && one && uiInsp.hide !== (one && one.id)) uiInsp.hide = null; return; }
+    if (!uiInsp) uiInsp = { st: 'n', link: {}, el: null, sig: '' };
+    if (!uiInsp.el) { const el = document.createElement('aside'); el.className = 'uiinsp'; el.setAttribute('aria-label', 'Inspecteur'); wrap.append(el); uiInsp.el = el; uiInsp.sig = ''; uiInspBind(el); }
+    if (uiInsp.id !== one.id) { uiInsp.id = one.id; uiInsp.st = one.t === 'button' ? one.pv || 'n' : 'n'; }
+    uiInsp.el.classList.toggle('withprops', propsOpen());
+    const par = one.p && byId.get(one.p), sig = [one.id, uiInsp.st, JSON.stringify(one), par ? JSON.stringify(par.c) : '', uiKids((uiRoot(one) || one).id).length, JSON.stringify(uiInsp.link), JSON.stringify(S.prefs.uiSec || {})].join('|');
+    if (!force && sig === uiInsp.sig) return;
+    if (!force && uiInsp.el.contains(document.activeElement) && document.activeElement.matches('input,textarea,select')) { uiInsp.dirty = true; return; }
+    uiInsp.sig = sig; uiInsp.dirty = false;
+    const b0 = $('.uib', uiInsp.el), top = b0 ? b0.scrollTop : 0;
+    uiInsp.el.innerHTML = uiInspHTML(one);
+    const b1 = $('.uib', uiInsp.el); if (b1) b1.scrollTop = top;
+  }
+  function uiInspBind(el) {
+    const cur = () => byId.get(uiInsp.id);
+    const live = (patch) => { const it = cur(); if (!it) return; if (!uiInsp.before) uiInsp.before = items; setLive(replace(items, it, patch)); };
+    const done = () => { if (uiInsp.before) { const b = uiInsp.before; uiInsp.before = null; commit(items, { before: b }); } };
+    const now = (patch, o) => { const it = cur(); if (!it) return; commit(replace(items, it, patch), o); };
+    const valOf = (inp) => {
+      const k = inp.dataset.k, it = cur(); let v = inp.dataset.ty === 'n' ? (inp.value === '' ? 0 : parseFloat(inp.value)) : inp.value; if (inp.dataset.ty === 'n' && !isFinite(v)) v = 0;
+      if (inp.dataset.i != null) { const arr = (uiGet(it, k) || [0, 0, 0, 0]).slice(); if (uiInsp.link[k] !== false) arr.fill(v); else arr[+inp.dataset.i] = v; v = arr; }
+      return v;
+    };
+    const colOf = (inp) => { const w = inp.closest('.ucol'), it = cur(), old = ukHex(uiGet(it, w.dataset.k)); if (inp.matches('[data-cp]')) return ukMix(inp.value, ukAlpha(old)); if (inp.matches('[data-al]')) return ukMix(ukRgb(old), (+inp.value || 0) / 100); const t = inp.value.trim(); return /^#?([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(t) ? ukHex(t[0] === '#' ? t : '#' + t) : null; };
+    const apply = (inp) => {
+      const it = cur(); if (!it) return;
+      const cw = inp.closest('.ucol'); if (cw) { const v = colOf(inp); if (v) { live(uiPatch(it, cw.dataset.k, v)); const sw = $('.usw', cw); if (sw) sw.style.setProperty('--c', ukCss(v)); } return; }
+      const k = inp.dataset.k; if (!k) return;
+      if (['x', 'y', 'w', 'h'].includes(k)) { const v = valOf(inp), d = { [k]: k === 'w' || k === 'h' ? Math.max(4, v) : v }; if (it.t === 'box' && (k === 'x' || k === 'y')) { const dd = v - it[k], ds = uiDesc(items, it.id); if (!uiInsp.before) uiInsp.before = items; setLive(items.map(i => i.id === it.id ? Object.assign({}, i, d) : ds.has(i.id) ? Object.assign({}, i, { [k]: i[k] + dd }) : i)); return; } live(d); return; }
+      live(uiPatch(it, k, valOf(inp)));
+    };
+    el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && e.target.matches('input')) { e.target.blur(); } if (e.key === 'Escape') { e.target.blur && e.target.blur(); host.focus({ preventScroll: true }); } });
+    el.addEventListener('input', e => apply(e.target));
+    el.addEventListener('change', () => done());
+    el.addEventListener('focusout', () => setTimeout(() => { if (uiInsp && uiInsp.dirty && uiInsp.el && !uiInsp.el.contains(document.activeElement)) uiInspSync(true); }, 0));
+    el.addEventListener('click', e => {
+      const t = e.target, it = cur(); if (!it) return;
+      if (t.closest('[data-uix]')) { uiInsp.hide = it.id; uiInspSync(); return; }
+      const s = t.closest('[data-sec]'); if (s) { const m = S.prefs.uiSec = S.prefs.uiSec || {}; m[s.dataset.sec] = !m[s.dataset.sec]; save(); uiInspSync(true); return; }
+      const ts = t.closest('[data-tsel]'); if (ts) { sel = new Set([ts.dataset.tsel]); schedule(); return; }
+      const sg = t.closest('.useg [data-v]'); if (sg) { const k = sg.closest('.useg').dataset.k, raw = sg.dataset.v, v = /^-?\d+(\.\d+)?$/.test(raw) && !k.endsWith('.lay') ? +raw : raw; if (k === 'c.lay') { uiSetLay(it, v); return; } now(uiPatch(it, k, v)); return; }
+      const tg = t.closest('[data-tog]'); if (tg) { const k = tg.dataset.tog; now(uiPatch(it, k, +uiGet(it, k) ? 0 : 1)); return; }
+      const lk = t.closest('[data-link]'); if (lk) { const k = lk.dataset.link; uiInsp.link[k] = uiInsp.link[k] === false; uiInspSync(true); return; }
+      const ic = t.closest('[data-ic]'); if (ic) { now(uiPatch(it, 'b.ic', ic.dataset.ic)); return; }
+      const st = t.closest('[data-st]'); if (st) { uiInsp.st = st.dataset.st; commit(replace(items, it, { pv: uiInsp.st === 'n' ? undefined : uiInsp.st }), { hist: false }); uiInspSync(true); return; }
+      const rs = t.closest('[data-rst]'); if (rs) { const b = rs.dataset.rst.split('.')[1], bs = Object.assign({}, it.bs || {}), o = Object.assign({}, bs[uiInsp.st] || {}); delete o[b]; bs[uiInsp.st] = o; now({ bs }); return; }
+      const pr = t.closest('[data-pre]'); if (pr) { const [, b, s] = UI_PRESETS[+pr.dataset.pre], keep = { ic: (it.b || {}).ic || '', ip: (it.b || {}).ip || 'l' }; now({ b: Object.assign(ukClone(UI_BTN), ukClone(b), keep), bs: s ? ukClone(s) : UI_BTN_ST() }); return; }
+      const od = t.closest('[data-ord]'); if (od) { const sib = uiKids(it.p), i = sib.indexOf(it), j = i + +od.dataset.ord; if (j < 0 || j >= sib.length) return; const om = new Map(sib.map((x, k) => [x.id, k])); om.set(it.id, j); om.set(sib[j].id, i); commit(items.map(x => om.has(x.id) ? Object.assign({}, x, { o: om.get(x.id) }) : x)); return; }
+      if (t.closest('[data-out]')) { const pp = byId.get(it.p), gp = pp && pp.p; commit(uiApplyIns(items.map(x => x.id === it.id ? Object.assign({}, x, { x: x.x + 24, y: x.y + 24 }) : x), [it.id], gp ? { c: gp, idx: uiLayOf(gp) === 'none' ? null : uiKids(gp).indexOf(pp) + 1 } : null)); return; }
+    });
+    /* drag a label to change a number, like Qt's spin boxes */
+    el.addEventListener('pointerdown', e => {
+      const lab = e.target.closest('label[data-scrub]'); if (!lab || e.button !== 0) return;
+      const inp = $('input[type=number]', lab.parentNode); if (!inp) return;
+      e.preventDefault(); const x0 = e.clientX, v0 = parseFloat(inp.value) || 0, step = parseFloat(inp.step) || 1, pid = e.pointerId;
+      const mv = ev => { if (ev.pointerId !== pid) return; let v = v0 + Math.round((ev.clientX - x0) / (ev.shiftKey ? 1 : 4)) * step * (ev.shiftKey ? 10 : 1); if (inp.min !== '') v = Math.max(+inp.min, v); if (inp.max !== '') v = Math.min(+inp.max, v); inp.value = +v.toFixed(2); apply(inp); };
+      const up = ev => { if (ev.pointerId !== pid) return; removeEventListener('pointermove', mv); removeEventListener('pointerup', up); done(); };
+      addEventListener('pointermove', mv); addEventListener('pointerup', up);
+    });
+  }
+  function uiInspClose() { if (uiInsp && uiInsp.el) uiInsp.el.remove(); uiInsp = null; }
+  /* double-click or Enter on a block: its text in the inspector */
+  function uiFocusText(it) {
+    if (uiInsp) uiInsp.hide = null;
+    sel = new Set([it.id]); render(); uiInspSync(true);
+    const f = uiInsp && uiInsp.el && $(it.t === 'box' ? '[data-k="c.title"]' : '[data-k="txt"]', uiInsp.el);
+    if (f) { f.focus(); f.select && f.select(); } else if (it.t === 'spacer') toast('Un espaceur n’a pas de texte');
+  }
+  /* a laid-out block resized by hand: that size becomes its preferred size, fixed on the dragged axis */
+  function uiResizeChild(e, h, it) {
+    grab(e);
+    const before = items, b0 = [it.x, it.y, it.x + it.w, it.y + it.h];
+    op = { id: e.pointerId, kind: 'resize', moved: true,
+      move(ev) {
+        if (ev.pointerId !== this.id) return;
+        const p = toW(ev.clientX, ev.clientY), o = byId.get(it.id) || it, n = {}, lp = Object.assign({}, o.lp || {});
+        if (/[ew]/.test(h)) { n.hw = Math.max(4, Math.round(h.includes('e') ? p.x - b0[0] : b0[2] - p.x)); lp.ph = 'fix'; }
+        if (/[ns]/.test(h)) { n.hh = Math.max(4, Math.round(h.includes('s') ? p.y - b0[1] : b0[3] - p.y)); lp.pv = 'fix'; }
+        n.lp = lp; setLive(replace(items, o, n));
+      },
+      up() { op = null; commit(items, { before }); },
+      cancel() { setLive(before); } };
   }
   /* ---------- test mode: the zone's windows and dialogs become screens, its arrows become clicks ---------- */
   function uiTest(z) {
     const screens = uiScreens(z, items);
-    if (!screens.length) { toast('Posez une fenêtre ou un dialogue dans la zone pour la tester'); return; }
-    render();
+    if (!screens.length) { toast('Posez une fenêtre ou un dialogue (bloc Conteneur) dans la zone pour la tester'); return; }
+    sel.clear(); render();
     const ov = document.createElement('div'); ov.className = 'uitest hot'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Test de la zone');
-    const nameOf = s => (ukLines(s)[0] || UIKIT[s.t].name).slice(0, 40);
-    ov.innerHTML = `<div class="uth"><span class="tag">TEST</span><b>${esc(z.title)}</b><div class="chips">${screens.map((s, i) => `<button data-scr="${i}">${esc(nameOf(s))}</button>`).join('')}</div><span class="sp"></span><button class="ub on" data-hot="1">Zones cliquables</button><button class="ub q" data-quit="1">Quitter · Échap</button></div><div class="utb"></div><div class="utf">Cliquez une zone bleue pour suivre une flèche · ← → : écran précédent / suivant · Échap : fermer le dialogue ou quitter</div>`;
+    const nameOf = s => (ukBoxStyle(s).title || 'Écran').slice(0, 40);
+    ov.innerHTML = `<div class="uth"><span class="tag">TEST</span><b>${esc(z.title)}</b><div class="chips">${screens.map((s, i) => `<button data-scr="${i}">${esc(nameOf(s))}</button>`).join('')}</div><span class="sp"></span><button class="ub on" data-hot="1">Zones cliquables</button><button class="ub q" data-quit="1">Quitter · Échap</button></div><div class="utb"></div><div class="utf">Survolez et cliquez les boutons · zone bleue : suit une flèche · ← → : écran précédent / suivant · Échap : fermer le dialogue ou quitter</div>`;
     document.body.append(ov);
     const body = $('.utb', ov), st = { base: null, top: null };
-    const scrOf = id => { const it = byId.get(id); if (!it) return null; const s = screens.find(q => q.id === id); if (s) return s; return screens.find(q => inBox(it.x + it.w / 2, it.y + it.h / 2, boxOf(q))) || null; };
-    const isDlg = s => s.t !== 'window';
+    const scrOf = id => { const it = byId.get(id); if (!it) return null; const r = it.k === 'uic' ? uiRoot(it) : it; return screens.includes(r) ? r : screens.find(q => inBox(it.x + it.w / 2, it.y + it.h / 2, boxOf(q))) || null; };
+    const isDlg = s => ukBoxStyle(s).sk === 'dialog';
     function stage(S, k) {
-      const box = boxOf(S), at = items.indexOf(S);
-      const inS = items.filter((i, idx) => i.k !== 'conn' && i.k !== 'frame' && !i.hid && (i === S || (idx > at && inBox(i.x + i.w / 2, i.y + i.h / 2, box))));
-      const ids = new Set(inS.map(i => i.id));
+      const ds = uiDesc(items, S.id), inS = items.filter(i => i === S || ds.has(i.id)), ids = new Set(inS.map(i => i.id));
       const d = document.createElement('div'); d.className = 'uts'; d.style.width = S.w + 'px'; d.style.height = S.h + 'px';
       for (const i of inS) { const n = nodes.get(i.id); if (!n) continue; const c = n.cloneNode(true); c.removeAttribute('data-id'); c.classList.remove('sel', 'drop', 'editing'); c.style.left = i.x - S.x + 'px'; c.style.top = i.y - S.y + 'px'; d.append(c); }
       for (const c of items) if (c.k === 'conn' && c.a.id && ids.has(c.a.id) && c.b.id) {
@@ -1631,7 +1837,7 @@ const Board = (() => {
       const base = st.base || screens[0], kb = fit(base);
       const bd = stage(base, kb); bd.classList.add('base'); body.append(bd);
       if (st.top) { const s = document.createElement('div'); s.className = 'utscrim'; body.append(s); const td = stage(st.top, Math.min(kb, fit(st.top))); body.append(td);
-        td.addEventListener('click', e => { if (e.target.closest('[data-ukbtn]') && !e.target.closest('.uthot')) { st.top = null; paintT(); } }); }
+        td.addEventListener('click', e => { if ((e.target.closest('[data-ukbtn]') || e.target.closest('.uk-dx')) && !e.target.closest('.uthot')) { st.top = null; paintT(); } }); }
       const cur = st.top || base; $$('[data-scr]', ov).forEach(b => b.setAttribute('aria-pressed', screens[+b.dataset.scr] === cur));
     }
     function go(S) { if (isDlg(S) && st.base && st.base !== S) st.top = S; else { st.base = S; st.top = null; } paintT(); }
@@ -2030,7 +2236,7 @@ const Board = (() => {
     for (const id of sel) {
       const it = byId.get(id); if (!it || it.lock) continue; ids.add(id);
       if (it.k === 'frame') for (const c of frameChildren(it)) { if (c.lock) continue; ids.add(c.id); if (c.k === 'mind') mindDesc(c.id, ids); }
-      if (it.k === 'uic' && UI_CONTAINERS.includes(it.t)) for (const c of uicKids(it)) if (!c.lock) ids.add(c.id);
+      if (it.k === 'uic' && it.t === 'box') for (const cid of uiDesc(items, it.id)) { const c = byId.get(cid); if (c && !c.lock) ids.add(cid); }
       if (it.k === 'mind' && !it.parent) mindDesc(id, ids);
     }
     return ids;
@@ -2057,17 +2263,16 @@ const Board = (() => {
     const moving = [...orig.values()].filter(i => i.k !== 'conn'), bb0 = unionBox(moving);
     const subEl = target && target.closest('[data-sub]'), subKey = subEl ? subEl.dataset.sub : null;
     let cand = null, dropT = null;
-    const undock = new Set([...ids].filter(id => { const o = byId.get(id); return o && o.dock && !ids.has(o.dock.w); }));
-    const dockable = one && one.k === 'uic' && UIKIT[one.t] && UIKIT[one.t].dock ? one : null;
+    const uiRoots = [...ids].filter(id => { const o = byId.get(id); return o && o.k === 'uic' && !(o.p && ids.has(o.p)); });
     op = { id: e.pointerId, kind: 'move', moved: false,
       move(ev) {
         if (ev.pointerId !== this.id) return;
         const p = toW(ev.clientX, ev.clientY); let dx = p.x - w.x, dy = p.y - w.y;
-        if (!this.moved) { if (Math.hypot(dx * view.k, dy * view.k) < 4) return; this.moved = true; cand = snapLines(ids); }
+        if (!this.moved) { if (Math.hypot(dx * view.k, dy * view.k) < 4) return; this.moved = true; cand = snapLines(ids); if (uiRoots.length) uiFloat = new Set(uiRoots); }
         guides = null;
         if (bb0 && !ev.altKey && !reparent && S.prefs.snap !== false) { const s = snap(bb0, dx, dy, cand); dx = s.dx; dy = s.dy; guides = s.g; }
-        setLive(items.map(i => { const o = orig.get(i.id); if (!o) return i; if (o.k === 'conn') { const n = Object.assign({}, o); if (!o.a.id && !o.a.on) n.a = { x: o.a.x + dx, y: o.a.y + dy }; if (!o.b.id && !o.b.on) n.b = { x: o.b.x + dx, y: o.b.y + dy }; if (o.pts && o.pts.length && (!o.a.id || ids.has(o.a.id)) && (!o.b.id || ids.has(o.b.id))) n.pts = o.pts.map(q => [q[0] + dx, q[1] + dy]); return n; } return Object.assign({}, o, { x: o.x + dx, y: o.y + dy }, undock.has(o.id) ? { dock: undefined } : {}); }));
-        if (dockable) uiDockAt(dockable.id, p, ids);
+        setLive(items.map(i => { const o = orig.get(i.id); if (!o) return i; if (o.k === 'conn') { const n = Object.assign({}, o); if (!o.a.id && !o.a.on) n.a = { x: o.a.x + dx, y: o.a.y + dy }; if (!o.b.id && !o.b.on) n.b = { x: o.b.x + dx, y: o.b.y + dy }; if (o.pts && o.pts.length && (!o.a.id || ids.has(o.a.id)) && (!o.b.id || ids.has(o.b.id))) n.pts = o.pts.map(q => [q[0] + dx, q[1] + dy]); return n; } return Object.assign({}, o, { x: o.x + dx, y: o.y + dy }); }));
+        if (uiRoots.length) uiIns = uiInsAt(p, ids);
         if (reparent) {
           const under = document.elementsFromPoint(ev.clientX, ev.clientY).map(el => el.closest && el.closest('.it.mind')).find(el => el && !ids.has(el.dataset.id));
           const tid = under ? under.dataset.id : null;
@@ -2076,8 +2281,8 @@ const Board = (() => {
       },
       up(ev) {
         if (dropT && nodes.get(dropT)) nodes.get(dropT).classList.remove('drop');
-        guides = null; const moved = this.moved; op = null; const dk = uiDockHi; uiDockHi = null;
-        if (!moved) { const hitNow = one; if (wasSelected && hitNow && EDITABLE.includes(hitNow.k) && hitNow.k !== 'conn' && ev && ev.pointerType !== 'touch') startEdit(hitNow.id, null, hitNow.k === 'todo' ? (subKey || 'title') : undefined); schedule(); return; }
+        guides = null; const moved = this.moved; op = null; const ins = uiIns; uiIns = null;
+        if (!moved) { uiFloat = null; const hitNow = one; if (wasSelected && hitNow && EDITABLE.includes(hitNow.k) && hitNow.k !== 'conn' && ev && ev.pointerType !== 'touch') startEdit(hitNow.id, null, hitNow.k === 'todo' ? (subKey || 'title') : undefined); schedule(); return; }
         let next = items;
         if (reparent) {
           const cur = byId.get(one.id), root = byId.get(cur.root) || byId.get(one.root);
@@ -2090,10 +2295,10 @@ const Board = (() => {
           }
           animate();
         }
-        if (moved && [...ids].some(id => (byId.get(id) || {}).k === 'uic')) next = uiDrop(next, ids, dk);
+        if (uiRoots.length) { next = uiApplyIns(next, uiRoots, ins); uiFloat = null; }
         commit(next, { before });
       },
-      cancel() { uiDockHi = null; setLive(before); } };
+      cancel() { uiIns = null; uiFloat = null; setLive(before); } };
   }
   function snapLines(skip) {
     const xs = [], ys = [], r = hostRect(), vb = [toW(r.left, r.top).x, toW(r.left, r.top).y, toW(r.right, r.bottom).x, toW(r.right, r.bottom).y];
@@ -2115,6 +2320,7 @@ const Board = (() => {
     const list = selItems().filter(i => i.k !== 'conn' && i.k !== 'mind' && !i.lock); if (!list.length) return;
     const before = items, bb = unionBox(list), orig = new Map(list.map(i => [i.id, i]));
     const one = list.length === 1 ? list[0] : null;
+    if (uiLaidOut(one)) { uiResizeChild(e, h, one); return; }
     const lock = !one || ['image', 'ink', 'doc'].includes(one.k) || (one.k === 'text' && h.length === 2);
     const lay = canTidy(list) ? tidyPrep(list) : null;
     if (one && one.rot && ROTABLE(one)) {
@@ -2395,7 +2601,7 @@ const Board = (() => {
   function startRect(e, w) {
     grab(e);
     const before = items, uz = tool === 'uiz', fr = tool === 'frame' || uz, s = clamp(1 / view.k, .5, 4);
-    const mk = (x, y, ww, hh) => uz ? Object.assign(mkFrame(x, y, ww, hh, 'UI Design'), { ui: 'wire' }) : fr ? mkFrame(x, y, ww, hh, 'Cadre') : mkShape(x, y, ww, hh, shapeKind, { fs: Math.round(26 * s) });
+    const mk = (x, y, ww, hh) => uz ? Object.assign(mkFrame(x, y, ww, hh, 'UI Design'), { ui: 'theme' }) : fr ? mkFrame(x, y, ww, hh, 'Cadre') : mkShape(x, y, ww, hh, shapeKind, { fs: Math.round(26 * s) });
     const base = mk(w.x, w.y, 1, 1); let moved = false;
     op = { id: e.pointerId, kind: 'rect', moved: false,
       move(ev) { const p = toW(ev.clientX, ev.clientY); let dx = p.x - w.x, dy = p.y - w.y; if (!moved && Math.hypot(dx * view.k, dy * view.k) < 5) return; moved = true; if (ev.shiftKey) { const m = Math.max(Math.abs(dx), Math.abs(dy)); dx = Math.sign(dx || 1) * m; dy = Math.sign(dy || 1) * m; }
@@ -2502,7 +2708,7 @@ const Board = (() => {
     let hit = hitAt(e); if (!hit && e.target === host) { const u = document.elementFromPoint(e.clientX, e.clientY), n = u && u.closest('[data-id]'); if (n && world.contains(n)) hit = n.dataset.id; }
     if (!hit) { const w = toW(e.clientX, e.clientY); createAt('note', w); return; }
     const it = byId.get(hit); if (it.lock) return;
-    if (it.k === 'uic') { uicEdit(it); return; }
+    if (it.k === 'uic') { uiFocusText(it); return; }
     if (it.k === 'frame' && it.ui && e.target.closest('.uzh')) return;
     if (EDITABLE.includes(it.k)) { if (e.target.closest('.ck,[data-tck],[data-tadd]')) return; const sub = e.target.closest('[data-sub]'); startEdit(hit, null, it.k === 'todo' ? (sub ? sub.dataset.sub : 'title') : it.k === 'sheet' ? ((e.target.closest('[data-cell]') || {}).dataset || {}).cell : undefined); }
     else openItem(it);
@@ -2782,6 +2988,7 @@ const Board = (() => {
       if (lk === 'l' && e.shiftKey && sel.size) { action(selItems().some(i => i.lock) ? 'unlock' : 'lock'); e.preventDefault(); return true; }
       if (lk === 'c') { if (getSelection().toString()) return false; copy(false); return true; }
       if (lk === 'x') { copy(true); e.preventDefault(); return true; }
+      const dg = /^Digit([125])$/.exec(e.code || ''); if (dg && !e.shiftKey && selItems().some(i => i.k === 'uic')) { uiWrap({ 1: 'h', 2: 'v', 5: 'grid' }[dg[1]]); e.preventDefault(); return true; }
       if (k === '0') { zoomTo(1); e.preventDefault(); return true; }
       if (k === '=' || k === '+') { zoomCenter(1.25); e.preventDefault(); return true; }
       if (k === '-') { zoomCenter(.8); e.preventDefault(); return true; }
@@ -2798,7 +3005,7 @@ const Board = (() => {
       if (k === 'Enter') { e.preventDefault(); one.parent ? mindAdd('sibling') : startEdit(one.id); return true; }
       if (k.startsWith('Arrow') && !e.shiftKey) { e.preventDefault(); mindNav(k); return true; }
     }
-    if ((k === 'Enter' || k === 'F2') && one && one.k === 'uic') { e.preventDefault(); uicEdit(one); return true; }
+    if ((k === 'Enter' || k === 'F2') && one && one.k === 'uic') { e.preventDefault(); uiFocusText(one); return true; }
     if ((k === 'Enter' || k === 'F2') && one) { e.preventDefault(); startEdit(one.id); return true; }
     if (k.startsWith('Arrow') && sel.size) { e.preventDefault(); const d = e.shiftKey ? 10 : 1, dx = k === 'ArrowLeft' ? -d : k === 'ArrowRight' ? d : 0, dy = k === 'ArrowUp' ? -d : k === 'ArrowDown' ? d : 0; const ids = moveSet(); commit(items.map(i => ids.has(i.id) && i.k !== 'conn' ? Object.assign({}, i, { x: i.x + dx, y: i.y + dy }) : i)); return true; }
     if ((k === 'f' || k === 'F') && !mod && !e.altKey) { if (sel.size) fitTo(unionBox(selItems())); else fitAll(); return true; }   // F: frame the selection, or the whole board
@@ -2988,7 +3195,8 @@ const Board = (() => {
     syncSnap();
     ro = new ResizeObserver(() => { if (mounted) { ink.resize(); renderOverlay(); placeDock(); placeOpts(); } }); ro.observe(host);
     tool = 'select'; setTool('select');
-    items = relayout(items); reindex(); D.items = items;
+    items = uiLayout(relayout(items)); reindex(); D.items = items;
+    if (document.fonts && items.some(i => i.k === 'uic')) document.fonts.ready.then(() => { if (!mounted || D !== doc) return; ukMeasured.clear(); items = uiLayout(items); reindex(); D.items = items; schedule(); });
     render();
     view.r = 0; uzNow = uz(); if (doc.view && isFinite(doc.view.k)) { const z = doc.view.z ? uzNow : 1; view.x = doc.view.x / z; view.y = doc.view.y / z; view.k = clamp(doc.view.k / z, MINK, MAXK); view.r = +doc.view.r || 0; viewChanged(); } else fitAll();
     updateUndo();
@@ -3000,7 +3208,7 @@ const Board = (() => {
     if (!mounted) return;
     if (editing) finishEdit();
     if (op && op.keep) cancelOp();
-    closeMarking(); uiLibClose(); uiDockHi = null; mounted = false; cancelAnimationFrame(raf); raf = 0; Studio.unmount(); shot = null;
+    closeMarking(); uiLibClose(); uiInspClose(); uiIns = null; uiFloat = null; mounted = false; cancelAnimationFrame(raf); raf = 0; Studio.unmount(); shot = null;
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onCancel);
     removeEventListener('pointerup', releaseMods, true); removeEventListener('pointercancel', releaseMods, true);
     if (modsEl) { modsEl.remove(); modsEl = null; } for (const k in vmods) vmods[k] = 0;
