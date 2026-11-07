@@ -328,7 +328,7 @@ function grainValues(tx) { let g = _grainVal.get(tx); if (g) return g; const t =
   const d = t.getContext('2d').getImageData(0, 0, t.width, t.height).data, v = new Float32Array(t.width * t.height);
   for (let i = 0; i < v.length; i++) v[i] = d[i * 4 + 3] / 255;
   g = { v, w: t.width, h: t.height }; if (_tipImg.has(TEXS[tx] && TEXS[tx].img)) _grainVal.set(tx, g); return g; }
-function chalkCut(ctx, rect, ox, oy, sc, amt = 1) {
+function chalkCut(ctx, rect, ox, oy, sc, amt = 1, fine = 1) {
   const g = grainValues('paper'); if (!g) return;
   const cv = ctx.canvas; let [x, y, w, h] = rect || [0, 0, cv.width, cv.height];
   x = Math.max(0, Math.floor(x)); y = Math.max(0, Math.floor(y)); w = Math.min(cv.width - x, Math.ceil(w)); h = Math.min(cv.height - y, Math.ceil(h)); if (w < 1 || h < 1) return;
@@ -339,8 +339,13 @@ function chalkCut(ctx, rect, ox, oy, sc, amt = 1) {
       const q = (j * w + i) * 4 + 3, a = d[q]; if (!a) continue;
       const fx0 = Math.floor(ux), fy0 = Math.floor(uy), fx = ux - fx0, fy = uy - fy0, gx = (fx0 % gw + gw) % gw, gy = (fy0 % gh + gh) % gh, gx1 = (gx + 1) % gw, gy1 = (gy + 1) % gh;
       const t = ((gv[gy * gw + gx] * (1 - fx) + gv[gy * gw + gx1] * fx) * (1 - fy) + (gv[gy1 * gw + gx] * (1 - fx) + gv[gy1 * gw + gx1] * fx) * fy) * amt;
-      /* soft threshold: a little above the grain = full chalk, below = paper */
-      const v = (a / 255 - t) * 4; d[q] = v <= 0 ? 0 : v >= 1 ? 255 : v * 255;
+      /* soft threshold: a little above the grain = full chalk, below = paper (gentler since 0.2.44) */
+      let v = (a / 255 - t * .85) * 2.4; if (v <= 0) { d[q] = 0; continue; } if (v > 1) v = 1;
+      /* second, finer grain (0.2.44): the same paper read 3.3× smaller and shifted, only lowers the opacity, by an amount that
+         itself drifts across the paper (the coarse grain read elsewhere), so the chalk's body breathes instead of being flat white */
+      const u2 = ux * 3.3 + 97, w2 = uy * 3.3 + 41, hx = ((Math.floor(u2) % gw) + gw) % gw, hy = ((Math.floor(w2) % gh) + gh) % gh, f2 = gv[hy * gw + hx];
+      const mx = ((Math.floor(ux * .37 + 13) % gw) + gw) % gw, my = ((Math.floor(uy * .37 + 71) % gh) + gh) % gh, amt2 = .25 + .5 * gv[my * gw + mx];
+      v *= 1 - amt2 * f2 * fine; d[q] = v * 255;
     }
   }
   ctx.putImageData(im, x, y);
