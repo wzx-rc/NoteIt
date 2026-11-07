@@ -27,7 +27,7 @@ const PENS = {
      fx = how the dab reacts: tl tilt shading, vs/vo speed on size/opacity, tp taper at the start (× size), pm smallest size under
      light pressure, jt/oj size/opacity jitter, rj turn jitter, rd roundness, sa scatter, cnt dabs per step, cj colour jitter,
      wet darker wet edge, td how deep the paper grain cuts */
-  graphite: { name: 'Graphite', icon: 'pencil', hint: 'Mine tendre : appuyez pour foncer, inclinez le stylet pour ombrer', size: 5, min: 1, max: 60, thin: .5, gamma: 1, o: .92, smooth: .3, alpha: 1, stamp: { sh: 't_graphite', tx: 'paper', fl: .42, sp: .06, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { tl: 1, pm: .06, jt: .1, td: .75, tp: 4 } } },
+  graphite: { name: 'Graphite', icon: 'pencil', hint: 'Mine tendre : appuyez pour foncer, inclinez le stylet pour ombrer', size: 5, min: 1, max: 60, thin: .5, gamma: 1, o: .92, smooth: .3, alpha: 1, stamp: { sh: 't_graphite', tx: 'none', fl: .26, sp: .06, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { tl: 1, pm: .06, jt: .1, tp: 4, ch: 1, chs: 2.2, chf: .9 } } },
   inkbrush: { name: 'Pinceau encre', icon: 'brush', hint: 'Pointe souple : plein en appuyant, délié en accélérant', size: 12, min: 2, max: 90, thin: .9, gamma: 1.2, o: 1, smooth: .55, alpha: 1, stamp: { sh: 't_ink', tx: 'none', fl: 1, sp: .035, dy: { ps: 1, po: 0, rot: 1, sc: 0 }, fx: { pm: .04, vs: -.5, tp: 2.2, rd: .82 } } },
   fusain: { name: 'Fusain', icon: 'pencil', hint: 'Poudreux et sec, le grain du papier ressort', size: 22, min: 2, max: 140, thin: .5, gamma: 1, o: .95, smooth: .4, alpha: 1, stamp: { sh: 't_charcoal', tx: 'paper', fl: .26, sp: .05, dy: { ps: 1, po: 1, rot: 0, sc: 1 }, fx: { tl: .8, pm: .1, jt: .15, sa: .25, td: .9 } } },
   aqua: { name: 'Aquarelle', icon: 'water', hint: 'Lavis transparent, bords chargés, papier torchon', size: 38, min: 4, max: 200, thin: .5, gamma: 1, o: .62, multiply: true, smooth: .55, alpha: 1, stamp: { sh: 't_water', tx: 'rough', fl: .16, sp: .08, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { pm: .15, jt: .12, wet: 1, td: .32, cj: .05, vo: -.3 } } },
@@ -356,7 +356,7 @@ function stampInto(ctx, st) {
   else stampWalk(ctx, st, null);
   const F = st.b.fx || {};
   if (F.wet) { const m = ctx.getTransform(); wetEdges(ctx, F.wet, st.s * .22 * Math.hypot(m.a, m.b), null); }
-  if (F.ch) chalkCut(ctx, null, st.b.ox || 0, st.b.oy || 0, (F.chs || 1.5) * .42, F.ch);
+  if (F.ch) chalkCut(ctx, null, st.b.ox || 0, st.b.oy || 0, (F.chs || 1.5) * .42, F.ch, F.chf ?? 1);
   applyTexture(ctx, st.b.tx, st.b.ox || 0, st.b.oy || 0, texScale(st), F.td ?? 1);
 }
 /* textures keep a readable grain on fine strokes too (below .6 they all turned into the same fine noise) */
@@ -567,7 +567,7 @@ class InkCapture {
         this.xform(x); const m = x.getTransform(), [a0, b0, a1, b1] = this.walk.bb, P = [[a0, b0], [a1, b0], [a0, b1], [a1, b1]].map(([u, v]) => [m.a * u + m.c * v + m.e, m.b * u + m.d * v + m.f]);
         const X0 = Math.min(...P.map(q => q[0])), Y0 = Math.min(...P.map(q => q[1])), X1 = Math.max(...P.map(q => q[0])), Y1 = Math.max(...P.map(q => q[1])), bl = c.s * .22 * Math.hypot(m.a, m.b);
         if (F.wet) wetEdges(x, F.wet, bl, [X0 - bl * 2, Y0 - bl * 2, X1 - X0 + bl * 4, Y1 - Y0 + bl * 4]);
-        if (F.ch) chalkCut(x, [X0 - 2, Y0 - 2, X1 - X0 + 4, Y1 - Y0 + 4], 0, 0, (F.chs || 1.5) * .42, F.ch);
+        if (F.ch) chalkCut(x, [X0 - 2, Y0 - 2, X1 - X0 + 4, Y1 - Y0 + 4], 0, 0, (F.chs || 1.5) * .42, F.ch, F.chf ?? 1);
       }
       this.xform(x); applyTexture(x, c.b.tx, 0, 0, texScale(c), F.td ?? 1);
       return;
