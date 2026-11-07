@@ -97,8 +97,10 @@ function inkOutline(raw, st) {
     if (def.taper) { r *= .12 + .88 * easeT(C[i] / TL); r *= .12 + .88 * easeT((total - C[i]) / TL); }
     /* chisel nib held at 45°: full width across the nib, a thin line along it */
     if (def.chisel) r *= .28 + .72 * Math.abs(DY[i] * CS - DX[i] * CS);
-    R[i] = Math.max(r, s * .04); if (R[i] > rmax) rmax = R[i];
+    R[i] = Math.max(r, s * .04);
   }
+  /* a light running average over about one stroke width: no knots where the pressure stepped */
+  { const W = Math.max(1, Math.min(6, Math.round(1 / .3))), T = Float64Array.from(R); for (let i = 0; i < n; i++) { let a = 0, c = 0; for (let k = -W; k <= W; k++) { const j = i + k; if (j < 0 || j >= n) continue; a += T[j]; c++; } R[i] = a / c; if (R[i] > rmax) rmax = R[i]; } }
   if (n < 2 || total < s * .08) { const r = f(rmax), x = X[n - 1], y = Y[n - 1]; return `M${f(x - r)} ${f(y)}a${r} ${r} 0 1 0 ${f(2 * r)} 0a${r} ${r} 0 1 0 ${f(-2 * r)} 0Z`; }
   const Lx = new Float64Array(n), Ly = new Float64Array(n), Rx = new Float64Array(n), Ry = new Float64Array(n);
   for (let i = 0; i < n; i++) { const nx = -DY[i], ny = DX[i]; Lx[i] = X[i] + nx * R[i]; Ly[i] = Y[i] + ny * R[i]; Rx[i] = X[i] - nx * R[i]; Ry[i] = Y[i] - ny * R[i]; }
@@ -361,6 +363,15 @@ function brushPreview(k, pr, w = 260, h = 64, onDark = false) {
 }
 /* how far past its points a stroke paints: stamped brushes scatter, tilt shading and jitter make dabs bigger */
 const inkPad = st => { if (!st.b) return st.s; const F = st.b.fx || {}; return st.s * 1.9 * (1 + 1.8 * (F.tl || 0)) * (1 + (F.jt || 0)) * (st.b.dy && st.b.dy.sc ? 1 + (F.sa || 0) : 1); };
+/* evens out the pressure along a finished stroke: weighted average of each point with its neighbours, twice */
+function smoothPressure(p) {
+  const n = (p.length / 3) | 0; if (n < 5) return p;
+  for (let pass = 0; pass < 2; pass++) {
+    const q = new Float64Array(n); for (let i = 0; i < n; i++) q[i] = p[i * 3 + 2];
+    for (let i = 1; i < n - 1; i++) { let a = 0, w = 0; for (let k = -3; k <= 3; k++) { const j = i + k; if (j < 0 || j >= n) continue; const wt = 4 - Math.abs(k); a += q[j] * wt; w += wt; } p[i * 3 + 2] = a / w; }
+  }
+  return p;
+}
 function inkBounds(p, s) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (let i = 0; i < p.length; i += 3) { if (p[i] < x0) x0 = p[i]; if (p[i] > x1) x1 = p[i]; if (p[i + 1] < y0) y0 = p[i + 1]; if (p[i + 1] > y1) y1 = p[i + 1]; }
@@ -412,7 +423,7 @@ class InkCapture {
   begin(ev, st) {
     if (ev.pointerType === 'pen') penSeenGlobal = true;
     this.gen = (this.gen || 0) + 1;
-    this.sim = { p: .42, t: ev.timeStamp || now(), x: ev.clientX, y: ev.clientY };
+    this.sim = { p: .42, t: ev.timeStamp || now(), x: ev.clientX, y: ev.clientY }; this.pq = null;
     const w = this.map.toLocal(ev.clientX, ev.clientY), p0 = this.pressure(ev), def = PENS[st.t] || PENS.pen;
     this.cur = { t: st.t, c: st.c, s: st.s, o: st.o ?? def.o, p: [w.x, w.y, p0] }; if (st.b) this.cur.b = st.b;
     /* alpha brushes also keep the speed and the stylus tilt of each point (st.d), for thick and thin and pencil shading */
@@ -448,7 +459,10 @@ class InkCapture {
     for (const e of (evs && evs.length ? evs : [ev])) {
       const w = this.map.toLocal(e.clientX, e.clientY), p = this.pressure(e), s = this.sm, out = this.cur.p, dd = this.dyn ? this.dynOf(e) : null;
       s.last = { x: w.x, y: w.y, p, dd };
-      s.x += (w.x - s.x) * s.f; s.y += (w.y - s.y) * s.f; s.p += (p - s.p) * .5;
+      /* pressure: the median of the last three samples drops the odd jump (iPad sends some), then a gentle low-pass,
+         so the width swells smoothly instead of making knots every few millimetres (0.2.39) */
+      const q3 = this.pq || (this.pq = []); q3.push(p); if (q3.length > 3) q3.shift(); const pm = q3.length < 3 ? p : q3.slice().sort((a, b) => a - b)[1];
+      s.x += (w.x - s.x) * s.f; s.y += (w.y - s.y) * s.f; s.p += (pm - s.p) * .22;
       const n = out.length;
       if (n >= 3) { const dx = s.x - out[n - 3], dy = s.y - out[n - 2], m = .5 / s.k; if (dx * dx + dy * dy < m * m) { out[n - 1] = s.p; if (dd) { const d = this.cur.d; d[d.length - 2] = dd[0]; d[d.length - 1] = dd[1]; } continue; } }
       out.push(s.x, s.y, s.p); if (dd) this.cur.d.push(dd[0], dd[1]);
@@ -459,6 +473,7 @@ class InkCapture {
     if (!this.cur) return null;
     const c = this.cur, l = this.sm.last, n = c.p.length;
     if (Math.hypot(l.x - c.p[n - 3], l.y - c.p[n - 2]) > .3 / this.sm.k) { c.p.push(l.x, l.y, l.p); if (c.d) c.d.push(...(l.dd || c.d.slice(-2))); }
+    smoothPressure(c.p);
     c.p = c.p.map(v => Math.round(v * 100) / 100);
     if (c.d) c.d = c.d.map(v => Math.round(v * 100) / 100);
     /* the live stroke stays on screen until the finished one is painted (two frames), so lifting the pencil never flashes */

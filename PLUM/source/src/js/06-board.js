@@ -2007,6 +2007,15 @@ const Board = (() => {
   const grpOf = id => { const it = byId.get(id); return it && it.g ? items.filter(i => i.g === it.g && !i.hid).map(i => i.id) : [id]; };
   const growGroups = set => { for (const id of [...set]) for (const m of grpOf(id)) set.add(m); return set; };
   const groupable = () => selItems().filter(i => !(i.k === 'mind' && i.parent));
+  /* 0.2.39: the strokes of one drawing session (drawing tools kept, from picking the pen until another tool) form one group,
+     so a tap or a click takes the whole drawing, not one stroke; Ctrl+Alt+G (Dégrouper) still splits it */
+  let inkSess = null;
+  function inkSessionAdd(it) {
+    const prev = inkSess && byId.get(inkSess.last);
+    if (!prev || prev.hid) { inkSess = { g: null, last: it.id }; return items.concat(it); }
+    const g = prev.g || uid('g'); it.g = g; inkSess.last = it.id;
+    return items.map(i => i.id === prev.id && !i.g ? Object.assign({}, i, { g }) : i).concat(it);
+  }
   function groupSel() {
     const list = groupable(); if (list.length < 2) { toast('Sélectionne au moins deux éléments à grouper'); return; }
     const ids = new Set(list.map(i => i.id)), g = uid('g');
@@ -2408,7 +2417,7 @@ const Board = (() => {
     const pk = penKind, pr = penPref(pk), def = PENS[pk];
     ink.begin(e, { t: pk, c: pr.c, s: pr.s / view.k, o: pr.o, smooth: pr.sm, k: view.k, b: strokeBrush(pk, pr, view.k) });
     op = { id: e.pointerId, kind: 'ink', move(ev) { if (ev.pointerId === this.id) ink.feed(ev); },
-      up() { op = null; const st = ink.end(); if (st && st.p.length >= 3) { if (st.p.length === 3) st.p.push(st.p[0] + .4 / view.k, st.p[1] + .2 / view.k, st.p[2]); commit(items.concat(mkInk(st))); useColor(st.c); if (Studio.on) Studio.refresh('history'); } },
+      up() { op = null; const st = ink.end(); if (st && st.p.length >= 3) { if (st.p.length === 3) st.p.push(st.p[0] + .4 / view.k, st.p[1] + .2 / view.k, st.p[2]); commit(inkSessionAdd(mkInk(st))); useColor(st.c); if (Studio.on) Studio.refresh('history'); } },
       cancel() { ink.cancel(); } };
   }
   /* Ctrl + left or middle drag, left or right: the brush size, a ring at the press point and the value beside it (as in Photoshop) */
@@ -2815,6 +2824,7 @@ const Board = (() => {
     if (op && op.keep) cancelOp();
     attachHi = null;
     if (t === 'pick' && tool !== 'pick') pickBack = tool;
+    if (!PENS[t] && t !== 'eraser' && t !== 'pick') inkSess = null;   // leaving the drawing tools ends the drawing session
     tool = t; if (PENS[t]) penKind = t; if (ALPHA_PENS.includes(t)) S.prefs.lastAlpha = t;
     /* drawing never acts on a selection: a shape left selected would take the colour and size changes */
     if ((PENS[t] || t === 'eraser') && sel.size) sel.clear();
@@ -2905,6 +2915,7 @@ const Board = (() => {
 
   /* ---------- mount ---------- */
   function mount(container, doc) {
+    inkSess = null;
     if (!noteColor || noteColor === SCHEME_BASE[14]) noteColor = schemeHex(SCHEME_DEF.note);
     D = doc; items = (doc.items || []).slice(); reindex(); hist = []; fut = []; sel = new Set(); editing = null; editSub = null; op = null; nodes.clear(); fitCache.clear(); propSig = ''; qSig = ''; propsTab = 'style';
     const open = S.prefs.props == null ? innerWidth >= 1100 : !!S.prefs.props;
