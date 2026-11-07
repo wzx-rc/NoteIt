@@ -8,6 +8,7 @@ const Board = (() => {
   const view = { x: 0, y: 0, k: 1, r: 0 };   // r: the board turned by two fingers, in degrees (iPad, as in Concepts)
   let tool = 'select', shapeKind = 'rect', penKind = 'pen', noteColor = SCHEME_BASE[14];
   let sel = new Set(), editing = null, editSub = null, hist = [], fut = [], op = null, guides = null, marquee = null, attachHi = null, attachSock = null, eraserAt = null, eraseAll = true;
+  let uiDockHi = null, uiLib = null;
   let spaceDown = false, penSeen = false, clip = null, raf = 0, propSig = '', qSig = '', lastClient = null, mounted = false, propsTab = 'style', propsHold = false, liveBefore = null;
   const touches = new Map(), nodes = new Map(), fitCache = new Map(), measCache = new Map();
   const MINK = .08, MAXK = 8;
@@ -30,11 +31,11 @@ const Board = (() => {
   /* ---------- history ---------- */
   function commit(next, o = {}) {
     if (o.hist !== false) { hist.push(o.before || items); if (hist.length > 250) hist.shift(); fut.length = 0; }
-    items = hasMind(next) ? relayout(next) : next; reindex();
+    next = uiDockLayout(next); items = hasMind(next) ? relayout(next) : next; reindex();
     for (const id of [...sel]) if (!byId.has(id)) sel.delete(id);
     D.items = items; touch(D); updateUndo(); schedule();
   }
-  function setLive(next) { items = next; reindex(); D.items = items; schedule(); }
+  function setLive(next) { items = uiDockLayout(next); reindex(); D.items = items; schedule(); }
   function silent(next) { items = next; reindex(); D.items = items; save(); }
   const hasMind = arr => arr.some(i => i.k === 'mind');
   function undo() { if (editing) finishEdit(); const p = hist.pop(); if (!p) return; fut.push(items); items = p; reindex(); sel = new Set([...sel].filter(id => byId.has(id))); D.items = items; touch(D); updateUndo(); schedule(); }
@@ -131,7 +132,8 @@ const Board = (() => {
       case 'link': return `l${Math.round(it.w)}|${Math.round(it.h)}|${it.url}|${it.title}|${it.asset || it.pic || ''}|${Assets.has(it.asset)}`;
       case 'ink': return `k${pv(it.p)}|${it.c}|${it.o}|${it.t}|${it.w0}|${it.h0}|${theme()}|${it.b ? JSON.stringify(it.b) : ''}`;
       case 'mind': return `m${it.lv}|${it.c}|${it.txt}|${skin()}|${it.side}|${it.ms || 1}|${it.lv === 1 && MT().mindArt ? artOff(it) : ''}`;
-      case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}`;
+      case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}|${it.ui || ''}`;
+      case 'uic': return `u${it.t}|${Math.round(it.w)}|${Math.round(it.h)}|${it.txt}|${it.v || ''}|${uiFid(it)}`;
       case 'task': { const t = taskById(it.task) || {}; return `T${t.t}|${t.done}|${t.due}|${t.time}|${t.sp}`; }
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
       case 'sheet': return `g${it.w}|${it.h}|${it.cols}|${it.rows}|${it.fs}|${it.title}|${JSON.stringify(it.cells)}|${JSON.stringify(it.cw || 0)}|${JSON.stringify(it.rh || 0)}|${theme()}`;
@@ -202,7 +204,9 @@ const Board = (() => {
         n.innerHTML = mindIcon(it.txt, it.lv || 0) + `<div class="txt">${fmtText(it.txt) || '<div><br></div>'}</div>` + (art ? `<img class="mart" src="${art}" alt="" draggable="false">` : ''); break;
       }
       case 'frame':
-        n.className = 'frame-it' + (it.nt ? ' nt' : ''); n.innerHTML = `<div class="ftitle" style="font-size:${FRAME_TFS[it.tfs ?? 1]}px">${esc(it.title)}</div>`; break;
+        n.className = 'frame-it' + (it.nt ? ' nt' : '') + (it.ui ? ' uiz' : ''); n.innerHTML = `<div class="ftitle" style="font-size:${FRAME_TFS[it.tfs ?? 1]}px">${esc(it.title)}</div>` + (it.ui ? uzHeadHTML(it) : ''); break;
+      case 'uic':
+        n.className = 'it uic uf-' + uiFid(it) + ' ut-' + it.t; n.innerHTML = uicHTML(it); break;
       case 'task': {
         const t = taskById(it.task);
         n.className = 'it card-it task' + (t && t.done ? ' done' : '');
@@ -344,6 +348,7 @@ const Board = (() => {
     if (guides) for (const g of guides) { if (g.v != null) { const p = toS(g.v, 0); h += `<div class="guide v" style="left:${p.x}px;top:0;bottom:0"></div>`; } else { const p = toS(0, g.h); h += `<div class="guide h" style="top:${p.y}px;left:0;right:0"></div>`; } }
     if (attachHi) { const it = byId.get(attachHi); if (it) { const a = toS(it.x, it.y); h += `<div class="attach" style="left:${a.x - 4}px;top:${a.y - 4}px;width:${it.w * view.k + 8}px;height:${it.h * view.k + 8}px"></div>`;
       if (op && (op.kind === 'conn' || op.kind === 'ep')) for (const [k, [fx, fy]] of Object.entries(SOCKS)) { const q = toS(it.x + fx * it.w, it.y + fy * it.h); h += `<div class="sock${attachSock === k ? ' on' : ''}" style="left:${q.x}px;top:${q.y}px"></div>`; } } }
+    if (uiDockHi) { const a = toS(uiDockHi.x, uiDockHi.y); h += `<div class="uidock" style="left:${a.x}px;top:${a.y}px;width:${uiDockHi.w * view.k}px;height:${uiDockHi.h * view.k}px"><b>${uiDockHi.label}</b></div>`; }
     if (eraserAt && tool === 'eraser') { const r = 12; h += `<div class="erasecur" style="left:${eraserAt.x}px;top:${eraserAt.y}px;width:${r * 2}px;height:${r * 2}px"></div>`; }
     const list = selItems(), dragging = op && op.moved;
     if (list.length === 1 && list[0].k === 'conn') {
@@ -486,6 +491,8 @@ const Board = (() => {
     const ac = [];
     if (list.some(i => i.lock)) return (one && one.k === 'plan' ? qact('pdim', 'moon', 'Assombrir le planning') : '') + qact('unlock', 'unlock', 'Déverrouiller', 'Déverrouiller');
     if (one && one.k === 'plan') { ac.push(qact('pdim', 'moon', 'Assombrir le planning'), qact('pset', 'cal', 'Réglages du planning : lien iCal, période, heures, couleurs (double-clic)')); if (one.src) ac.push(qact('prefresh', 'restore', 'Mettre à jour depuis le lien iCal')); }
+    if (one && one.k === 'frame' && one.ui) { g.push(`<div class="seg sm uqs">${UI_FIDS.map(([v, l]) => `<button data-qa="uif-${v}" aria-pressed="${one.ui === v}" title="Rendu de la zone : ${l}">${l}</button>`).join('')}</div>`); ac.push(qact('uilib', 'layout', 'Bibliothèque de blocs', 'Blocs'), qact('uitest', 'play', 'Tester les interactions de la zone', 'Tester')); }
+    if (one && one.k === 'uic') { ac.push(qact('uiedit', 'text', 'Modifier le texte du bloc (double-clic, Entrée)', 'Texte')); if (one.t === 'button') g.push(`<div class="seg sm uqs">${[['pri', 'Principal'], ['sec', 'Secondaire'], ['ghost', 'Fantôme']].map(([v, l]) => `<button data-qa="uiv-${v}" aria-pressed="${(one.v || 'pri') === v}">${l}</button>`).join('')}</div>`); if (one.dock) ac.push(qact('uiundock', 'ext', 'Détacher du dock : le panneau redevient flottant', 'Détacher')); }
     if (one && one.k === 'mind') ac.push(qact('mchild', 'plus', 'Ajouter une idée (Tab)'));
     if (one && one.k === 'conn') ac.push(qact('label', 'text', 'Ajouter un texte sur la flèche'));
     if (one && ['link', 'doc', 'task'].includes(one.k)) ac.push(qact('open', 'ext', 'Ouvrir'));
@@ -767,7 +774,7 @@ const Board = (() => {
     return out.join('');
   }
   const FRAME_TFS = [12, 14, 20, 28];
-  const ZICON = { note: 'sticky', text: 'text', shape: 'rect', image: 'image', file: 'file', link: 'link', ink: 'pen', mind: 'mind', frame: 'frame', task: 'tasks', doc: 'note', todo: 'todo', sheet: 'sheet', plan: 'cal', conn: 'conn' };
+  const ZICON = { note: 'sticky', text: 'text', shape: 'rect', image: 'image', file: 'file', link: 'link', ink: 'pen', mind: 'mind', frame: 'frame', task: 'tasks', doc: 'note', todo: 'todo', sheet: 'sheet', plan: 'cal', conn: 'conn', uic: 'layout' };
   function layersHTML() {
     const rows = [];
     for (let i = items.length - 1; i >= 0; i--) {
@@ -887,6 +894,8 @@ const Board = (() => {
   }
   function action(a, btn) {
     const list = selItems();
+    if (a.startsWith('uif-')) { if (list[0] && list[0].ui) uiSetFid(list[0], a.slice(4)); return; }
+    if (a.startsWith('uiv-')) { if (list[0] && list[0].k === 'uic') { commit(replace(items, list[0], { v: a.slice(4) })); qSig = ''; } return; }
     switch (a) {
       case 'help': helpModal(); return;
       case 'front': case 'back': case 'fwd': case 'bwd': zMove(a); return;
@@ -908,6 +917,10 @@ const Board = (() => {
       case 'frameSel': frameAround(list.filter(i => i.k !== 'conn')); return;
       case 'tasks': go('tasks'); return;
       case 'multitext': multiText(); return;
+      case 'uiedit': if (list[0] && list[0].k === 'uic') uicEdit(list[0]); return;
+      case 'uilib': uiLibOpen(list[0] && list[0].ui ? list[0].id : null); return;
+      case 'uitest': if (list[0] && list[0].ui) uiTest(list[0]); return;
+      case 'uiundock': if (list[0] && list[0].dock) { const it = list[0]; commit(replace(items, it, { dock: undefined, x: it.x + 24, y: it.y + 24 })); } return;
       case 'pdim': if (list[0] && list[0].k === 'plan') planDim(list[0], btn); return;
       case 'pset': if (list[0] && list[0].k === 'plan') planModal(list[0]); return;
       case 'prefresh': if (list[0] && list[0].k === 'plan') planRefresh(list[0]); return;
@@ -998,6 +1011,7 @@ const Board = (() => {
       if (o.k === 'conn') { for (const e of ['a', 'b']) { if (o[e].id) { o[e].id = map.get(o[e].id) || null; if (!o[e].id) delete o[e].fx, delete o[e].fy; } else { if (o[e].on) { o[e].on = map.get(o[e].on); if (!o[e].on) delete o[e].on; } o[e].x += dx; o[e].y += dy; } } o.pts = (o.pts || []).map(p => [p[0] + dx, p[1] + dy]); o.sd = Math.random(); }
       else { o.x += dx; o.y += dy; }
       if (o.k === 'mind') { if (o.parent && map.has(o.parent)) o.parent = map.get(o.parent); else if (o.parent) o.parent = null; o.root = map.get(o.root) || o.id; if (!o.parent) o.root = o.id; }
+      if (o.dock) { const m = map.get(o.dock.w); if (m) o.dock = { w: m, s: o.dock.s }; else delete o.dock; }
       if (o.k === 'ink') o.p = i.p;
       if (o.k === 'shape') o.sd = Math.random();
       if (o.k === 'todo') { o.sd = Math.random(); o.tasks = o.tasks.map(id => { const t = taskById(id); if (!t) return null; const n = newTask({ t: t.t || 'Nouvelle tâche', sp: t.sp, due: t.due, time: t.time }); n.done = t.done; return n.id; }).filter(Boolean); }
@@ -1476,6 +1490,161 @@ const Board = (() => {
     // a new text block starts with "Texte" selected, so typing replaces it
     if (kind === 'text' && editing === it.id) { const el = editEl(it); if (el) { const r = document.createRange(); r.selectNodeContents(el); const g = getSelection(); g.removeAllRanges(); g.addRange(r); } }
   }
+
+  /* ---------- UI Design zones (0.2.38): software interfaces from blocks, docked panels, a test mode ---------- */
+  /* a block's rendering is its zone's: the frame with `ui` its centre falls in (wireframe outside any zone) */
+  function uiZoneOf(it) { const cx = it.x + it.w / 2, cy = it.y + it.h / 2; let z = null; for (const f of items) if (f.k === 'frame' && f.ui && !f.hid && inBox(cx, cy, boxOf(f))) z = f; return z; }
+  const uiFid = it => (uiZoneOf(it) || {}).ui || 'wire';
+  function uzHeadHTML(z) {
+    return `<div class="uzh"><span class="uztag">UI DESIGN</span><span class="uzinfo">Fenêtres et dialogues = écrans · flèches = clics</span><span class="uzsp"></span><div class="uzseg" role="group" aria-label="Rendu">${UI_FIDS.map(([v, l]) => `<button data-uz="${v}" aria-pressed="${z.ui === v}">${l}</button>`).join('')}</div><button class="uzb" data-uz="lib">${icon('layout')}Blocs</button><button class="uzb pri" data-uz="test">${icon('play')}Tester</button></div>`;
+  }
+  /* what a window, dialog or panel holds: the blocks drawn over it (after it in the list) whose centre is inside */
+  function uicKids(c) { const b = boxOf(c), at = items.indexOf(c); return items.filter((i, k) => k > at && i.k !== 'conn' && i.k !== 'frame' && !i.hid && inBox(i.x + i.w / 2, i.y + i.h / 2, b)); }
+  const uiWinAt = (x, y, skip) => { let w = null; for (const i of items) if (i.k === 'uic' && i.t === 'window' && !i.hid && !(skip && skip.has(i.id)) && inBox(x, y, boxOf(i))) w = i; return w; };
+  const UI_SIDES = { t: 'Docker en haut', l: 'Docker à gauche', r: 'Docker à droite', b: 'Docker en bas', c: 'Remplir le centre' };
+  /* while a dockable block is dragged: where it would dock, drawn as a blue box */
+  function uiDockAt(id, p, ids) {
+    const it = byId.get(id), W = it && uiWinAt(p.x, p.y, ids), s = W && uiDockSide(it, W, p.x, p.y);
+    if (!s) { uiDockHi = null; return; }
+    const sim = uiDockLayout(items.map(i => i.id === id ? Object.assign({}, i, { dock: { w: W.id, s } }) : i)).find(i => i.id === id);
+    uiDockHi = { win: W.id, s, id, x: sim.x, y: sim.y, w: sim.w, h: sim.h, label: UI_SIDES[s] };
+  }
+  /* after a move: dock the block where the blue box showed, snap loose blocks to 4 px, and put what lands on a window above it */
+  function uiDrop(next, ids, dk) {
+    if (dk && ids.has(dk.id)) next = next.map(i => i.id === dk.id ? Object.assign({}, i, { dock: { w: dk.win, s: dk.s } }) : i);
+    next = next.map(i => ids.has(i.id) && i.k === 'uic' && !i.dock ? Object.assign({}, i, { x: Math.round(i.x / 4) * 4, y: Math.round(i.y / 4) * 4 }) : i);
+    const moved = next.filter(i => ids.has(i.id) && i.k !== 'conn'), conts = next.filter(i => i.k === 'uic' && UI_CONTAINERS.includes(i.t) && !ids.has(i.id));
+    const under = moved.some(m => conts.some(c => next.indexOf(c) > next.indexOf(m) && inBox(m.x + m.w / 2, m.y + m.h / 2, boxOf(c))));
+    if (under) next = next.filter(i => !ids.has(i.id) || i.k === 'conn').concat(next.filter(i => ids.has(i.id) && i.k !== 'conn'));
+    return next;
+  }
+  /* the zone's rendering: its blocks are redrawn (a new object each, so they repaint) */
+  function uiSetFid(z, v) {
+    if (!z || !UI_FIDS.some(f => f[0] === v) || z.ui === v) return;
+    const b = boxOf(z);
+    commit(items.map(i => i.id === z.id ? Object.assign({}, i, { ui: v }) : i.k === 'uic' && inBox(i.x + i.w / 2, i.y + i.h / 2, b) ? Object.assign({}, i) : i));
+    qSig = '';
+  }
+  function uicEdit(it) {
+    const d = UIKIT[it.t] || {}; if (!d.hint) { toast('Ce bloc n’a pas de texte'); return; }
+    const m = openModal(`<div class="mhd"><h2>${esc(d.name)}</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
+      <p class="mt-sub">${esc(d.hint)}</p><textarea class="uted" spellcheck="false" style="width:100%;min-height:${Math.min(320, 60 + ukLines(it).length * 22)}px;box-sizing:border-box;border-radius:10px;border:1px solid var(--line-2);background:var(--raise);color:var(--ink);padding:10px 12px;font:500 13px/1.6 'JetBrains Mono',ui-monospace,monospace;outline:0;resize:vertical">${esc(it.txt)}</textarea>
+      <div class="mt-foot"><button class="btn sm" data-reset="1">Texte d’exemple</button><span class="mt-gap"></span><button class="btn sm pri" data-ok="1">Enregistrer</button></div>`);
+    const ta = $('.uted', m); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+    const ok = () => { const cur = byId.get(it.id); closeModal(); if (cur && cur.txt !== ta.value) commit(replace(items, cur, { txt: ta.value })); host.focus({ preventScroll: true }); };
+    $('[data-ok]', m).onclick = ok; $('[data-reset]', m).onclick = () => { ta.value = d.txt; ta.focus(); };
+    ta.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ok(); } if (e.key === 'Escape') closeModal(); });
+  }
+  /* ---------- the block library: a panel on the left, click a tile or drag it onto the board ---------- */
+  function uiLibOpen(zid) {
+    if (!wrap) return;
+    if (!uiLib) { uiLib = { el: document.createElement('div'), cat: S.prefs.uiCat || 'Fenêtre', q: '' }; uiLib.el.className = 'uilib'; uiLib.el.setAttribute('role', 'dialog'); uiLib.el.setAttribute('aria-label', 'Bibliothèque de blocs UI'); wrap.append(uiLib.el); uiLibBind(); }
+    if (zid) uiLib.zone = zid;
+    uiLibPaint();
+  }
+  function uiLibClose() { if (uiLib) { uiLib.el.remove(); uiLib = null; } }
+  function uiLibPaint() {
+    const L = uiLib, q = L.q.trim().toLowerCase(), n = Object.keys(UIKIT).length;
+    const list = Object.values(UIKIT).filter(d => q ? (d.name + ' ' + d.cat).toLowerCase().includes(q) : d.cat === L.cat);
+    L.el.innerHTML = `<div class="ulh"><b>Blocs logiciel</b><small>${n} blocs</small><button data-ulx="1" title="Fermer" aria-label="Fermer">${icon('x', 'sm')}</button></div>
+      <input class="ulq" type="search" placeholder="Inspecteur, timeline, arbre…" value="${esc(L.q)}" aria-label="Chercher un bloc">
+      <div class="ulc">${UI_CATS.map(c => `<button data-ulc="${c}" aria-pressed="${!q && c === L.cat}">${c}</button>`).join('')}</div>
+      <div class="ulg">${list.map(d => `<div class="ult" data-ult="${d.t}" title="${esc(d.name)} · cliquer pour l’ajouter, ou glisser sur le board"><span class="ulp">${uicThumb(d.t)}</span><span class="ln">${esc(d.name)}</span></div>`).join('') || '<small style="grid-column:1/-1;color:var(--ink-2)">Aucun bloc ne correspond.</small>'}</div>
+      <div class="ulf">Un panneau lâché sur une fenêtre s’y docke (gauche, droite, haut, bas, centre). Double-clic sur un bloc : son texte. Une flèche d’un bloc vers une fenêtre ou un dialogue = un clic dans le test.</div>`;
+  }
+  function uiLibBind() {
+    const el = uiLib.el;
+    el.addEventListener('keydown', e => e.stopPropagation());
+    el.addEventListener('input', e => { if (e.target.classList.contains('ulq')) { uiLib.q = e.target.value; const pos = e.target.selectionStart; uiLibPaint(); const i = $('.ulq', el); i.focus(); i.setSelectionRange(pos, pos); } });
+    el.addEventListener('click', e => {
+      if (e.target.closest('[data-ulx]')) { uiLibClose(); return; }
+      const c = e.target.closest('[data-ulc]'); if (c) { uiLib.cat = c.dataset.ulc; uiLib.q = ''; S.prefs.uiCat = uiLib.cat; save(); uiLibPaint(); }
+    });
+    el.addEventListener('pointerdown', e => {
+      const tile = e.target.closest('[data-ult]'); if (!tile || e.button !== 0) return;
+      e.preventDefault(); const t = tile.dataset.ult, x0 = e.clientX, y0 = e.clientY, pid = e.pointerId; let gh = null;
+      const over = ev => { const r = hostRect(), q = el.getBoundingClientRect(), x = ev.clientX, y = ev.clientY; return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom && !(x >= q.left && x <= q.right && y >= q.top && y <= q.bottom); };
+      const move = ev => {
+        if (ev.pointerId !== pid) return;
+        if (!gh) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return; const d = UIKIT[t]; gh = document.createElement('div'); gh.className = 'uidrag'; gh.innerHTML = `<div class="it uic uf-wire ut-${t}" style="width:${d.w}px;height:${d.h}px">${uicHTML({ t, txt: d.txt, w: d.w, h: d.h })}</div>`; document.body.append(gh); }
+        const k = view.k, d = UIKIT[t]; gh.style.transform = `translate(${ev.clientX - d.w * k / 2}px,${ev.clientY - d.h * k / 2}px) scale(${k})`; gh.style.opacity = over(ev) ? .9 : .45;
+        if (over(ev) && d.dock) { const p = toW(ev.clientX, ev.clientY), W = uiWinAt(p.x, p.y), s = W && uiDockSide({ t }, W, p.x, p.y); if (s) { const tmp = Object.assign(mkUic(t, p.x - d.w / 2, p.y - d.h / 2), { id: '__uidrag', dock: { w: W.id, s } }); const sim = uiDockLayout(items.concat(tmp)).find(i => i.id === '__uidrag'); uiDockHi = { id: '__uidrag', win: W.id, s, x: sim.x, y: sim.y, w: sim.w, h: sim.h, label: UI_SIDES[s] }; } else uiDockHi = null; renderOverlay(); }
+      };
+      const end = ev => {
+        if (ev.pointerId !== pid) return;
+        removeEventListener('pointermove', move); removeEventListener('pointerup', end); removeEventListener('pointercancel', end);
+        const dk = uiDockHi; uiDockHi = null;
+        if (!gh) { if (ev.type === 'pointerup') uiPlace(t, null); return; }
+        gh.remove(); if (ev.type === 'pointerup' && over(ev)) uiPlace(t, toW(ev.clientX, ev.clientY), dk); else renderOverlay();
+      };
+      addEventListener('pointermove', move); addEventListener('pointerup', end); addEventListener('pointercancel', end);
+    });
+  }
+  /* a new block: at the drop point, else inside the selected window or panel, else in the zone, under what is already there */
+  function uiPlace(t, at, dk) {
+    const d = UIKIT[t]; if (!d) return;
+    let x, y;
+    if (at) { x = at.x - d.w / 2; y = at.y - d.h / 2; }
+    else {
+      const s1 = sel.size === 1 ? byId.get([...sel][0]) : null, host0 = s1 && s1.k === 'uic' && UI_CONTAINERS.includes(s1.t) ? s1 : s1 && s1.k === 'uic' ? items.find(c => c.k === 'uic' && UI_CONTAINERS.includes(c.t) && c !== s1 && inBox(s1.x + s1.w / 2, s1.y + s1.h / 2, boxOf(c))) : null;
+      const z = (uiLib && uiLib.zone && byId.get(uiLib.zone)) || (s1 && s1.ui ? s1 : s1 ? uiZoneOf(s1) : null);
+      if (host0 && t !== 'window') { const k = uicKids(host0).length; x = host0.x + 16 + (k % 6) * 12; y = host0.y + (host0.t === 'window' ? UI_WIN_TOP + 12 : 40) + (k % 6) * 12; }
+      else if (z) { const inZ = items.filter(i => i.k === 'uic' && inBox(i.x + i.w / 2, i.y + i.h / 2, boxOf(z))), bb = unionBox(inZ); x = z.x + 32; y = bb ? bb[3] + 40 : z.y + 76; if (y + d.h > z.y + z.h - 16) { x = bb ? bb[2] + 40 : z.x + 32; y = z.y + 76; } }
+      else { const c = centerW(); x = c.x - d.w / 2; y = c.y - d.h / 2; }
+    }
+    let it = mkUic(t, x, y);
+    if (dk && dk.id === '__uidrag') it.dock = { w: dk.win, s: dk.s };
+    else if (d.dock) { const W = uiWinAt(it.x + it.w / 2, it.y + it.h / 2), s = W && at && uiDockSide(it, W, at.x, at.y); if (s) it.dock = { w: W.id, s }; }
+    commit(items.concat(it)); sel = new Set([it.id]); if (tool !== 'select') setTool('select'); render();
+    const nb = byId.get(it.id); if (nb && !at) reveal(boxOf(nb));
+  }
+  /* ---------- test mode: the zone's windows and dialogs become screens, its arrows become clicks ---------- */
+  function uiTest(z) {
+    const screens = uiScreens(z, items);
+    if (!screens.length) { toast('Posez une fenêtre ou un dialogue dans la zone pour la tester'); return; }
+    render();
+    const ov = document.createElement('div'); ov.className = 'uitest hot'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Test de la zone');
+    const nameOf = s => (ukLines(s)[0] || UIKIT[s.t].name).slice(0, 40);
+    ov.innerHTML = `<div class="uth"><span class="tag">TEST</span><b>${esc(z.title)}</b><div class="chips">${screens.map((s, i) => `<button data-scr="${i}">${esc(nameOf(s))}</button>`).join('')}</div><span class="sp"></span><button class="ub on" data-hot="1">Zones cliquables</button><button class="ub q" data-quit="1">Quitter · Échap</button></div><div class="utb"></div><div class="utf">Cliquez une zone bleue pour suivre une flèche · ← → : écran précédent / suivant · Échap : fermer le dialogue ou quitter</div>`;
+    document.body.append(ov);
+    const body = $('.utb', ov), st = { base: null, top: null };
+    const scrOf = id => { const it = byId.get(id); if (!it) return null; const s = screens.find(q => q.id === id); if (s) return s; return screens.find(q => inBox(it.x + it.w / 2, it.y + it.h / 2, boxOf(q))) || null; };
+    const isDlg = s => s.t !== 'window';
+    function stage(S, k) {
+      const box = boxOf(S), at = items.indexOf(S);
+      const inS = items.filter((i, idx) => i.k !== 'conn' && i.k !== 'frame' && !i.hid && (i === S || (idx > at && inBox(i.x + i.w / 2, i.y + i.h / 2, box))));
+      const ids = new Set(inS.map(i => i.id));
+      const d = document.createElement('div'); d.className = 'uts'; d.style.width = S.w + 'px'; d.style.height = S.h + 'px';
+      for (const i of inS) { const n = nodes.get(i.id); if (!n) continue; const c = n.cloneNode(true); c.removeAttribute('data-id'); c.classList.remove('sel', 'drop', 'editing'); c.style.left = i.x - S.x + 'px'; c.style.top = i.y - S.y + 'px'; d.append(c); }
+      for (const c of items) if (c.k === 'conn' && c.a.id && ids.has(c.a.id) && c.b.id) {
+        const to = scrOf(c.b.id), src = byId.get(c.a.id); if (!to || to === S || !src) continue;
+        const b = document.createElement('button'); b.className = 'uthot'; b.title = 'Aller à : ' + nameOf(to); b.setAttribute('aria-label', b.title);
+        Object.assign(b.style, { left: src.x - S.x + 'px', top: src.y - S.y + 'px', width: src.w + 'px', height: src.h + 'px' });
+        b.onclick = ev => { ev.stopPropagation(); go(to); }; d.append(b);
+      }
+      d.style.transform = `translate(${(-S.w * k / 2).toFixed(1)}px,${(-S.h * k / 2).toFixed(1)}px) scale(${k})`;
+      return d;
+    }
+    function paintT() {
+      body.innerHTML = '';
+      const W = body.clientWidth - 60, H = body.clientHeight - 30, fit = S => Math.min(W / S.w, H / S.h, 1.6);
+      const base = st.base || screens[0], kb = fit(base);
+      const bd = stage(base, kb); bd.classList.add('base'); body.append(bd);
+      if (st.top) { const s = document.createElement('div'); s.className = 'utscrim'; body.append(s); const td = stage(st.top, Math.min(kb, fit(st.top))); body.append(td);
+        td.addEventListener('click', e => { if (e.target.closest('[data-ukbtn]') && !e.target.closest('.uthot')) { st.top = null; paintT(); } }); }
+      const cur = st.top || base; $$('[data-scr]', ov).forEach(b => b.setAttribute('aria-pressed', screens[+b.dataset.scr] === cur));
+    }
+    function go(S) { if (isDlg(S) && st.base && st.base !== S) st.top = S; else { st.base = S; st.top = null; } paintT(); }
+    const key = e => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); if (st.top) { st.top = null; paintT(); } else quit(); } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const cur = st.top || st.base || screens[0], i = screens.indexOf(cur), n = screens[(i + (e.key === 'ArrowRight' ? 1 : screens.length - 1)) % screens.length]; st.top = null; st.base = n; paintT(); } };
+    function quit() { removeEventListener('keydown', key, true); removeEventListener('resize', paintT); ov.remove(); host.focus({ preventScroll: true }); }
+    ov.addEventListener('click', e => {
+      if (e.target.closest('[data-quit]')) quit();
+      const h = e.target.closest('[data-hot]'); if (h) { const on = ov.classList.toggle('hot'); h.classList.toggle('on', on); }
+      const c = e.target.closest('[data-scr]'); if (c) { st.top = null; st.base = screens[+c.dataset.scr]; paintT(); }
+    });
+    addEventListener('keydown', key, true); addEventListener('resize', paintT);
+    st.base = screens.find(s => !isDlg(s)) || screens[0]; paintT();
+  }
   /* ---------- planning from an iCal feed (0.2.26): PRONOTE's "iCal" link or a .ics file, rebuilt as a timeline ---------- */
   const PLAN_ERR = r => r.error === 'blocked' ? 'Le navigateur bloque ce lien. Ouvrez-le, enregistrez le fichier .ics puis choisissez-le avec « Fichier .ics ». Dans l’app Windows, le lien marche directement.'
     : r.error === 'url' ? 'Ce n’est pas un lien http(s) ou webcal.' : r.error === 'notics' ? 'Ce lien ne renvoie pas un calendrier iCal.' : r.status ? `Le serveur a répondu ${r.status}. Le lien a peut-être expiré : recopiez-le depuis PRONOTE.` : 'Impossible de lire ce lien.';
@@ -1758,6 +1927,7 @@ const Board = (() => {
         if (one && ((scell && scell.dataset.cell !== 'title') || t.closest('[data-col],[data-row],.shc'))) { e.preventDefault(); sheetPick(e, sit, t); return; }
       }
       const tadd = t.closest('[data-tadd]'); if (tadd && hit) { e.preventDefault(); const it = byId.get(hit); sel = new Set([hit]); todoAddRow(hit, it.tasks.length - 1); return; }
+      const uzb = t.closest('[data-uz]'); if (uzb && hit) { e.preventDefault(); e.stopPropagation(); const z = byId.get(hit); sel = new Set([hit]); if (uzb.dataset.uz === 'lib') uiLibOpen(hit); else if (uzb.dataset.uz === 'test') uiTest(z); else uiSetFid(z, uzb.dataset.uz); schedule(); return; }
       if (hit && (byId.get(hit) || {}).lock && !e.shiftKey && !e.ctrlKey && !e.metaKey) { sel = new Set([hit]); schedule(); if (e.pointerType === 'touch') startPan(e); else startMarquee(e, w, false); return; }
       if (hit) {
         const was = sel.has(hit) && sel.size === 1;
@@ -1773,7 +1943,7 @@ const Board = (() => {
     }
     e.preventDefault();
     if (tool === 'note' || tool === 'text' || tool === 'mind' || tool === 'todo' || tool === 'sheet') { createAt(tool, w); return; }
-    if (tool === 'shape' || tool === 'frame') { startRect(e, w); return; }
+    if (tool === 'shape' || tool === 'frame' || tool === 'uiz') { startRect(e, w); return; }
     if (tool === 'conn' || tool === 'line') { startConn(e, w, hit); return; }
   }
   function grab(e) { try { host.setPointerCapture(e.pointerId); } catch (_) {} }
@@ -1851,6 +2021,7 @@ const Board = (() => {
     for (const id of sel) {
       const it = byId.get(id); if (!it || it.lock) continue; ids.add(id);
       if (it.k === 'frame') for (const c of frameChildren(it)) { if (c.lock) continue; ids.add(c.id); if (c.k === 'mind') mindDesc(c.id, ids); }
+      if (it.k === 'uic' && UI_CONTAINERS.includes(it.t)) for (const c of uicKids(it)) if (!c.lock) ids.add(c.id);
       if (it.k === 'mind' && !it.parent) mindDesc(id, ids);
     }
     return ids;
@@ -1877,6 +2048,8 @@ const Board = (() => {
     const moving = [...orig.values()].filter(i => i.k !== 'conn'), bb0 = unionBox(moving);
     const subEl = target && target.closest('[data-sub]'), subKey = subEl ? subEl.dataset.sub : null;
     let cand = null, dropT = null;
+    const undock = new Set([...ids].filter(id => { const o = byId.get(id); return o && o.dock && !ids.has(o.dock.w); }));
+    const dockable = one && one.k === 'uic' && UIKIT[one.t] && UIKIT[one.t].dock ? one : null;
     op = { id: e.pointerId, kind: 'move', moved: false,
       move(ev) {
         if (ev.pointerId !== this.id) return;
@@ -1884,7 +2057,8 @@ const Board = (() => {
         if (!this.moved) { if (Math.hypot(dx * view.k, dy * view.k) < 4) return; this.moved = true; cand = snapLines(ids); }
         guides = null;
         if (bb0 && !ev.altKey && !reparent && S.prefs.snap !== false) { const s = snap(bb0, dx, dy, cand); dx = s.dx; dy = s.dy; guides = s.g; }
-        setLive(items.map(i => { const o = orig.get(i.id); if (!o) return i; if (o.k === 'conn') { const n = Object.assign({}, o); if (!o.a.id && !o.a.on) n.a = { x: o.a.x + dx, y: o.a.y + dy }; if (!o.b.id && !o.b.on) n.b = { x: o.b.x + dx, y: o.b.y + dy }; if (o.pts && o.pts.length && (!o.a.id || ids.has(o.a.id)) && (!o.b.id || ids.has(o.b.id))) n.pts = o.pts.map(q => [q[0] + dx, q[1] + dy]); return n; } return Object.assign({}, o, { x: o.x + dx, y: o.y + dy }); }));
+        setLive(items.map(i => { const o = orig.get(i.id); if (!o) return i; if (o.k === 'conn') { const n = Object.assign({}, o); if (!o.a.id && !o.a.on) n.a = { x: o.a.x + dx, y: o.a.y + dy }; if (!o.b.id && !o.b.on) n.b = { x: o.b.x + dx, y: o.b.y + dy }; if (o.pts && o.pts.length && (!o.a.id || ids.has(o.a.id)) && (!o.b.id || ids.has(o.b.id))) n.pts = o.pts.map(q => [q[0] + dx, q[1] + dy]); return n; } return Object.assign({}, o, { x: o.x + dx, y: o.y + dy }, undock.has(o.id) ? { dock: undefined } : {}); }));
+        if (dockable) uiDockAt(dockable.id, p, ids);
         if (reparent) {
           const under = document.elementsFromPoint(ev.clientX, ev.clientY).map(el => el.closest && el.closest('.it.mind')).find(el => el && !ids.has(el.dataset.id));
           const tid = under ? under.dataset.id : null;
@@ -1893,7 +2067,7 @@ const Board = (() => {
       },
       up(ev) {
         if (dropT && nodes.get(dropT)) nodes.get(dropT).classList.remove('drop');
-        guides = null; const moved = this.moved; op = null;
+        guides = null; const moved = this.moved; op = null; const dk = uiDockHi; uiDockHi = null;
         if (!moved) { const hitNow = one; if (wasSelected && hitNow && EDITABLE.includes(hitNow.k) && hitNow.k !== 'conn' && ev && ev.pointerType !== 'touch') startEdit(hitNow.id, null, hitNow.k === 'todo' ? (subKey || 'title') : undefined); schedule(); return; }
         let next = items;
         if (reparent) {
@@ -1907,9 +2081,10 @@ const Board = (() => {
           }
           animate();
         }
+        if (moved && [...ids].some(id => (byId.get(id) || {}).k === 'uic')) next = uiDrop(next, ids, dk);
         commit(next, { before });
       },
-      cancel() { setLive(before); } };
+      cancel() { uiDockHi = null; setLive(before); } };
   }
   function snapLines(skip) {
     const xs = [], ys = [], r = hostRect(), vb = [toW(r.left, r.top).x, toW(r.left, r.top).y, toW(r.right, r.bottom).x, toW(r.right, r.bottom).y];
@@ -2162,7 +2337,7 @@ const Board = (() => {
   const DIRS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
   const SOCKS = { n: [.5, 0], e: [1, .5], s: [.5, 1], w: [0, .5] };
   const LINKABLE = it => it && !['conn', 'ink', 'mind'].includes(it.k);
-  const ROTABLE = it => !!it && !['conn', 'mind', 'frame'].includes(it.k);
+  const ROTABLE = it => !!it && !['conn', 'mind', 'frame', 'uic'].includes(it.k);
   /* a new item next to this one, in that direction, linked by an arrow (Excalidraw's flowchart: Ctrl + arrow keys) */
   function quickNode(src, side) {
     const [dx, dy] = DIRS[side], s = clamp(1 / view.k, .5, 4);
@@ -2210,13 +2385,13 @@ const Board = (() => {
   function toolHint(msg) { if (hintEl) hintEl.remove(); hintEl = document.createElement('div'); hintEl.className = 'bhint'; hintEl.textContent = msg; wrap.append(hintEl); clearTimeout(toolHint.t); toolHint.t = setTimeout(() => hintEl && hintEl.remove(), 4200); }
   function startRect(e, w) {
     grab(e);
-    const before = items, fr = tool === 'frame', s = clamp(1 / view.k, .5, 4);
-    const mk = (x, y, ww, hh) => fr ? mkFrame(x, y, ww, hh, 'Cadre') : mkShape(x, y, ww, hh, shapeKind, { fs: Math.round(26 * s) });
+    const before = items, uz = tool === 'uiz', fr = tool === 'frame' || uz, s = clamp(1 / view.k, .5, 4);
+    const mk = (x, y, ww, hh) => uz ? Object.assign(mkFrame(x, y, ww, hh, 'UI Design'), { ui: 'wire' }) : fr ? mkFrame(x, y, ww, hh, 'Cadre') : mkShape(x, y, ww, hh, shapeKind, { fs: Math.round(26 * s) });
     const base = mk(w.x, w.y, 1, 1); let moved = false;
     op = { id: e.pointerId, kind: 'rect', moved: false,
       move(ev) { const p = toW(ev.clientX, ev.clientY); let dx = p.x - w.x, dy = p.y - w.y; if (!moved && Math.hypot(dx * view.k, dy * view.k) < 5) return; moved = true; if (ev.shiftKey) { const m = Math.max(Math.abs(dx), Math.abs(dy)); dx = Math.sign(dx || 1) * m; dy = Math.sign(dy || 1) * m; }
         const it = Object.assign({}, base, { x: Math.min(w.x, w.x + dx), y: Math.min(w.y, w.y + dy), w: Math.max(4, Math.abs(dx)), h: Math.max(4, Math.abs(dy)) }); setLive(fr ? [it].concat(before) : before.concat(it)); },
-      up() { op = null; if (!moved) { const W = fr ? 480 : 180 * s, H = fr ? 320 : (shapeKind === 'pill' ? 70 : 120) * s; const it = Object.assign({}, base, { x: w.x - W / 2, y: w.y - H / 2, w: W, h: H }); setLive(fr ? [it].concat(before) : before.concat(it)); } commit(items, { before }); sel = new Set([base.id]); setTool('select'); if (fr) startEdit(base.id); },
+      up() { op = null; if (!moved) { const W = uz ? 1440 : fr ? 480 : 180 * s, H = uz ? 900 : fr ? 320 : (shapeKind === 'pill' ? 70 : 120) * s; const it = Object.assign({}, base, { x: w.x - W / 2, y: w.y - H / 2, w: W, h: H }); setLive(fr ? [it].concat(before) : before.concat(it)); } commit(items, { before }); sel = new Set([base.id]); setTool('select'); if (uz) { reveal(boxOf(byId.get(base.id))); uiLibOpen(base.id); } else if (fr) startEdit(base.id); },
       cancel() { setLive(before); } };
   }
   function startMarquee(e, w, add) {
@@ -2314,9 +2489,12 @@ const Board = (() => {
     if (op && op.keep) { e.preventDefault(); op.finish(); return; }
     if (tool !== 'select') return;
     const pt = e.target.closest('.hdl[data-pt]'); if (pt) { removePoint(+pt.dataset.pt); return; }
-    const hit = hitAt(e);
+    /* the pointer was captured by the board on the way down: the double click then names the board, not what is under it */
+    let hit = hitAt(e); if (!hit && e.target === host) { const u = document.elementFromPoint(e.clientX, e.clientY), n = u && u.closest('[data-id]'); if (n && world.contains(n)) hit = n.dataset.id; }
     if (!hit) { const w = toW(e.clientX, e.clientY); createAt('note', w); return; }
     const it = byId.get(hit); if (it.lock) return;
+    if (it.k === 'uic') { uicEdit(it); return; }
+    if (it.k === 'frame' && it.ui && e.target.closest('.uzh')) return;
     if (EDITABLE.includes(it.k)) { if (e.target.closest('.ck,[data-tck],[data-tadd]')) return; const sub = e.target.closest('[data-sub]'); startEdit(hit, null, it.k === 'todo' ? (sub ? sub.dataset.sub : 'title') : it.k === 'sheet' ? ((e.target.closest('[data-cell]') || {}).dataset || {}).cell : undefined); }
     else openItem(it);
   }
@@ -2573,7 +2751,7 @@ const Board = (() => {
   }
 
   /* ---------- keyboard ---------- */
-  const TOOL_KEYS = { v: 'select', h: 'hand', p: 'pen', d: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', a: 'conn', l: 'line', c: 'todo', g: 'sheet', m: 'mind', k: 'pick', b: 'pen' };
+  const TOOL_KEYS = { u: 'uiz', v: 'select', h: 'hand', p: 'pen', d: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', a: 'conn', l: 'line', c: 'todo', g: 'sheet', m: 'mind', k: 'pick', b: 'pen' };
   function key(e) {
     if (!mounted || editing) return false;
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
@@ -2611,6 +2789,7 @@ const Board = (() => {
       if (k === 'Enter') { e.preventDefault(); one.parent ? mindAdd('sibling') : startEdit(one.id); return true; }
       if (k.startsWith('Arrow') && !e.shiftKey) { e.preventDefault(); mindNav(k); return true; }
     }
+    if ((k === 'Enter' || k === 'F2') && one && one.k === 'uic') { e.preventDefault(); uicEdit(one); return true; }
     if ((k === 'Enter' || k === 'F2') && one) { e.preventDefault(); startEdit(one.id); return true; }
     if (k.startsWith('Arrow') && sel.size) { e.preventDefault(); const d = e.shiftKey ? 10 : 1, dx = k === 'ArrowLeft' ? -d : k === 'ArrowRight' ? d : 0, dy = k === 'ArrowUp' ? -d : k === 'ArrowDown' ? d : 0; const ids = moveSet(); commit(items.map(i => ids.has(i.id) && i.k !== 'conn' ? Object.assign({}, i, { x: i.x + dx, y: i.y + dy }) : i)); return true; }
     if ((k === 'f' || k === 'F') && !mod && !e.altKey) { if (sel.size) fitTo(unionBox(selItems())); else fitAll(); return true; }   // F: frame the selection, or the whole board
@@ -2647,7 +2826,7 @@ const Board = (() => {
     if (was !== drawingTool()) layoutChanged();
   }
   const drawingTool = () => !!(PENS[tool] || tool === 'eraser' || tool === 'pick');
-  const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Dessin', 'D'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['sheet', 'sheet', 'Tableur', 'G'], ['mind', 'mind', 'Mind map', 'M'], ['frame', 'frame', 'Cadre', ''], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
+  const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Dessin', 'D'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['sheet', 'sheet', 'Tableur', 'G'], ['mind', 'mind', 'Mind map', 'M'], ['frame', 'frame', 'Cadre', ''], ['uiz', 'uiz', 'Zone UI Design : concevoir l’interface d’un logiciel', 'U'], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
   function refreshTools() {
     toolsEl.innerHTML = TOOLS.map(d => d === '|' ? '<span class="vs"></span>' : (() => {
       const [id, ic, title, k] = d, on = id === 'pen' ? !!PENS[tool] : tool === id;
@@ -2810,7 +2989,7 @@ const Board = (() => {
     if (!mounted) return;
     if (editing) finishEdit();
     if (op && op.keep) cancelOp();
-    closeMarking(); mounted = false; cancelAnimationFrame(raf); raf = 0; Studio.unmount(); shot = null;
+    closeMarking(); uiLibClose(); uiDockHi = null; mounted = false; cancelAnimationFrame(raf); raf = 0; Studio.unmount(); shot = null;
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onCancel);
     removeEventListener('pointerup', releaseMods, true); removeEventListener('pointercancel', releaseMods, true);
     if (modsEl) { modsEl.remove(); modsEl = null; } for (const k in vmods) vmods[k] = 0;
@@ -2888,7 +3067,7 @@ const Board = (() => {
     if (t === 'shape') return SHAPES[shapeKind] || 'Forme';
     if (PENS[t]) return PENS[t].name;
     if (t === 'conn') return 'Flèche ' + (ROUTES[BD().route || 'curve'] || '').toLowerCase();
-    return { text: 'Texte', note: 'Post-it', todo: 'Liste à faire', sheet: 'Tableur', frame: 'Cadre', line: 'Ligne', eraser: 'Gomme', mind: 'Mind map' }[t] || t;
+    return { text: 'Texte', note: 'Post-it', todo: 'Liste à faire', sheet: 'Tableur', frame: 'Cadre', uiz: 'Zone UI Design', line: 'Ligne', eraser: 'Gomme', mind: 'Mind map' }[t] || t;
   }
   /* new items take the board defaults: an option chosen here becomes that default, then the tool is picked */
   const pickOpt = (t, prop, v) => () => { if (prop) setProp(prop, v); setTool(t); };
