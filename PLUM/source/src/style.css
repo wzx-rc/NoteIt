@@ -1905,7 +1905,10 @@ figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
   html[data-sidex] #side .sbox input, html[data-sidex] #side .sbox kbd { display: none; }
   html[data-sidex] #side .nv { justify-content: center; padding: 0; gap: 0; width: 48px; height: 38px; margin: 0 auto; position: relative; }
   html[data-sidex] #side .nv > span:not(.dot), html[data-sidex] #side .nv .ct { display: none; }
-  html[data-sidex] #side .nv .dot { width: 14px; height: 14px; margin: 0; border-radius: 5px; }
+  html[data-sidex] #side .nv { display: flex; align-items: center; }
+  html[data-sidex] #side .nv.sprow { height: 44px; padding: 0; }
+  html[data-sidex] #side .nv .dot { width: 30px; height: 30px; margin: 0; border-radius: 9px; display: grid; place-items: center; }
+  html[data-sidex] #side .nv .dot .dl { display: block; font: 700 14px/1 var(--font-ui, system-ui); color: rgba(0,0,0,.62); }
   html[data-sidex] #side .nv[aria-current="page"] .dot, html[data-sidex] #side .spi.open .sprow .dot { box-shadow: 0 0 0 2px var(--side), 0 0 0 3.5px currentColor; }
   html[data-sidex] #side .spi { display: block; }
   html[data-sidex] #side .spx, html[data-sidex] #side .spsub, html[data-sidex] #side .pempty { display: none; }
@@ -2720,3 +2723,10 @@ html[data-focus] #tbar .tb-f [data-f="exit"] span { display: none; }
 .qb.qup .i { width: 16px; height: 16px; }
 .bsty-pop { padding: 4px; display: grid; gap: 6px; }
 .bwrap:has(.vmods) .atl-dock:not([style*="top"]) { left: 86px; }
+
+#side .nv .dot .dl { display: none; }
+/* 0.2.49: no text selection (nor the iOS loupe) on the interface; text stays selectable in fields, notes and while editing */
+#view, #view *:not(input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable="true"] *, .nbody, .nbody *), #toast, .sheet-m :is(h2, small, label, .mh), .dcard, .dcard * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#view :is(input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"], .nbody), #view :is([contenteditable="true"], .nbody) * { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+.drawmode .nbody, .drawmode .nbody * { -webkit-user-select: none; user-select: none; }
+.nbody :is(figure.ndraw, figure.nlink, .nfile), .nbody :is(figure.ndraw, figure.nlink, .nfile) * { -webkit-user-select: none; user-select: none; }

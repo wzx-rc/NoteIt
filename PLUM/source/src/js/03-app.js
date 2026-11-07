@@ -204,7 +204,7 @@ function renderSide() {
   const n = s => ld.filter(d => d.sp === s.id).length + S.tasks.filter(t => t.sp === s.id && !t.done).length;
   const spRow = s => {
     const on = open && open.id === s.id;
-    let h = `<div class="spi${on ? ' open' : ''}" data-spi="${s.id}"><button class="nv sprow" title="${esc(s.name)}" data-go="space:${s.id}" data-spdrop="${s.id}"${R.name === 'space' && R.id === s.id ? ' aria-current="page"' : ''}${on ? ' aria-expanded="true"' : ''}><span class="dot" style="background:${s.color}"></span><span class="spt">${esc(s.name)}</span><span class="ct">${n(s) || ''}</span></button><button class="spm-more spx" data-spmore="${s.id}" aria-label="Options de ${esc(s.name)}" title="Options">${icon('dots', 'sm')}</button></div>`;
+    let h = `<div class="spi${on ? ' open' : ''}" data-spi="${s.id}"><button class="nv sprow" title="${esc(s.name)}" data-go="space:${s.id}" data-spdrop="${s.id}"${R.name === 'space' && R.id === s.id ? ' aria-current="page"' : ''}${on ? ' aria-expanded="true"' : ''}><span class="dot" style="background:${s.color}"><b class="dl">${esc((s.name.trim()[0] || '?').toUpperCase())}</b></span><span class="spt">${esc(s.name)}</span><span class="ct">${n(s) || ''}</span></button><button class="spm-more spx" data-spmore="${s.id}" aria-label="Options de ${esc(s.name)}" title="Options">${icon('dots', 'sm')}</button></div>`;
     if (on) {
       const sub = SP_NAV.map(([k, ic, l]) => `<button class="nv sub" data-go="${k}"${cur === k ? ' aria-current="page"' : ''}>${icon(ic, 'sm')}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>`).join('');
       const pages = mine.slice().sort((a, b) => a.created - b.created);
@@ -656,7 +656,7 @@ const CardMM = (() => {
     const el = document.createElement('div'); el.className = 'mmenu cmm'; document.body.append(el);
     el.addEventListener('contextmenu', ev => ev.preventDefault());
     el.addEventListener('pointerdown', ev => { ev.preventDefault(); ev.stopPropagation(); if (!mm || !mm.sticky) return; const p = ev.target.closest('.mmp'); if (p) { mm.hover = +p.dataset.dir; run(); } else close(); });
-    card.classList.add('mm-on');
+    card.classList.add('mm-on'); try { getSelection().removeAllRanges(); } catch (_) {}
     mm = { el, d, card, x: clamp(e.clientX, 150, innerWidth - 150), y: clamp(e.clientY, R_ + 20, innerHeight - R_ - 20), mx: e.clientX, my: e.clientY, hover: -1, sticky: false, moved: false, items: items(d) };
     eatClick = true;
     addEventListener('pointermove', onMove, true); addEventListener('pointerup', onUp, true); addEventListener('pointercancel', onCancel, true); addEventListener('keydown', onKey, true); addEventListener('dragstart', noDrag, true);
