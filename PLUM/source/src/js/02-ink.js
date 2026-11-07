@@ -27,7 +27,7 @@ const PENS = {
      fx = how the dab reacts: tl tilt shading, vs/vo speed on size/opacity, tp taper at the start (× size), pm smallest size under
      light pressure, jt/oj size/opacity jitter, rj turn jitter, rd roundness, sa scatter, cnt dabs per step, cj colour jitter,
      wet darker wet edge, td how deep the paper grain cuts */
-  graphite: { name: 'Graphite', icon: 'pencil', hint: 'Mine tendre : appuyez pour foncer, inclinez le stylet pour ombrer', size: 5, min: 1, max: 60, thin: .5, gamma: 1, o: .92, smooth: .3, alpha: 1, stamp: { sh: 't_graphite', tx: 'paper', fl: .42, sp: .06, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { tl: 1, pm: .08, jt: .1, td: .75 } } },
+  graphite: { name: 'Graphite', icon: 'pencil', hint: 'Mine tendre : appuyez pour foncer, inclinez le stylet pour ombrer', size: 5, min: 1, max: 60, thin: .5, gamma: 1, o: .92, smooth: .3, alpha: 1, stamp: { sh: 't_graphite', tx: 'paper', fl: .42, sp: .06, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { tl: 1, pm: .06, jt: .1, td: .75, tp: 4 } } },
   inkbrush: { name: 'Pinceau encre', icon: 'brush', hint: 'Pointe souple : plein en appuyant, délié en accélérant', size: 12, min: 2, max: 90, thin: .9, gamma: 1.2, o: 1, smooth: .55, alpha: 1, stamp: { sh: 't_ink', tx: 'none', fl: 1, sp: .035, dy: { ps: 1, po: 0, rot: 1, sc: 0 }, fx: { pm: .04, vs: -.5, tp: 2.2, rd: .82 } } },
   fusain: { name: 'Fusain', icon: 'pencil', hint: 'Poudreux et sec, le grain du papier ressort', size: 22, min: 2, max: 140, thin: .5, gamma: 1, o: .95, smooth: .4, alpha: 1, stamp: { sh: 't_charcoal', tx: 'paper', fl: .26, sp: .05, dy: { ps: 1, po: 1, rot: 0, sc: 1 }, fx: { tl: .8, pm: .1, jt: .15, sa: .25, td: .9 } } },
   aqua: { name: 'Aquarelle', icon: 'water', hint: 'Lavis transparent, bords chargés, papier torchon', size: 38, min: 4, max: 200, thin: .5, gamma: 1, o: .62, multiply: true, smooth: .55, alpha: 1, stamp: { sh: 't_water', tx: 'rough', fl: .16, sp: .08, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { pm: .15, jt: .12, wet: 1, td: .32, cj: .05, vo: -.3 } } },
@@ -35,7 +35,7 @@ const PENS = {
   bristle: { name: 'Brosse', icon: 'brush', hint: 'Poils secs qui suivent le geste, sur toile', size: 30, min: 4, max: 200, thin: .5, gamma: 1, o: 1, smooth: .55, alpha: 1, stamp: { sh: 't_bristle', tx: 'linen', fl: .5, sp: .035, dy: { ps: 1, po: 0, rot: 1, sc: 0 }, fx: { pm: .1, rj: .06, td: .45, tp: 1.2, cj: .04 } } },
   airsoft: { name: 'Aérographe', icon: 'air', hint: 'Voile pulvérisé, se charge en repassant', size: 70, min: 6, max: 300, thin: .3, gamma: 1, o: .9, smooth: .6, alpha: 1, stamp: { sh: 't_spray', tx: 'none', fl: .1, sp: .07, dy: { ps: 0, po: 1, rot: 0, sc: 0 }, fx: { jt: .1 } } },
   sponge: { name: 'Éponge', icon: 'water', hint: 'Tampon poreux, irrégulier', size: 56, min: 8, max: 240, thin: .4, gamma: 1, o: 1, smooth: .5, alpha: 1, stamp: { sh: 't_sponge', tx: 'none', fl: .75, sp: .32, dy: { ps: 1, po: 1, rot: 0, sc: 1 }, fx: { pm: .15, jt: .35, oj: .45, sa: .5, cj: .08 } } },
-  alcohol: { name: 'Marqueur à alcool', icon: 'marker', hint: 'Pointe biseau, encre qui fonce en repassant', size: 22, min: 4, max: 90, thin: .1, gamma: 1, o: .7, multiply: true, smooth: .45, alpha: 1, stamp: { sh: 't_marker', tx: 'none', fl: .9, sp: .03, dy: { ps: 0, po: 0, rot: 0, sc: 0 }, fx: { rd: .3, wet: .25 } } }
+  alcohol: { name: 'Marqueur', icon: 'marker', hint: 'Pointe rectangulaire tenue à 45°, encre irrégulière qui se charge et se vide', size: 22, min: 4, max: 90, thin: .1, gamma: 1, o: .85, multiply: true, smooth: .45, alpha: 1, stamp: { sh: 't_marker', tx: 'none', fl: .16, sp: .035, dy: { ps: 0, po: 0, rot: 0, sc: 0 }, fx: { rd: .3, ov: .85, ol: 3, wet: .2 } } }
 };
 /* the alpha brushes, in the order of the drawing bar */
 const ALPHA_PENS = ['graphite', 'inkbrush', 'fusain', 'aqua', 'crayon', 'bristle', 'airsoft', 'sponge', 'alcohol'];
@@ -148,7 +148,7 @@ const NIBS = {
   /* real alpha tips (0.2.36) */
   t_graphite: { name: 'Graphite', tip: 'graphite', jit: 6.28 }, t_charcoal: { name: 'Fusain', tip: 'charcoal', jit: 6.28 }, t_ink: { name: 'Encre', tip: 'ink', jit: .2 },
   t_bristle: { name: 'Brosse', tip: 'bristle', jit: .08 }, t_crayon: { name: 'Craie', tip: 'crayon', jit: 6.28 }, t_water: { name: 'Lavis', tip: 'water', jit: 6.28 },
-  t_spray: { name: 'Spray', tip: 'spray', jit: 6.28 }, t_sponge: { name: 'Éponge', tip: 'sponge', jit: 6.28 }, t_marker: { name: 'Biseau', tip: 'marker', ang: -.7, jit: .02 }
+  t_spray: { name: 'Spray', tip: 'spray', jit: 6.28 }, t_sponge: { name: 'Éponge', tip: 'sponge', jit: 6.28 }, t_marker: { name: 'Biseau', tip: 'marker', ang: -Math.PI / 4, jit: .01 }
 };
 /* 'line' stays for strokes drawn with it, the native outline does the same job in the panel */
 const NIB_ORDER = ['native', 'grain', 'wedge', 'flat', 'feather', 'taper', 'knife', 't_graphite', 't_charcoal', 't_ink', 't_bristle', 't_crayon', 't_water', 't_spray', 't_sponge', 't_marker'];
@@ -248,6 +248,9 @@ function applyTexture(ctx, tx, ox = 0, oy = 0, scale = .5, depth = 1) {
   const m = ctx.getTransform().inverse(), p0 = m.transformPoint({ x: 0, y: 0 }), p1 = m.transformPoint({ x: ctx.canvas.width, y: ctx.canvas.height });
   ctx.fillRect(Math.min(p0.x, p1.x), Math.min(p0.y, p1.y), Math.abs(p1.x - p0.x), Math.abs(p1.y - p0.y)); ctx.restore();
 }
+/* smooth 1D value noise 0…1, seeded */
+function noise1(seed) { const r = rng(seed * .917 + .13), g = []; for (let i = 0; i < 64; i++) g.push(r());
+  return x => { const i = Math.floor(x), f = x - i, t = f * f * (3 - 2 * f), a = g[((i % 64) + 64) % 64], b = g[(((i + 1) % 64) + 64) % 64], c = g[(((i * 3 + 7) % 64) + 64) % 64]; return clamp((a + (b - a) * t) * .75 + c * .25 * (1 - Math.abs(f - .5)), 0, 1); }; }
 /* a colour a little lighter or darker (t -1…1), for the colour jitter of the alpha brushes */
 function shadeHex(col, t) { const h = String(col || '#000').replace('#', ''), v = h.length === 3 ? h.split('').map(c => c + c).join('') : h.slice(0, 6); if (!/^[0-9a-f]{6}$/i.test(v)) return col;
   const ch = [0, 2, 4].map(i => parseInt(v.slice(i, i + 2), 16)).map(c => Math.round(t > 0 ? c + (255 - c) * t : c * (1 + t)));
@@ -257,6 +260,8 @@ function shadeHex(col, t) { const h = String(col || '#000').replace('#', ''), v 
 function stampWalk(ctx, st, w) {
   const b = st.b, p = st.p, n = p.length, nib = NIBS[b.sh] || NIBS.grain, sh = NIBS[b.sh] ? b.sh : 'grain', col = inkColor(st.c), img = nibTinted(sh, col), dy = b.dy || {};
   const fx = b.fx || null, F = fx || {}, D = st.d && st.d.length >= (n / 3) * 2 - 2 ? st.d : null, pm = F.pm ?? .18;
+  /* ov: ink that comes and goes along the stroke (a marker running dry, then loaded again), ol = its wavelength × size */
+  const nz = F.ov ? noise1(b.sd || .5) : null;
   const imgs = F.cj ? [-1, -.5, 0, .5, 1].map(t => nibTinted(sh, shadeHex(col, t * F.cj))) : null;
   /* alpha brushes (fx): a curve that spreads the usual hand pressures (.3–.8) over the whole width range */
   const pc = fx ? 1.3 : 1, sizeAt = pp => st.s * (dy.ps ? pm + (1 - pm) * Math.pow(clamp(pp, 0, 1), pc) : 1), step = pp => Math.max(.12 / (b.k || 1), (b.sp || .1) * sizeAt(pp));
@@ -273,6 +278,7 @@ function stampWalk(ctx, st, w) {
       if (F.tp) sz *= .2 + .8 * easeT(w.len / (F.tp * st.s));
       if (F.jt) sz *= 1 + F.jt * (r5 - .5) * 2;
       if (F.oj) a *= 1 - F.oj * r6;
+      if (nz) { const v = 1 - F.ov * nz(w.len / (st.s * (F.ol || 2))); a *= v * v; }
       if (imgs) im = imgs[Math.min(4, (r7 * 5) | 0)];
       cnt = F.cnt || 1;
     }
