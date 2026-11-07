@@ -2794,3 +2794,16 @@ html[data-focus] #tbar .tb-f [data-f="exit"] span { display: none; }
 .it.todo.den-c .tin { padding: .6em .75em .5em; }
 .it.todo.den-a .trw { padding: .45em .3em; }
 .it.todo.den-a .tin { padding: 1em 1.1em .9em; }
+
+/* 0.2.51: frames = the container of the old UI Design zone (header + tag title), colour of title and background on demand */
+.frame-it.fz { border-radius: 14px; border: 1px solid var(--line-2); background: color-mix(in oklab, var(--card) 70%, var(--paper));
+  background-image: linear-gradient(color-mix(in oklab, var(--line) 70%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklab, var(--line) 70%, transparent) 1px, transparent 1px); background-size: 16px 16px; background-position: 0 44px; }
+.frame-it.fz.filled { background-color: color-mix(in oklab, var(--fzc) 34%, var(--card)); background-image: none; border-color: color-mix(in oklab, var(--fzc) 60%, var(--line-2)); }
+.frame-it.fz .fzh { position: absolute; left: 0; right: 0; top: 0; min-height: 44px; display: flex; align-items: center; padding: 0 12px; background: var(--card); border-bottom: 1px solid var(--line); border-radius: 14px 14px 0 0; cursor: text; }
+.frame-it.fz.filled .fzh { background: color-mix(in oklab, var(--fzc) 55%, var(--card)); border-bottom-color: color-mix(in oklab, var(--fzc) 70%, var(--line)); }
+.frame-it.fz .ftitle { position: static; transform: none; padding: 5px 9px; border-radius: 7px; font: 700 13px/1.1 var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: #14683A; background: #E3F3EA; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+[data-resolved="dark"] .frame-it.fz .ftitle { color: #9FE0BB; background: rgba(31,157,85,.22); }
+.frame-it.fz.tcol .ftitle { color: var(--ftx) !important; background: var(--ftc) !important; }
+.frame-it.fz .ftitle[contenteditable="true"], .frame-it.fz .ftitle[contenteditable="plaintext-only"] { text-transform: none; letter-spacing: 0; outline: 2px solid var(--accent); outline-offset: 1px; }
+.frame-it.fz.nt .fzh { display: none; }
+.frame-it.fz.nt { background-position: 0 0; }

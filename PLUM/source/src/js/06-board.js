@@ -134,7 +134,7 @@ const Board = (() => {
       case 'paint': return `c${it.c}|${it.seed}|${theme()}`;
       case 'ink': return `k${pv(it.p)}|${it.c}|${it.o}|${it.t}|${it.w0}|${it.h0}|${theme()}|${it.b ? JSON.stringify(it.b) : ''}`;
       case 'mind': return `m${it.lv}|${it.c}|${it.txt}|${skin()}|${it.side}|${it.ms || 1}|${it.lv === 1 && MT().mindArt ? artOff(it) : ''}`;
-      case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}|${it.ui || ''}`;
+      case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}|${it.tc || ''}|${it.fc || ''}|${theme()}`;
       case 'uic': return `u${it.t}|${Math.round(it.w)}|${Math.round(it.h)}|${uiFid(it)}|${uiDir(it)}|${JSON.stringify([it.txt, it.b, it.bs, it.c, it.f, it.pv, it.dis])}`;
       case 'task': { const t = taskById(it.task) || {}; return `T${t.t}|${t.done}|${t.due}|${t.time}|${t.sp}`; }
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
@@ -144,6 +144,7 @@ const Board = (() => {
     }
     return it.k;
   }
+  const lumOf = c => { const [r, g, b] = hex2rgb(c); return (.2126 * r + .7152 * g + .0722 * b) / 255; };
   /* the button on a block that points to another element (note, board, task): opens it in one click */
   const OPEN_BTN = `<button class="open iopen" data-iopen="1" title="Ouvrir" aria-label="Ouvrir">${icon('ext', 'sm')}</button>`;
   function paint(n, it) {
@@ -206,7 +207,11 @@ const Board = (() => {
         n.innerHTML = mindIcon(it.txt, it.lv || 0) + `<div class="txt">${fmtText(it.txt) || '<div><br></div>'}</div>` + (art ? `<img class="mart" src="${art}" alt="" draggable="false">` : ''); break;
       }
       case 'frame':
-        n.className = 'frame-it' + (it.nt ? ' nt' : '') + (it.ui ? ' uiz' : ''); n.innerHTML = `<div class="ftitle" style="font-size:${FRAME_TFS[it.tfs ?? 1]}px">${esc(it.title)}</div>` + (it.ui ? uzHeadHTML(it) : ''); break;
+        /* 0.2.51: every frame is a container in the old UI Design zone's look: a header with its title as a coloured tag,
+           an optional background colour (it.fc) and title colour (it.tc) */
+        n.className = 'frame-it fz' + (it.nt ? ' nt' : '') + (it.fc ? ' filled' : '') + (it.tc ? ' tcol' : '');
+        n.style.setProperty('--fzc', it.fc || ''); n.style.setProperty('--ftc', it.tc || ''); n.style.setProperty('--ftx', it.tc ? (lumOf(it.tc) > .6 ? '#1E1E1E' : '#FFFFFF') : '');
+        n.innerHTML = `<div class="fzh"><div class="ftitle" style="font-size:${FRAME_TFS[it.tfs ?? 1]}px">${esc(it.title)}</div></div>`; break;
       case 'uic':
         n.className = 'it uic uf-' + uiFid(it) + ' ut-' + it.t + (it.p ? ' uin' : ''); n.innerHTML = uicHTML(it, uiDir(it)); break;
       case 'task': {
@@ -509,13 +514,14 @@ const Board = (() => {
     const ac = [];
     if (list.some(i => i.lock)) return (one && one.k === 'plan' ? qact('pdim', 'moon', 'Assombrir le planning') : '') + qact('unlock', 'unlock', 'Déverrouiller', 'Déverrouiller');
     if (one && one.k === 'plan') { ac.push(qact('pdim', 'moon', 'Assombrir le planning'), qact('pset', 'cal', 'Réglages du planning : lien iCal, période, heures, couleurs (double-clic)')); if (one.src) ac.push(qact('prefresh', 'restore', 'Mettre à jour depuis le lien iCal')); }
-    if (one && one.k === 'frame' && one.ui) { g.push(`<div class="seg sm uqs">${UI_FIDS.map(([v, l]) => `<button data-qa="uif-${v}" aria-pressed="${one.ui === v}" title="Rendu de la zone : ${l}">${l}</button>`).join('')}</div>`); ac.push(qact('uilib', 'layout', 'Bibliothèque de blocs', 'Blocs'), qact('uitest', 'play', 'Tester les interactions de la zone', 'Tester')); }
+    if (false && one && one.k === 'frame' && one.ui) { g.push(`<div class="seg sm uqs">${UI_FIDS.map(([v, l]) => `<button data-qa="uif-${v}" aria-pressed="${one.ui === v}" title="Rendu de la zone : ${l}">${l}</button>`).join('')}</div>`); ac.push(qact('uilib', 'layout', 'Bibliothèque de blocs', 'Blocs'), qact('uitest', 'play', 'Tester les interactions de la zone', 'Tester')); }
     if (one && one.k === 'uic' && one.t === 'box') g.push(`<div class="seg sm uqs" title="Layout du conteneur">${UI_LAYS.map(([v, l, t]) => `<button data-qa="uil-${v}" aria-pressed="${ukBoxStyle(one).lay === v}" title="${esc(t)}">${l}</button>`).join('')}</div>`);
     if (list.length > 1 && list.every(i => i.k === 'uic')) g.push(`<div class="seg sm uqs" title="Mettre en layout, comme Qt Designer">${[['h', 'Ligne', 'Ctrl 1'], ['v', 'Colonne', 'Ctrl 2'], ['grid', 'Grille', 'Ctrl 5']].map(([v, l, k]) => `<button data-qa="uiwrap-${v}" title="Mettre en layout : ${l.toLowerCase()} (${k})">${l}</button>`).join('')}</div>`);
     if (one && one.k === 'uic' && one.t !== 'spacer') ac.push(qact('uiedit', 'text', 'Modifier le texte (double-clic, Entrée)', 'Texte'));
     if (one && one.k === 'mind') ac.push(qact('mchild', 'plus', 'Ajouter une idée (Tab)'));
     if (one && one.k === 'conn') ac.push(qact('label', 'text', 'Ajouter un texte sur la flèche'));
     if (one && ['link', 'doc', 'task'].includes(one.k)) ac.push(qact('open', 'ext', 'Ouvrir'));
+    if (one && one.k === 'frame') ac.push(qact('frename', 'text', 'Renommer le cadre (ou touchez son titre)', 'Renommer'));
     if (one && one.k === 'paint') ac.push(qact('pinfo', 'drop', 'Infos couleur : codes, harmonies, utiliser pour dessiner', 'Infos'));
     if (list.some(i => i.g)) ac.push(qact('ungroup', 'ungroup', 'Dégrouper (Ctrl Alt G)'));
     else if (list.filter(i => !(i.k === 'mind' && i.parent)).length > 1) ac.push(qact('group', 'group', 'Grouper (Ctrl G)'));
@@ -880,7 +886,10 @@ const Board = (() => {
         + `<div class="pp-hint" style="margin:10px 0 6px">Tâches terminées</div>` + seg('thide', !!f.hidedone, [[false, 'Visibles'], [true, 'Masquées']])
         + `<div class="pp-hint" style="margin:10px 0 6px">Espacement</div>` + seg('tden', f.den || '', [['c', 'Serré'], ['', 'Normal'], ['a', 'Aéré']])
         + `<div class="pp-hint" style="margin-top:10px">Les coins agrandissent toute la liste, les côtés changent sa largeur.</div>`)); }
-    if (list.length && list.every(i => i.k === 'frame')) { const f = first(); out.push(sec('Titre du cadre', seg('ftitle', !f.nt, [[true, 'Affiché'], [false, 'Masqué']]) + (f.nt ? '' : `<div style="height:8px"></div>` + seg('tfs', f.tfs ?? 1, [[0, 'S'], [1, 'M'], [2, 'L'], [3, 'XL']])))); }
+    if (list.length && list.every(i => i.k === 'frame')) { const f = first();
+      out.push(sec('Couleur du titre', Colors.row(themeColors('stroke', STROKE_COLORS), f.tc, 'ftc', { none: true })));
+      out.push(sec('Fond du cadre', Colors.row(themeColors('note', NOTE_COLORS), f.fc, 'ffc', { none: true })));
+      out.push(sec('Titre du cadre', seg('ftitle', !f.nt, [[true, 'Affiché'], [false, 'Masqué']]) + (f.nt ? '' : `<div style="height:8px"></div>` + seg('tfs', f.tfs ?? 1, [[0, 'S'], [1, 'M'], [2, 'L'], [3, 'XL']])))); }
     if (want.op) { const o = one ? (one.op ?? 1) : (first().op ?? 1); out.push(sec(`Opacité <b class="pv" data-v="op">${Math.round(o * 100)} %</b>`, `<input type="range" class="prange" data-prop="op" min=".05" max="1" step=".05" value="${o}" aria-label="Opacité">`)); }
     if (list.length) {
       out.push(sec('Calques', btnRow([['back', 'back', '', 'Tout en arrière'], ['bwd', 'down', '', 'Reculer'], ['fwd', 'up', '', 'Avancer'], ['front', 'front', '', 'Tout devant']])));
@@ -958,6 +967,8 @@ const Board = (() => {
       case 'fo': case 'so': return it.k === 'shape' ? { [prop]: +v >= 1 ? undefined : +v } : null;
       case 'rad': return it.k === 'shape' && (it.sh === 'rect' || it.sh === 'round') ? { sh: 'rect', rad: Math.max(0, Math.round(+v)) } : null;
       case 'frm': return it.k === 'image' ? { frm: v } : null;
+      case 'ftc': return it.k === 'frame' ? { tc: v || undefined } : null;
+      case 'ffc': return it.k === 'frame' ? { fc: v || undefined } : null;
       case 'ftitle': return it.k === 'frame' ? { nt: v === false || v === 'false' ? true : undefined } : null;
       case 'tfs': return it.k === 'frame' ? { tfs: clamp(+v, 0, 3) } : null;
       case 'tprog': return it.k === 'todo' ? { noprog: v === false || v === 'false' ? 1 : undefined } : null;
@@ -1048,6 +1059,7 @@ const Board = (() => {
       case 'uilib': uiLibOpen(list[0] && list[0].ui ? list[0].id : null); return;
       case 'uitest': if (list[0] && list[0].ui) uiTest(list[0]); return;
       case 'uiundock': if (list[0] && list[0].dock) { const it = list[0]; commit(replace(items, it, { dock: undefined, x: it.x + 24, y: it.y + 24 })); } return;
+      case 'frename': if (list[0] && list[0].k === 'frame') startEdit(list[0].id); return;
       case 'pinfo': if (list[0] && list[0].k === 'paint') paintInfo(list[0]); return;
       case 'pdim': if (list[0] && list[0].k === 'plan') planDim(list[0], btn); return;
       case 'pset': if (list[0] && list[0].k === 'plan') planModal(list[0]); return;
@@ -1623,7 +1635,8 @@ const Board = (() => {
 
   /* ---------- UI Design zones (0.2.42): Qt Designer–like blocks and layouts, a property inspector, a test mode ---------- */
   /* a block's rendering is its zone's: the frame with `ui` its centre falls in (visual outside any zone) */
-  function uiZoneOf(it) { const cx = it.x + it.w / 2, cy = it.y + it.h / 2; let z = null; for (const f of items) if (f.k === 'frame' && f.ui && !f.hid && inBox(cx, cy, boxOf(f))) z = f; return z; }
+  function uiZoneOf(it) { return null; }
+  function uiZoneOfOld(it) { const cx = it.x + it.w / 2, cy = it.y + it.h / 2; let z = null; for (const f of items) if (f.k === 'frame' && f.ui && !f.hid && inBox(cx, cy, boxOf(f))) z = f; return z; }
   const uiFid = it => (uiZoneOf(it) || {}).ui || 'theme';
   function uzHeadHTML(z) {
     return `<div class="uzh"><span class="uztag">UI DESIGN</span><span class="uzinfo">Fenêtres et dialogues = écrans · flèches = clics</span><span class="uzsp"></span><div class="uzseg" role="group" aria-label="Rendu">${UI_FIDS.map(([v, l]) => `<button data-uz="${v}" aria-pressed="${z.ui === v}">${l}</button>`).join('')}</div><button class="uzb" data-uz="lib">${icon('layout')}Blocs</button><button class="uzb pri" data-uz="test">${icon('play')}Tester</button></div>`;
@@ -3031,6 +3044,7 @@ const Board = (() => {
     const it = byId.get(hit); if (it.lock) return;
     if (it.k === 'uic') { uiFocusText(it); return; }
     if (it.k === 'frame' && it.ui && e.target.closest('.uzh')) return;
+    if (it.k === 'frame' && e.target.closest('.fzh')) { e.preventDefault(); startEdit(it.id); return; }
     if (EDITABLE.includes(it.k)) { if (e.target.closest('.ck,[data-tck],[data-tadd]')) return; const sub = e.target.closest('[data-sub]'); startEdit(hit, null, it.k === 'todo' ? (sub ? sub.dataset.sub : 'title') : it.k === 'sheet' ? ((e.target.closest('[data-cell]') || {}).dataset || {}).cell : undefined); }
     else openItem(it);
   }
@@ -3289,7 +3303,7 @@ const Board = (() => {
   }
 
   /* ---------- keyboard ---------- */
-  const TOOL_KEYS = { u: 'uiz', v: 'select', h: 'hand', p: 'pen', d: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', a: 'conn', l: 'line', c: 'todo', g: 'sheet', m: 'mind', k: 'pick', b: 'pen', q: 'lasso' };
+  const TOOL_KEYS = { u: 'frame', v: 'select', h: 'hand', p: 'pen', d: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', a: 'conn', l: 'line', c: 'todo', g: 'sheet', m: 'mind', k: 'pick', b: 'pen', q: 'lasso' };
   function key(e) {
     if (!mounted || editing) return false;
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
@@ -3368,7 +3382,7 @@ const Board = (() => {
     if (was !== drawingTool()) layoutChanged();
   }
   const drawingTool = () => !!(PENS[tool] || tool === 'eraser' || tool === 'pick');
-  const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Dessin', 'D'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['sheet', 'sheet', 'Tableur', 'G'], ['mind', 'mind', 'Mind map', 'M'], ['frame', 'frame', 'Cadre', ''], ['uiz', 'uiz', 'Zone UI Design : concevoir l’interface d’un logiciel', 'U'], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
+  const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Dessin', 'D'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['sheet', 'sheet', 'Tableur', 'G'], ['mind', 'mind', 'Mind map', 'M'], ['frame', 'frame', 'Cadre : un conteneur qui garde ses éléments', 'U'], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
   function refreshTools() {
     syncVsz();
     toolsEl.innerHTML = TOOLS.map(d => d === '|' ? '<span class="vs"></span>' : (() => {
