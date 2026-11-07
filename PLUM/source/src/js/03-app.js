@@ -623,6 +623,96 @@ function bindDocCards(v) {
     const p = e.target.closest('[data-purge]'); if (p) { purgeDocs([docById(p.dataset.purge)]); return; }
     const fl = e.target.closest('[data-file]'); if (fl) { fileMenu(fl, docById(fl.dataset.file), { after: () => go(R, { keepFocus: true }) }); return; }
   });
+  CardMM.bind(v);
+}
+/* 0.2.47: hold a card (mouse button or finger) or right-click it: a marking menu with Renommer (up), Ajouter au projet (right),
+   Supprimer (down). Flick toward an item and let go, or let go in place and click an item. */
+const CardMM = (() => {
+  const HOLD = 420, R_ = 74, DEAD = 18;
+  let mm = null, hold = null, eatClick = false;
+  const items = d => [
+    { dir: 0, label: 'Renommer', icon: 'text', run: at => renameDoc(d) },
+    { dir: 2, label: 'Ajouter au projet', icon: 'folder', run: at => fileMenu(at, d, { after: () => go(R, { keepFocus: true }) }) },
+    { dir: 4, label: 'Supprimer', icon: 'trash', danger: true, run: () => trashDoc(d) }];
+  function bind(v) {
+    v.addEventListener('pointerdown', e => {
+      const c = e.target.closest('.dcard[data-doc]'); if (!c || e.target.closest('.fav,.dsp,.trashacts')) return;
+      const d = docById(c.dataset.doc); if (!d || d.trash) return;
+      if (e.button === 2) { e.preventDefault(); open(e, d, c, true); return; }
+      if (e.button !== 0) return;
+      cancelHold();
+      const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
+      const mv = ev => { if (ev.pointerId === pid && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 8) cancelHold(); };
+      hold = { t: setTimeout(() => { cancelHold(); open({ clientX: x0, clientY: y0, pointerId: pid }, d, c, false); if (navigator.vibrate) try { navigator.vibrate(8); } catch (_) {} }, HOLD),
+        off: () => { removeEventListener('pointermove', mv, true); removeEventListener('pointerup', cancelHold, true); removeEventListener('pointercancel', cancelHold, true); removeEventListener('dragstart', cancelHold, true); } };
+      addEventListener('pointermove', mv, true); addEventListener('pointerup', cancelHold, true); addEventListener('pointercancel', cancelHold, true); addEventListener('dragstart', cancelHold, true);
+    });
+    v.addEventListener('contextmenu', e => { if (e.target.closest('.dcard[data-doc]')) e.preventDefault(); });
+    v.addEventListener('click', e => { if (eatClick) { eatClick = false; e.preventDefault(); e.stopPropagation(); } }, true);
+  }
+  function cancelHold() { if (!hold) return; clearTimeout(hold.t); hold.off(); hold = null; }
+  function open(e, d, card, quick) {
+    close();
+    const el = document.createElement('div'); el.className = 'mmenu cmm'; document.body.append(el);
+    el.addEventListener('contextmenu', ev => ev.preventDefault());
+    el.addEventListener('pointerdown', ev => { ev.preventDefault(); ev.stopPropagation(); if (!mm || !mm.sticky) return; const p = ev.target.closest('.mmp'); if (p) { mm.hover = +p.dataset.dir; run(); } else close(); });
+    card.classList.add('mm-on');
+    mm = { el, d, card, x: clamp(e.clientX, 150, innerWidth - 150), y: clamp(e.clientY, R_ + 20, innerHeight - R_ - 20), mx: e.clientX, my: e.clientY, hover: -1, sticky: false, moved: false, items: items(d) };
+    eatClick = true;
+    addEventListener('pointermove', onMove, true); addEventListener('pointerup', onUp, true); addEventListener('pointercancel', onCancel, true); addEventListener('keydown', onKey, true); addEventListener('dragstart', noDrag, true);
+    show();
+  }
+  const noDrag = ev => ev.preventDefault();
+  function close() {
+    if (!mm) return; mm.el.remove(); mm.card.classList.remove('mm-on'); mm = null;
+    removeEventListener('pointermove', onMove, true); removeEventListener('pointerup', onUp, true); removeEventListener('pointercancel', onCancel, true); removeEventListener('keydown', onKey, true); removeEventListener('dragstart', noDrag, true);
+    setTimeout(() => { eatClick = false; }, 60);
+  }
+  function show() {
+    const dx = mm.mx - mm.x, dy = mm.my - mm.y;
+    mm.el.classList.toggle('sticky', mm.sticky);
+    let h = `<svg class="mmg"><circle cx="${mm.x}" cy="${mm.y}" r="${DEAD}" class="ring"/>${mm.hover >= 0 && !mm.sticky ? `<line x1="${mm.x}" y1="${mm.y}" x2="${mm.x + dx}" y2="${mm.y + dy}"/>` : ''}<circle cx="${mm.x}" cy="${mm.y}" r="5" class="dot"/></svg>`;
+    for (const it of mm.items) {
+      const a = it.dir * Math.PI / 4, sx = Math.sin(a), px = mm.x + sx * R_, py = mm.y - Math.cos(a) * R_ * .8;
+      const tx = sx > .3 ? 'translate(-8px,-50%)' : sx < -.3 ? 'translate(calc(8px - 100%),-50%)' : 'translate(-50%,-50%)';
+      h += `<span class="mmp${it.dir === mm.hover ? ' hot' : ''}${it.danger ? ' danger' : ''}" data-dir="${it.dir}" style="left:${px}px;top:${py}px;transform:${tx}">${icon(it.icon, 'sm')}${esc(it.label)}</span>`;
+    }
+    mm.el.innerHTML = h;
+  }
+  function track(ev) {
+    mm.mx = ev.clientX; mm.my = ev.clientY;
+    const dx = mm.mx - mm.x, dy = mm.my - mm.y, far = Math.hypot(dx, dy) > DEAD;
+    if (far) mm.moved = true;
+    let h = -1;
+    if (far) { const k = ((Math.round(Math.atan2(dx, -dy) / (Math.PI / 2)) + 4) % 4) * 2; if (mm.items.some(i => i.dir === k)) h = k; }
+    if (h !== mm.hover) { mm.hover = h; show(); } else if (h >= 0) show();
+  }
+  function onMove(ev) { if (mm && !mm.sticky) { ev.preventDefault(); track(ev); } }
+  function onUp(ev) {
+    if (!mm || mm.sticky) return;
+    track(ev); ev.preventDefault();
+    if (mm.hover >= 0) { run(); return; }
+    if (!mm.moved) { mm.sticky = true; mm.hover = -1; show(); return; }   // let go in place: the menu stays, click an item
+    close();
+  }
+  function onCancel() { if (mm && !mm.sticky) { mm.sticky = true; mm.hover = -1; show(); } }   // the finger was taken by a scroll: keep the menu open to tap
+  function onKey(ev) { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } }
+  function run() {
+    const it = mm.items.find(i => i.dir === mm.hover), at = { left: mm.x, right: mm.x, top: mm.y, bottom: mm.y, width: 0, height: 0 };
+    close(); if (it) it.run(at);
+  }
+  return { bind, close };
+})();
+function renameDoc(d) {
+  openModal(`<div class="mhd"><h2>Renommer</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
+    <input id="rnName" class="mw-name" maxlength="120" autocomplete="off" aria-label="Nom" value="${esc(d.title || '')}">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn ghost" data-close>Annuler</button><button class="btn pri" id="rnOk">Renommer</button></div>`,
+    m => { const i = $('#rnName', m), ok = () => { const n = i.value.trim(); if (!n) { i.focus(); return; } closeModal(); if (n !== d.title) { d.title = n; touch(d); renderSide(); go(R, { keepFocus: true }); } };
+      i.focus(); i.select(); i.onkeydown = e => { if (e.key === 'Enter') ok(); }; $('#rnOk', m).onclick = ok; });
+}
+function trashDoc(d) {
+  d.trash = true; touch(d); renderSide(); go(R, { keepFocus: true });
+  toast('Mis à la corbeille', { label: 'Annuler', run: () => { d.trash = false; touch(d); renderSide(); go(R, { keepFocus: true }); } });
 }
 function purgeDocs(list) {
   const box = $('#purgeBox') || document.createElement('div');

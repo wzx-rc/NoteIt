@@ -2647,3 +2647,12 @@ html[data-hubedit] .pc-menu { pointer-events: auto; }
 .uiinsp .useg.pt button { font-size: 10.5px; padding: 6px 1px; }
 .uiinsp select.uaddfx { color: #C8CBD1; border: 1px dashed #45484F; background: transparent; }
 .uiinsp .uitem .uhex, .uiinsp .ustop .uhex { padding: 0 5px; font-size: 11px; letter-spacing: -.02em; }
+
+/* 0.2.47: marking menu on note and board cards (hold or right-click) */
+.dcard { -webkit-touch-callout: none; }
+.dcard.mm-on { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mmenu.cmm .mmp { display: inline-flex; align-items: center; gap: 7px; }
+.mmenu.cmm .mmp .i { width: 14px; height: 14px; opacity: .8; }
+.mmenu.cmm .mmp.danger { color: var(--err); }
+.mmenu.cmm .mmp.danger.hot { background: var(--err); border-color: var(--err); color: #fff; }
+.mmenu.cmm .mmp.hot .i { opacity: 1; }
