@@ -684,7 +684,17 @@ details.donegrp[open] > summary .i { transform: rotate(90deg); }
 .vmods button { width: 44px; height: 40px; border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: .02em; }
 .vmods button[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .vmods button.lock { color: var(--card); background: var(--accent); box-shadow: none; }
-.vmods button[data-vm="ctrl"] { width: 54px; height: 52px; font-size: 14px; }
+.vmods button[data-vm="ctrl"] { width: 60px; height: 60px; font-size: 16px; border-radius: 10px; }
+/* 0.2.48: the brush size under Ctrl, for the left thumb */
+.vmods .vsz { width: 60px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 0 8px; border-top: 1px solid var(--line); touch-action: none; cursor: ns-resize; }
+.vmods .vsz[hidden] { display: none; }
+.vmods .vsz-v { font: 700 12px/1 var(--font-ui, system-ui); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.vmods .vsz-tr { position: relative; width: 14px; height: min(240px, 34vh); border-radius: 999px; background: var(--sunk, rgba(127,127,127,.18)); box-shadow: inset 0 0 0 1px var(--line); }
+.vmods .vsz-fill { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--t, .3) * 100%); border-radius: 999px; background: var(--accent); }
+.vmods .vsz-knob { position: absolute; left: 50%; bottom: calc(var(--t, .3) * 100%); width: 30px; height: 30px; margin: 0 0 -15px -15px; border-radius: 50%; background: var(--card); box-shadow: 0 1px 4px rgba(0,0,0,.3), inset 0 0 0 1.5px var(--accent); transition: transform .1s; }
+.vmods .vsz.on .vsz-knob { transform: scale(1.15); }
+.vmods .vsz-dot { width: 30px; height: 30px; display: grid; place-items: center; }
+.vmods .vsz-dot i { display: block; border-radius: 50%; }
 .isl.tr { top: 12px; right: max(12px, env(safe-area-inset-right, 0px)); }
 .isl.tr .tl { width: auto; padding: 0 11px 0 9px; display: inline-flex; gap: 6px; font-size: 12.5px; font-weight: 600; }
 .isl.bl { bottom: max(12px, env(safe-area-inset-bottom, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); }
@@ -1881,7 +1891,30 @@ figure.f-r > .nd-h { right: auto; left: -6px; cursor: nesw-resize; }
 .sfold { position: absolute; left: 0; top: 92px; z-index: 70; width: 14px; height: 46px; padding: 0; border-radius: 0 9px 9px 0; display: grid; place-items: center; background: var(--side-2, var(--sunk)); color: var(--side-mute, var(--ink-3)); box-shadow: inset -1px 0 0 var(--line), 0 1px 0 var(--line), 0 -1px 0 var(--line); opacity: .7; transition: opacity .15s, width .15s, color .15s; }
 .sfold .i { width: 12px; height: 12px; transform: scaleX(-1); transition: transform .2s; }
 .sfold:hover { opacity: 1; width: 18px; color: var(--side-text, var(--ink)); }
-@media (min-width: 761px) { [data-sidex] { --side-w: 0px; } [data-sidex] #side { display: none; } }
+/* 0.2.48: folded, the sidebar becomes a rail of icons (each page of the full panel, a coloured dot per space); focus mode hides it all */
+@media (min-width: 761px) {
+  html[data-sidex] { --side-w: 64px; }
+  html[data-sidex] #side { padding: 12px 8px 10px; align-items: stretch; overflow-x: hidden; scrollbar-width: none; }
+  html[data-sidex] #side .brand { justify-content: center; padding: 0 0 10px; }
+  html[data-sidex] #side .brand .pill { width: 44px; height: 44px; padding: 0; justify-content: center; gap: 0; }
+  html[data-sidex] #side .brand .pill b, html[data-sidex] #side .brand .ver { display: none; }
+  html[data-sidex] #side .qrow { margin: 0 0 8px; }
+  html[data-sidex] #side .qrow .spadd, html[data-sidex] #side .qnote .spn { display: none; }
+  html[data-sidex] #side .qnote { flex: none; width: 48px; height: 44px; padding: 0; justify-content: center; margin: 0 auto; }
+  html[data-sidex] #side .sbox { width: 48px; height: 36px; margin: 0 auto 8px; padding: 0; justify-content: center; cursor: pointer; }
+  html[data-sidex] #side .sbox input, html[data-sidex] #side .sbox kbd { display: none; }
+  html[data-sidex] #side .nv { justify-content: center; padding: 0; gap: 0; width: 48px; height: 38px; margin: 0 auto; position: relative; }
+  html[data-sidex] #side .nv > span:not(.dot), html[data-sidex] #side .nv .ct { display: none; }
+  html[data-sidex] #side .nv .dot { width: 14px; height: 14px; margin: 0; border-radius: 5px; }
+  html[data-sidex] #side .nv[aria-current="page"] .dot, html[data-sidex] #side .spi.open .sprow .dot { box-shadow: 0 0 0 2px var(--side), 0 0 0 3.5px currentColor; }
+  html[data-sidex] #side .spi { display: block; }
+  html[data-sidex] #side .spx, html[data-sidex] #side .spsub, html[data-sidex] #side .pempty { display: none; }
+  html[data-sidex] #side .sec { margin: 12px auto 6px; justify-content: center; width: 48px; border-top: 1px solid var(--side-line); padding-top: 10px; }
+  html[data-sidex] #side .sec > span { display: none; }
+  html[data-sidex] #side .side-foot { flex-direction: column; align-items: center; gap: 6px; }
+  html[data-sidex] #side .me { flex: none; padding: 4px; }
+  html[data-sidex] #side .me #meName { display: none; }
+}
 [data-sidex] .sfold .i { transform: none; }
 [data-focus] .sfold, [data-welcome] .sfold { display: none; }
 @media (max-width: 760px) { .sfold { display: none; } }
@@ -2656,3 +2689,34 @@ html[data-hubedit] .pc-menu { pointer-events: auto; }
 .mmenu.cmm .mmp.danger { color: var(--err); }
 .mmenu.cmm .mmp.danger.hot { background: var(--err); border-color: var(--err); color: #fff; }
 .mmenu.cmm .mmp.hot .i { opacity: 1; }
+
+/* 0.2.48: focus mode exit, discreet: icons only, top right (the board's panel steps down under it) */
+html[data-focus] .focuspill { left: auto; right: max(12px, env(safe-area-inset-right, 0px)); transform: none; padding: 3px; gap: 2px; background: color-mix(in oklab, var(--card) 82%, transparent); box-shadow: var(--shadow-1, 0 1px 3px rgba(0,0,0,.12)); opacity: .7; transition: opacity .15s; }
+html[data-focus] .focuspill:hover, html[data-focus] .focuspill:focus-within { opacity: 1; }
+html[data-focus] .focuspill .ttl { display: none; }
+html[data-focus] .focuspill .tb { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; border-radius: 999px; }
+html[data-focus]:not(.tbar) .bwrap .props, html[data-focus]:not(.tbar) .bwrap .isl.tr { top: 58px; }
+html[data-focus] #tbar .tb-f [data-f="exit"] span { display: none; }
+
+/* 0.2.48: the colour wheel moves by a grip (top right, mirror of the close button) */
+.dock-grip { position: absolute; left: 376px; top: 16px; width: 28px; height: 28px; border-radius: 50%; display: grid; grid-template-columns: repeat(3, 3px); gap: 2px; place-content: center; background: #252623; border: 1px solid var(--a-edge); z-index: 3; cursor: grab; touch-action: none; }
+.dock-grip i { width: 3px; height: 3px; border-radius: 50%; background: var(--a-ink3, #999); box-shadow: 0 5px 0 var(--a-ink3, #999); margin-top: -5px; }
+.atl-dock.moving .dock-grip { cursor: grabbing; }
+.atl-dock:has(.rad.clean) .dock-grip { left: 346px; top: 46px; background: var(--card); border: 1px solid var(--line-2); box-shadow: var(--shadow-1, none); }
+.atl-dock:has(.rad.clean) .dock-grip i { background: var(--ink-3); box-shadow: 0 5px 0 var(--ink-3); }
+/* 0.2.48: user presets (star in the option bars) */
+.uppop { width: 280px; }
+.upgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.up-i { position: relative; display: grid; justify-items: center; gap: 4px; padding: 8px 4px 6px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); font-size: 11px; color: var(--ink-2); min-width: 0; }
+.up-i:hover { background: var(--sunk); }
+.up-i.def { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.up-i > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.up-i .up-def { position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent, #fff); }
+.up-i .up-def .i { width: 10px; height: 10px; }
+.up-i .pl { width: 40px; height: 16px; }
+.up-note { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 3px; font-size: 13px; color: #222; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.up-txt { font-size: 20px; line-height: 30px; }
+.uppop .stsave { margin-top: 6px; }
+.qb.qup .i { width: 16px; height: 16px; }
+.bsty-pop { padding: 4px; display: grid; gap: 6px; }
+.bwrap:has(.vmods) .atl-dock:not([style*="top"]) { left: 86px; }

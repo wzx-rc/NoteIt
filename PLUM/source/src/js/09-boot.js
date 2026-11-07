@@ -38,6 +38,8 @@ function bindShell() {
     { label: 'Espace', icon: 'folder', run: () => askSpaceName(n => createSpace(n)) }]);
   /* 0.2.21: the sidebar folds away (the page takes the whole width; unlike focus mode, the top bar stays) */
   $('#sideFold').onclick = () => setSideFold(!S.prefs.sideFold);
+  // 0.2.48: on the folded rail, the search icon opens the panel and its search field
+  $('#side .sbox').addEventListener('pointerdown', e => { if (!S.prefs.sideFold || innerWidth <= 760) return; e.preventDefault(); setSideFold(false); setTimeout(() => $('#q').focus(), 30); });
   $('#addSpace').onclick = () => askSpaceName(n => createSpace(n));
   $('#spaces').addEventListener('click', e => { const m = e.target.closest('[data-spmore]'); if (m) { e.stopPropagation(); spaceMenu(m, spaceById(m.dataset.spmore)); } });
   $('#spaces').addEventListener('contextmenu', e => { const r = e.target.closest('[data-spi]'); if (r) { e.preventDefault(); spaceMenu(r, spaceById(r.dataset.spi)); } });

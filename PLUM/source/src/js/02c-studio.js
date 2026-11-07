@@ -288,32 +288,27 @@ function Radial(el, o) {
   const clean = theme().ring === 'clean';
   el.classList.add('rad'); el.classList.toggle('clean', clean); el.style.setProperty('--W', W + 'px');
   const SIDE = [221, 199, 174, 151];
-  el.innerHTML = `${o.leaves && leavesOn() ? leafDecor('wreath') : ''}${radialFrame()}<canvas class="rad-c" width="${W * 2}" height="${W * 2}" aria-label="Roue des couleurs : teinte sur l’anneau, saturation et luminosité dans le triangle" tabindex="0"></canvas>
+  el.innerHTML = `${o.leaves && leavesOn() ? leafDecor('wreath') : ''}${radialFrame()}<canvas class="rad-c" width="${W * 2}" height="${W * 2}" aria-label="Roue des couleurs : teinte sur l’anneau, saturation et luminosité dans le carré" tabindex="0"></canvas>
     <div class="rad-rec"></div><div class="rad-fav"></div>
     ${(o.side || []).map((b, i) => `<button class="rad-b" data-rb="${b[0]}" style="${pos(SIDE[i] ?? 151 - (i - 3) * 23, RB + (clean ? 2 : 4))}" title="${b[2]}" aria-label="${b[2]}">${icon(b[1])}</button>`).join('')}
     ${o.size ? `<div class="rad-sl" style="left:${C + R + (clean ? 66 : 80)}px;top:${C - 60}px"><span>${icon('brush', 'sm')}</span><input type="range" min="0" max="1" step=".005" aria-label="Taille du pinceau" orient="vertical"><b></b></div>` : ''}
     <button class="rad-cur" style="${pos(41, RB + (clean ? 14 : 22))}" title="Couleur actuelle : cliquez pour le code, glissez-la sur une palette" aria-label="Code couleur" draggable="true"><i></i><u></u></button>`;
   const cv = $('.rad-c', el), x = cv.getContext('2d'), recEl = $('.rad-rec', el), favEl = $('.rad-fav', el), curEl = $('.rad-cur', el);
   let [h, s, v] = hsv(o.get()), prev = o.get(), drag = null;
-  const tri = () => { const a = -hueToAng(h) * Math.PI / 180; return [0, 120, 240].map(d => { const b = a + d * Math.PI / 180; return [C + Math.cos(b) * TR, C + Math.sin(b) * TR]; }); };
+  /* 0.2.48: a conventional saturation / brightness square inside the ring (it was a turning triangle) */
+  const Q = Math.floor((RI - 12) / Math.SQRT2), SX = C - Q, SY = C - Q, SW = Q * 2;
   function paint() {
     x.setTransform(2, 0, 0, 2, 0, 0); x.clearRect(0, 0, W, W);
     x.drawImage(ringCanvas(), 0, 0, W, W);
-    /* triangle: hue, white, black */
-    const [A, B, Cc] = tri(), x0 = Math.floor(Math.min(A[0], B[0], Cc[0])), x1 = Math.ceil(Math.max(A[0], B[0], Cc[0])), y0 = Math.floor(Math.min(A[1], B[1], Cc[1])), y1 = Math.ceil(Math.max(A[1], B[1], Cc[1]));
-    const sc = 2, iw = (x1 - x0) * sc, ih = (y1 - y0) * sc, im = x.createImageData(iw, ih), d = im.data, hc = Colors.hsv2hex(h, 1, 1), [hr, hg, hb] = hex2rgb(hc);
-    const den = (B[1] - Cc[1]) * (A[0] - Cc[0]) + (Cc[0] - B[0]) * (A[1] - Cc[1]);
-    for (let j = 0; j < ih; j++) for (let i = 0; i < iw; i++) {
-      const px = x0 + (i + .5) / sc, py = y0 + (j + .5) / sc;
-      const wa = ((B[1] - Cc[1]) * (px - Cc[0]) + (Cc[0] - B[0]) * (py - Cc[1])) / den, wb = ((Cc[1] - A[1]) * (px - Cc[0]) + (A[0] - Cc[0]) * (py - Cc[1])) / den, wc = 1 - wa - wb;
-      const m = Math.min(wa, wb, wc); if (m < -.02) continue;
-      const k = (j * iw + i) * 4; d[k] = hr * wa + 255 * wb; d[k + 1] = hg * wa + 255 * wb; d[k + 2] = hb * wa + 255 * wb; d[k + 3] = 255 * clamp(1 + m * 60, 0, 1);
-    }
-    x.setTransform(1, 0, 0, 1, 0, 0); const t = mkCanvas(iw, ih); t.getContext('2d').putImageData(im, 0, 0); x.drawImage(t, x0 * 2, y0 * 2, iw * 2 / sc, ih * 2 / sc); x.setTransform(2, 0, 0, 2, 0, 0);
-    /* hue handle and the line to the colour, as in the concept */
+    x.save(); x.beginPath(); if (x.roundRect) x.roundRect(SX, SY, SW, SW, 6); else x.rect(SX, SY, SW, SW); x.clip();
+    x.fillStyle = Colors.hsv2hex(h, 1, 1); x.fillRect(SX, SY, SW, SW);
+    let g = x.createLinearGradient(SX, 0, SX + SW, 0); g.addColorStop(0, '#fff'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(SX, SY, SW, SW);
+    g = x.createLinearGradient(0, SY, 0, SY + SW); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, '#000'); x.fillStyle = g; x.fillRect(SX, SY, SW, SW);
+    x.restore();
+    x.lineWidth = 1; x.strokeStyle = 'rgba(0,0,0,.25)'; x.beginPath(); if (x.roundRect) x.roundRect(SX + .5, SY + .5, SW - 1, SW - 1, 6); else x.rect(SX + .5, SY + .5, SW - 1, SW - 1); x.stroke();
     const ha = -hueToAng(h) * Math.PI / 180, hx = C + Math.cos(ha) * (R + RI) / 2, hy = C + Math.sin(ha) * (R + RI) / 2;
-    const wa = s * v, wb = v - s * v, wc = 1 - v, px = A[0] * wa + B[0] * wb + Cc[0] * wc, py = A[1] * wa + B[1] * wb + Cc[1] * wc;
-    if (clean) {
+    const px = SX + s * SW, py = SY + (1 - v) * SW;
+    if (true) {
       /* plain white rings, no guide line */
       const cur = hexv(h, s, v), ring = (cx, cy, r, fill) => { x.beginPath(); x.arc(cx, cy, r, 0, 7); if (fill) { x.fillStyle = fill; x.fill(); } x.lineWidth = 3; x.strokeStyle = '#fff'; x.stroke(); x.lineWidth = 1; x.strokeStyle = 'rgba(0,0,0,.28)'; x.beginPath(); x.arc(cx, cy, r + 2, 0, 7); x.stroke(); };
       ring(hx, hy, 10, Colors.hsv2hex(h, 1, 1)); ring(px, py, 7, cur);
@@ -326,26 +321,22 @@ function Radial(el, o) {
   }
   function arcs() {
     const rec = (S.prefs.recent || []).slice(0, 7), favs = studioPrefs().favs.slice(0, 5);
-    recEl.innerHTML = rec.map((c, i) => blob(c, i, '', pos(251 + i * 15.5, RB))).join('');
-    favEl.innerHTML = favs.map((c, i) => blob(c, i + 2, 'data-fav="1"', pos(132 - i * 13.5, RB))).join('') + `<button class="rad-add" data-radd="1" style="${pos(132 - favs.length * 13.5, RB)}" title="Ajouter la couleur actuelle aux favoris" aria-label="Ajouter aux favoris">${icon('plus')}</button>`;
+    // 0.2.48: the user's colours on the upper right arc, the recent ones on the lower left arc
+    recEl.innerHTML = rec.map((c, i) => blob(c, i, '', pos(136 - i * 11.5, RB))).join('');
+    favEl.innerHTML = favs.map((c, i) => blob(c, i + 2, 'data-fav="1"', pos(258 + i * 15, RB))).join('') + `<button class="rad-add" data-radd="1" style="${pos(258 + favs.length * 15, RB)}" title="Ajouter la couleur actuelle à mes couleurs" aria-label="Ajouter à mes couleurs">${icon('plus')}</button>`;
   }
   function chip() { const c = hexv(h, s, v); curEl.querySelector('i').style.background = c; curEl.querySelector('u').style.background = prev; curEl.dataset.drag = c; }
   function syncSize() { const sl = $('.rad-sl input', el); if (!sl || !o.size) return; const z = o.size(); sl.value = z.t; $('.rad-sl b', el).textContent = z.label; }
   const emit = final => { const c = hexv(h, s, v); chip(); o.set(c, final); };
   cv.addEventListener('pointerdown', e => {
     const r = cv.getBoundingClientRect(), k = W / r.width, px = (e.clientX - r.left) * k, py = (e.clientY - r.top) * k, d = Math.hypot(px - C, py - C);
-    if (d >= RI - 6 && d <= R + 8) drag = 'ring'; else if (d < RI - 6) drag = 'tri'; else return;
+    if (d >= RI - 6 && d <= R + 8) drag = 'ring'; else if (d < RI - 6) drag = 'sq'; else return;
     prev = hexv(h, s, v); cv.setPointerCapture(e.pointerId); move(e); e.preventDefault(); e.stopPropagation();
   });
   const move = e => {
     if (!drag) return; const r = cv.getBoundingClientRect(), k = W / r.width, px = (e.clientX - r.left) * k, py = (e.clientY - r.top) * k;
     if (drag === 'ring') h = angToHue((720 - Math.atan2(py - C, px - C) * 180 / Math.PI) % 360);
-    else {
-      const [A, B, Cc] = tri(), den = (B[1] - Cc[1]) * (A[0] - Cc[0]) + (Cc[0] - B[0]) * (A[1] - Cc[1]);
-      let wa = ((B[1] - Cc[1]) * (px - Cc[0]) + (Cc[0] - B[0]) * (py - Cc[1])) / den, wb = ((Cc[1] - A[1]) * (px - Cc[0]) + (A[0] - Cc[0]) * (py - Cc[1])) / den;
-      wa = Math.max(0, wa); wb = Math.max(0, wb); let wc = Math.max(0, 1 - wa - wb); const t = wa + wb + wc; wa /= t; wb /= t; wc /= t;
-      v = clamp(wa + wb, 0, 1); s = v > 1e-4 ? clamp(wa / v, 0, 1) : s;
-    }
+    else { s = clamp((px - SX) / SW, 0, 1); v = clamp(1 - (py - SY) / SW, 0, 1); }
     paint(); emit(false);
   };
   cv.addEventListener('pointermove', move);
@@ -561,6 +552,17 @@ const Studio = (() => {
     stackEl.addEventListener('click', onStack); stackEl.addEventListener('input', onStackInput); stackEl.addEventListener('change', onStackChange); stackEl.addEventListener('contextmenu', onStackContext);
     stackEl.addEventListener('dragover', onDragOver); stackEl.addEventListener('dragleave', e => { const pal = e.target.closest('[data-pal]'); if (pal && !pal.contains(e.relatedTarget)) pal.classList.remove('drop'); }); stackEl.addEventListener('drop', onDrop);
     dockEl.addEventListener('click', e => { if (e.target.closest('[data-a="dock"]')) { P().radial = !P().radial; save(); renderDock(); } });
+    /* 0.2.48: the wheel moves by its grip (kept per device in studio.dock), a double click puts it back */
+    dockEl.addEventListener('pointerdown', e => {
+      const g = e.target.closest('.dock-grip'); if (!g) return; e.preventDefault(); e.stopPropagation();
+      const now = performance.now(); if (now - (g._t || 0) < 320) { delete P().dock; save(); placeDock(); return; } g._t = now;
+      const wr = wrapEl.getBoundingClientRect(), dr = dockEl.getBoundingClientRect(), ox = e.clientX - dr.left, oy = e.clientY - dr.top;
+      try { g.setPointerCapture(e.pointerId); } catch (_) {}
+      dockEl.classList.add('moving');
+      const mv = ev => { if (ev.pointerId !== e.pointerId) return; P().dock = { x: clamp(ev.clientX - ox - wr.left, -dr.width * .4, wr.width - dr.width * .6), y: clamp(ev.clientY - oy - wr.top, -dr.height * .3, wr.height - dr.height * .5) }; placeDock(); };
+      const up = ev => { if (ev.pointerId !== e.pointerId) return; g.removeEventListener('pointermove', mv); g.removeEventListener('pointerup', up); g.removeEventListener('pointercancel', up); dockEl.classList.remove('moving'); save(); };
+      g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
+    });
     chipEl.addEventListener('click', e => { if (e.target.closest('[data-copy]')) copyHex(chipEl.dataset.c); });
     addEventListener('resize', fit);
   }
@@ -627,7 +629,8 @@ const Studio = (() => {
     const open = planche || P().radial !== false;
     dockEl.className = 'atl-dock' + (open ? '' : ' min');
     if (!open) { rad = null; dockEl.innerHTML = `<button class="dock-puck" data-a="dock" title="Afficher la roue des couleurs" aria-label="Roue des couleurs" style="--c:${color()}">${icon('wheel')}</button>`; return; }
-    dockEl.innerHTML = `<div class="rad-host"></div>${planche ? '' : `<button class="dock-min" data-a="dock" title="Réduire la roue" aria-label="Réduire">${icon('x', 'sm')}</button>`}`;
+    dockEl.innerHTML = `<div class="rad-host"></div>${planche ? '' : `<button class="dock-min" data-a="dock" title="Réduire la roue" aria-label="Réduire">${icon('x', 'sm')}</button><button class="dock-grip" title="Glisser pour déplacer la roue · double-clic pour la remettre en place" aria-label="Déplacer la roue"><i></i><i></i><i></i></button>`}`;
+    placeDock();
     rad = Radial($('.rad-host', dockEl), {
       leaves: false,
       get: color, set: (c, final) => { api.setColor(c, final); if (final) { useColor(c); refreshLater(); } else { renderFavs(); const pk = $('.dock-puck', dockEl); if (pk) pk.style.setProperty('--c', c); } },
@@ -636,6 +639,11 @@ const Studio = (() => {
       side: lite ? [['pick', 'drop', 'Pipette sur le board']] : [['pick', 'drop', 'Pipette sur le board'], ['harmony', 'harmony', 'Harmonie'], ['variations', 'variations', 'Variations'], ['history', 'clock', 'Historique']],
       onSide: id => { if (id === 'pick') { if (planche) setPlanche(false); api.setTool('pick'); } else if (planche) { const el = $(`[data-card="${id}"]`, stackEl); if (el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } } else toggleCard(id, true); }
     });
+  }
+  function placeDock() {
+    if (!dockEl) return; const d = !planche && P().dock;
+    if (d) { dockEl.style.left = d.x + 'px'; dockEl.style.top = d.y + 'px'; dockEl.style.bottom = 'auto'; dockEl.style.transformOrigin = '0 0'; }
+    else { dockEl.style.left = dockEl.style.top = dockEl.style.bottom = dockEl.style.transformOrigin = ''; }
   }
   const refreshLater = debounce(() => refresh('color'), 60);
 
@@ -784,9 +792,9 @@ const Studio = (() => {
   }
 
   /* ----- eyedropper loupe (the board gives a snapshot canvas of what is on screen) ----- */
-  function showLoupe(cx, cy, snap) {
+  function showLoupe(cx, cy, snap, dy = 0) {
     if (!root || !snap) return; const r = root.getBoundingClientRect(), x = cx - snap.left, y = cy - snap.top;
-    loupeEl.hidden = false; loupeEl.style.left = (cx - r.left) + 'px'; loupeEl.style.top = (cy - r.top) + 'px';
+    loupeEl.hidden = false; loupeEl.style.left = (cx - r.left) + 'px'; loupeEl.style.top = (cy - r.top + dy) + 'px';
     const c = $('canvas', loupeEl), g = c.getContext('2d'), Z = 7, src = 300 / Z;
     g.imageSmoothingEnabled = true; g.fillStyle = '#121314'; g.fillRect(0, 0, 300, 300);
     g.drawImage(snap.cv, (x - src / 2) * snap.dpr, (y - src / 2) * snap.dpr, src * snap.dpr, src * snap.dpr, 0, 0, 300, 300);

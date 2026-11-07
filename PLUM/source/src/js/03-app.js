@@ -198,13 +198,13 @@ function renderSide() {
   const count = { all: ld.length, todo: S.tasks.filter(t => !t.done).length, ['space:' + DEF_SPACE]: ld.filter(d => d.sp === DEF_SPACE).length + S.tasks.filter(t => t.sp === DEF_SPACE && !t.done).length,
     tasks: S.tasks.filter(t => t.sp === sp.id && !t.done).length, notes: mine.filter(d => d.type === 'note').length, boards: mine.filter(d => d.type === 'board').length, mood: (sp.media || []).length, favs: ld.filter(d => d.fav).length, trash: S.docs.filter(d => d.trash).length };
   // « Non classées » shows no sections in the sidebar: its home has everything, its row stays lit on its pages
-  const row = ([k, ic, l]) => `<button class="nv" data-go="${k}"${cur === k || (k === 'space:' + DEF_SPACE && open && open.id === DEF_SPACE) ? ' aria-current="page"' : ''}${k === 'space:' + DEF_SPACE ? ` data-spdrop="${DEF_SPACE}"` : ''}>${icon(ic)}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>`;
+  const row = ([k, ic, l]) => `<button class="nv" title="${l}" data-go="${k}"${cur === k || (k === 'space:' + DEF_SPACE && open && open.id === DEF_SPACE) ? ' aria-current="page"' : ''}${k === 'space:' + DEF_SPACE ? ` data-spdrop="${DEF_SPACE}"` : ''}>${icon(ic)}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>`;
   $('#nav').innerHTML = NAV.map(row).join('');
   $('#nav2').innerHTML = NAV2.map(row).join('');
   const n = s => ld.filter(d => d.sp === s.id).length + S.tasks.filter(t => t.sp === s.id && !t.done).length;
   const spRow = s => {
     const on = open && open.id === s.id;
-    let h = `<div class="spi${on ? ' open' : ''}" data-spi="${s.id}"><button class="nv sprow" data-go="space:${s.id}" data-spdrop="${s.id}"${R.name === 'space' && R.id === s.id ? ' aria-current="page"' : ''}${on ? ' aria-expanded="true"' : ''}><span class="dot" style="background:${s.color}"></span><span class="spt">${esc(s.name)}</span><span class="ct">${n(s) || ''}</span></button><button class="spm-more spx" data-spmore="${s.id}" aria-label="Options de ${esc(s.name)}" title="Options">${icon('dots', 'sm')}</button></div>`;
+    let h = `<div class="spi${on ? ' open' : ''}" data-spi="${s.id}"><button class="nv sprow" title="${esc(s.name)}" data-go="space:${s.id}" data-spdrop="${s.id}"${R.name === 'space' && R.id === s.id ? ' aria-current="page"' : ''}${on ? ' aria-expanded="true"' : ''}><span class="dot" style="background:${s.color}"></span><span class="spt">${esc(s.name)}</span><span class="ct">${n(s) || ''}</span></button><button class="spm-more spx" data-spmore="${s.id}" aria-label="Options de ${esc(s.name)}" title="Options">${icon('dots', 'sm')}</button></div>`;
     if (on) {
       const sub = SP_NAV.map(([k, ic, l]) => `<button class="nv sub" data-go="${k}"${cur === k ? ' aria-current="page"' : ''}>${icon(ic, 'sm')}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>`).join('');
       const pages = mine.slice().sort((a, b) => a.created - b.created);

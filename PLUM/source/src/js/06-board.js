@@ -460,12 +460,14 @@ const Board = (() => {
     if (td && (PENS[tool] || tool === 'eraser') && !atelierFull()) {
       const pr = penPref(penKind), t = sizeT(penKind, pr.s), d = clamp(pr.s, 2, 22);
       g.push(`<div class="seg sm ic qpens">${FAST_PENS.map((k, i) => `<button data-tool="${k}" title="${PENS[k].name} (${i + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme à traits : n’efface que le dessin" aria-pressed="${tool === 'eraser' && !eraseAll}">${icon('eraser')}</button></div>` + BrushLib.chip(tool));
+      if (tool !== 'eraser') g.push(upBtn());
       if (tool !== 'eraser') g.push(`<label class="qsize" title="Taille du trait (Ctrl + glisser sur le board)"><span class="qdw"><i class="qdot" style="width:${d}px;height:${d}px;background:${pr.c}"></i></span><input type="range" class="prange" data-psize="1" min="0" max="1" step=".01" value="${t.toFixed(3)}" aria-label="Taille du trait"><b>${sizeText(pr.s)}</b></label>` + qsw('pen', pr.c, 'Couleur du trait'));
       return g.join('<span class="vs"></span>');
     }
     if (td && (PENS[tool] || tool === 'eraser')) {
       const pr = penPref(penKind);
       g.push(`<div class="seg sm ic qpens">${PEN_ORDER.slice(0, 8).map(k => `<button data-tool="${k}" title="${PENS[k].name} (${PEN_ORDER.indexOf(k) + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme à traits : n’efface que le dessin" aria-pressed="${tool === 'eraser' && !eraseAll}">${icon('eraser')}</button></div>`);
+      if (tool !== 'eraser') g.push(upBtn());
       if (tool !== 'eraser') g.push(`<button class="qb pchip" data-opp="1" title="${PENS[penKind].name} : taille, opacité, forme, texture">${brushPreview(penKind, Object.assign({}, pr, { s: Math.min(pr.s, 10) }), 64, 20, isDarkTheme())}<span>${sizeText(pr.s)}</span></button>` + qsw('pen', pr.c, 'Couleur du stylo'));
       return g.join('<span class="vs"></span>');
     }
@@ -489,6 +491,7 @@ const Board = (() => {
     if (one && one.k === 'image') st.push(qbtn('frm', icon('image'), 'Cadre de l’image'));
     if (st.length) g.push(st.join(''));
     if (td && T === 'text') g.push(qact('multitext', 'multitext', 'MultiText : écrire plusieurs blocs de texte avec la même mise en forme', 'MultiText'));
+    if (upKind()) g.push(upBtn());
     if (td) return g.join('<span class="vs"></span>');
     /* actions */
     const ac = [];
@@ -541,7 +544,7 @@ const Board = (() => {
     const t = e.target;
     const tb = t.closest('[data-tool]'); if (tb) { setTool(tb.dataset.tool); if (tb.dataset.tool === 'eraser') { eraseAll = false; refreshTools(); } return; }
     const qc = t.closest('[data-qc]'); if (qc) { ctxColor(qc.dataset.qc, qc); return; }
-    const qp = t.closest('[data-qp]'); if (qp) { ctxPop(qp.dataset.qp, qp); return; }
+    const qp = t.closest('[data-qp]'); if (qp) { if (qp.dataset.qp === 'upreset') upSave(); else ctxPop(qp.dataset.qp, qp); return; }
     const qa = t.closest('[data-qa]'); if (qa) { if (qa.dataset.qa === 'more') ctxMore(qa); else action(qa.dataset.qa, qa); return; }
     const bl = t.closest('[data-blib]'); if (bl) { if (!ALPHA_PENS.includes(tool)) setTool(BrushLib.lastAlpha()); const btn = $('[data-blib]', optsEl) || bl; BrushLib.open(btn, { pen: () => tool, setPen: k => setTool(k), changed: final => { if (final) { if (optsEl) optsEl._h = ''; refreshTools(); Studio.sync(); } } }); return; }
     const pp = t.closest('[data-opp]'); if (pp) { const pop = openPop(pp, `<div class="pp-wrap">${PenPanel.html(penKind)}</div>`, { cls: 'pppop', focus: false }); PenPanel.bind(pop, { pen: () => penKind, setPen: k => { closePop(); setTool(k); }, changed: partial => { if (!partial) { refreshTools(); propSig = ''; renderProps(); const k = penKind; const w = $('.pp-wrap', pop); if (w && pop.isConnected) w.innerHTML = PenPanel.html(k); } } }); return; }
@@ -629,6 +632,96 @@ const Board = (() => {
     if (!list.length) { for (const [k, v] of pr) if (k !== 'fo' && k !== 'so') setProp(k, v); return; }
     pr.forEach(([k, v], i) => setProp(k, v, i < pr.length - 1)); qSig = '';
   }
+  /* ---------- user presets (0.2.48): the options of the element or tool at hand, saved per kind ----------
+     S.prefs.upresets = { kind: [{ id, n, p }] }, S.prefs.updef = { kind: id } (the default template, in every board).
+     Kinds: shape, conn (arrows and lines), text, note (post-its and lists) and pen:<brush>. */
+  const UP_PROPS = { shape: ['sc', 'fc', 'sw', 'sty', 'dash', 'fill', 'fo', 'so', 'font'], conn: ['sc', 'sw', 'dash', 'sty', 'h0', 'h1', 'route'], text: ['sc', 'font', 'fs', 'al', 'bold', 'ital'], note: ['fc', 'font', 'fs', 'al'] };
+  const UP_NAMES = { shape: 'formes', conn: 'flèches', text: 'textes', note: 'post-it' };
+  const upOf = k => k === 'line' ? 'conn' : k === 'todo' ? 'note' : k;
+  function upKind() {
+    const list = selItems();
+    if (!list.length) { if (PENS[tool]) return 'pen:' + penKind; const k = upOf(tool); return UP_PROPS[k] ? k : ''; }
+    const ks = new Set(list.map(i => upOf(i.k))); if (ks.size !== 1) return ''; const k = [...ks][0]; return UP_PROPS[k] ? k : '';
+  }
+  const upList = k => ((S.prefs.upresets || {})[k] || []);
+  const upBtn = () => `<button class="qb qup" data-qp="upreset" title="User Preset : clic = enregistrer ces options · appui long = mes presets" aria-label="User Preset">${icon('star')}<svg class="qchev" viewBox="0 0 8 8"><path d="M1.5 3 4 5.5 6.5 3"/></svg></button>`;
+  function upCapture(k) {
+    if (k.startsWith('pen:')) { const pk = k.slice(4); return JSON.parse(JSON.stringify(penPref(pk))); }
+    const list = selItems(), bd = BD(), p = {};
+    const it = list.find(i => upOf(i.k) === k);
+    for (const prop of UP_PROPS[k]) {
+      let v;
+      if (it) v = prop === 'fs' ? it.fs : propValue(it, prop);
+      else if (prop === 'sc') v = k === 'conn' ? bd.csc : bd.sc;
+      else if (prop === 'fc') v = k === 'note' ? noteColor : bd.fc;
+      else v = bd[prop];
+      if (v !== undefined) p[prop] = v;
+    }
+    return p;
+  }
+  function upSave(name) {
+    const k = upKind(); if (!k) return null;
+    const all = S.prefs.upresets || (S.prefs.upresets = {}), l = all[k] || (all[k] = []);
+    const pr = { id: uid('up'), n: name || 'Preset ' + (l.length + 1), p: upCapture(k) };
+    l.push(pr); if (l.length > 24) l.shift(); save(); qSig = '';
+    toast(`« ${pr.n} » enregistré · appui long sur ${'★'} pour vos presets`);
+    return pr;
+  }
+  function upApply(k, pr) {
+    if (!pr) return;
+    if (k.startsWith('pen:')) { const pk = k.slice(4); S.prefs.pens[pk] = Object.assign({}, S.prefs.pens[pk] || {}, JSON.parse(JSON.stringify(pr.p))); save(); if (PENS[tool]) { refreshTools(); Studio.sync(); propSig = ''; renderProps(); } return; }
+    const list = selItems(), ent = Object.entries(pr.p).filter(([prop]) => prop !== 'fs');
+    if (!list.length) { for (const [prop, v] of ent) setProp(prop, v); if (pr.p.fs != null) S.prefs.bd = Object.assign({}, S.prefs.bd, { fs: pr.p.fs }); save(); qSig = ''; return; }
+    if (pr.p.fs != null) ent.push(['fs', fsLevel(Object.assign({}, list[0], { fs: pr.p.fs }))]);
+    ent.forEach(([prop, v], i) => setProp(prop, v, i < ent.length - 1)); qSig = '';
+  }
+  /* the default template: the preset's options become the defaults of new elements of that kind, in every board */
+  function upDefault(k, pr) {
+    const d = S.prefs.updef || (S.prefs.updef = {});
+    if (!pr || d[k] === pr.id) { delete d[k]; save(); toast('Modèle par défaut retiré'); return; }
+    d[k] = pr.id;
+    if (k.startsWith('pen:')) { const pk = k.slice(4); S.prefs.pens[pk] = Object.assign({}, S.prefs.pens[pk] || {}, JSON.parse(JSON.stringify(pr.p))); }
+    else {
+      const bd = Object.assign({}, S.prefs.bd);
+      for (const [prop, v] of Object.entries(pr.p)) {
+        if (prop === 'sc') { const no = v ? schemeNo(v) : 0; bd[k === 'conn' ? 'csc' : 'sc'] = no ? '@' + no : v; }
+        else if (prop === 'fc') { if (k === 'note') noteColor = v || noteColor; else { const no = v ? schemeNo(v) : 0; bd.fc = no ? '@' + no : v; } }
+        else if (['sw', 'sty', 'dash', 'fill', 'font', 'route'].includes(prop)) bd[prop] = v;
+      }
+      S.prefs.bd = bd;
+    }
+    save(); refreshTools(); propSig = ''; renderProps(); qSig = '';
+    toast(`« ${pr.n} » est le modèle par défaut des ${k.startsWith('pen:') ? PENS[k.slice(4)].name.toLowerCase() : UP_NAMES[k]}`);
+  }
+  function upThumb(k, p) {
+    if (k === 'shape') return styleThumb({ sc: p.sc, fc: p.fc, sw: p.sw, dash: p.dash, fill: p.fill, fo: p.fo, so: p.so }, 30);
+    if (k.startsWith('pen:')) { try { return brushPreview(k.slice(4), Object.assign({}, p, { s: Math.min(p.s || 3, 8) }), 44, 22, isDarkTheme()); } catch (e) { return `<i class="pm-sw" style="background:${p.c}"></i>`; } }
+    if (k === 'conn') return `<svg viewBox="0 0 40 16" class="pl" style="color:${inkColor(p.sc || '#333')}"><path d="M4 8H30" fill="none" stroke="currentColor" stroke-width="${clamp(p.sw || 2, 1, 5)}"${p.dash === 'dash' ? ' stroke-dasharray="5 3"' : p.dash === 'dot' ? ' stroke-dasharray="1 3"' : ''} stroke-linecap="round"/><path d="M28 3l8 5-8 5z" fill="currentColor"/></svg>`;
+    if (k === 'note') return `<span class="up-note" style="background:${p.fc || '#FFE58A'};font-family:${fontOf(p.font || HAND)}">Aa</span>`;
+    return `<span class="up-txt" style="color:${inkColor(p.sc || '#222')};font-family:${fontOf(p.font || HAND)};font-weight:${p.bold ? 700 : 400};font-style:${p.ital ? 'italic' : 'normal'}">Aa</span>`;
+  }
+  function upGallery(btn) {
+    const k = upKind(); if (!k) return;
+    const l = upList(k), def = (S.prefs.updef || {})[k];
+    const name = k.startsWith('pen:') ? PENS[k.slice(4)].name : UP_NAMES[k];
+    const p = openPop(btn, `<div class="qpop-b uppop"><div class="ps"><div class="ps-l">Mes presets · ${esc(name)}</div>
+      ${l.length ? `<div class="upgrid">${l.map(pr => `<button class="up-i${pr.id === def ? ' def' : ''}" data-up="${pr.id}" title="${esc(pr.n)}${pr.id === def ? ' (par défaut)' : ''} · clic droit : options">${upThumb(k, pr.p)}<span>${esc(pr.n)}</span>${pr.id === def ? `<b class="up-def">${icon('check', 'sm')}</b>` : ''}</button>`).join('')}</div>` : '<div class="pp-hint">Aucun preset pour l’instant. Un clic sur l’étoile enregistre les options actuelles.</div>'}</div>
+      <button class="stsave" data-upadd="1">${icon('plus', 'sm')}<span>Ajouter un preset personnalisé</span></button>
+      <button class="stsave" data-updef="1">${icon('check', 'sm')}<span>Utiliser comme modèle par défaut</span></button>
+      <div class="pp-hint">« Modèle par défaut » : les options actuelles servent pour chaque nouvel élément, dans tous les boards.</div></div>`, { cls: 'qpop stpop', focus: false });
+    p.addEventListener('click', e => {
+      const b = e.target.closest('[data-up]'); if (b) { upApply(k, l.find(x => x.id === b.dataset.up)); closePop(); return; }
+      if (e.target.closest('[data-upadd]')) { closePop(); upSave(); return; }
+      if (e.target.closest('[data-updef]')) { closePop(); const cur = upCapture(k), same = l.find(x => JSON.stringify(x.p) === JSON.stringify(cur)); upDefault(k, same && same.id !== def ? same : same ? null : upSave('Par défaut')); }
+    });
+    p.addEventListener('contextmenu', e => {
+      const b = e.target.closest('[data-up]'); if (!b) return; e.preventDefault(); const pr = l.find(x => x.id === b.dataset.up);
+      openPop({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY, width: 0, height: 0 }, [
+        { label: pr.id === def ? 'Ne plus utiliser par défaut' : 'Utiliser comme modèle par défaut', icon: 'check', run: () => upDefault(k, pr) },
+        { label: 'Renommer', icon: 'text', run: () => { const n = prompt('Nom du preset', pr.n); if (n && n.trim()) { pr.n = n.trim().slice(0, 40); save(); } } },
+        { label: 'Supprimer', icon: 'trash', danger: true, run: () => { S.prefs.upresets[k] = l.filter(x => x !== pr); if (def === pr.id) delete S.prefs.updef[k]; save(); } }]);
+    });
+  }
   /* press and hold a colour or the styles in a bar: the choices open around the finger or the pencil without lifting it;
      slide onto one and let go to take it (lift elsewhere: nothing changes). A quick tap still opens the full popover. */
   const HOLD_MS = 170;
@@ -644,15 +737,16 @@ const Board = (() => {
   }
   function bindPress(bar) {
     bar.addEventListener('pointerdown', e => {
-      const b = e.target.closest('[data-qc],[data-qp="styles"]'); if (!b || e.button !== 0) return;
-      const pid = e.pointerId, x0 = e.clientX, y0 = e.clientY;
+      const b = e.target.closest('[data-qc],[data-qp="styles"],[data-qp="upreset"]'); if (!b || e.button !== 0) return;
+      const pid = e.pointerId, x0 = e.clientX, y0 = e.clientY, up = b.dataset.qp === 'upreset';
       const off = () => { clearTimeout(t); removeEventListener('pointermove', mv, true); removeEventListener('pointerup', off, true); removeEventListener('pointercancel', off, true); };
-      const go = ev => { off(); openPress(b, ev || e); };
-      const mv = ev => { if (ev.pointerId === pid && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 9) go(ev); };
-      const t = setTimeout(() => go(), HOLD_MS);
+      const go = ev => { off(); if (up) { pressSkip = performance.now() + 400; pressBtn = b; upGallery(b); return; } openPress(b, ev || e); };
+      const mv = ev => { if (!up && ev.pointerId === pid && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 9) go(ev); };
+      const t = setTimeout(() => go(), up ? 380 : HOLD_MS);
       addEventListener('pointermove', mv, true); addEventListener('pointerup', off, true); addEventListener('pointercancel', off, true);
     });
     bar.addEventListener('click', e => { if (performance.now() - pressSkip < 350 && pressBtn && pressBtn.contains(e.target)) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+    bar.addEventListener('contextmenu', e => { const b = e.target.closest('[data-qp="upreset"]'); if (b) { e.preventDefault(); upGallery(b); } });
   }
   function openPress(b, e) {
     closePop(); const ch = pressChoices(b); if (!ch.length) return;
@@ -699,7 +793,7 @@ const Board = (() => {
       const r = $('input', p), lab = $('.pv', p);
       r.addEventListener('input', () => { lab.textContent = Math.round(r.value * 100) + ' %'; setProp('op', +r.value, true); });
       r.addEventListener('change', () => setProp('op', +r.value));
-    } }, '-', { label: 'Panneau Style et calques', icon: 'sliders', run: () => { setProps(true); propsTab = 'style'; renderProps(true); } });
+    } }, '-', { label: 'Panneau Attributs', icon: 'sliders', run: () => { setProps(true); propsTab = 'style'; renderProps(true); } });
     openPop(btn, items2, { align: 'right' });
   }
 
@@ -724,8 +818,14 @@ const Board = (() => {
   const pline = (d, extra = '') => `<svg viewBox="0 0 40 16" class="pl"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"${extra}/></svg>`;
   const headIcon = k => { const t = [1, 0]; const p = [34, 8]; return `<svg viewBox="0 0 40 16" class="pl" style="color:currentColor"><path d="M4 8H${k === 'none' ? 34 : 30}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><g stroke="currentColor" fill="currentColor" stroke-width="2">${headD(p, t, k, 1.2).replace(/class="hf"/g, 'fill="currentColor"').replace(/class="hs"/g, 'fill="none"').replace(/style="fill:var\(--paper\)"/g, 'fill="var(--card)"')}</g></svg>`; };
   const btnRow = (list) => `<div class="pbtns">${list.map(([a, ic, l, t]) => `<button class="pb" data-act="${a}" title="${esc(t || l)}" aria-label="${esc(t || l)}">${ic ? icon(ic) : ''}${l ? `<span>${l}</span>` : ''}</button>`).join('')}</div>`;
+  /* 0.2.48: the board's own style (background) moved out of the panel, under an icon left of the magnet */
+  function boardStylePop(b) {
+    const bg = D.bg || 'dots';
+    const p = openPop(b, `<div class="bsty-pop"><div class="mh">Fond du board</div>${seg('bg', bg, [['plain', 'Uni'], ['dots', 'Points'], ['grid', 'Quadrillage']])}</div>`, { above: true, align: 'right', focus: false });
+    p.onclick = ev => { const v = ev.target.closest('[data-v]'); if (!v) return; setProp('bg', v.dataset.v); $$('[data-v]', p).forEach(x => x.setAttribute('aria-pressed', x === v)); };
+  }
   function propsHTML() {
-    if (propsTab === 'layers') return layersHTML();
+    if (propsTab === 'layers') propsTab = 'style';   // 0.2.48: no more Calques tab
     if (propsTab === 'media') return mediaHTML();
     const list = selItems();
     if (!list.length && (PENS[tool] || tool === 'eraser')) return `<div class="pp-wrap" data-pp="1">${PenPanel.html(tool === 'eraser' ? 'eraser' : penKind)}</div>`;
@@ -734,7 +834,7 @@ const Board = (() => {
     const first = k => list.find(i => k ? i.k === k : true);
     const T = tool; const td = !list.length;
     if (td && T === 'select') {
-      out.push(sec('Fond du board', seg('bg', D.bg || 'dots', [['plain', 'Uni'], ['dots', 'Points'], ['grid', 'Quadrillage']])));
+      out.push(sec('Attributs', `<div class="pp-hint">Sélectionnez un élément ou choisissez un outil : ses options s’affichent ici. Le fond du board est sous l’icône ${icon('styles', 'sm')} en bas à droite.</div>`));
       out.push(sec('Astuces', `<div class="pp-hint">Double-clic sur le vide : post-it. <b>V</b> sélection, <b>P</b> stylo, <b>A</b> flèche, <b>L</b> ligne, <b>C</b> liste à faire, <b>1</b>–<b>9</b> changent de pinceau, <b>K</b> pipette (ou <b>Alt</b> + clic en dessinant).<br>Glissez images et fichiers sur le board, ou depuis l’onglet Moodboard.</div>`));
       out.push(sec('Raccourcis', `<button class="btn sm" data-act="help">${icon('help', 'sm')}Tous les raccourcis</button>`));
       return out.join('');
@@ -2192,7 +2292,9 @@ const Board = (() => {
     if (hd) { e.preventDefault(); if (hd.dataset.ep) startEndpoint(e, hd.dataset.ep); else if ((hd.dataset.pt != null || hd.dataset.add != null) && (e.ctrlKey || e.metaKey)) startBranch(e); else if (hd.dataset.pt != null) { if (e.altKey) removePoint(+hd.dataset.pt); else startPoint(e, +hd.dataset.pt); } else if (hd.dataset.add != null) startPoint(e, +hd.dataset.add, true); else if (hd.dataset.tidy) startTidy(e); else if (hd.dataset.rot) startRotate(e); else if (hd.dataset.rad) startRadius(e); else if (hd.dataset.cd) startConn(e, toW(e.clientX, e.clientY), [...sel][0], hd.dataset.cd); else startResize(e, hd.dataset.h); return; }
     const ab = t.closest('[data-arr]'); if (ab) { e.preventDefault(); e.stopPropagation(); setTimeout(() => arrangeMenu(ab, false)); return; }
     /* with a pencil around, a finger never draws: on an element it switches to the selection tool and takes it, elsewhere it pans */
-    if (e.pointerType === 'touch' && (penSeen || penSeenGlobal) && !['select', 'hand'].includes(tool)) { const h0 = hitAt(e); if (h0) setTool('select'); else if (PENS[tool] || tool === 'eraser' || tool === 'pick') { startPan(e); return; } }
+    if (e.pointerType === 'touch' && (penSeen || penSeenGlobal) && !['select', 'hand', 'pick'].includes(tool)) { const h0 = hitAt(e); if (h0) setTool('select'); else if (PENS[tool] || tool === 'eraser') { startPan(e); return; } }
+    // 0.2.48: a finger or the pencil: press, slide with the loupe above it, let go to take the colour
+    if (tool === 'pick' && e.pointerType !== 'mouse') { e.preventDefault(); startTouchPick(e); return; }
     if (tool === 'pick' || (PENS[tool] && e.altKey)) { e.preventDefault(); pickAt(e); return; }
     if (PENS[tool]) { e.preventDefault(); startInk(e); return; }
     if (tool === 'eraser') { e.preventDefault(); startErase(e, eraseAll); return; }
@@ -2249,8 +2351,11 @@ const Board = (() => {
   function mountMods() {
     if (!touchUI()) return;
     modsEl = document.createElement('div'); modsEl.className = 'vmods';
-    modsEl.innerHTML = [['ctrl', 'Ctrl', 'Ctrl : branche de flèche, point d’ancrage, taille du pinceau…'], ['shift', 'Maj', 'Maj : angles droits, proportions, ajout à la sélection'], ['alt', 'Alt', 'Alt : pipette, déplacer sans aimant']].map(([k, l, t]) => `<button data-vm="${k}" title="${t}" aria-pressed="false">${l}</button>`).join('');
+    // 0.2.48: Ctrl only (bigger), and under it a tall size slider for the left thumb while a drawing tool is on
+    modsEl.innerHTML = [['ctrl', 'Ctrl', 'Ctrl : branche de flèche, point d’ancrage, taille du pinceau…']].map(([k, l, t]) => `<button data-vm="${k}" title="${t}" aria-pressed="false">${l}</button>`).join('')
+      + `<div class="vsz" hidden title="Taille du pinceau"><b class="vsz-v"></b><div class="vsz-tr"><i class="vsz-fill"></i><i class="vsz-knob"></i></div><span class="vsz-dot"><i></i></span></div>`;
     wrap.append(modsEl);
+    bindVsz($('.vsz', modsEl));
     let lastTap = {};
     modsEl.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); });
     modsEl.addEventListener('click', e => { const b = e.target.closest('[data-vm]'); if (!b) return; const k = b.dataset.vm, t = performance.now();
@@ -2270,6 +2375,31 @@ const Board = (() => {
     if (!modsEl || (e.target instanceof Node && modsEl.contains(e.target))) return;
     let ch = false; for (const k in vmods) if (vmods[k] === 1) { vmods[k] = 0; ch = true; if (k === 'alt') setTimeout(endAltPick); }
     if (ch) setTimeout(syncMods);
+  }
+  function vszSet(t, final) {
+    const k = penKind; if (!S.prefs.pens[k]) S.prefs.pens[k] = {};
+    S.prefs.pens[k].s = sizeOf(k, clamp(t, 0, 1)); syncVsz();
+    if (final) { save(); qSig = ''; propSig = ''; refreshTools(); Studio.sync(); renderProps(); }
+  }
+  function bindVsz(el) {
+    const tr = $('.vsz-tr', el);
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation(); if (!PENS[tool]) return;
+      const r = tr.getBoundingClientRect(), at = ev => 1 - (ev.clientY - r.top) / r.height;
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      el.classList.add('on'); vszSet(at(e));
+      const mv = ev => { if (ev.pointerId === e.pointerId) vszSet(at(ev)); };
+      const up = ev => { if (ev.pointerId !== e.pointerId) return; el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); el.classList.remove('on'); vszSet(at(ev), true); };
+      el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    });
+  }
+  function syncVsz() {
+    const el = modsEl && $('.vsz', modsEl); if (!el) return;
+    const on = !!PENS[tool]; el.hidden = !on; if (!on) return;
+    const pr = penPref(penKind), t = sizeT(penKind, pr.s), d = clamp(pr.s, 2, 26);
+    el.style.setProperty('--t', t.toFixed(3));
+    $('.vsz-v', el).textContent = sizeText(pr.s);
+    const dot = $('.vsz-dot i', el); dot.style.width = dot.style.height = d + 'px'; dot.style.background = pr.c;
   }
   function syncMods() { if (!modsEl) return; for (const b of modsEl.children) { const v = vmods[b.dataset.vm]; b.setAttribute('aria-pressed', v ? 'true' : 'false'); b.classList.toggle('lock', v === 2); } }
   /* two fingers: zoom, pan and turn the board (Concepts-like); the turn snaps to straight angles within 5°,
@@ -2767,6 +2897,11 @@ const Board = (() => {
     snapAt = drawn; return shot;
   }
   let pickBack = null, altPick = false;
+  function startTouchPick(e) {
+    const show = ev => Studio.showLoupe(ev.clientX, ev.clientY, snapshot(), -96);
+    show(e);
+    op = { id: e.pointerId, kind: 'pick', move(ev) { if (ev.pointerId === this.id) show(ev); }, up(ev) { op = null; Studio.hideLoupe(); pickAt(ev); } };
+  }
   function pickAt(e) {
     const s = snapshot(); if (!s) return; const c = s.at(e.clientX - s.left, e.clientY - s.top);
     S.prefs.pens[penKind].c = c; save(); Studio.picked(c, e.clientX - 0, e.clientY - 0);
@@ -3110,7 +3245,8 @@ const Board = (() => {
     if (editing) finishEdit();
     if (op && op.keep) cancelOp();
     attachHi = null;
-    if (t === 'pick' && tool !== 'pick') pickBack = tool;
+    const newPick = t === 'pick' && tool !== 'pick';
+    if (newPick) pickBack = tool;
     if (!PENS[t] && t !== 'eraser' && t !== 'pick') inkSess = null;   // leaving the drawing tools ends the drawing session
     tool = t; if (PENS[t]) penKind = t; if (ALPHA_PENS.includes(t)) S.prefs.lastAlpha = t;
     /* drawing never acts on a selection: a shape left selected would take the colour and size changes */
@@ -3119,12 +3255,14 @@ const Board = (() => {
     host.className = 'bhost bg-' + (D.bg || 'dots') + ' t-' + (PENS[t] ? 'ink' : t);
     const was = wrap.classList.contains('drawing'); wrap.classList.toggle('drawing', drawingTool()); wrap.classList.toggle('lite', !atelierFull());
     if (t !== 'pick') Studio.hideLoupe();
+    else if (newPick && touchUI() && !altPick) tapFlash('Touchez le board pour prendre une couleur');
     refreshTools(); eraserAt = null; propSig = ''; schedule(); Studio.sync();
     if (was !== drawingTool()) layoutChanged();
   }
   const drawingTool = () => !!(PENS[tool] || tool === 'eraser' || tool === 'pick');
   const TOOLS = [['select', 'cursor', 'Sélection', 'V'], ['hand', 'hand', 'Main', 'H'], '|', ['shape', 'rect', 'Forme', 'R'], ['conn', 'conn', 'Flèche', 'A'], ['line', 'line', 'Ligne', 'L'], ['pen', 'pen', 'Dessin', 'D'], ['eraser', 'eraser', 'Gomme', 'E'], '|', ['text', 'text', 'Texte', 'T'], ['note', 'sticky', 'Post-it', 'N'], ['todo', 'todo', 'Liste à faire', 'C'], ['sheet', 'sheet', 'Tableur', 'G'], ['mind', 'mind', 'Mind map', 'M'], ['frame', 'frame', 'Cadre', ''], ['uiz', 'uiz', 'Zone UI Design : concevoir l’interface d’un logiciel', 'U'], ['upload', 'image', 'Image ou fichier', 'I'], '|', ['more', 'dots', 'Plus : tâches, liens', '']];
   function refreshTools() {
+    syncVsz();
     toolsEl.innerHTML = TOOLS.map(d => d === '|' ? '<span class="vs"></span>' : (() => {
       const [id, ic, title, k] = d, on = id === 'pen' ? !!PENS[tool] : tool === id;
       const ico = id === 'pen' ? PENS[penKind].icon : id === 'shape' ? (shapeKind === 'starsh' ? 'starsh' : shapeKind) : ic;
@@ -3209,12 +3347,12 @@ const Board = (() => {
     container.innerHTML = `<div class="bwrap${open ? ' props-open' : ''}" style="position:absolute;inset:0">
       <div class="bhost bg-${doc.bg || 'dots'}" tabindex="-1" aria-label="Board ${esc(doc.title)}"><div class="bstage"><div class="bgrid" hidden></div><div class="world"><div class="layer"></div><svg class="edges"></svg><div class="layer"></div><svg class="edges"></svg><div class="layer"></div></div><div class="ovl"></div></div><canvas class="blive"></canvas><div class="measure it"></div></div>
       <div class="tdock"><div class="trow"><button class="tgrip" title="Glisser pour déplacer les barres · double-clic pour les remettre en place" aria-label="Déplacer les barres d’outils"></button><nav class="isl tools" aria-label="Outils"></nav></div><div class="isl topts" role="toolbar" aria-label="Options de l’outil" hidden></div></div>
-      <div class="isl tr"><button class="tl" data-a="props" title="Style, calques et moodboard" aria-label="Panneau" aria-pressed="${open}">${icon('sliders')}<span>Style</span></button></div>
+      <div class="isl tr"><button class="tl" data-a="props" title="Attributs et moodboard" aria-label="Panneau" aria-pressed="${open}">${icon('sliders')}<span>Attributs</span></button></div>
       <div class="qbar" hidden></div>
-      <aside class="props"${open ? '' : ' hidden'} aria-label="Propriétés"><div class="phead"><button class="ptab" data-tab="style">Style</button><button class="ptab" data-tab="layers">Calques</button><button class="ptab" data-tab="media">Moodboard</button><button class="pclose" data-a="close" aria-label="Fermer">${icon('x', 'sm')}</button></div><div class="pbody"></div></aside>
+      <aside class="props"${open ? '' : ' hidden'} aria-label="Propriétés"><div class="phead"><button class="ptab" data-tab="style">Attributs</button><button class="ptab" data-tab="media">Moodboard</button><button class="pclose" data-a="close" aria-label="Fermer">${icon('x', 'sm')}</button></div><div class="pbody"></div></aside>
       <div class="isl bl zoom"><button class="tl" data-a="zout" title="Dézoomer (−)" aria-label="Dézoomer">${icon('zout')}</button><button class="zv" data-a="z100" title="Revenir à 100 %">100 %</button><button class="tl" data-a="zin" title="Zoomer (+)" aria-label="Zoomer">${icon('zin')}</button></div>
       <div class="isl bl undo"><button class="tl" data-a="undo" title="Annuler (Ctrl Z)" aria-label="Annuler">${icon('undo')}</button><button class="tl" data-a="redo" title="Rétablir (Ctrl Y)" aria-label="Rétablir">${icon('redo')}</button></div>
-      <div class="isl br"><button class="tl snapb" data-a="snap" title="Alignement auto (aimant) : activé" aria-label="Alignement automatique" aria-pressed="true">${icon('magnet')}</button><button class="tl" data-a="fit" title="Tout voir (F ou 0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
+      <div class="isl br"><button class="tl" data-a="bstyle" title="Style du board" aria-label="Style du board">${icon('styles')}</button><button class="tl snapb" data-a="snap" title="Alignement auto (aimant) : activé" aria-label="Alignement automatique" aria-pressed="true">${icon('magnet')}</button><button class="tl" data-a="fit" title="Tout voir (F ou 0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
     wrap = container.firstElementChild; host = $('.bhost', wrap); world = $('.world', host);
     [framesL, edges, itemsL, edgesTop, labelsL] = world.children; ovl = $('.ovl', host); liveCv = $('.blive', host); stage = $('.bstage', host); bgrid = $('.bgrid', host); meas = $('.measure', host);
     // mind maps are laid out from the measured size of their words: again once the fonts are in
@@ -3271,7 +3409,7 @@ const Board = (() => {
     qbarEl.onclick = ctxClick;
     undoEl.onclick = e => { const b = e.target.closest('[data-a]'); if (b) (b.dataset.a === 'undo' ? undo : redo)(); };
     zoomEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a; if (a === 'zin') zoomCenter(1.25); if (a === 'zout') zoomCenter(.8); if (a === 'z100') zoomTo(1); };
-    brEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; if (b.dataset.a === 'fit') fitAll(); if (b.dataset.a === 'help') helpModal(); if (b.dataset.a === 'snap') { S.prefs.snap = S.prefs.snap === false; save(); syncSnap(); toast(S.prefs.snap ? 'Alignement automatique activé' : 'Alignement automatique coupé (Alt en glissant fait pareil)'); } };
+    brEl.onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; if (b.dataset.a === 'fit') fitAll(); if (b.dataset.a === 'help') helpModal(); if (b.dataset.a === 'bstyle') boardStylePop(b); if (b.dataset.a === 'snap') { S.prefs.snap = S.prefs.snap === false; save(); syncSnap(); toast(S.prefs.snap ? 'Alignement automatique activé' : 'Alignement automatique coupé (Alt en glissant fait pareil)'); } };
     syncSnap();
     ro = new ResizeObserver(() => { if (mounted) { ink.resize(); renderOverlay(); placeDock(); placeOpts(); } }); ro.observe(host);
     tool = 'select'; setTool('select');
@@ -3397,7 +3535,7 @@ const Board = (() => {
     const editIt = one && EDITABLE.includes(one.k) ? { label: one.k === 'frame' ? 'Renommer' : 'Modifier', run: () => startEdit(one.id) } : null;
     const hide = () => { const ids = new Set(sel); commit(items.map(i => ids.has(i.id) ? Object.assign({}, i, { hid: true }) : i)); sel.clear(); };
     const more = { label: 'Plus', run: null, sub: () => around([
-      { label: 'Premier plan', run: () => zMove('front') }, { label: 'Avancer', run: () => zMove('fwd') }, { label: 'Style et calques', run: () => { setProps(true); propsTab = 'style'; renderProps(true); } },
+      { label: 'Premier plan', run: () => zMove('front') }, { label: 'Avancer', run: () => zMove('fwd') }, { label: 'Attributs', run: () => { setProps(true); propsTab = 'style'; renderProps(true); } },
       { label: 'Copier', run: () => copy(false) }, { label: 'Arrière-plan', run: () => zMove('back') }, { label: 'Reculer', run: () => zMove('bwd') },
       sel.size > 1 ? { label: 'Entourer d’un cadre', run: () => frameAround(selItems()) } : { label: 'Masquer', run: hide }, { label: 'Verrouiller', run: () => action('lock') }]) };
     const del = { label: 'Supprimer', run: deleteSel }, dup = { label: 'Dupliquer', run: () => duplicate() };
