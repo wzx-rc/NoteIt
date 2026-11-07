@@ -191,6 +191,20 @@ function sheetEval(cells) {
   return val;
 }
 const sheetShow = v => v == null ? '' : v.err ? v.err : typeof v === 'number' ? (isFinite(v) ? v.toLocaleString('fr-FR', { maximumFractionDigits: 4 }) : '#NUM!') : typeof v === 'boolean' ? (v ? 'VRAI' : 'FAUX') : String(v);
+/* 0.2.51: the outline of a dab of paint (0..100 box), seeded so each dab keeps its own shape */
+const _blobs = new Map();
+function paintBlob(seed) {
+  if (_blobs.has(seed)) return _blobs.get(seed);
+  let z = (seed % 2147483646) + 1; const rnd = () => (z = (z * 16807) % 2147483647) / 2147483647;
+  const N = 16, ph = [rnd() * 6.28, rnd() * 6.28, rnd() * 6.28], pts = [];
+  for (let i = 0; i < N; i++) { const a = i / N * Math.PI * 2, r = 36 + 4.5 * Math.sin(3 * a + ph[0]) + 3 * Math.sin(5 * a + ph[1]) + 2 * Math.sin(8 * a + ph[2]) + (rnd() - .5) * 3; pts.push([50 + Math.cos(a) * r, 50 + Math.sin(a) * r]); }
+  const f = v => v.toFixed(1), mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+  const m0 = mid(pts[N - 1], pts[0]); let d = `M${f(m0[0])} ${f(m0[1])}`;
+  for (let i = 0; i < N; i++) { const p = pts[i], m = mid(p, pts[(i + 1) % N]); d += `Q${f(p[0])} ${f(p[1])} ${f(m[0])} ${f(m[1])}`; }
+  d += 'Z';
+  let dr = ''; for (let i = 0; i < 3; i++) { const a = rnd() * 6.28, r = 43 + rnd() * 6, rr = 1.6 + rnd() * 2.8; dr += `<circle cx="${f(50 + Math.cos(a) * r)}" cy="${f(50 + Math.sin(a) * r)}" r="${f(rr)}"/>`; }
+  const o = { d, dr }; _blobs.set(seed, o); return o;
+}
 function mkInk(stroke) {
   /* stamped brushes scatter past the line, so their box is wider; b.ox/oy keep the paper texture where it was drawn */
   const [x0, y0, x1, y1] = inkBounds(stroke.p, inkPad(stroke));

@@ -27,7 +27,7 @@ const PENS = {
      fx = how the dab reacts: tl tilt shading, vs/vo speed on size/opacity, tp taper at the start (× size), pm smallest size under
      light pressure, jt/oj size/opacity jitter, rj turn jitter, rd roundness, sa scatter, cnt dabs per step, cj colour jitter,
      wet darker wet edge, td how deep the paper grain cuts */
-  graphite: { name: 'Graphite', icon: 'pencil', hint: 'Mine tendre : appuyez pour foncer, inclinez le stylet pour ombrer', size: 5, min: 1, max: 60, thin: .5, gamma: 1, o: .92, smooth: .3, alpha: 1, stamp: { sh: 't_graphite', tx: 'none', fl: .26, sp: .06, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { tl: 1, pm: .06, jt: .1, tp: 4, ch: 1, chs: 2.2, chf: .9 } } },
+  graphite: { name: 'Graphite', icon: 'pencil', hint: 'Mine tendre : appuyez pour foncer, inclinez le stylet pour ombrer', size: 5, min: 1, max: 60, thin: .5, gamma: 1, o: .92, smooth: .3, alpha: 1, stamp: { sh: 't_graphite', tx: 'none', fl: .4, sp: .05, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { tl: .6, pm: .06, jt: .06, tp: 4, ch: 1, chs: 2.2, chf: .7, chk: .6, pa: .5 } } },
   inkbrush: { name: 'Pinceau encre', icon: 'brush', hint: 'Pointe souple : plein en appuyant, délié en accélérant', size: 12, min: 2, max: 90, thin: .9, gamma: 1.2, o: 1, smooth: .55, alpha: 1, stamp: { sh: 't_ink', tx: 'none', fl: 1, sp: .035, dy: { ps: 1, po: 0, rot: 1, sc: 0 }, fx: { pm: .04, vs: -.5, tp: 2.2, rd: .82 } } },
   fusain: { name: 'Fusain', icon: 'pencil', hint: 'Poudreux et sec, le grain du papier ressort', size: 22, min: 2, max: 140, thin: .5, gamma: 1, o: .95, smooth: .4, alpha: 1, stamp: { sh: 't_charcoal', tx: 'paper', fl: .26, sp: .05, dy: { ps: 1, po: 1, rot: 0, sc: 1 }, fx: { tl: .8, pm: .1, jt: .15, sa: .25, td: .9 } } },
   aqua: { name: 'Aquarelle', icon: 'water', hint: 'Lavis transparent, bords chargés, papier torchon', size: 38, min: 4, max: 200, thin: .5, gamma: 1, o: .62, multiply: true, smooth: .55, alpha: 1, stamp: { sh: 't_water', tx: 'rough', fl: .16, sp: .08, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { pm: .15, jt: .12, wet: 1, td: .32, cj: .05, vo: -.3 } } },
@@ -39,7 +39,7 @@ const PENS = {
 };
 /* chalk (0.2.42): a soft round stick, then the paper's grain, much bigger than the stick, decides pixel by pixel whether the
    chalk caught (fx.ch: threshold, not a cut-out): the contour itself breaks up, light pressure leaves only the grain's tops */
-PENS.craie = { name: 'Craie', icon: 'marker', hint: 'Bâton de craie : le gros grain du papier ronge le contour, appuyez pour couvrir', size: 18, min: 3, max: 140, thin: .4, gamma: 1, o: 1, smooth: .45, alpha: 1, stamp: { sh: 'soft', tx: 'none', fl: .22, sp: .06, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { pm: .35, jt: .05, ch: 1, chs: 4, tl: .4 } } };
+PENS.craie = { name: 'Craie', icon: 'marker', hint: 'Bâton de craie : le gros grain du papier ronge le contour, appuyez pour couvrir', size: 18, min: 3, max: 140, thin: .4, gamma: 1, o: 1, smooth: .45, alpha: 1, stamp: { sh: 'soft', tx: 'none', fl: .34, sp: .05, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { pm: .35, jt: .05, ch: 1, chs: 4, tl: .3, chk: .7, pa: .5 } } };
 /* the alpha brushes, in the order of the drawing bar */
 const ALPHA_PENS = ['graphite', 'inkbrush', 'fusain', 'aqua', 'crayon', 'bristle', 'airsoft', 'sponge', 'alcohol', 'craie'];
 /* 1 to 8 stay the classic pens of 0.5; 9 is the natural pencil */
@@ -273,7 +273,8 @@ function stampWalk(ctx, st, w) {
   if (!w) w = { i: 3, acc: 1e9, px: p[0], py: p[1], pp: p[2], pv: D ? D[0] : 0, pt: D ? D[1] : 0, ang: n >= 6 ? Math.atan2(p[4] - p[1], p[3] - p[0]) : 0, r: rng(b.sd || .5), len: 0, bb: null };
   const dab = (x, y, pp, ang, vv, tt) => {
     const r1 = w.r(), r2 = w.r(), r3 = w.r(), r4 = w.r();
-    let sz = sizeAt(pp), a = (b.fl ?? 1) * (dy.po ? .12 + .88 * clamp(pp, 0, 1) : 1), rot = (dy.rot ? ang : 0) + (nib.ang || 0) + (F.rj ?? nib.jit ?? .3) * (r4 - .5), im = img, cnt = 1, sa = F.sa ?? 1.1;
+    /* F.pa (0.2.51): pressure reaches the opacity through a softer curve, so a light hand already covers (chalk, graphite) */
+    let sz = sizeAt(pp), a = (b.fl ?? 1) * (dy.po ? (F.pa ? .3 + .7 * Math.pow(clamp(pp, 0, 1), F.pa) : .12 + .88 * clamp(pp, 0, 1)) : 1), rot = (dy.rot ? ang : 0) + (nib.ang || 0) + (F.rj ?? nib.jit ?? .3) * (r4 - .5), im = img, cnt = 1, sa = F.sa ?? 1.1;
     if (fx) {
       const r5 = w.r(), r6 = w.r(), r7 = w.r();
       if (F.vs) sz *= Math.max(.12, 1 + F.vs * vv);
@@ -328,7 +329,9 @@ function grainValues(tx) { let g = _grainVal.get(tx); if (g) return g; const t =
   const d = t.getContext('2d').getImageData(0, 0, t.width, t.height).data, v = new Float32Array(t.width * t.height);
   for (let i = 0; i < v.length; i++) v[i] = d[i * 4 + 3] / 255;
   g = { v, w: t.width, h: t.height }; if (_tipImg.has(TEXS[tx] && TEXS[tx].img)) _grainVal.set(tx, g); return g; }
-function chalkCut(ctx, rect, ox, oy, sc, amt = 1, fine = 1) {
+/* 0.2.51: the grain follows the zoom the stroke was drawn at (up to 4×), so it stays sharp under the pencil */
+const chalkK = b => clamp(Math.sqrt((b && b.k) || 1), 1, 2);
+function chalkCut(ctx, rect, ox, oy, sc, amt = 1, fine = 1, thr = .85) {
   const g = grainValues('paper'); if (!g) return;
   const cv = ctx.canvas; let [x, y, w, h] = rect || [0, 0, cv.width, cv.height];
   x = Math.max(0, Math.floor(x)); y = Math.max(0, Math.floor(y)); w = Math.min(cv.width - x, Math.ceil(w)); h = Math.min(cv.height - y, Math.ceil(h)); if (w < 1 || h < 1) return;
@@ -340,7 +343,7 @@ function chalkCut(ctx, rect, ox, oy, sc, amt = 1, fine = 1) {
       const fx0 = Math.floor(ux), fy0 = Math.floor(uy), fx = ux - fx0, fy = uy - fy0, gx = (fx0 % gw + gw) % gw, gy = (fy0 % gh + gh) % gh, gx1 = (gx + 1) % gw, gy1 = (gy + 1) % gh;
       const t = ((gv[gy * gw + gx] * (1 - fx) + gv[gy * gw + gx1] * fx) * (1 - fy) + (gv[gy1 * gw + gx] * (1 - fx) + gv[gy1 * gw + gx1] * fx) * fy) * amt;
       /* soft threshold: a little above the grain = full chalk, below = paper (gentler since 0.2.44) */
-      let v = (a / 255 - t * .85) * 2.4; if (v <= 0) { d[q] = 0; continue; } if (v > 1) v = 1;
+      let v = (a / 255 - t * thr) * 2.4; if (v <= 0) { d[q] = 0; continue; } if (v > 1) v = 1;
       /* second, finer grain (0.2.44): the same paper read 3.3× smaller and shifted, only lowers the opacity, by an amount that
          itself drifts across the paper (the coarse grain read elsewhere), so the chalk's body breathes instead of being flat white */
       const u2 = ux * 3.3 + 97, w2 = uy * 3.3 + 41, hx = ((Math.floor(u2) % gw) + gw) % gw, hy = ((Math.floor(w2) % gh) + gh) % gh, f2 = gv[hy * gw + hx];
@@ -356,7 +359,7 @@ function stampInto(ctx, st) {
   else stampWalk(ctx, st, null);
   const F = st.b.fx || {};
   if (F.wet) { const m = ctx.getTransform(); wetEdges(ctx, F.wet, st.s * .22 * Math.hypot(m.a, m.b), null); }
-  if (F.ch) chalkCut(ctx, null, st.b.ox || 0, st.b.oy || 0, (F.chs || 1.5) * .42, F.ch, F.chf ?? 1);
+  if (F.ch) chalkCut(ctx, null, st.b.ox || 0, st.b.oy || 0, (F.chs || 1.5) * .42 / chalkK(st.b), F.ch, F.chf ?? 1, F.chk ?? .85);
   applyTexture(ctx, st.b.tx, st.b.ox || 0, st.b.oy || 0, texScale(st), F.td ?? 1);
 }
 /* textures keep a readable grain on fine strokes too (below .6 they all turned into the same fine noise) */
@@ -374,7 +377,7 @@ function stampPicture(st) {
   if (v && v.key === key && v.res >= want * .85 - 1e-6) return v;
   const [x0, y0, x1, y1] = inkBounds(st.p, inkPad(st)), W = x1 - x0, H = y1 - y0;
   if (v && v.key === key && v.capped) return v;
-  let res = want; const cap = Math.min(4096 / Math.max(W, H, 1), Math.sqrt(1.2e7 / Math.max(W * H, 1))), capped = res > cap; res = Math.min(res, cap);
+  let res = want; const cap = Math.min(6144 / Math.max(W, H, 1), Math.sqrt(1.6e7 / Math.max(W * H, 1))), capped = res > cap; res = Math.min(res, cap);
   const c = mkCanvas(W * res, H * res), x = c.getContext('2d');
   x.setTransform(c.width / W, 0, 0, c.height / H, -x0 * c.width / W, -y0 * c.height / H);
   stampInto(x, st);
@@ -455,7 +458,7 @@ class InkCapture {
     else if (ev.pointerType === 'pen') Ink.last = { src: IPAD ? 'Apple Pencil' : 'Windows Ink / stylet', p: ev.pressure, tilt: Math.round(Math.hypot(ev.tiltX || 0, ev.tiltY || 0)), type: 'pen', at: Date.now() };
     else Ink.last = { src: ev.pointerType === 'touch' ? 'doigt' : 'souris', p: ev.pressure, tilt: 0, type: ev.pointerType, at: Date.now() };
     if (P === 'fixed') return .6;
-    if (P === 'pen') { if (useWt) return sensCurve(wt.p > 0 ? wt.p : .02); if (ev.pointerType === 'pen') return sensCurve(ev.pressure > 0 ? ev.pressure : .01); }
+    if (P === 'pen') { if (useWt) return sensCurve(wt.p > 0 ? wt.p : .02); if (ev.pointerType === 'pen') { if (ev.pressure > 0) this.lastPen = ev.pressure; return sensCurve(ev.pressure > 0 ? ev.pressure : this.lastPen || .01); } }
     const t = ev.timeStamp || now(), dt = Math.max(1, t - this.sim.t), v = Math.hypot(ev.clientX - this.sim.x, ev.clientY - this.sim.y) / dt;
     this.sim.t = t; this.sim.x = ev.clientX; this.sim.y = ev.clientY;
     this.sim.p += (clamp(1.08 - v * .32, .28, 1) - this.sim.p) * .16; return this.sim.p;
@@ -463,7 +466,7 @@ class InkCapture {
   begin(ev, st) {
     if (ev.pointerType === 'pen') penSeenGlobal = true;
     this.gen = (this.gen || 0) + 1;
-    this.sim = { p: .42, t: ev.timeStamp || now(), x: ev.clientX, y: ev.clientY }; this.pq = null;
+    this.sim = { p: .42, t: ev.timeStamp || now(), x: ev.clientX, y: ev.clientY }; this.pq = null; this.lastPen = null; this.lastTilt = null;
     const w = this.map.toLocal(ev.clientX, ev.clientY), p0 = this.pressure(ev), def = PENS[st.t] || PENS.pen;
     this.cur = { t: st.t, c: st.c, s: st.s, o: st.o ?? def.o, p: [w.x, w.y, p0] }; if (st.b) this.cur.b = st.b;
     /* alpha brushes also keep the speed and the stylus tilt of each point (st.d), for thick and thin and pencil shading */
@@ -473,7 +476,7 @@ class InkCapture {
     /* the three simple brushes (0.2.25) are drawn live piece by piece: each frame only adds the new bits of the line,
        instead of rebuilding the whole outline of the stroke; the finished stroke gets its exact outline */
     this.fast = !st.b && FAST_PENS.includes(st.t); this.li = 0; this.len = 0;
-    this.sm = { x: w.x, y: w.y, p: p0, f: 1 - (st.smooth ?? def.smooth) * .9, k: st.k || 1, last: { x: w.x, y: w.y, p: p0 } };
+    this.sm = { x: w.x, y: w.y, p: p0, f: 1 - (st.smooth ?? def.smooth) * .9, k: st.k || 1, last: { x: w.x, y: w.y, p: p0 }, lx: w.x, ly: w.y, sz: st.s || 4 };
     this.resize(); if (this.fast) { this.cx.setTransform(1, 0, 0, 1, 0, 0); this.cx.clearRect(0, 0, this.cv.width, this.cv.height); }
     const px = st.s * (st.k || 1);
     this.cv.style.opacity = this.cur.o; this.cv.style.mixBlendMode = def.multiply ? (isDarkTheme() ? 'screen' : 'multiply') : 'normal';
@@ -485,12 +488,16 @@ class InkCapture {
   tilt(e) {
     let deg = 0;
     if (wintabLive() && (e.pointerType === 'mouse' || S.prefs.source === 'wintab')) deg = wt.tilt || 0;
-    else if (e.pointerType === 'pen') deg = e.altitudeAngle != null && e.altitudeAngle < Math.PI / 2 - .01 ? 90 - e.altitudeAngle * 180 / Math.PI : Math.min(90, Math.hypot(e.tiltX || 0, e.tiltY || 0));
-    return clamp((deg - 28) / 40, 0, 1);
+    else if (e.pointerType === 'pen') {
+      /* some coalesced iPad samples come without tilt (upright, 0): keep the last real one instead of a bump (0.2.51) */
+      if ((e.altitudeAngle == null || e.altitudeAngle >= Math.PI / 2 - .01) && !e.tiltX && !e.tiltY) return this.lastTilt ?? 0;
+      deg = e.altitudeAngle != null && e.altitudeAngle < Math.PI / 2 - .01 ? 90 - e.altitudeAngle * 180 / Math.PI : Math.min(90, Math.hypot(e.tiltX || 0, e.tiltY || 0));
+    }
+    return (this.lastTilt = clamp((deg - 28) / 40, 0, 1));
   }
   dynOf(e) {
     const D = this.dyn, t = e.timeStamp || now(), dt = Math.max(1, t - D.t), v = Math.hypot(e.clientX - D.x, e.clientY - D.y) / dt;
-    D.t = t; D.x = e.clientX; D.y = e.clientY; D.v += (clamp(v / 2.4, 0, 1) - D.v) * .25; D.tl += (this.tilt(e) - D.tl) * .3;
+    D.t = t; D.x = e.clientX; D.y = e.clientY; D.v += (clamp(v / 2.4, 0, 1) - D.v) * .25; D.tl += (this.tilt(e) - D.tl) * .12;
     return [D.v, D.tl];
   }
   feed(ev) {
@@ -502,7 +509,13 @@ class InkCapture {
       /* pressure: the median of the last three samples drops the odd jump (iPad sends some), then a gentle low-pass,
          so the width swells smoothly instead of making knots every few millimetres (0.2.39) */
       const q3 = this.pq || (this.pq = []); q3.push(p); if (q3.length > 3) q3.shift(); const pm = q3.length < 3 ? p : q3.slice().sort((a, b) => a - b)[1];
-      s.x += (w.x - s.x) * s.f; s.y += (w.y - s.y) * s.f; s.p += (pm - s.p) * .22;
+      /* lazy mouse (0.2.51): the brush hangs on a short string (2 screen px), so the hand's tremor never reaches the line */
+      const R = (S.prefs.lazy ?? 2) / s.k, ldx = w.x - s.lx, ldy = w.y - s.ly, ld = Math.hypot(ldx, ldy);
+      if (ld > R) { s.lx += ldx * (ld - R) / ld; s.ly += ldy * (ld - R) / ld; }
+      const mv = Math.hypot(s.lx - s.x, s.ly - s.y);
+      s.x += (s.lx - s.x) * s.f; s.y += (s.ly - s.y) * s.f;
+      /* pressure smoothed along the distance as well: a fast stroke (few, far samples) cannot swell from one sample to the next */
+      const pk = Math.min(.22, .05 + mv / (s.sz * 1.6)); s.p += (pm - s.p) * pk;
       const n = out.length;
       if (n >= 3) { const dx = s.x - out[n - 3], dy = s.y - out[n - 2], m = .5 / s.k; if (dx * dx + dy * dy < m * m) { out[n - 1] = s.p; if (dd) { const d = this.cur.d; d[d.length - 2] = dd[0]; d[d.length - 1] = dd[1]; } continue; } }
       out.push(s.x, s.y, s.p); if (dd) this.cur.d.push(dd[0], dd[1]);
@@ -567,7 +580,7 @@ class InkCapture {
         this.xform(x); const m = x.getTransform(), [a0, b0, a1, b1] = this.walk.bb, P = [[a0, b0], [a1, b0], [a0, b1], [a1, b1]].map(([u, v]) => [m.a * u + m.c * v + m.e, m.b * u + m.d * v + m.f]);
         const X0 = Math.min(...P.map(q => q[0])), Y0 = Math.min(...P.map(q => q[1])), X1 = Math.max(...P.map(q => q[0])), Y1 = Math.max(...P.map(q => q[1])), bl = c.s * .22 * Math.hypot(m.a, m.b);
         if (F.wet) wetEdges(x, F.wet, bl, [X0 - bl * 2, Y0 - bl * 2, X1 - X0 + bl * 4, Y1 - Y0 + bl * 4]);
-        if (F.ch) chalkCut(x, [X0 - 2, Y0 - 2, X1 - X0 + 4, Y1 - Y0 + 4], 0, 0, (F.chs || 1.5) * .42, F.ch, F.chf ?? 1);
+        if (F.ch) chalkCut(x, [X0 - 2, Y0 - 2, X1 - X0 + 4, Y1 - Y0 + 4], 0, 0, (F.chs || 1.5) * .42 / chalkK(c.b), F.ch, F.chf ?? 1, F.chk ?? .85);
       }
       this.xform(x); applyTexture(x, c.b.tx, 0, 0, texScale(c), F.td ?? 1);
       return;

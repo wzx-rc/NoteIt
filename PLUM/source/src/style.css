@@ -2730,3 +2730,67 @@ html[data-focus] #tbar .tb-f [data-f="exit"] span { display: none; }
 #view :is(input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"], .nbody), #view :is([contenteditable="true"], .nbody) * { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 .drawmode .nbody, .drawmode .nbody * { -webkit-user-select: none; user-select: none; }
 .nbody :is(figure.ndraw, figure.nlink, .nfile), .nbody :is(figure.ndraw, figure.nlink, .nfile) * { -webkit-user-select: none; user-select: none; }
+
+/* 0.2.51: the node dots of a selection take a press a little around them */
+.hdl.cdot::before { content: ''; position: absolute; inset: -9px; border-radius: 50%; }
+@media (pointer: coarse) { .hdl.cdot::before { inset: -15px; } }
+/* 0.2.51: lasso */
+.bhost.t-lasso { cursor: crosshair; }
+.lassop { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.lassop path { fill: var(--accent-soft, rgba(80,120,230,.12)); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6 4; stroke-linejoin: round; animation: lassoAnt .7s linear infinite; }
+@keyframes lassoAnt { to { stroke-dashoffset: -10; } }
+/* 0.2.51: colour dabs */
+.it.paint { overflow: visible; }
+.it.paint > svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 2px 3px rgba(0,0,0,.18)); }
+.it.paint .pt-l { position: absolute; left: 50%; top: 100%; translate: -50% 4px; font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-2); letter-spacing: .02em; white-space: nowrap; pointer-events: none; }
+.paint-ghost { position: fixed; z-index: 9999; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 47% 53% 44% 56% / 55% 46% 54% 45%; background: var(--c); box-shadow: 0 4px 14px rgba(0,0,0,.28), inset -4px -5px 0 rgba(0,0,0,.12), inset 4px 4px 0 rgba(255,255,255,.25); pointer-events: none; opacity: .75; transition: transform .12s, opacity .12s; }
+.paint-ghost.over { transform: scale(1.35); opacity: 1; }
+.blb[data-c], .cppop .sw[data-c], .sws .sw[data-c], .hn[data-c], .pinfo [data-c] { touch-action: none; }
+.pinfo-pop { padding: 12px; width: 268px; }
+.pinfo .pi-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.pinfo .pi-sw { width: 46px; height: 46px; border-radius: 47% 53% 44% 56% / 55% 46% 54% 45%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); flex: none; }
+.pinfo .pi-top b { display: block; font-size: 14px; }
+.pinfo .pi-top small { font: 600 12px ui-monospace, Menlo, monospace; color: var(--ink-2); }
+.pinfo .pi-rows { display: grid; gap: 2px; margin-bottom: 10px; }
+.pinfo .pi-row { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 7px; text-align: left; font: 12px ui-monospace, Menlo, monospace; color: var(--ink); }
+.pinfo .pi-row:hover { background: var(--hover, rgba(127,127,127,.12)); }
+.pinfo .pi-row i { font-style: normal; font-weight: 700; font-size: 10px; color: var(--ink-3, var(--ink-2)); }
+.pinfo .pi-row .i { opacity: .55; }
+.pinfo .pi-hs { display: grid; gap: 6px; margin-bottom: 12px; }
+.pinfo .pi-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pinfo .pi-h small { font-size: 11px; color: var(--ink-2); }
+.pinfo .pi-h span { display: flex; gap: 5px; }
+.pinfo .pi-c { width: 24px; height: 24px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); cursor: grab; }
+.pinfo .pi-c:hover { transform: scale(1.12); }
+.pinfo .pi-act { display: flex; gap: 6px; flex-wrap: wrap; }
+.pinfo .pi-act .btn { flex: 1 1 auto; }
+
+/* 0.2.51: todo card redesign — calmer, compact, in the app's own language */
+.it.todo { border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 6px 18px -8px rgba(0,0,0,.22); color: #24221E; border: 1px solid rgba(0,0,0,.08); }
+.it.todo.plain { background: var(--card); color: var(--ink); border-color: var(--line); }
+.it.todo svg.sh { display: none; }
+.it.todo .tin { padding: .8em .9em .7em; line-height: 1.25; }
+.it.todo .thd { display: flex; align-items: baseline; gap: .6em; }
+.it.todo .ttl { flex: 1; min-width: 0; font-weight: 700; font-size: 1.04em; letter-spacing: -.005em; margin: 0; }
+.it.todo .tcnt { flex: none; font: 600 .62em/1 var(--font-ui, system-ui); padding: .35em .6em; border-radius: 999px; background: rgba(127,127,127,.14); opacity: .85; font-variant-numeric: tabular-nums; }
+.it.todo .tbar { height: 3px; margin: .55em 0 .35em; border-radius: 3px; background: rgba(127,127,127,.18); overflow: hidden; }
+.it.todo .tbar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); transition: width .25s; }
+.it.todo:not(.plain) .tbar i { background: currentColor; opacity: .7; }
+.it.todo .trows { display: grid; gap: 0; margin-top: .25em; }
+.it.todo .trw { align-items: flex-start; gap: .55em; padding: .28em .3em; margin: 0 -.3em; border-radius: .4em; }
+.it.todo .trw:hover { background: rgba(127,127,127,.09); }
+.it.todo .tck { width: 1em; height: 1em; margin-top: .1em; border: 1.5px solid currentColor; border-radius: 50%; opacity: .45; transition: background .15s, opacity .15s, border-color .15s; }
+.it.todo .tck:hover { opacity: .8; }
+.it.todo .tck svg { stroke-width: 3; }
+.it.todo .tck[aria-checked="true"] { opacity: 1; background: var(--accent); border-color: var(--accent); }
+.it.todo:not(.plain) .tck[aria-checked="true"] { background: currentColor; border-color: currentColor; }
+.it.todo .tck[aria-checked="true"] svg { stroke: #fff; }
+.it.todo .ttx { font-size: .92em; }
+.it.todo .trw.done .ttx { opacity: .45; }
+.it.todo .tadd { margin: .3em 0 0 -.1em; padding: .25em .3em; border-radius: .4em; font-size: .74em; font-weight: 600; opacity: .45; gap: .4em; }
+.it.todo .tadd:hover { opacity: .9; background: rgba(127,127,127,.09); }
+
+.it.todo.den-c .trw { padding: .12em .3em; }
+.it.todo.den-c .tin { padding: .6em .75em .5em; }
+.it.todo.den-a .trw { padding: .45em .3em; }
+.it.todo.den-a .tin { padding: 1em 1.1em .9em; }

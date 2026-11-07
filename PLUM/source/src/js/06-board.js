@@ -7,6 +7,7 @@ const Board = (() => {
   let stage = null, bgrid = null, host, world, framesL, edges, edgesTop, itemsL, labelsL, ovl, liveCv, ink, meas, wrap, toolsEl, optsEl, dockEl, trEl, propsEl, qbarEl, zoomEl, undoEl, brEl, hintEl;
   const view = { x: 0, y: 0, k: 1, r: 0 };   // r: the board turned by two fingers, in degrees (iPad, as in Concepts)
   let tool = 'select', shapeKind = 'rect', penKind = 'pen', noteColor = SCHEME_BASE[14];
+  let lassoPts = null;
   let sel = new Set(), editing = null, editSub = null, hist = [], fut = [], op = null, guides = null, marquee = null, attachHi = null, attachSock = null, eraserAt = null, eraseAll = true;
   let uiIns = null, uiLib = null, uiInsp = null;
   let spaceDown = false, penSeen = false, clip = null, raf = 0, propSig = '', qSig = '', lastClient = null, mounted = false, propsTab = 'style', propsHold = false, liveBefore = null;
@@ -130,6 +131,7 @@ const Board = (() => {
       case 'image': return `i${it.asset}|${it.frm}|${it.cap}|${Assets.has(it.asset)}`;
       case 'file': return `f${it.asset}|${it.name}|${it.mime}`;
       case 'link': return `l${Math.round(it.w)}|${Math.round(it.h)}|${it.url}|${it.title}|${it.asset || it.pic || ''}|${Assets.has(it.asset)}`;
+      case 'paint': return `c${it.c}|${it.seed}|${theme()}`;
       case 'ink': return `k${pv(it.p)}|${it.c}|${it.o}|${it.t}|${it.w0}|${it.h0}|${theme()}|${it.b ? JSON.stringify(it.b) : ''}`;
       case 'mind': return `m${it.lv}|${it.c}|${it.txt}|${skin()}|${it.side}|${it.ms || 1}|${it.lv === 1 && MT().mindArt ? artOff(it) : ''}`;
       case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}|${it.ui || ''}`;
@@ -138,7 +140,7 @@ const Board = (() => {
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
       case 'sheet': return `g${it.w}|${it.h}|${it.cols}|${it.rows}|${it.fs}|${it.title}|${JSON.stringify(it.cells)}|${JSON.stringify(it.cw || 0)}|${JSON.stringify(it.rh || 0)}|${theme()}`;
       case 'plan': return `P${Math.round(it.w)}|${Math.round(it.h)}|${it.fs}|${it.v}|${it.dim || 0}|${it.d0}|${it.d1}|${it.h0}|${it.h1}|${(it.we || []).join('')}|${it.ck || 0}|${JSON.stringify(it.cols || 0)}|${it.title}|${ymd(new Date())}|${new Date().getHours()}|${theme()}`;
-      case 'todo': return `o${it.w}|${it.c}|${it.font}|${it.fs}|${it.title}|${it.tasks.map(id => { const t = taskById(id); return t ? `${t.id}:${t.done ? 1 : 0}:${t.t}` : ''; }).join('§')}|${theme()}`;
+      case 'todo': return `o${it.w}|${it.c}|${it.font}|${it.fs}|${it.noprog || ''}${it.hidedone || ''}${it.den || ''}|${it.title}|${it.tasks.map(id => { const t = taskById(id); return t ? `${t.id}:${t.done ? 1 : 0}:${t.t}` : ''; }).join('§')}|${theme()}`;
     }
     return it.k;
   }
@@ -236,12 +238,21 @@ const Board = (() => {
       }
       case 'plan':
         n.className = 'it tplan'; n.innerHTML = planHTML(it); break;
+      case 'paint': {
+        /* 0.2.51: a dab of paint left by a colour dropped on the board */
+        const pb = paintBlob(it.seed), gid = 'pg' + it.id;
+        n.className = 'it paint';
+        n.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><defs><radialGradient id="${gid}" cx=".36" cy=".32" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></radialGradient></defs><g fill="${it.c}"><path d="${pb.d}"/>${pb.dr}</g><path d="${pb.d}" fill="url(#${gid})"/><path d="${pb.d}" fill="none" stroke="rgba(0,0,0,.14)" stroke-width=".7"/><ellipse cx="36" cy="31" rx="9" ry="4.6" fill="#fff" opacity=".4" transform="rotate(-32 36 31)"/></svg><b class="pt-l">${it.c}</b>`;
+        break;
+      }
       case 'todo': {
-        n.className = 'it todo'; s.background = it.c || '#FFFFFF'; s.setProperty('--tc', it.c || '#FFFFFF');
-        const sd = it.sd != null ? it.sd : hashStr(it.id), P = shapePoly('round', it.w, it.h), rough = roughD(P, true, sd, 2);
-        const rows = it.tasks.map(id => { const t = taskById(id); if (!t) return ''; return `<div class="trw${t.done ? ' done' : ''}" data-task="${t.id}"><button class="tck" data-tck="${t.id}" role="checkbox" aria-checked="${t.done}" aria-label="Terminer"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button><span class="ttx" data-sub="${t.id}">${esc(t.t) || '&nbsp;'}</span></div>`; }).join('');
-        n.innerHTML = `<svg class="sh" viewBox="0 0 ${it.w} ${it.h}" preserveAspectRatio="none">${rough.map((d, i) => `<path d="${d}" fill="none" stroke="${inkColor('#1E1E1E')}" stroke-width="${i ? 1.3 : 1.9}" stroke-linecap="round" opacity="${i ? .55 : .9}" vector-effect="non-scaling-stroke"/>`).join('')}</svg>
-          <div class="tin" style="font-family:${fontCSS(it)};font-size:${it.fs}px"><div class="ttl" data-sub="title">${esc(it.title) || '&nbsp;'}</div><div class="trows">${rows}</div><button class="tadd" data-tadd="1">${icon('plus', 'sm')}<span>Ajouter</span></button></div>`;
+        /* 0.2.51: a cleaner list card — plain card (or the chosen colour), a counter and a progress line, round checks */
+        const plain = !it.c || /^#?f{6}$/i.test(String(it.c).replace('#', '')) || it.c.toUpperCase() === '#FFFFFF';
+        n.className = 'it todo' + (plain ? ' plain' : '') + (it.den ? ' den-' + it.den : ''); s.background = plain ? '' : it.c; s.setProperty('--tc', it.c || '#FFFFFF');
+        const ts = it.tasks.map(id => taskById(id)).filter(Boolean), nd = ts.filter(t => t.done).length;
+        const shown = it.hidedone ? ts.filter(t => !t.done) : ts;
+        const rows = shown.map(t => `<div class="trw${t.done ? ' done' : ''}" data-task="${t.id}"><button class="tck" data-tck="${t.id}" role="checkbox" aria-checked="${t.done}" aria-label="Terminer"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4L18 8"/></svg></button><span class="ttx" data-sub="${t.id}">${esc(t.t) || '&nbsp;'}</span></div>`).join('');
+        n.innerHTML = `<div class="tin" style="font-family:${fontCSS(it)};font-size:${it.fs}px"><div class="thd"><div class="ttl" data-sub="title">${esc(it.title) || '&nbsp;'}</div>${ts.length && !it.noprog ? `<span class="tcnt">${nd}/${ts.length}</span>` : ''}</div>${ts.length && !it.noprog ? `<div class="tbar"><i style="width:${Math.round(nd / ts.length * 100)}%"></i></div>` : ''}<div class="trows">${rows}</div><button class="tadd" data-tadd="1">${icon('plus', 'sm')}<span>Ajouter une tâche</span></button></div>`;
         measureTodo(n, it); break;
       }
     }
@@ -271,7 +282,7 @@ const Board = (() => {
   function measureTodo(n, it) {
     if (!n.isConnected) return;
     const tin = n.querySelector('.tin'); if (!tin) return;
-    const h = Math.max(96, Math.ceil(tin.offsetHeight + 28));
+    const h = Math.max(56, Math.ceil(tin.offsetHeight + 2));
     if (Math.abs(h - it.h) > .5) { const nx = Object.assign({}, it, { h }); n._it = nx; n._sig = ''; items = items.map(x => x.id === it.id ? nx : x); reindex(); D.items = items; save(); n.style.height = h + 'px'; n._sig = sigOf(nx); const svg = n.querySelector('svg.sh'); if (svg) { const P = shapePoly('round', nx.w, h); svg.setAttribute('viewBox', `0 0 ${nx.w} ${h}`); const rough = roughD(P, true, nx.sd != null ? nx.sd : hashStr(nx.id), 2); [...svg.children].forEach((p, i) => rough[i] && p.setAttribute('d', rough[i])); } }
   }
   function reconcile(layer, list) {
@@ -344,6 +355,7 @@ const Board = (() => {
   function renderOverlay() {
     sheetSelPaint();
     let h = '';
+    if (lassoPts && lassoPts.length >= 4) { let d = ''; for (let j = 0; j < lassoPts.length; j += 2) { const q = toS(lassoPts[j], lassoPts[j + 1]); d += (j ? 'L' : 'M') + q.x.toFixed(1) + ' ' + q.y.toFixed(1); } h += `<svg class="lassop"><path d="${d}Z"/></svg>`; }
     if (marquee) { const a = toS(marquee[0], marquee[1]), b = toS(marquee[2], marquee[3]); h += `<div class="marquee" style="left:${Math.min(a.x, b.x)}px;top:${Math.min(a.y, b.y)}px;width:${Math.abs(b.x - a.x)}px;height:${Math.abs(b.y - a.y)}px"></div>`; }
     if (guides) for (const g of guides) { if (g.v != null) { const p = toS(g.v, 0); h += `<div class="guide v" style="left:${p.x}px;top:0;bottom:0"></div>`; } else { const p = toS(0, g.h); h += `<div class="guide h" style="top:${p.y}px;left:0;right:0"></div>`; } }
     if (attachHi) { const it = byId.get(attachHi); if (it) { const a = toS(it.x, it.y); h += `<div class="attach" style="left:${a.x - 4}px;top:${a.y - 4}px;width:${it.w * view.k + 8}px;height:${it.h * view.k + 8}px"></div>`;
@@ -386,7 +398,7 @@ const Board = (() => {
         const one = list.length === 1 ? list[0] : null;
         if (one && one.k === 'mind' && !dragging && !editing) h += mindHandles(one, a, b);
         if (!dragging && !editing && !(one && one.k === 'mind') && !locked) {
-          const sides = one && (one.k === 'image' || one.k === 'ink' || one.k === 'doc') ? ['nw', 'ne', 'se', 'sw'] : one && one.k === 'text' ? ['nw', 'ne', 'se', 'sw', 'e', 'w'] : one && (one.k === 'todo' || one.k === 'sheet') ? ['e', 'w'] : ['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'];
+          const sides = one && (one.k === 'image' || one.k === 'ink' || one.k === 'doc' || one.k === 'paint') ? ['nw', 'ne', 'se', 'sw'] : one && (one.k === 'text' || one.k === 'todo') ? ['nw', 'ne', 'se', 'sw', 'e', 'w'] : one && one.k === 'sheet' ? ['e', 'w'] : ['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'];
           const P = { nw: [a.x, a.y], ne: [b.x, a.y], se: [b.x, b.y], sw: [a.x, b.y], n: [(a.x + b.x) / 2, a.y], s: [(a.x + b.x) / 2, b.y], e: [b.x, (a.y + b.y) / 2], w: [a.x, (a.y + b.y) / 2] };
           for (const k of sides) { const [hx, hy] = rp(P[k][0] + (k.includes('e') ? 3 : k.includes('w') ? -3 : 0), P[k][1] + (k.includes('s') ? 3 : k.includes('n') ? -3 : 0)); h += `<div class="hdl ${k}" data-h="${k}" style="left:${hx}px;top:${hy}px${R ? `;transform:rotate(${R}deg)` : ''}"></div>`; }
           // Excalidraw/Miro-like: a dot on each side, drag it to another item to link them, click it to add a linked item
@@ -442,7 +454,7 @@ const Board = (() => {
   /* ---------- contextual bars, as in Miro: the options of the selection float over it (qbar), those of the chosen
      tool under the tools (topts). Colours open the colour popover, the rest small popovers; ⋯ has order, groups, opacity. ---------- */
   const primaryProp = it => it.k === 'note' || it.k === 'todo' ? 'fc' : it.k === 'frame' || it.k === 'image' || it.k === 'file' || it.k === 'link' || it.k === 'doc' || it.k === 'task' || it.k === 'sheet' ? null : 'sc';
-  const propValue = (it, prop) => prop === 'fc' ? (it.k === 'shape' ? it.fc : it.c) : prop === 'sc' ? (it.k === 'text' ? it.color : it.k === 'ink' || it.k === 'mind' ? it.c : it.sc) : it[prop];
+  const propValue = (it, prop) => prop === 'fc' ? (it.k === 'shape' ? it.fc : it.c) : prop === 'sc' ? (it.k === 'text' ? it.color : it.k === 'ink' || it.k === 'mind' || it.k === 'paint' ? it.c : it.sc) : it[prop];
   const SC_KINDS = ['shape', 'conn', 'text', 'ink', 'mind'];
   const qsw = (prop, cur, title) => `<button class="qb qc" data-qc="${prop}" title="${esc(title)}" aria-label="${esc(title)}"><span class="qsw${prop === 'fc' ? ' fill' : ''}${cur ? '' : ' none'}" style="--c:${cur || 'transparent'}"></span></button>`;
   const qbtn = (id, inner, title, chev = true) => `<button class="qb" data-qp="${id}" title="${esc(title)}" aria-label="${esc(title)}">${inner}${chev ? '<svg class="qchev" viewBox="0 0 8 8"><path d="M1.5 3 4 5.5 6.5 3"/></svg>' : ''}</button>`;
@@ -457,18 +469,18 @@ const Board = (() => {
   }
   function ctxHTML(list) {
     const c = ctxOf(list), { td, T, has, only, first, val, one, bd } = c, g = [];
-    if (td && (PENS[tool] || tool === 'eraser') && !atelierFull()) {
+    if (td && (PENS[tool] || tool === 'eraser' || tool === 'lasso') && !atelierFull()) {
       const pr = penPref(penKind), t = sizeT(penKind, pr.s), d = clamp(pr.s, 2, 22);
-      g.push(`<div class="seg sm ic qpens">${FAST_PENS.map((k, i) => `<button data-tool="${k}" title="${PENS[k].name} (${i + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme à traits : n’efface que le dessin" aria-pressed="${tool === 'eraser' && !eraseAll}">${icon('eraser')}</button></div>` + BrushLib.chip(tool));
-      if (tool !== 'eraser') g.push(upBtn());
-      if (tool !== 'eraser') g.push(`<label class="qsize" title="Taille du trait (Ctrl + glisser sur le board)"><span class="qdw"><i class="qdot" style="width:${d}px;height:${d}px;background:${pr.c}"></i></span><input type="range" class="prange" data-psize="1" min="0" max="1" step=".01" value="${t.toFixed(3)}" aria-label="Taille du trait"><b>${sizeText(pr.s)}</b></label>` + qsw('pen', pr.c, 'Couleur du trait'));
+      g.push(`<div class="seg sm ic qpens">${FAST_PENS.map((k, i) => `<button data-tool="${k}" title="${PENS[k].name} (${i + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme à traits : n’efface que le dessin" aria-pressed="${tool === 'eraser' && !eraseAll}">${icon('eraser')}</button><button data-tool="lasso" title="Lasso : entourer des traits pour les sélectionner et les déplacer (Q)" aria-pressed="${tool === 'lasso'}">${icon('lasso')}</button></div>` + (tool === 'lasso' ? '' : BrushLib.chip(tool)));
+      if (PENS[tool]) g.push(upBtn());
+      if (PENS[tool]) g.push(`<label class="qsize" title="Taille du trait (Ctrl + glisser sur le board)"><span class="qdw"><i class="qdot" style="width:${d}px;height:${d}px;background:${pr.c}"></i></span><input type="range" class="prange" data-psize="1" min="0" max="1" step=".01" value="${t.toFixed(3)}" aria-label="Taille du trait"><b>${sizeText(pr.s)}</b></label>` + qsw('pen', pr.c, 'Couleur du trait'));
       return g.join('<span class="vs"></span>');
     }
-    if (td && (PENS[tool] || tool === 'eraser')) {
+    if (td && (PENS[tool] || tool === 'eraser' || tool === 'lasso')) {
       const pr = penPref(penKind);
-      g.push(`<div class="seg sm ic qpens">${PEN_ORDER.slice(0, 8).map(k => `<button data-tool="${k}" title="${PENS[k].name} (${PEN_ORDER.indexOf(k) + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme à traits : n’efface que le dessin" aria-pressed="${tool === 'eraser' && !eraseAll}">${icon('eraser')}</button></div>`);
-      if (tool !== 'eraser') g.push(upBtn());
-      if (tool !== 'eraser') g.push(`<button class="qb pchip" data-opp="1" title="${PENS[penKind].name} : taille, opacité, forme, texture">${brushPreview(penKind, Object.assign({}, pr, { s: Math.min(pr.s, 10) }), 64, 20, isDarkTheme())}<span>${sizeText(pr.s)}</span></button>` + qsw('pen', pr.c, 'Couleur du stylo'));
+      g.push(`<div class="seg sm ic qpens">${PEN_ORDER.slice(0, 8).map(k => `<button data-tool="${k}" title="${PENS[k].name} (${PEN_ORDER.indexOf(k) + 1})" aria-pressed="${tool === k}">${icon(PENS[k].icon)}</button>`).join('')}<button data-tool="eraser" title="Gomme à traits : n’efface que le dessin" aria-pressed="${tool === 'eraser' && !eraseAll}">${icon('eraser')}</button><button data-tool="lasso" title="Lasso : entourer des traits pour les sélectionner et les déplacer (Q)" aria-pressed="${tool === 'lasso'}">${icon('lasso')}</button></div>`);
+      if (PENS[tool]) g.push(upBtn());
+      if (PENS[tool]) g.push(`<button class="qb pchip" data-opp="1" title="${PENS[penKind].name} : taille, opacité, forme, texture">${brushPreview(penKind, Object.assign({}, pr, { s: Math.min(pr.s, 10) }), 64, 20, isDarkTheme())}<span>${sizeText(pr.s)}</span></button>` + qsw('pen', pr.c, 'Couleur du stylo'));
       return g.join('<span class="vs"></span>');
     }
     if (td && !['shape', 'conn', 'text', 'note', 'todo'].includes(T)) return '';
@@ -504,6 +516,7 @@ const Board = (() => {
     if (one && one.k === 'mind') ac.push(qact('mchild', 'plus', 'Ajouter une idée (Tab)'));
     if (one && one.k === 'conn') ac.push(qact('label', 'text', 'Ajouter un texte sur la flèche'));
     if (one && ['link', 'doc', 'task'].includes(one.k)) ac.push(qact('open', 'ext', 'Ouvrir'));
+    if (one && one.k === 'paint') ac.push(qact('pinfo', 'drop', 'Infos couleur : codes, harmonies, utiliser pour dessiner', 'Infos'));
     if (list.some(i => i.g)) ac.push(qact('ungroup', 'ungroup', 'Dégrouper (Ctrl Alt G)'));
     else if (list.filter(i => !(i.k === 'mind' && i.parent)).length > 1) ac.push(qact('group', 'group', 'Grouper (Ctrl G)'));
     ac.push(qact('lock', 'lock', 'Verrouiller : l’élément ne bouge plus (Ctrl Maj L)'), qact('dup', 'dup', 'Dupliquer (Ctrl D)'), qact('del', 'trash', 'Supprimer (Suppr)'), qact('more', 'dots', 'Plus : ordre, opacité, ranger…'));
@@ -801,7 +814,7 @@ const Board = (() => {
   const propsOpen = () => propsEl && !propsEl.hidden && !(wrap.classList.contains('drawing') && atelierFull());
   function setProps(on) { S.prefs.props = on; save(); propsEl.hidden = !on; wrap.classList.toggle('props-open', on); $('[data-a="props"]', trEl).setAttribute('aria-pressed', on); propSig = ''; renderOverlay(); layoutChanged(); }
   const SW_OPTS = [[1, 'Fin'], [2, 'Moyen'], [4, 'Épais']];
-  const FS_TABLE = { note: [22, 30, 40, 54], text: [20, 28, 40, 64], shape: [18, 26, 34, 46], todo: [18, 24, 30, 38], sheet: [12, 14, 17, 21] };
+  const FS_TABLE = { note: [22, 30, 40, 54], text: [20, 28, 40, 64], shape: [18, 26, 34, 46], todo: [14, 17, 21, 27], sheet: [12, 14, 17, 21] };
   const fsLevel = it => { const T = FS_TABLE[it.k] || FS_TABLE.text; let b = 0; for (let i = 0; i < T.length; i++) if (Math.abs(T[i] - it.fs) < Math.abs(T[b] - it.fs)) b = i; return b; };
   const sec = (l, body, cls = '') => `<div class="ps ${cls}"><div class="ps-l">${l}</div>${body}</div>`;
   /* a slider for prop, its value shown in the label: in % (u '%') or in px (0.2.23) */
@@ -862,6 +875,11 @@ const Board = (() => {
     if (want.bold) out.push(sec('Graisse', seg('bold', one ? !!one.bold : false, [[false, 'Normal'], [true, '<b>Gras</b>']])));
     if (one && one.k === 'image') out.push(sec('Image', seg('frm', one.frm || 'shadow', [['shadow', 'Ombre'], ['polaroid', 'Polaroïd'], ['square', 'Carré'], ['none', 'Simple']]) + btnRow([['cap', 'text', 'Légende'], Assets.has(one.asset) ? ['view', 'focus', 'Voir en grand'] : null, one.href ? ['src', 'ext', isInsta(one.href) ? 'Voir sur Instagram' : 'Page d’origine'] : null].filter(Boolean))));
     if (one && one.k === 'shape' && (one.sh === 'rect' || one.sh === 'round')) out.push(sec('Angles', seg('corner', shapeRad(one.sh, one.w, one.h, one.rad) > 0 ? 'round' : 'sharp', [['sharp', icon('rect'), 'Vifs'], ['round', icon('round'), 'Arrondis']], 'ic')), radSlide(list));
+    if (list.length && list.every(i => i.k === 'todo')) { const f = first();
+      out.push(sec('Liste', `<div class="pp-hint" style="margin:0 0 6px">Progression</div>` + seg('tprog', !f.noprog, [[true, 'Affichée'], [false, 'Masquée']])
+        + `<div class="pp-hint" style="margin:10px 0 6px">Tâches terminées</div>` + seg('thide', !!f.hidedone, [[false, 'Visibles'], [true, 'Masquées']])
+        + `<div class="pp-hint" style="margin:10px 0 6px">Espacement</div>` + seg('tden', f.den || '', [['c', 'Serré'], ['', 'Normal'], ['a', 'Aéré']])
+        + `<div class="pp-hint" style="margin-top:10px">Les coins agrandissent toute la liste, les côtés changent sa largeur.</div>`)); }
     if (list.length && list.every(i => i.k === 'frame')) { const f = first(); out.push(sec('Titre du cadre', seg('ftitle', !f.nt, [[true, 'Affiché'], [false, 'Masqué']]) + (f.nt ? '' : `<div style="height:8px"></div>` + seg('tfs', f.tfs ?? 1, [[0, 'S'], [1, 'M'], [2, 'L'], [3, 'XL']])))); }
     if (want.op) { const o = one ? (one.op ?? 1) : (first().op ?? 1); out.push(sec(`Opacité <b class="pv" data-v="op">${Math.round(o * 100)} %</b>`, `<input type="range" class="prange" data-prop="op" min=".05" max="1" step=".05" value="${o}" aria-label="Opacité">`)); }
     if (list.length) {
@@ -925,7 +943,7 @@ const Board = (() => {
   /* apply a property to the selection (and remember it as the default for new items) */
   function propPatch(it, prop, v) {
     switch (prop) {
-      case 'sc': return it.k === 'shape' || it.k === 'conn' ? { sc: v || '#1E1E1E' } : it.k === 'text' ? { color: v || '#1E1E1E' } : it.k === 'ink' || it.k === 'mind' ? { c: v || '#1E1E1E' } : null;
+      case 'sc': return it.k === 'shape' || it.k === 'conn' ? { sc: v || '#1E1E1E' } : it.k === 'text' ? { color: v || '#1E1E1E' } : it.k === 'ink' || it.k === 'mind' ? { c: v || '#1E1E1E' } : it.k === 'paint' ? (v ? { c: v } : null) : null;
       case 'fc': return it.k === 'shape' ? { fc: v } : it.k === 'note' || it.k === 'todo' ? { c: v || '#FFFFFF' } : null;
       case 'fill': case 'sw': case 'dash': case 'sty': return it.k === 'shape' || it.k === 'conn' ? { [prop]: v } : null;
       case 'sh': return it.k === 'shape' ? { sh: v } : null;
@@ -942,6 +960,9 @@ const Board = (() => {
       case 'frm': return it.k === 'image' ? { frm: v } : null;
       case 'ftitle': return it.k === 'frame' ? { nt: v === false || v === 'false' ? true : undefined } : null;
       case 'tfs': return it.k === 'frame' ? { tfs: clamp(+v, 0, 3) } : null;
+      case 'tprog': return it.k === 'todo' ? { noprog: v === false || v === 'false' ? 1 : undefined } : null;
+      case 'thide': return it.k === 'todo' ? { hidedone: v === true || v === 'true' ? 1 : undefined } : null;
+      case 'tden': return it.k === 'todo' ? { den: v || undefined } : null;
     }
     return null;
   }
@@ -1027,6 +1048,7 @@ const Board = (() => {
       case 'uilib': uiLibOpen(list[0] && list[0].ui ? list[0].id : null); return;
       case 'uitest': if (list[0] && list[0].ui) uiTest(list[0]); return;
       case 'uiundock': if (list[0] && list[0].dock) { const it = list[0]; commit(replace(items, it, { dock: undefined, x: it.x + 24, y: it.y + 24 })); } return;
+      case 'pinfo': if (list[0] && list[0].k === 'paint') paintInfo(list[0]); return;
       case 'pdim': if (list[0] && list[0].k === 'plan') planDim(list[0], btn); return;
       case 'pset': if (list[0] && list[0].k === 'plan') planModal(list[0]); return;
       case 'prefresh': if (list[0] && list[0].k === 'plan') planRefresh(list[0]); return;
@@ -1061,7 +1083,7 @@ const Board = (() => {
     const set = (it, x, y, w = it.w, h = it.h) => pos.set(it.id, { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
     const x0 = frame ? frame.x + 32 : bb[0], y0 = frame ? frame.y + 32 : bb[1], maxW = frame ? frame.w - 64 : Infinity;
     const reading = list.slice().sort((a, b) => (Math.abs(a.y - b.y) < Math.min(a.h, b.h) / 2 ? a.x - b.x : a.y - b.y));
-    const scalable = i => i.k === 'image' || i.k === 'ink' || i.k === 'doc';
+    const scalable = i => i.k === 'image' || i.k === 'ink' || i.k === 'doc' || i.k === 'paint';
     switch (mode) {
       case 'grid': {
         let cols = Math.ceil(Math.sqrt(list.length * 1.25));
@@ -1140,6 +1162,7 @@ const Board = (() => {
     if (it.k === 'task') { const t = taskById(it.task); if (t) setCurSpace(t.sp); go('tasks'); }
     if (it.k === 'image' && Assets.has(it.asset)) lightbox(it);
     if (it.k === 'plan') planModal(it);
+    if (it.k === 'paint') paintInfo(it);
   }
   function lightbox(it) { const u = Assets.url(it.asset); if (!u) return; const l = document.createElement('div'); l.className = 'lightbox'; l.innerHTML = `<img src="${u}" alt="${esc(it.cap || 'Image')}">`; l.onclick = () => l.remove(); document.body.append(l); }
 
@@ -1592,7 +1615,7 @@ const Board = (() => {
     if (kind === 'text') it = mkText(w.x, w.y - 16 * s, 'Texte', { fs: Math.round(28 * s) });
     if (kind === 'sheet') { it = mkSheet(0, 0, { fs: Math.round(14 * s) }); it.x = w.x - it.w / 2; it.y = w.y - 40 * s; commit(items.concat(it)); sel = new Set([it.id]); setTool('select'); render(); startEdit(it.id, null, 'A1'); return; }
     if (kind === 'mind') { const t = mkMind(w.x - 80, w.y - 32, 'Idée centrale'); commit(items.concat(t)); sel = new Set([t[0].id]); setTool('select'); render(); startEdit(t[0].id); const el = editEl(byId.get(t[0].id)); if (el) { const r = document.createRange(); r.selectNodeContents(el); const g = getSelection(); g.removeAllRanges(); g.addRange(r); } return; }
-    if (kind === 'todo') it = mkTodo(w.x - 145 * s, w.y - 60 * s, 'À faire', [], { w: 290 * s, fs: Math.round(24 * s) });
+    if (kind === 'todo') it = mkTodo(w.x - 120 * s, w.y - 50 * s, 'À faire', [], { w: 240 * s, fs: Math.round(17 * s), font: SANS });
     commit(items.concat(it)); sel = new Set([it.id]); setTool('select'); render(); startEdit(it.id);
     // a new text block starts with "Texte" selected, so typing replaces it
     if (kind === 'text' && editing === it.id) { const el = editEl(it); if (el) { const r = document.createRange(); r.selectNodeContents(el); const g = getSelection(); g.removeAllRanges(); g.addRange(r); } }
@@ -2252,6 +2275,16 @@ const Board = (() => {
   function zoomTo(k) { k /= uz(); const r = hostRect(), c = toW(r.left + r.width / 2, r.top + r.height / 2); view.k = clamp(k, MINK, MAXK); view.x = r.width / 2 - c.x * view.k; view.y = r.height / 2 - c.y * view.k; viewChanged(); }
 
   /* ---------- pointer interactions ---------- */
+  /* 0.2.51: drawings are not taken by a click or a marquee of the selection tool (only by the lasso); a stroke already selected still moves */
+  function hitSel(e) {
+    const h = hitAt(e), it = h && byId.get(h);
+    if (!it || it.k !== 'ink' || sel.has(h)) return h;
+    for (const el of document.elementsFromPoint(e.clientX, e.clientY)) {
+      const n = el.closest && el.closest('[data-id],[data-conn]'); if (!n || !world.contains(n)) continue;
+      const o = byId.get(n.dataset.id || n.dataset.conn); if (o && o.k !== 'ink' && !o.hid) return o.id;
+    }
+    return null;
+  }
   function hitAt(e) {
     const t = e.target;
     const itEl = t.closest('[data-id]');
@@ -2292,13 +2325,17 @@ const Board = (() => {
     if (hd) { e.preventDefault(); if (hd.dataset.ep) startEndpoint(e, hd.dataset.ep); else if ((hd.dataset.pt != null || hd.dataset.add != null) && (e.ctrlKey || e.metaKey)) startBranch(e); else if (hd.dataset.pt != null) { if (e.altKey) removePoint(+hd.dataset.pt); else startPoint(e, +hd.dataset.pt); } else if (hd.dataset.add != null) startPoint(e, +hd.dataset.add, true); else if (hd.dataset.tidy) startTidy(e); else if (hd.dataset.rot) startRotate(e); else if (hd.dataset.rad) startRadius(e); else if (hd.dataset.cd) startConn(e, toW(e.clientX, e.clientY), [...sel][0], hd.dataset.cd); else startResize(e, hd.dataset.h); return; }
     const ab = t.closest('[data-arr]'); if (ab) { e.preventDefault(); e.stopPropagation(); setTimeout(() => arrangeMenu(ab, false)); return; }
     /* with a pencil around, a finger never draws: on an element it switches to the selection tool and takes it, elsewhere it pans */
-    if (e.pointerType === 'touch' && (penSeen || penSeenGlobal) && !['select', 'hand', 'pick'].includes(tool)) { const h0 = hitAt(e); if (h0) setTool('select'); else if (PENS[tool] || tool === 'eraser') { startPan(e); return; } }
+    if (tool === 'lasso') { e.preventDefault(); const w0 = toW(e.clientX, e.clientY), inSel = !e.shiftKey && lassoInSel(w0);
+      if (inSel) { startMove(e, w0, true, t); return; }
+      if (e.pointerType === 'touch' && (penSeen || penSeenGlobal)) { startPan(e); return; }
+      startLasso(e, e.shiftKey); return; }
+    if (e.pointerType === 'touch' && (penSeen || penSeenGlobal) && !['select', 'hand', 'pick'].includes(tool)) { const h0 = hitSel(e); if (h0) setTool('select'); else if (PENS[tool] || tool === 'eraser') { startPan(e); return; } }
     // 0.2.48: a finger or the pencil: press, slide with the loupe above it, let go to take the colour
     if (tool === 'pick' && e.pointerType !== 'mouse') { e.preventDefault(); startTouchPick(e); return; }
     if (tool === 'pick' || (PENS[tool] && e.altKey)) { e.preventDefault(); pickAt(e); return; }
     if (PENS[tool]) { e.preventDefault(); startInk(e); return; }
     if (tool === 'eraser') { e.preventDefault(); startErase(e, eraseAll); return; }
-    const w = toW(e.clientX, e.clientY), hit = hitAt(e);
+    const w = toW(e.clientX, e.clientY), hit = tool === 'select' ? hitSel(e) : hitAt(e);
     if (tool === 'select') {
       if (t.closest('a[href]') || t.closest('video,audio')) return;
       if (t.closest('[data-iopen]') && hit) { e.preventDefault(); openItem(byId.get(hit)); return; }
@@ -2335,7 +2372,53 @@ const Board = (() => {
     if (tool === 'conn' || tool === 'line') { startConn(e, w, hit); return; }
   }
   function grab(e) { try { host.setPointerCapture(e.pointerId); } catch (_) {} }
-  function cancelOp() { if (op && op.cancel) op.cancel(); op = null; marquee = null; guides = null; attachHi = null; attachSock = null; host.classList.remove('panning'); schedule(); }
+  /* ---------- 0.2.51: colour dabs — a swatch dropped on the board leaves paint; a click gives its codes and harmonies ---------- */
+  function mkPaint(c, cx, cy) { const W = Math.round(110 / clamp(view.k, .25, 4)); return { id: uid('c'), k: 'paint', x: cx - W / 2, y: cy - W / 2, w: W, h: W, c, seed: 1 + Math.floor(Math.random() * 2e9) }; }
+  function dropPaint(c, cx, cy) {
+    c = Colors.valid(c); if (!c || !D) return; closePop();
+    const w = toW(cx, cy), it = mkPaint(c, w.x, w.y);
+    commit(items.concat(it)); if (!PENS[tool] && tool !== 'eraser') sel = new Set([it.id]); schedule();
+  }
+  const overBoard = ev => { const el = document.elementFromPoint(ev.clientX, ev.clientY); return !!(el && host.contains(el) && !el.closest('.pop')); };
+  const PAINT_SRC = '.blb[data-c], .cppop .sw[data-c], .sws .sw[data-c], .hn[data-c], .pinfo [data-c]';
+  let paintDragBound = false;
+  function bindPaintDrag() {
+    if (paintDragBound) return; paintDragBound = true;
+    document.addEventListener('pointerdown', e => {
+      if (!mounted || e.button !== 0) return;
+      const sw = e.target.closest && e.target.closest(PAINT_SRC), c = sw && Colors.valid(sw.dataset.c || ''); if (!c) return;
+      const x0 = e.clientX, y0 = e.clientY, id = e.pointerId; let gh = null;
+      const mv = ev => { if (ev.pointerId !== id) return;
+        if (!gh) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 12) return; gh = document.createElement('div'); gh.className = 'paint-ghost'; gh.style.setProperty('--c', c); document.body.append(gh); }
+        gh.style.left = ev.clientX + 'px'; gh.style.top = ev.clientY + 'px'; gh.classList.toggle('over', overBoard(ev)); };
+      const off = () => { removeEventListener('pointermove', mv, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); };
+      const up = ev => { if (ev.pointerId !== id) return; off(); if (!gh) return; gh.remove();
+        if (ev.type === 'pointerup' && overBoard(ev)) { dropPaint(c, ev.clientX, ev.clientY); const eat = k => { k.stopPropagation(); k.preventDefault(); }; addEventListener('click', eat, { capture: true, once: true }); setTimeout(() => removeEventListener('click', eat, true), 400); } };
+      addEventListener('pointermove', mv, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+    }, true);
+  }
+  function paintInfo(it) {
+    const n = nodes.get(it.id); if (!n) return;
+    const c = it.c, [r, g, b] = hex2rgb(c), [h, s, v] = Colors.hex2hsv(c), L = v * (1 - s / 2), SL = L === 0 || L === 1 ? 0 : (v - L) / Math.min(L, 1 - L);
+    const no = schemeNo(c), name = no ? SCHEME_NAMES[no - 1] : 'Couleur';
+    const hx = (hh, ss = s, vv = v) => Colors.hsv2hex(((hh % 360) + 360) % 360, clamp(ss, 0, 1), clamp(vv, 0, 1));
+    const rows = [['HEX', c], ['RGB', `${r}, ${g}, ${b}`], ['HSL', `${Math.round(h)}°, ${Math.round(SL * 100)} %, ${Math.round(L * 100)} %`], ['HSV', `${Math.round(h)}°, ${Math.round(s * 100)} %, ${Math.round(v * 100)} %`]];
+    const harm = [['Complémentaire', [hx(h + 180)]], ['Analogues', [hx(h - 30), hx(h + 30)]], ['Triade', [hx(h + 120), hx(h + 240)]], ['Nuances', [hx(h, s * .45, Math.min(1, v + .25)), hx(h, s, v * .72), hx(h, s, v * .45)]]];
+    const chip = x => `<button class="pi-c" data-c="${x}" style="--c:${x}" title="${x} · clic : déposer à côté · glisser sur le board"></button>`;
+    const p = openPop(n, `<div class="pinfo"><div class="pi-top"><span class="pi-sw" style="--c:${c}"></span><div><b>${esc(name)}</b><small>${c}</small></div></div>`
+      + `<div class="pi-rows">${rows.map(([k, val]) => `<button class="pi-row" data-copy="${esc(val)}" title="Copier"><i>${k}</i><span>${esc(val)}</span>${icon('dup', 'sm')}</button>`).join('')}</div>`
+      + `<div class="pi-hs">${harm.map(([l, cs]) => `<div class="pi-h"><small>${l}</small><span>${cs.map(chip).join('')}</span></div>`).join('')}</div>`
+      + `<div class="pi-act"><button class="btn sm" data-pa="use">${icon('pen', 'sm')}Dessiner avec</button><button class="btn sm" data-pa="fav">${icon('star', 'sm')}Mes couleurs</button><button class="btn sm" data-pa="edit">${icon('drop', 'sm')}Modifier</button></div></div>`, { cls: 'pinfo-pop', focus: false });
+    p.addEventListener('click', ev => {
+      const cp = ev.target.closest('[data-copy]'); if (cp) { const val = cp.dataset.copy; try { navigator.clipboard.writeText(val); } catch (_) {} toast('Copié : ' + val); return; }
+      const ch = ev.target.closest('.pi-c'); if (ch) { const cur = byId.get(it.id) || it, np = Object.assign(mkPaint(ch.dataset.c, 0, 0), { w: cur.w, h: cur.h }); np.x = cur.x + cur.w + cur.w * .15; np.y = cur.y; closePop(); commit(items.concat(np)); sel = new Set([np.id]); schedule(); return; }
+      const a = ev.target.closest('[data-pa]'); if (!a) return;
+      if (a.dataset.pa === 'use') { if (!S.prefs.pens[penKind]) S.prefs.pens[penKind] = {}; S.prefs.pens[penKind].c = c; useColor(c); save(); closePop(); refreshTools(); Studio.sync(); toast('Couleur du pinceau : ' + c); }
+      if (a.dataset.pa === 'fav') { toggleFav(c); if (Studio.on) Studio.refresh('favs'); closePop(); toast('Mes couleurs mises à jour'); }
+      if (a.dataset.pa === 'edit') { closePop(); Colors.open(n, { value: c, onPick: (nc, final) => { const cur = byId.get(it.id); if (!nc || !cur) return; commit(replace(items, cur, { c: nc }), final ? undefined : { hist: false }); } }); }
+    });
+  }
+  function cancelOp() { if (op && op.cancel) op.cancel(); op = null; marquee = null; lassoPts = null; guides = null; attachHi = null; attachSock = null; host.classList.remove('panning'); schedule(); }
   function startPan(e, tapClear) {
     grab(e); host.classList.add('panning');
     const s = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; let moved = false;
@@ -2492,7 +2575,7 @@ const Board = (() => {
       up(ev) {
         if (dropT && nodes.get(dropT)) nodes.get(dropT).classList.remove('drop');
         guides = null; const moved = this.moved; op = null; const ins = uiIns; uiIns = null;
-        if (!moved) { uiFloat = null; const hitNow = one; if (wasSelected && hitNow && EDITABLE.includes(hitNow.k) && hitNow.k !== 'conn' && ev && ev.pointerType !== 'touch') startEdit(hitNow.id, null, hitNow.k === 'todo' ? (subKey || 'title') : undefined); schedule(); return; }
+        if (!moved) { uiFloat = null; const hitNow = one; if (hitNow && hitNow.k === 'paint' && ev && !ev.shiftKey) { schedule(); setTimeout(() => paintInfo(hitNow), 0); return; } if (wasSelected && hitNow && EDITABLE.includes(hitNow.k) && hitNow.k !== 'conn' && ev && ev.pointerType !== 'touch') startEdit(hitNow.id, null, hitNow.k === 'todo' ? (subKey || 'title') : undefined); schedule(); return; }
         let next = items;
         if (reparent) {
           const cur = byId.get(one.id), root = byId.get(cur.root) || byId.get(one.root);
@@ -2531,7 +2614,7 @@ const Board = (() => {
     const before = items, bb = unionBox(list), orig = new Map(list.map(i => [i.id, i]));
     const one = list.length === 1 ? list[0] : null;
     if (uiLaidOut(one)) { uiResizeChild(e, h, one); return; }
-    const lock = !one || ['image', 'ink', 'doc'].includes(one.k) || (one.k === 'text' && h.length === 2);
+    const lock = !one || ['image', 'ink', 'doc'].includes(one.k) || ((one.k === 'text' || one.k === 'todo') && h.length === 2);
     const lay = canTidy(list) ? tidyPrep(list) : null;
     if (one && one.rot && ROTABLE(one)) {
       const o = one, th = o.rot * Math.PI / 180, c = Math.cos(th), s = Math.sin(th), C = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
@@ -2548,6 +2631,7 @@ const Board = (() => {
           const lx = (x0 + x1) / 2 - o.w / 2, ly = keepH ? 0 : (y0 + y1) / 2 - o.h / 2, ncx = C.x + lx * c - ly * s, ncy = C.y + lx * s + ly * c;
           const n = Object.assign({}, o, { x: ncx - W / 2, y: ncy - H / 2, w: W, h: H });
           if (o.k === 'text') { if (h.length === 1) n.fw = 1; else { n.fs = Math.max(6, Math.round(o.fs * sy)); if (!o.fw) n.w = o.w; } }
+          if (o.k === 'todo' && h.length === 2) n.fs = clamp(Math.round(o.fs * sx * 10) / 10, 8, 120);
           setLive(replace(items, o, n));
         },
         up() { op = null; commit(items, { before }); },
@@ -2570,7 +2654,7 @@ const Board = (() => {
           const n = Object.assign({}, o, { x: x0 + (o.x - bb[0]) * sx, y: y0 + (o.y - bb[1]) * sy, w: Math.max(8, o.w * sx), h: Math.max(8, o.h * sy) });
           if (o.k === 'text') { if (one && h.length === 1) { n.fw = 1; n.h = o.h; n.y = o.y; } else { n.fs = Math.max(6, Math.round(o.fs * sy)); if (o.fw) n.w = o.w * sx; } }
           if (o.k === 'note' && !one) n.fs = Math.max(8, Math.round(o.fs * Math.min(sx, sy)));
-          if (o.k === 'todo') { n.h = o.h; n.y = o.y; n.w = Math.max(160, n.w); }
+          if (o.k === 'todo') { n.h = o.h; n.y = o.y; if (h.length === 2 || !one) { n.fs = clamp(Math.round(o.fs * sx * 10) / 10, 8, 120); n.w = Math.max(70, n.w); } else n.w = Math.max(Math.max(120, o.fs * 7), n.w); }
           if (o.k === 'sheet') { const g = sheetGeom(o); if (one) { n.h = o.h; n.y = o.y; n.w = Math.max(g.hw + o.cols * (o.fs || 14) * 2.5, n.w); if (o.cw) { const kx = (n.w - g.hw) / (g.w - g.hw); n.cw = g.cws.map(v => v / g.fs * kx); } } else { n.fs = Math.max(8, Math.round((o.fs || 14) * sx)); n.h = sheetGeom(n).h; } }
           return n;
         }));
@@ -2824,9 +2908,30 @@ const Board = (() => {
     const base = add ? new Set(sel) : new Set();
     op = { id: e.pointerId, kind: 'marquee', moved: false,
       move(ev) { const p = toW(ev.clientX, ev.clientY); this.moved = true; marquee = [w.x, w.y, p.x, p.y]; const b = [Math.min(w.x, p.x), Math.min(w.y, p.y), Math.max(w.x, p.x), Math.max(w.y, p.y)]; sel = new Set(base);
-        for (const i of items) { if (i.hid || i.lock) continue; if (i.k === 'conn') { const g = connGeom(i, byId); if (inBox(g.mid[0], g.mid[1], b)) sel.add(i.id); continue; } const q = boxOf(i); if (i.k === 'frame' ? (q[0] >= b[0] && q[1] >= b[1] && q[2] <= b[2] && q[3] <= b[3]) : boxHit(q, b)) { if (i.k === 'mind' && i.parent) continue; sel.add(i.id); } }
+        for (const i of items) { if (i.hid || i.lock || i.k === 'ink') continue; if (i.k === 'conn') { const g = connGeom(i, byId); if (inBox(g.mid[0], g.mid[1], b)) sel.add(i.id); continue; } const q = boxOf(i); if (i.k === 'frame' ? (q[0] >= b[0] && q[1] >= b[1] && q[2] <= b[2] && q[3] <= b[3]) : boxHit(q, b)) { if (i.k === 'mind' && i.parent) continue; sel.add(i.id); } }
         growGroups(sel); schedule(); },
       up() { marquee = null; op = null; schedule(); } };
+  }
+  /* 0.2.51: the lasso — a free loop around strokes selects them (half their length inside), other elements only when wholly inside */
+  function inPoly(x, y, P) { let c = false; for (let i = 0, j = P.length - 2; i < P.length; j = i, i += 2) { const xi = P[i], yi = P[i + 1], xj = P[j], yj = P[j + 1]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; }
+  function lassoInSel(w) { if (!sel.size) return false; const b = unionBox(selItems()); if (!b) return false; const pd = 10 / view.k; return inBox(w.x, w.y, [b[0] - pd, b[1] - pd, b[2] + pd, b[3] + pd]); }
+  function lassoPick(P, add) {
+    const s = add ? new Set(sel) : new Set(); if (P.length < 8) return s;
+    let bb = [Infinity, Infinity, -Infinity, -Infinity]; for (let i = 0; i < P.length; i += 2) { bb[0] = Math.min(bb[0], P[i]); bb[1] = Math.min(bb[1], P[i + 1]); bb[2] = Math.max(bb[2], P[i]); bb[3] = Math.max(bb[3], P[i + 1]); }
+    for (const i of items) {
+      if (i.hid || i.lock || i.k === 'conn' || i.k === 'frame' || (i.k === 'mind' && i.parent)) continue;
+      const q = boxOf(i); if (!boxHit(q, bb)) continue;
+      if (i.k === 'ink') { const sx = i.w / i.w0, sy = i.h / i.h0, n = i.p.length / 3, st = Math.max(1, Math.floor(n / 48)); let a = 0, c = 0; for (let j = 0; j < n; j += st) { c++; if (inPoly(i.x + i.p[j * 3] * sx, i.y + i.p[j * 3 + 1] * sy, P)) a++; } if (c && a / c >= .5) s.add(i.id); }
+      else if (inPoly(q[0], q[1], P) && inPoly(q[2], q[1], P) && inPoly(q[2], q[3], P) && inPoly(q[0], q[3], P)) s.add(i.id);
+    }
+    return s;
+  }
+  function startLasso(e, add) {
+    grab(e); const w = toW(e.clientX, e.clientY); lassoPts = [w.x, w.y];
+    op = { id: e.pointerId, kind: 'lasso', moved: false,
+      move(ev) { if (ev.pointerId !== this.id) return; const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : []; for (const x of evs.length ? evs : [ev]) { const p = toW(x.clientX, x.clientY), n = lassoPts.length; if (Math.hypot((p.x - lassoPts[n - 2]) * view.k, (p.y - lassoPts[n - 1]) * view.k) < 3) continue; lassoPts.push(p.x, p.y); } renderOverlay(); },
+      up() { op = null; const P = lassoPts; lassoPts = null; sel = lassoPick(P, add); schedule(); },
+      cancel() { lassoPts = null; } };
   }
   function startInk(e) {
     grab(e); if (sel.size) { sel.clear(); schedule(); }
@@ -2886,6 +2991,7 @@ const Board = (() => {
       const b = n.getBoundingClientRect(); if (b.right < r.left || b.left > r.right || b.bottom < r.top || b.top > r.bottom) continue;
       const X = b.left - r.left, Y = b.top - r.top;
       try {
+        if (it.k === 'paint') { x.save(); x.translate(X, Y); x.scale(b.width / 100, b.height / 100); x.fillStyle = it.c; x.fill(new Path2D(paintBlob(it.seed).d)); x.restore(); continue; }
         if (it.k === 'image') { const img = n.querySelector('img'); if (!noImg && img && img.complete && img.naturalWidth) x.drawImage(img, X, Y, b.width, b.height); continue; }
         if (it.k === 'ink') { x.save(); x.translate(X, Y); x.scale(b.width / it.w0, b.height / it.h0); x.globalAlpha = it.o ?? (PENS[it.t] || PENS.pen).o; if (it.b) { const v = stampPicture(it); x.drawImage(v.cv, v.x0, v.y0, v.W, v.H); } else { x.fillStyle = inkColor(it.c); x.fill(new Path2D(inkD(it))); } x.restore(); continue; }
         if (it.k === 'shape') { if (it.fc) { x.fillStyle = it.fc; x.beginPath(); if (it.shape === 'ellipse') x.ellipse(X + b.width / 2, Y + b.height / 2, b.width / 2, b.height / 2, 0, 0, 7); else x.rect(X, Y, b.width, b.height); x.fill(); } continue; }
@@ -3128,7 +3234,8 @@ const Board = (() => {
   function placeholderAt(cx, cy) { for (const el of document.elementsFromPoint(cx, cy)) { const n = el.closest && el.closest('.it.image'); if (n) { const it = byId.get(n.dataset.id); if (it && !Assets.has(it.asset)) return it.id; } } return null; }
   let dropHi = null, mediaDrag = false;
   function onDragOver(e) {
-    const types = [...(e.dataTransfer.types || [])]; if (types.includes(DRAG_T)) return;
+    bindPaintDrag();
+    const types = [...(e.dataTransfer.types || [])]; if (types.includes(DRAG_T)) { if (host.contains(e.target)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } return; }
     if (propsEl.contains(e.target)) { e.preventDefault(); e.dataTransfer.dropEffect = types.includes('Files') ? 'copy' : 'none'; const z = $('[data-mdrop]', propsEl); if (z) z.classList.toggle('over', types.includes('Files')); return; }
     e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
     if (!mediaDrag) { let z = $('.dropzone', wrap); if (!z) { z = document.createElement('div'); z.className = 'dropzone'; z.innerHTML = `<div>${icon('upload')}Déposez ici : images, liens, fichiers ou texte</div>`; wrap.append(z); } }
@@ -3138,6 +3245,7 @@ const Board = (() => {
   function clearDrop() { const z = $('.dropzone', wrap); if (z) z.remove(); if (dropHi && nodes.get(dropHi)) nodes.get(dropHi).classList.remove('over'); dropHi = null; const mz = $('[data-mdrop]', propsEl); if (mz) mz.classList.remove('over'); }
   function onDragLeave(e) { if (!e.relatedTarget || !wrap.contains(e.relatedTarget)) clearDrop(); }
   async function onDrop(e) {
+    if ([...(e.dataTransfer.types || [])].includes(DRAG_T)) { e.preventDefault(); clearDrop(); let g = null; try { g = JSON.parse(e.dataTransfer.getData(DRAG_T)); } catch (_) {} if (g && g.c && host.contains(e.target)) dropPaint(g.c, e.clientX, e.clientY); return; }
     e.preventDefault(); const ph = dropHi; clearDrop(); mediaDrag = false;
     if (propsEl.contains(e.target)) { const files = [...(e.dataTransfer.files || [])]; if (files.length) { const n = await addMedia(D.sp, files); if (n.length) { toast(`${n.length} document${n.length > 1 ? 's' : ''} ajouté${n.length > 1 ? 's' : ''} au moodboard`); propSig = ''; renderProps(); } } return; }
     const w = toW(e.clientX, e.clientY); await ingest(e.dataTransfer, w, { placeholder: ph });
@@ -3181,7 +3289,7 @@ const Board = (() => {
   }
 
   /* ---------- keyboard ---------- */
-  const TOOL_KEYS = { u: 'uiz', v: 'select', h: 'hand', p: 'pen', d: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', a: 'conn', l: 'line', c: 'todo', g: 'sheet', m: 'mind', k: 'pick', b: 'pen' };
+  const TOOL_KEYS = { u: 'uiz', v: 'select', h: 'hand', p: 'pen', d: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', a: 'conn', l: 'line', c: 'todo', g: 'sheet', m: 'mind', k: 'pick', b: 'pen', q: 'lasso' };
   function key(e) {
     if (!mounted || editing) return false;
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
@@ -3247,7 +3355,7 @@ const Board = (() => {
     attachHi = null;
     const newPick = t === 'pick' && tool !== 'pick';
     if (newPick) pickBack = tool;
-    if (!PENS[t] && t !== 'eraser' && t !== 'pick') inkSess = null;   // leaving the drawing tools ends the drawing session
+    if (!PENS[t] && t !== 'eraser' && t !== 'pick' && t !== 'lasso') inkSess = null;   // leaving the drawing tools ends the drawing session
     tool = t; if (PENS[t]) penKind = t; if (ALPHA_PENS.includes(t)) S.prefs.lastAlpha = t;
     /* drawing never acts on a selection: a shape left selected would take the colour and size changes */
     if ((PENS[t] || t === 'eraser') && sel.size) sel.clear();
@@ -3361,7 +3469,7 @@ const Board = (() => {
     toolsEl = $('.tools', wrap); optsEl = $('.topts', wrap); dockEl = $('.tdock', wrap); trEl = $('.tr', wrap); propsEl = $('.props', wrap); qbarEl = $('.qbar', wrap); zoomEl = $('.isl.zoom', wrap); undoEl = $('.isl.undo', wrap); brEl = $('.isl.br', wrap);
     /* the live stroke's canvas is not in the turned stage: a turned full-screen layer was slow to draw on (iPad) */
     ink = new InkCapture(liveCv, { toLocal: (x, y) => toW(x, y), xf: () => ({ k: view.k, ox: view.x, oy: view.y, r: view.r, W: host.clientWidth / 2, H: host.clientHeight / 2 }) });
-    mounted = true;
+    mounted = true; bindPaintDrag();
     lay(); if (document.fonts) document.fonts.ready.then(lay);
     Studio.mount(wrap, { drawing: drawingTool, tool: () => tool, pen: () => penKind, setTool, space: () => D && D.sp,
       color: () => penPref(penKind).c,

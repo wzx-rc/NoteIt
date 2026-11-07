@@ -605,7 +605,7 @@ const Studio = (() => {
   function renderBar() {
     const t = api.tool(), pk = api.pen(), cards = P().cards;
     const b = (id, ic, title, on, extra = '') => `<button class="tl" data-st="${id}" title="${title}" aria-label="${title}" aria-pressed="${on}" ${extra}>${icon(ic)}</button>`;
-    $('.atl-bar', root).innerHTML = b('select', 'cursor', 'Sélection (V)', false) + b('pen', PENS[pk].icon, PENS[pk].name + ' (B ou P)', !!PENS[t]) + b('eraser', 'eraser', 'Gomme (E)', t === 'eraser') + b('pick', 'drop', 'Pipette sur le board (K, ou Alt + clic)', t === 'pick') + b('hand', 'hand', 'Main : déplacer le board (H, ou Espace)', false)
+    $('.atl-bar', root).innerHTML = b('select', 'cursor', 'Sélection (V)', false) + b('pen', PENS[pk].icon, PENS[pk].name + ' (B ou P)', !!PENS[t]) + b('eraser', 'eraser', 'Gomme (E)', t === 'eraser') + b('lasso', 'lasso', 'Lasso : entourer des traits pour les déplacer (Q)', t === 'lasso') + b('pick', 'drop', 'Pipette sur le board (K, ou Alt + clic)', t === 'pick') + b('hand', 'hand', 'Main : déplacer le board (H, ou Espace)', false)
       + '<span class="hs"></span>' + (planche ? '' : Object.entries(CARDS).map(([id, [l, ic]]) => b('card:' + id, ic, l, cards.includes(id))).join('')) + b('planche', 'layout', planche ? 'Revenir au board (Échap)' : 'Vue planche : tous les modules de l’atelier', planche);
   }
   function renderFavs() {
