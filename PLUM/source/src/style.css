@@ -2471,8 +2471,13 @@ html[data-hubedit] .pc-menu { pointer-events: auto; }
 /* the blocks (0.2.42): their look is in their own style; the zone's rendering only greys or sketches them */
 .it.uic > * { box-sizing: border-box; }
 .uic .uk-b { position: absolute; inset: 0; display: flex; align-items: center; white-space: nowrap; user-select: none; box-sizing: border-box; }
-.uic .uk-b .uk-bl { white-space: pre; }
-.uic .uk-b .uk-ic { flex: none; }
+.uic .uk-b .uk-bl { white-space: pre; position: relative; z-index: 1; }
+.uic .uk-b .uk-ic { flex: none; position: relative; z-index: 1; }
+.uic .uk-b { isolation: isolate; }
+/* no specificity: each button's own rules show them */
+:where(.uk-b) > :where(.uk-bs, .uk-sh, .uk-nz) { position: absolute; inset: 0; pointer-events: none; display: none; border-radius: inherit; }
+:where(.uk-b) > :where(.uk-bs) { z-index: 2; border-radius: 0; }
+@keyframes uk-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
 .uic .uk-t { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; }
 .uic .uk-t > span { display: block; width: 100%; }
 .uic .uk-bx { position: absolute; inset: 0; box-sizing: border-box; }
@@ -2568,11 +2573,6 @@ html[data-hubedit] .pc-menu { pointer-events: auto; }
 .uiinsp .uicons { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; width: 100%; }
 .uiinsp .uicons button { height: 26px; border: 0; border-radius: 6px; background: var(--sunk); color: var(--ink); display: grid; place-items: center; cursor: pointer; padding: 0; font-size: 11px; }
 .uiinsp .uicons button[aria-pressed="true"] { background: #3D6FD8; color: #fff; }
-.uiinsp .upre { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.uiinsp .upre button { height: 44px; border: 1px solid var(--line); border-radius: 9px; background: repeating-conic-gradient(color-mix(in oklab, var(--sunk) 100%, transparent) 0 25%, var(--card) 0 50%) 0 0 / 12px 12px; display: grid; place-items: center; cursor: pointer; padding: 0 4px; overflow: hidden; }
-.uiinsp .upre button:nth-child(9) { background: linear-gradient(135deg, #4B6CB7, #182848); }
-.uiinsp .upre button:nth-child(10) { background: #121417; }
-.uiinsp .upre button:hover { border-color: #3D6FD8; }
 .uiinsp .ustates { display: flex; gap: 2px; margin: 8px 12px 0; background: var(--sunk); border-radius: 9px; padding: 3px; }
 .uiinsp .ustates button { flex: 1; border: 0; background: transparent; color: var(--ink-2); font: 600 11.5px/1 var(--font-ui); border-radius: 7px; padding: 7px 2px; cursor: pointer; position: relative; }
 .uiinsp .ustates button[aria-pressed="true"] { background: #3D6FD8; color: #fff; }
@@ -2610,3 +2610,40 @@ html[data-hubedit] .pc-menu { pointer-events: auto; }
 .uitest .uthot:hover { background: rgba(91,123,213,.12); }
 .uitest .utf { height: 40px; flex: none; display: grid; place-items: center; font-size: 12px; color: #A8A59D; }
 .uitest .uts [data-ukbtn] { pointer-events: auto; cursor: pointer; }
+
+/* 0.2.46: the inspector is dark, like Figma's, whatever the theme */
+.uiinsp { --card: #232428; --sunk: #2C2E33; --raise: #2A2C31; --line: #34363C; --line-2: #45484F; --ink: #E4E5E8; --ink-2: #8E929B; color-scheme: dark; background: #232428; border-color: #34363C; color: #E4E5E8; box-shadow: 0 12px 36px rgba(0,0,0,.45); }
+.uiinsp .uin, .uiinsp input, .uiinsp select, .uiinsp textarea { background: #2C2E33; }
+.uiinsp input:focus, .uiinsp select:focus, .uiinsp textarea:focus { border-color: #4C8DFF; background: #1D1E22; }
+.uiinsp .useg { background: #2C2E33; } .uiinsp .useg button[aria-pressed="true"] { background: #44474F; color: #F1F2F4; box-shadow: none; }
+.uiinsp .ustates button[aria-pressed="true"], .uiinsp .uicons button[aria-pressed="true"], .uiinsp .utog[aria-pressed="true"] { background: #4C8DFF; }
+.uiinsp .uif.ov > label, .uiinsp .urst, .uiinsp .utree button[aria-pressed="true"] { color: #7FB0FF; }
+.uiinsp .utree button[aria-pressed="true"] { background: rgba(76,141,255,.16); }
+.uiinsp .usw { background: linear-gradient(var(--c), var(--c)), repeating-conic-gradient(#666 0 25%, #2C2E33 0 50%) 0 0 / 8px 8px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.uiinsp .usec h4 { color: #C8CBD1; }
+.uiinsp .usec h4 .uhb { margin-left: auto; display: flex; gap: 2px; }
+.uiinsp .usec h4 .uhb button { width: 22px; height: 22px; border: 0; border-radius: 6px; background: transparent; color: #C8CBD1; display: grid; place-items: center; cursor: pointer; padding: 0; font-size: 13px; }
+.uiinsp .usec h4 .uhb button:hover { background: #34373D; color: #fff; }
+.uiinsp .usub { margin: 8px 0 0; font: 600 10.5px/1 var(--font-ui); letter-spacing: .04em; text-transform: uppercase; color: #8E929B; display: flex; align-items: center; gap: 6px; }
+.uiinsp .uitem { border: 1px solid #34363C; border-radius: 9px; background: #1E1F23; display: flex; flex-direction: column; }
+.uiinsp .uitem.off .uitb { opacity: .45; }
+.uiinsp .uith { display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 4px; border-bottom: 1px solid #2E3035; }
+.uiinsp .uith b { flex: 1; font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uiinsp .uith button { width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: #A9ADB5; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.uiinsp .uith button:hover { background: #34373D; color: #fff; }
+.uiinsp .uith .i, .uiinsp .uacts .i, .uiinsp .urm .i { width: 12px; height: 12px; }
+.uiinsp .uitb { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+.uiinsp .uisw { width: 18px; height: 18px; border-radius: 5px; flex: none; overflow: hidden; background: repeating-conic-gradient(#666 0 25%, #2C2E33 0 50%) 0 0 / 6px 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); margin-right: 3px; }
+.uiinsp .uisw > span { display: block; width: 100%; height: 100%; }
+.uiinsp .ugbar { position: relative; height: 22px; margin: 4px 6px 10px; border-radius: 6px; cursor: copy; background: repeating-conic-gradient(#666 0 25%, #2C2E33 0 50%) 0 0 / 8px 8px; }
+.uiinsp .ugbar > span { position: absolute; inset: 0; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+.uiinsp .ugbar > i { position: absolute; bottom: -7px; width: 12px; height: 12px; margin-left: -6px; border-radius: 3px; background: var(--c); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.6); box-sizing: border-box; pointer-events: none; }
+.uiinsp .uif.ustop { grid-template-columns: 64px 1fr auto; }
+.uiinsp .urm { width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: #A9ADB5; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.uiinsp .urm:hover:not(:disabled) { background: #34373D; color: #fff; } .uiinsp .urm:disabled { opacity: .3; cursor: default; }
+.uiinsp .uacts { display: flex; gap: 5px; }
+.uiinsp .uacts button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; height: 26px; border: 1px solid #34363C; border-radius: 7px; background: transparent; color: #C8CBD1; font: 500 11.5px/1 var(--font-ui); cursor: pointer; }
+.uiinsp .uacts button:hover { background: #2C2E33; color: #fff; }
+.uiinsp .useg.pt button { font-size: 10.5px; padding: 6px 1px; }
+.uiinsp select.uaddfx { color: #C8CBD1; border: 1px dashed #45484F; background: transparent; }
+.uiinsp .uitem .uhex, .uiinsp .ustop .uhex { padding: 0 5px; font-size: 11px; letter-spacing: -.02em; }

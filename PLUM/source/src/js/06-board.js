@@ -1632,19 +1632,28 @@ const Board = (() => {
   /* ---------- the property inspector (Qt Designer's property editor) ---------- */
   const UI_STATES = [['n', 'Normal'], ['h', 'Survol'], ['p', 'Pressé'], ['d', 'Désactivé']];
   const UI_W8 = [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Extra bold'], [900, 'Black']];
+  /* keys are paths: 'b.fills.0.s.1.1' is the colour of the second stop of the top fill; a state overrides a whole top-level key */
+  const uiWalk = (o, ps) => { for (const p of ps) { if (o == null) return undefined; o = o[p]; } return o; };
+  const uiSetDeep = (o, ps, v) => { let q = o; for (let i = 0; i < ps.length - 1; i++) { if (q[ps[i]] == null || typeof q[ps[i]] !== 'object') q[ps[i]] = /^\d+$/.test(ps[i + 1]) ? [] : {}; q = q[ps[i]]; } q[ps[ps.length - 1]] = v; return o; };
   function uiGet(it, k) {
-    const [a, b] = k.split('.');
+    const ps = k.split('.'), [a, b] = ps;
     if (!b) return it[a];
-    if (a === 'b') return ukBtnStyle(it, uiInsp && uiInsp.st || 'n')[b];
+    if (a === 'b') return uiWalk(ukBtnStyle(it, uiInsp && uiInsp.st || 'n'), ps.slice(1));
     if (a === 'f') return ukTxtStyle(it)[b];
     if (a === 'c') return ukBoxStyle(it)[b];
     if (a === 'lp') return ukLp(it, uiDir(it))[b];
   }
   const uiOver = (it, k) => { const [a, b] = k.split('.'), st = uiInsp && uiInsp.st || 'n'; return a === 'b' && st !== 'n' && it.bs && it.bs[st] && b in it.bs[st]; };
   function uiPatch(it, k, v) {
-    const [a, b] = k.split('.');
+    const ps = k.split('.'), [a, b] = ps;
     if (!b) return { [a]: v };
-    if (a === 'b') { const st = uiInsp && uiInsp.st || 'n'; if (st === 'n') return { b: Object.assign({}, UI_BTN, it.b, { [b]: v }) }; const bs = Object.assign({}, it.bs || {}); bs[st] = Object.assign({}, bs[st] || {}, { [b]: v }); return { bs }; }
+    if (a === 'b') {
+      const st = uiInsp && uiInsp.st || 'n';
+      if (st === 'n') return { b: uiSetDeep(ukClone(Object.assign({}, UI_BTN, it.b)), ps.slice(1), v) };
+      const bs = ukClone(it.bs || {}), o = bs[st] = bs[st] || {};
+      if (ps.length > 2 && !(b in o)) o[b] = ukClone(ukBtnStyle(it, 'n')[b]);
+      uiSetDeep(o, ps.slice(1), v); return { bs };
+    }
     if (a === 'f') return { f: Object.assign({}, UI_TXT, it.f, { [b]: v }) };
     if (a === 'c') return { c: Object.assign({}, UI_BOX, it.c, { [b]: v }) };
     if (a === 'lp') return { lp: Object.assign({}, it.lp || {}, { [b]: v }) };
@@ -1652,17 +1661,20 @@ const Board = (() => {
   }
   function uiInspHTML(it) {
     const st = uiInsp.st, open = s => !((S.prefs.uiSec || {})[s]);
-    const ov = k => uiOver(it, k) ? `<button class="urst" data-rst="${k}" title="Revenir à la valeur Normal">↺</button>` : '';
-    const row = (k, lab, ctl, cls = '') => `<div class="uif${uiOver(it, k) ? ' ov' : ''} ${cls}"><label${k ? ` data-scrub="${k}"` : ''}>${lab}</label><div class="uic2">${ctl}</div>${k ? ov(k) : ''}</div>`;
+    const top = k => k.split('.').length <= 2;
+    const ov = k => top(k) && uiOver(it, k) ? `<button class="urst" data-rst="${k}" title="Revenir à la valeur Normal">↺</button>` : '';
+    const rst = k => uiOver(it, k) ? `<button class="urst" data-rst="${k}" title="Revenir à la valeur Normal">↺</button>` : '';
+    const row = (k, lab, ctl, cls = '') => `<div class="uif${top(k) && uiOver(it, k) ? ' ov' : ''} ${cls}"><label${k ? ` data-scrub="${k}"` : ''}>${lab}</label><div class="uic2">${ctl}</div>${k ? ov(k) : ''}</div>`;
     const num = (k, lab, o = {}) => row(k, lab, `<span class="uin"><input type="number" data-k="${k}" data-ty="n" value="${+(+uiGet(it, k) || 0).toFixed(2)}" step="${o.step || 1}"${o.min != null ? ` min="${o.min}"` : ''}${o.max != null ? ` max="${o.max}"` : ''}${o.ph ? ` placeholder="${o.ph}"` : ''}><i>${o.u || ''}</i></span>`);
     const nums = (lab, list) => row('', lab, list.map(([k, u, o = {}]) => `<span class="uin sm" title="${o.t || ''}"><input type="number" data-k="${k}" data-ty="n" value="${+(+uiGet(it, k) || 0).toFixed(2)}" step="${o.step || 1}"${o.min != null ? ` min="${o.min}"` : ''}><i>${u}</i></span>`).join(''), 'multi');
     const sel = (k, lab, opts) => row(k, lab, `<select data-k="${k}" data-ty="${typeof opts[0][0] === 'number' ? 'n' : 's'}">${opts.map(([v, l]) => `<option value="${v}"${String(uiGet(it, k)) === String(v) ? ' selected' : ''}>${l}</option>`).join('')}</select>`);
     const seg = (k, lab, opts) => row(k, lab, `<div class="useg" data-k="${k}">${opts.map(([v, l, t]) => `<button data-v="${v}" aria-pressed="${String(uiGet(it, k)) === String(v)}"${t ? ` title="${esc(t)}"` : ''}>${l}</button>`).join('')}</div>`);
     const tog = (k, lab) => row(k, lab, `<button class="utog" data-tog="${k}" aria-pressed="${!!+uiGet(it, k)}"><b></b></button>`);
-    const col = (k, lab) => { const v = ukHex(uiGet(it, k)); return row(k, lab, `<span class="ucol" data-k="${k}"><span class="usw" style="--c:${ukCss(v)}"><input type="color" data-cp value="${ukRgb(v)}"></span><input class="uhex" data-hx value="${v}" spellcheck="false" maxlength="9"><span class="uin al"><input type="number" data-al min="0" max="100" value="${Math.round(ukAlpha(v) * 100)}"><i>%</i></span></span>`); };
+    const colCtl = k => { const v = ukHex(uiGet(it, k)); return `<span class="ucol" data-k="${k}"><span class="usw" style="--c:${ukCss(v)}"><input type="color" data-cp value="${ukRgb(v)}"></span><input class="uhex" data-hx value="${v}" spellcheck="false" maxlength="9"><span class="uin al"><input type="number" data-al min="0" max="100" value="${Math.round(ukAlpha(v) * 100)}"><i>%</i></span></span>`; };
+    const col = (k, lab) => row(k, lab, colCtl(k));
     const quad = (k, lab, names) => { const v = uiGet(it, k) || [0, 0, 0, 0], lk = uiInsp.link[k] !== false; return row(k, lab, `<span class="uquad${lk ? ' lk' : ''}">${names.map((n, i) => `<span class="uin sm" title="${n}"><input type="number" data-k="${k}" data-i="${i}" data-ty="n" value="${+v[i] || 0}" min="0"><i>${n[0]}</i></span>`).join('')}<button class="ulink" data-link="${k}" aria-pressed="${lk}" title="Lier les quatre valeurs">${icon('link', 'sm')}</button></span>`); };
     const txt = (k, lab, multi) => row(k, lab, multi ? `<textarea data-k="${k}" data-ty="s" rows="${Math.min(6, String(uiGet(it, k) || '').split('\n').length + 1)}" spellcheck="false">${esc(uiGet(it, k) || '')}</textarea>` : `<input data-k="${k}" data-ty="s" value="${esc(uiGet(it, k) || '')}" spellcheck="false">`);
-    const sec = (id, title, body, extra = '') => `<section class="usec${open(id) ? ' open' : ''}"><h4 data-sec="${id}">${icon('chevd', 'sm')}<span>${title}</span>${extra}</h4><div class="usb">${body}</div></section>`;
+    const sec = (id, title, body, extra = '') => `<section class="usec${open(id) ? ' open' : ''}"><h4 data-sec="${id}">${icon('chevd', 'sm')}<span>${title}</span>${extra ? `<span class="uhb">${extra}</span>` : ''}</h4><div class="usb">${body}</div></section>`;
     const font = k => row(k, 'Police', `<select data-k="${k}" data-ty="s">${(UI_FONTS.includes(uiGet(it, k)) ? UI_FONTS : [uiGet(it, k)].concat(UI_FONTS)).map(f => `<option value="${esc(f)}" style="font-family:${esc(ukFont(f))}"${uiGet(it, k) === f ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>`);
     const typo = (p, extra = '') => sec('typo', 'Typographie', font(p + '.ff')
       + row('', 'Taille · graisse', `<span class="uin sm"><input type="number" data-k="${p}.fs" data-ty="n" value="${+uiGet(it, p + '.fs') || 0}" min="4" step="1"><i>px</i></span><select data-k="${p}.fw" data-ty="n">${UI_W8.map(([v, l]) => `<option value="${v}"${+uiGet(it, p + '.fw') === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`, 'multi')
@@ -1680,20 +1692,67 @@ const Board = (() => {
     const treeHTML = sec('tree', 'Structure', `<div class="utree">${tree.map(([n, d]) => `<button data-tsel="${n.id}" aria-pressed="${n.id === it.id}" style="padding-left:${8 + d * 14}px"><i class="ut-${n.t}"></i><span>${esc(uiName(n))}</span>${n.t === 'box' ? `<small>${LB[ukBoxStyle(n).lay]}</small>` : ''}</button>`).join('')}</div>`);
     let h = '';
     if (it.t === 'button') {
-      h += sec('pre', 'Styles prêts', `<div class="upre">${UI_PRESETS.map(([n, b], i) => { const s = Object.assign({}, UI_BTN, b, { ic: '', px: 10, py: 5, fs: 11, dy: 0, sc: 1, tr: 0 }); return `<button data-pre="${i}" title="${n}"><span style="display:inline-flex;align-items:center;${ukBtnDecl(s)}">${n}</span></button>`; }).join('')}</div>`);
+      /* a paint: plain colour or gradient with stops, opacity, blend */
+      const swatch = p => `<span class="uisw"><span style="${ukBgDecl([Object.assign({}, p, { on: 1, bm: 'normal' })])}"></span></span>`;
+      const paintEd = (P, blend) => {
+        const p = uiGet(it, P) || ukP('#000000'), g = p.t !== 'solid', S = p.s || [];
+        let e = row('', 'Type', `<div class="useg pt">${UI_PAINTS.map(([v, l]) => `<button data-act="ptype" data-p="${P}" data-v="${v}" aria-pressed="${p.t === v}" title="${l}">${{ solid: 'Uni', lin: 'Lin.', rad: 'Rad.', ang: 'Ang.', dia: 'Los.' }[v]}</button>`).join('')}</div>`);
+        if (!g) e += col(P + '.c', 'Couleur');
+        else {
+          e += `<div class="ugbar" data-act="stopat" data-p="${P}" title="Cliquer pour ajouter un arrêt"><span style="background:linear-gradient(90deg, ${ukStops(p, 1)})"></span>${S.map(([q, c]) => `<i style="left:${clamp(+q || 0, 0, 100)}%;--c:${ukCss(c)}"></i>`).join('')}</div>`;
+          e += S.map(([q], j) => `<div class="uif ustop"><span class="uin"><input type="number" data-k="${P}.s.${j}.0" data-ty="n" value="${+(+q || 0).toFixed(1)}" min="0" max="100"><i>%</i></span><div class="uic2">${colCtl(`${P}.s.${j}.1`)}</div><button class="urm" data-act="stopdel" data-p="${P}" data-j="${j}" title="Retirer cet arrêt"${S.length <= 2 ? ' disabled' : ''}>${icon('x', 'sm')}</button></div>`).join('');
+          e += `<div class="uacts"><button data-act="stopadd" data-p="${P}">${icon('plus', 'sm')}Arrêt</button><button data-act="rev" data-p="${P}">⇄ Inverser</button></div>`;
+          if (p.t === 'lin' || p.t === 'ang') e += num(P + '.a', 'Angle', { u: '°' });
+          if (p.t === 'rad' || p.t === 'ang') e += nums('Centre X · Y', [[P + '.cx', '%'], [P + '.cy', '%']]);
+          if (p.t === 'rad') e += num(P + '.sz', 'Taille', { u: '%', min: 1 });
+        }
+        e += num(P + '.op', 'Opacité', { u: '%', min: 0, max: 100 });
+        if (blend) e += sel(P + '.bm', 'Fusion', UI_BLEND);
+        return e;
+      };
+      const item = (P, list, j, name, on, sw, body) => `<div class="uitem${on ? '' : ' off'}"><div class="uith"><button class="ueye" data-act="eye" data-p="${P}" aria-pressed="${on}" title="${on ? 'Masquer' : 'Afficher'}">${icon(on ? 'eye' : 'eye-off', 'sm')}</button>${sw}<b>${name}</b><button data-act="mv" data-p="${list}" data-j="${j}" data-d="-1" title="Monter">${icon('up', 'sm')}</button><button data-act="mv" data-p="${list}" data-j="${j}" data-d="1" title="Descendre">${icon('down', 'sm')}</button><button data-act="del" data-p="${list}" data-j="${j}" title="Retirer">${icon('trash', 'sm')}</button></div><div class="uitb">${body}</div></div>`;
       h += `<div class="ustates" role="tablist">${UI_STATES.map(([v, l]) => `<button data-st="${v}" aria-pressed="${st === v}">${l}${v !== 'n' && it.bs && it.bs[v] && Object.keys(it.bs[v]).length ? '<b></b>' : ''}</button>`).join('')}</div>
-        <p class="ustn">${st === 'n' ? 'Les réglages ci-dessous font le bouton au repos.' : `Les réglages changés ici ne valent que pour l’état <b>${UI_STATES.find(s => s[0] === st)[1]}</b> (pastille ↺ : revenir à Normal). Le board montre cet état.`}</p>`;
+        <p class="ustn">${st === 'n' ? 'Les réglages ci-dessous font le bouton au repos.' : `Ce qui est changé ici ne vaut que pour l’état <b>${UI_STATES.find(s => s[0] === st)[1]}</b> (● bleu ; ↺ revient à Normal). Le board montre cet état.`}</p>`;
       h += sec('content', 'Contenu', txt('txt', 'Texte') + row('b.ic', 'Icône', `<div class="uicons"><button data-ic="" aria-pressed="${!uiGet(it, 'b.ic')}" title="Aucune">—</button>${Object.keys(UI_ICONS).map(k => `<button data-ic="${k}" aria-pressed="${uiGet(it, 'b.ic') === k}" title="${k}">${ukIcon(k, 14)}</button>`).join('')}</div>`, 'tall')
         + seg('b.ip', 'Position', [['l', '◧ ', 'Icône à gauche'], ['r', ' ◨', 'Icône à droite'], ['t', '⬒', 'Icône au-dessus'], ['b', '⬓', 'Icône en dessous'], ['o', '●', 'Icône seule']])
-        + nums('Taille · écart', [['b.isz', 'px', { min: 6 }], ['b.ig', 'px', { min: 0 }]]) + col('b.icc', 'Couleur icône') + tog('dis', 'Désactivé dans le test'));
-      h += typo('b');
-      h += sec('fill', 'Fond', seg('b.ft', 'Type', [['none', 'Aucun'], ['solid', 'Uni'], ['lin', 'Linéaire'], ['rad', 'Radial']]) + col('b.c1', uiGet(it, 'b.ft') === 'solid' ? 'Couleur' : 'Couleur 1') + (['lin', 'rad'].includes(uiGet(it, 'b.ft')) ? col('b.c2', 'Couleur 2') : '') + (uiGet(it, 'b.ft') === 'lin' ? num('b.ga', 'Angle', { u: '°' }) : ''));
-      h += sec('border', 'Bordure et coins', nums('Épaisseur', [['b.bw', 'px', { min: 0, step: .5 }]]) + seg('b.bst', 'Trait', [['solid', 'Plein'], ['dashed', 'Tirets'], ['dotted', 'Points'], ['double', 'Double']]) + col('b.bc', 'Couleur') + quad('b.r', 'Rayons', ['Haut gauche', 'Haut droit', 'Bas droit', 'Bas gauche']));
+        + nums('Taille · écart', [['b.isz', 'px', { min: 6 }], ['b.ig', 'px', { min: 0 }]]) + col('b.icc', 'Couleur icône') + `<p class="ustn">Couleur icône à 0 % : elle suit le texte.</p>` + tog('dis', 'Désactivé dans le test'));
+      h += sec('layer', 'Calque', num('b.op', 'Opacité', { u: '%', min: 0, max: 100 }) + sel('b.bm', 'Fusion', UI_BLEND));
+      h += sec('corners', 'Angles', quad('b.r', 'Rayons', ['Haut gauche', 'Haut droit', 'Bas droit', 'Bas gauche']) + num('b.sm', 'Lissage', { u: '%', min: 0, max: 100 }) + `<p class="ustn">Lissage : des angles continus façon iOS (squircle).</p>`);
       h += sec('pad', 'Marges internes', nums('Horiz. · vert.', [['b.px', 'px', { min: 0 }], ['b.py', 'px', { min: 0 }]]));
-      h += sec('shadow', 'Ombre portée', tog('b.sho', 'Activer') + nums('X · Y', [['b.shx', 'px'], ['b.shy', 'px']]) + nums('Flou · étendue', [['b.shb', 'px', { min: 0 }], ['b.shs', 'px']]) + col('b.shc', 'Couleur'));
-      h += sec('inner', 'Ombre interne', tog('b.iso', 'Activer') + nums('X · Y', [['b.isx', 'px'], ['b.isy', 'px']]) + nums('Flou · étendue', [['b.isb', 'px', { min: 0 }], ['b.iss', 'px']]) + col('b.isc', 'Couleur'));
-      h += sec('tshadow', 'Ombre du texte', tog('b.tso', 'Activer') + nums('X · Y · flou', [['b.tsx', 'px'], ['b.tsy', 'px'], ['b.tsb', 'px', { min: 0 }]]) + col('b.tsc', 'Couleur'));
-      h += sec('fx', 'Effets', nums('Opacité · flou du fond', [['b.op', '', { step: .05, min: 0 }], ['b.bl', 'px', { min: 0 }]]) + nums('Décalage Y · échelle', [['b.dy', 'px', { step: .5 }], ['b.sc', '×', { step: .01, min: .1 }]]) + num('b.tr', 'Transition', { u: 'ms', min: 0, step: 10 }));
+      h += sec('typo', 'Typographie', font('b.ff')
+        + row('', 'Taille · graisse', `<span class="uin sm"><input type="number" data-k="b.fs" data-ty="n" value="${+uiGet(it, 'b.fs') || 0}" min="4" step="1"><i>px</i></span><select data-k="b.fw" data-ty="n">${UI_W8.map(([v, l]) => `<option value="${v}"${+uiGet(it, 'b.fw') === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`, 'multi')
+        + nums('Interligne · lettres', [['b.lh', '%', { min: 50, t: 'Interligne en % de la taille' }], ['b.ls', '%', { step: .5, t: 'Interlettrage en % de la taille' }]])
+        + seg('b.ta', 'Alignement', [['left', '⇤', 'Gauche'], ['center', '↔', 'Centre'], ['right', '⇥', 'Droite']])
+        + seg('b.tt', 'Casse', [['none', 'Aa', 'Comme écrit'], ['uppercase', 'AA', 'Majuscules'], ['lowercase', 'aa', 'Minuscules'], ['capitalize', 'Ab Cd', 'Initiales']])
+        + seg('b.td', 'Décoration', [['none', '—', 'Aucune'], ['underline', '<u>S</u>', 'Souligné'], ['line-through', '<s>S</s>', 'Barré'], ['overline', '<span style="text-decoration:overline">S</span>', 'Surligné']])
+        + tog('b.fi', 'Italique') + tog('b.smc', 'Petites capitales') + tog('b.tabs', 'Chiffres tabulaires') + tog('b.lig', 'Ligatures') + tog('b.trunc', 'Tronquer (…)')
+        + `<div class="usub">Remplissage du texte ${rst('b.tp')}</div>` + paintEd('b.tp', false)
+        + `<div class="usub">Contour du texte</div>` + num('b.tsw', 'Épaisseur', { u: 'px', min: 0, step: .25 }) + col('b.tsc', 'Couleur'));
+      const fills = uiGet(it, 'b.fills') || [];
+      h += sec('fill', 'Remplissage', (fills.length ? fills.map((p, j) => item('b.fills.' + j, 'b.fills', j, UI_PAINTS.find(x => x[0] === p.t)?.[1] || 'Uni', !!+ukN(p.on, 1), swatch(p), paintEd('b.fills.' + j, true))).join('') : '<p class="ustn">Aucun remplissage : le fond est transparent.</p>')
+        + (fills.length > 1 ? `<p class="ustn">Le premier de la liste est au-dessus.</p>` : ''), rst('b.fills') + `<button data-act="add" data-p="b.fills" title="Ajouter un remplissage">${icon('plus', 'sm')}</button>`);
+      const k = uiGet(it, 'b.stroke') || {};
+      h += sec('stroke', 'Contour', tog('b.stroke.on', 'Afficher') + (+k.on ? paintEd('b.stroke.p', false)
+        + seg('b.stroke.pos', 'Position', [['in', 'Intérieur'], ['center', 'Centre'], ['out', 'Extérieur']])
+        + quad('b.stroke.w', 'Épaisseurs', ['Haut', 'Droite', 'Bas', 'Gauche'])
+        + seg('b.stroke.st', 'Trait', [['solid', 'Plein'], ['dashed', 'Tirets'], ['dotted', 'Points']])
+        + (k.st === 'dashed' ? nums('Tiret · écart', [['b.stroke.da', 'px', { min: .5, step: .5 }], ['b.stroke.ga', 'px', { min: .5, step: .5 }]]) + seg('b.stroke.cap', 'Extrémités', [['butt', 'Nettes'], ['round', 'Rondes'], ['square', 'Carrées']]) : '')
+        + (k.st === 'dotted' ? num('b.stroke.ga', 'Écart', { u: 'px', min: .5, step: .5 }) : '') : ''), rst('b.stroke'));
+      const fxs = uiGet(it, 'b.fx') || [];
+      const fxBody = (e, j) => {
+        const P = 'b.fx.' + j + '.';
+        if (e.t === 'drop' || e.t === 'inner') return nums('X · Y', [[P + 'x', 'px'], [P + 'y', 'px']]) + nums('Flou · étendue', [[P + 'b', 'px', { min: 0 }], [P + 's', 'px']]) + col(P + 'c', 'Couleur');
+        if (e.t === 'glow') return nums('Flou · étendue', [[P + 'b', 'px', { min: 0 }], [P + 's', 'px']]) + col(P + 'c', 'Couleur');
+        if (e.t === 'ring') return nums('Épaisseur · halo', [[P + 's', 'px', { min: 0, step: .5 }], [P + 'b', 'px', { min: 0 }]]) + col(P + 'c', 'Couleur');
+        if (e.t === 'bevel') return nums('Profondeur · flou', [[P + 'd', 'px', { step: .5 }], [P + 'b', 'px', { min: 0 }]]) + num(P + 'a', 'Lumière', { u: '°' }) + col(P + 'c', 'Reflet') + col(P + 'c2', 'Ombre');
+        if (e.t === 'tshadow') return nums('X · Y · flou', [[P + 'x', 'px'], [P + 'y', 'px'], [P + 'b', 'px', { min: 0 }]]) + col(P + 'c', 'Couleur');
+        if (e.t === 'shine') return col(P + 'c', 'Couleur') + nums('Largeur · angle', [[P + 'w', '%', { min: 1 }], [P + 'a', '°']]) + num(P + 'p', 'Position', { u: '%' }) + tog(P + 'anim', 'Balayage au survol');
+        if (e.t === 'noise') return nums('Intensité · finesse', [[P + 'op', '%', { min: 0, max: 100 }], [P + 'f', '', { min: 5, max: 100 }]]) + sel(P + 'bm', 'Fusion', UI_BLEND);
+        return num(P + 'b', 'Flou', { u: 'px', min: 0 });
+      };
+      h += sec('fx', 'Effets', (fxs.length ? fxs.map((e, j) => item('b.fx.' + j, 'b.fx', j, UI_FX[e.t] || e.t, !!+ukN(e.on, 1), '', fxBody(e, j))).join('') : '<p class="ustn">Aucun effet.</p>')
+        + `<select class="uaddfx" data-addfx="1"><option value="">Ajouter un effet…</option>${Object.entries(UI_FX).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`, rst('b.fx'));
+      h += sec('inter', 'Interaction', nums('Décalage Y · échelle', [['b.dy', 'px', { step: .5 }], ['b.sc', '%', { min: 10 }]]) + num('b.tr', 'Transition', { u: 'ms', min: 0, step: 10 }));
     }
     if (it.t === 'text') {
       h += sec('content', 'Contenu', txt('txt', 'Texte', true) + seg('f.wr', 'Retour', [['wrap', 'À la ligne'], ['elide', 'Couper…'], ['none', 'Aucun']]));
@@ -1756,11 +1815,33 @@ const Board = (() => {
     };
     el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && e.target.matches('input')) { e.target.blur(); } if (e.key === 'Escape') { e.target.blur && e.target.blur(); host.focus({ preventScroll: true }); } });
     el.addEventListener('input', e => apply(e.target));
-    el.addEventListener('change', () => done());
+    el.addEventListener('change', e => {
+      const af = e.target.closest('[data-addfx]'); if (af) { const it = cur(), v = af.value; af.value = ''; if (it && v) { const L = ukClone(uiGet(it, 'b.fx') || []); L.unshift(ukFx(v)); now(uiPatch(it, 'b.fx', L)); } return; }
+      done();
+    });
+    /* the lists (fills, effects) and the gradient stops */
+    const lerp = (a, b, f) => { const A = ukHex(a), B = ukHex(b), ch = i => Math.round(parseInt(A.slice(i, i + 2), 16) * (1 - f) + parseInt(B.slice(i, i + 2), 16) * f).toString(16).padStart(2, '0'); return ('#' + ch(1) + ch(3) + ch(5) + ch(7)).toUpperCase(); };
+    const colorAt = (p, q) => { const S = ukSorted(p); if (q <= S[0][0]) return S[0][1]; for (let i = 1; i < S.length; i++) if (q <= S[i][0]) return lerp(S[i - 1][1], S[i][1], (q - S[i - 1][0]) / Math.max(1e-6, S[i][0] - S[i - 1][0])); return S[S.length - 1][1]; };
+    function uiAct(it, b, e) {
+      const P = b.dataset.p, j = +b.dataset.j, a = b.dataset.act, v = ukClone(uiGet(it, P)), set = nv => now(uiPatch(it, P, nv));
+      if (a === 'ptype') { const to = b.dataset.v; if (v.t === to) return; if (to === 'solid') v.c = ukSorted(v)[0][1]; else if (v.t === 'solid') v.s = [[0, ukHex(v.c)], [100, ukMix(ukRgb(v.c), 0)]]; v.t = to; return set(v); }
+      if (a === 'stopat' || a === 'stopadd') {
+        let q; if (a === 'stopat') { const r = b.getBoundingClientRect(); q = Math.round(clamp((e.clientX - r.left) / Math.max(1, r.width), 0, 1) * 100); }
+        else { const S = ukSorted(v); let best = 0; q = 50; for (let i = 1; i < S.length; i++) if (S[i][0] - S[i - 1][0] > best) { best = S[i][0] - S[i - 1][0]; q = Math.round((S[i][0] + S[i - 1][0]) / 2); } }
+        v.s = ukSorted(v).concat([[q, colorAt(v, q)]]).sort((x, y) => x[0] - y[0]); return set(v);
+      }
+      if (a === 'stopdel') { if ((v.s || []).length <= 2) return; v.s.splice(j, 1); return set(v); }
+      if (a === 'rev') { v.s = (v.s || []).map(([q, c]) => [100 - q, c]).sort((x, y) => x[0] - y[0]); return set(v); }
+      if (a === 'eye') { v.on = +ukN(v.on, 1) ? 0 : 1; return set(v); }
+      if (a === 'add') { v.unshift(ukP('#D9D9D9FF')); return set(v); }
+      if (a === 'del') { v.splice(j, 1); return set(v); }
+      if (a === 'mv') { const k = j + +b.dataset.d; if (k < 0 || k >= v.length) return; [v[j], v[k]] = [v[k], v[j]]; return set(v); }
+    }
     el.addEventListener('focusout', () => setTimeout(() => { if (uiInsp && uiInsp.dirty && uiInsp.el && !uiInsp.el.contains(document.activeElement)) uiInspSync(true); }, 0));
     el.addEventListener('click', e => {
       const t = e.target, it = cur(); if (!it) return;
       if (t.closest('[data-uix]')) { uiInsp.hide = it.id; uiInspSync(); return; }
+      const ac = t.closest('[data-act]'); if (ac) { e.stopPropagation(); if (!ac.disabled) uiAct(it, ac, e); return; }
       const s = t.closest('[data-sec]'); if (s) { const m = S.prefs.uiSec = S.prefs.uiSec || {}; m[s.dataset.sec] = !m[s.dataset.sec]; save(); uiInspSync(true); return; }
       const ts = t.closest('[data-tsel]'); if (ts) { sel = new Set([ts.dataset.tsel]); schedule(); return; }
       const sg = t.closest('.useg [data-v]'); if (sg) { const k = sg.closest('.useg').dataset.k, raw = sg.dataset.v, v = /^-?\d+(\.\d+)?$/.test(raw) && !k.endsWith('.lay') ? +raw : raw; if (k === 'c.lay') { uiSetLay(it, v); return; } now(uiPatch(it, k, v)); return; }
@@ -1769,7 +1850,6 @@ const Board = (() => {
       const ic = t.closest('[data-ic]'); if (ic) { now(uiPatch(it, 'b.ic', ic.dataset.ic)); return; }
       const st = t.closest('[data-st]'); if (st) { uiInsp.st = st.dataset.st; commit(replace(items, it, { pv: uiInsp.st === 'n' ? undefined : uiInsp.st }), { hist: false }); uiInspSync(true); return; }
       const rs = t.closest('[data-rst]'); if (rs) { const b = rs.dataset.rst.split('.')[1], bs = Object.assign({}, it.bs || {}), o = Object.assign({}, bs[uiInsp.st] || {}); delete o[b]; bs[uiInsp.st] = o; now({ bs }); return; }
-      const pr = t.closest('[data-pre]'); if (pr) { const [, b, s] = UI_PRESETS[+pr.dataset.pre], keep = { ic: (it.b || {}).ic || '', ip: (it.b || {}).ip || 'l' }; now({ b: Object.assign(ukClone(UI_BTN), ukClone(b), keep), bs: s ? ukClone(s) : UI_BTN_ST() }); return; }
       const od = t.closest('[data-ord]'); if (od) { const sib = uiKids(it.p), i = sib.indexOf(it), j = i + +od.dataset.ord; if (j < 0 || j >= sib.length) return; const om = new Map(sib.map((x, k) => [x.id, k])); om.set(it.id, j); om.set(sib[j].id, i); commit(items.map(x => om.has(x.id) ? Object.assign({}, x, { o: om.get(x.id) }) : x)); return; }
       if (t.closest('[data-out]')) { const pp = byId.get(it.p), gp = pp && pp.p; commit(uiApplyIns(items.map(x => x.id === it.id ? Object.assign({}, x, { x: x.x + 24, y: x.y + 24 }) : x), [it.id], gp ? { c: gp, idx: uiLayOf(gp) === 'none' ? null : uiKids(gp).indexOf(pp) + 1 } : null)); return; }
     });

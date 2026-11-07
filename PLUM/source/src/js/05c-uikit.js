@@ -1,4 +1,4 @@
-/* ================= UI Design (0.2.40) =================
+/* ================= UI Design (0.2.40, button 0.2.46) =================
    A zone of the board (a frame with `ui`) where software interfaces are built the Qt Designer way, from few blocks:
    - box     « Conteneur » : a widget that holds others through a layout (none, horizontal, vertical, grid), with margins and spacing
    - button  « Bouton »    : a very rich style (type, icon, fill, gradient, border, corner radii, shadows, states hover / pressed / disabled)
@@ -11,19 +11,6 @@ const UI_TYPES = { box: 'Conteneur', button: 'Bouton', text: 'Texte', spacer: 'E
 const UI_HINTS = { box: 'Contient d’autres blocs, rangés par un layout', button: 'Un bouton au style entièrement réglable', text: 'Un libellé, un titre, un paragraphe', spacer: 'Le ressort du layout : pousse les blocs' };
 const UI_INF = 1e6;
 const UI_FONTS = ['Figtree', 'Inter', 'Segoe UI', 'Jost', 'Georgia', 'Instrument Serif', 'JetBrains Mono', 'Caveat', 'Arial', 'Verdana', 'Courier New'];
-/* the button's style; a state (h: survol, p: pressé, d: désactivé) overrides any of these keys */
-const UI_BTN = {
-  ff: 'Figtree', fs: 13, fw: 600, fi: 0, ls: 0, lh: 1.2, tt: 'none', ta: 'center', td: 'none', fg: '#FFFFFFFF',
-  ic: '', ip: 'l', isz: 16, ig: 8, icc: '',
-  px: 16, py: 8, r: [8, 8, 8, 8],
-  ft: 'solid', c1: '#E8955CFF', c2: '#C96A3AFF', ga: 180,
-  bw: 0, bst: 'solid', bc: '#00000026',
-  sho: 1, shx: 0, shy: 2, shb: 6, shs: 0, shc: '#0000002E',
-  iso: 0, isx: 0, isy: 1, isb: 0, iss: 0, isc: '#FFFFFF59',
-  tso: 0, tsx: 0, tsy: 1, tsb: 2, tsc: '#00000040',
-  op: 1, bl: 0, dy: 0, sc: 1, tr: 120
-};
-const UI_BTN_ST = () => ({ h: { c1: '#F0A470FF', c2: '#D2783FFF' }, p: { c1: '#D27E48FF', c2: '#B45C2EFF', dy: 1, shy: 1, shb: 2 }, d: { op: .45, sho: 0 } });
 const UI_TXT = { ff: 'Figtree', fs: 13, fw: 400, fi: 0, fg: '#2B2B2BFF', ta: 'left', va: 'center', lh: 1.35, ls: 0, tt: 'none', td: 'none', wr: 'wrap' };
 const UI_BOX = { sk: 'panel', title: 'Panneau', lay: 'v', m: [12, 12, 12, 12], sp: 8, sv: 8, cols: 2, cst: '', ca: 'start', bg: '#FFFFFFFF', bc: '#0000001F', bw: 1, r: 8, sh: 0, tb: '#F2F1EEFF', tf: '#2B2B2BFF' };
 const UI_SKINS = [['none', 'Nu'], ['panel', 'Panneau'], ['group', 'Groupe'], ['window', 'Fenêtre'], ['dialog', 'Dialogue']];
@@ -44,21 +31,6 @@ const UI_ICONS = {
   dots: 'M5 12h.01M12 12h.01M19 12h.01', link: 'M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1', refresh: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5'
 };
 const ukIcon = (k, sz, col) => UI_ICONS[k] ? `<svg class="uk-ic" viewBox="0 0 24 24" width="${sz}" height="${sz}" fill="none" stroke="${col || 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${UI_ICONS[k]}"/></svg>` : '';
-/* ready-made button styles: a starting point, everything stays editable */
-const UI_PRESETS = [
-  ['Principal', {}, null],
-  ['Secondaire', { ft: 'solid', c1: '#FFFFFFFF', fg: '#2B2B2BFF', bw: 1, bc: '#D3CFC7FF', shy: 1, shb: 2, shc: '#0000001A' }, { h: { c1: '#F6F4F0FF' }, p: { c1: '#ECE9E3FF', dy: 1, sho: 0 }, d: { op: .45 } }],
-  ['Contour', { ft: 'none', fg: '#E8955CFF', bw: 1.5, bc: '#E8955CFF', sho: 0 }, { h: { ft: 'solid', c1: '#E8955C1F' }, p: { ft: 'solid', c1: '#E8955C33' }, d: { op: .4 } }],
-  ['Fantôme', { ft: 'none', fg: '#2B2B2BFF', sho: 0, bw: 0 }, { h: { ft: 'solid', c1: '#0000000F' }, p: { ft: 'solid', c1: '#0000001C' }, d: { op: .4 } }],
-  ['Lien', { ft: 'none', fg: '#3D6FD8FF', sho: 0, bw: 0, px: 4, py: 2, fw: 500, td: 'underline' }, { h: { fg: '#2752B0FF' }, p: { fg: '#1C3D85FF' }, d: { op: .4 } }],
-  ['Danger', { c1: '#D9483BFF', c2: '#B8352AFF' }, { h: { c1: '#E35A4DFF' }, p: { c1: '#B8352AFF', dy: 1 }, d: { op: .45, sho: 0 } }],
-  ['Pilule', { r: [999, 999, 999, 999], px: 22, c1: '#2B2B2BFF', shy: 4, shb: 12, shc: '#00000033' }, { h: { c1: '#444444FF' }, p: { c1: '#111111FF', sc: .97 }, d: { op: .4 } }],
-  ['Dégradé', { ft: 'lin', c1: '#7B5CFFFF', c2: '#E8558FFF', ga: 120, r: [10, 10, 10, 10], shy: 6, shb: 16, shc: '#7B5CFF55' }, { h: { ga: 160, shb: 22 }, p: { dy: 1, shy: 2, shb: 6 }, d: { op: .45, sho: 0 } }],
-  ['Verre', { ft: 'solid', c1: '#FFFFFF2E', fg: '#FFFFFFFF', bw: 1, bc: '#FFFFFF59', bl: 12, r: [12, 12, 12, 12], shy: 8, shb: 24, shc: '#00000040', iso: 1, isy: 1, isc: '#FFFFFF66' }, { h: { c1: '#FFFFFF47' }, p: { c1: '#FFFFFF1F' }, d: { op: .4 } }],
-  ['Néon', { ft: 'none', fg: '#4FF5D2FF', bw: 1.5, bc: '#4FF5D2FF', r: [6, 6, 6, 6], shx: 0, shy: 0, shb: 14, shs: 0, shc: '#4FF5D299', tso: 1, tsy: 0, tsb: 8, tsc: '#4FF5D2CC', tt: 'uppercase', ls: 1.5, ff: 'JetBrains Mono', fw: 500 }, { h: { shb: 24, shc: '#4FF5D2DD' }, p: { c1: '#4FF5D226', ft: 'solid' }, d: { op: .35, sho: 0, tso: 0 } }],
-  ['Rétro 3D', { c1: '#F2C94CFF', fg: '#2B2B2BFF', bw: 2, bc: '#2B2B2BFF', r: [6, 6, 6, 6], shx: 4, shy: 4, shb: 0, shc: '#2B2B2BFF', fw: 800 }, { h: { c1: '#F7D56BFF' }, p: { dy: 3, shx: 1, shy: 1 }, d: { op: .45 } }],
-  ['Doux', { c1: '#ECE9E4FF', fg: '#5B574FFF', r: [14, 14, 14, 14], shx: 5, shy: 5, shb: 12, shc: '#C9C4BAFF', iso: 1, isx: -4, isy: -4, isb: 10, isc: '#FFFFFFCC' }, { h: { shx: 3, shy: 3 }, p: { shx: 0, shy: 0, shb: 0, iso: 1, isx: 3, isy: 3, isb: 8, isc: '#C9C4BAFF' }, d: { op: .45 } }]
-];
 const ukClone = o => JSON.parse(JSON.stringify(o));
 function mkUic(t, x, y, o = {}) {
   const it = { id: uid('u'), k: 'uic', t, x: Math.round(x / 4) * 4, y: Math.round(y / 4) * 4, w: 120, h: 32 };
@@ -75,17 +47,144 @@ const ukMix = (rgb, a) => ukHex(rgb).slice(0, 7) + Math.round(clamp(a, 0, 1) * 2
 const ukCss = c => { const h = ukHex(c), a = ukAlpha(h); return a >= 1 ? h.slice(0, 7) : `rgba(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)},${+a.toFixed(3)})`; };
 const ukFont = f => /\s/.test(f) ? `"${f}"` : f;
 
-/* ---------- styles ---------- */
+/* ---------- the button (0.2.46): Figma-like parameters, no presets ----------
+   paint (fills, text, stroke): { t: solid | lin | rad | ang | dia, c, s: [[pos %, colour]...], a: angle, cx, cy: centre %, sz: size %, op: opacity %, on, bm: blend }
+   stroke: { on, p: paint, w: [top, right, bottom, left], pos: in | center | out, st: solid | dashed | dotted, da, ga, cap }
+   fx: effects, top first: drop, inner, glow, ring, bevel, tshadow, shine, noise, blur, bgblur
+   A state (h: survol, p: pressé, d: désactivé) replaces whole top-level keys (fills, stroke, fx, op…). */
+const ukN = (v, d) => v == null || v === '' || !isFinite(+v) ? d : +v;
+const ukP = (c, o = {}) => Object.assign({ t: 'solid', c: ukHex(c), s: [[0, ukHex(c)], [100, ukMix(ukRgb(c), 0)]], a: 180, cx: 50, cy: 50, sz: 100, op: 100, on: 1, bm: 'normal' }, o);
+const ukG = (t, a, s, o = {}) => ukP(s[0][1], Object.assign({ t, a, s: s.map(([p, c]) => [p, ukHex(c)]) }, o));
+const UI_FX = { drop: 'Ombre portée', inner: 'Ombre interne', glow: 'Lueur externe', ring: 'Contour lumineux', bevel: 'Biseau', tshadow: 'Ombre du texte', shine: 'Reflet', noise: 'Grain', blur: 'Flou du calque', bgblur: 'Flou d’arrière-plan' };
+const UI_FX0 = { drop: { x: 0, y: 4, b: 12, s: 0, c: '#00000040' }, inner: { x: 0, y: 1, b: 0, s: 0, c: '#FFFFFF59' }, glow: { b: 16, s: 0, c: '#E8955C99' }, ring: { s: 1.5, b: 10, c: '#4FF5D2CC' },
+  bevel: { d: 2, a: 90, b: 2, c: '#FFFFFF66', c2: '#00000033' }, tshadow: { x: 0, y: 1, b: 2, c: '#00000040' }, shine: { c: '#FFFFFF59', w: 30, a: 110, p: 50, anim: 0 }, noise: { op: 12, f: 80, bm: 'overlay' }, blur: { b: 2 }, bgblur: { b: 12 } };
+const ukFx = (t, o = {}) => Object.assign({ t, on: 1 }, ukClone(UI_FX0[t] || {}), o);
+const UI_BLEND = [['normal', 'Normal'], ['multiply', 'Produit'], ['screen', 'Superposition'], ['overlay', 'Incrustation'], ['darken', 'Obscurcir'], ['lighten', 'Éclaircir'], ['color-dodge', 'Densité couleur −'], ['color-burn', 'Densité couleur +'],
+  ['soft-light', 'Lumière tamisée'], ['hard-light', 'Lumière crue'], ['difference', 'Différence'], ['exclusion', 'Exclusion'], ['hue', 'Teinte'], ['saturation', 'Saturation'], ['color', 'Couleur'], ['luminosity', 'Luminosité']];
+const UI_PAINTS = [['solid', 'Uni'], ['lin', 'Linéaire'], ['rad', 'Radial'], ['ang', 'Angulaire'], ['dia', 'Losange']];
+const UI_BTN = {
+  ff: 'Figtree', fs: 13, fw: 600, fi: 0, lh: 120, ls: 0, tt: 'none', td: 'none', ta: 'center', tabs: 0, lig: 1, smc: 0, trunc: 0,
+  tp: ukP('#FFFFFF'), tsw: 0, tsc: '#00000066',
+  ic: '', ip: 'l', isz: 16, ig: 8, icc: '#FFFFFF00',
+  px: 16, py: 8, r: [8, 8, 8, 8], sm: 0, op: 100, bm: 'normal',
+  fills: [ukG('lin', 180, [[0, '#F2A56E'], [100, '#D9773F']])],
+  stroke: { on: 1, p: ukP('#FFFFFF29'), w: [1, 1, 1, 1], pos: 'in', st: 'solid', da: 6, ga: 4, cap: 'butt' },
+  fx: [ukFx('drop', { y: 4, b: 12, c: '#D9773F59' }), ukFx('inner', { y: 1, c: '#FFFFFF59' })],
+  dy: 0, sc: 100, tr: 120
+};
+const UI_BTN_ST = () => ({
+  h: { fills: [ukG('lin', 180, [[0, '#F6B482'], [100, '#E0844C']])], fx: [ukFx('drop', { y: 6, b: 18, c: '#D9773F73' }), ukFx('inner', { y: 1, c: '#FFFFFF66' })] },
+  p: { fills: [ukG('lin', 180, [[0, '#D9773F'], [100, '#C4652F']])], fx: [ukFx('inner', { y: 2, b: 4, c: '#00000038' })], dy: 1 },
+  d: { op: 50, fx: [] }
+});
 const ukBtnStyle = (it, st) => Object.assign({}, UI_BTN, it.b || {}, st && st !== 'n' && it.bs ? it.bs[st] || {} : {});
-function ukBtnDecl(s) {
-  const r = (s.r || [0, 0, 0, 0]).map(v => (+v || 0) + 'px').join(' ');
-  const bg = s.ft === 'none' ? 'transparent' : s.ft === 'lin' ? `linear-gradient(${+s.ga || 0}deg, ${ukCss(s.c1)}, ${ukCss(s.c2)})` : s.ft === 'rad' ? `radial-gradient(circle at 50% 35%, ${ukCss(s.c1)}, ${ukCss(s.c2)})` : ukCss(s.c1);
-  const sh = []; if (+s.sho) sh.push(`${s.shx}px ${s.shy}px ${s.shb}px ${s.shs}px ${ukCss(s.shc)}`); if (+s.iso) sh.push(`inset ${s.isx}px ${s.isy}px ${s.isb}px ${s.iss}px ${ukCss(s.isc)}`);
-  const dir = { l: 'row', r: 'row-reverse', t: 'column', b: 'column-reverse', o: 'row' }[s.ip] || 'row', jc = { left: 'flex-start', center: 'center', right: 'flex-end' }[s.ta] || 'center';
-  return `background:${bg};color:${ukCss(s.fg)};font:${+s.fi ? 'italic ' : ''}${s.fw} ${s.fs}px/${s.lh} ${ukFont(s.ff)},var(--font-ui);letter-spacing:${s.ls}px;text-transform:${s.tt};text-decoration:${s.td};`
-    + `flex-direction:${dir};justify-content:${jc};gap:${s.ig}px;padding:${s.py}px ${s.px}px;border-radius:${r};border:${s.bw}px ${s.bst} ${ukCss(s.bc)};box-shadow:${sh.join(',') || 'none'};`
-    + `text-shadow:${+s.tso ? `${s.tsx}px ${s.tsy}px ${s.tsb}px ${ukCss(s.tsc)}` : 'none'};opacity:${s.op};backdrop-filter:${+s.bl ? `blur(${s.bl}px)` : 'none'};transform:translateY(${s.dy}px) scale(${s.sc});transition:all ${s.tr}ms ease;`;
+/* the buttons of 0.2.40–0.2.45 had a flat style (ft, c1, c2, bw, sho…): turned into the new one */
+function ukFromFlat(o) {
+  const L = Object.assign({ ff: 'Figtree', fs: 13, fw: 600, fi: 0, ls: 0, lh: 1.2, tt: 'none', ta: 'center', td: 'none', fg: '#FFFFFFFF', ic: '', ip: 'l', isz: 16, ig: 8, icc: '', px: 16, py: 8, r: [8, 8, 8, 8], ft: 'solid', c1: '#E8955CFF', c2: '#C96A3AFF', ga: 180,
+    bw: 0, bst: 'solid', bc: '#00000026', sho: 1, shx: 0, shy: 2, shb: 6, shs: 0, shc: '#0000002E', iso: 0, isx: 0, isy: 1, isb: 0, iss: 0, isc: '#FFFFFF59', tso: 0, tsx: 0, tsy: 1, tsb: 2, tsc: '#00000040', op: 1, bl: 0, dy: 0, sc: 1, tr: 120 }, o);
+  const fx = [];
+  if (+L.sho) fx.push(ukFx('drop', { x: L.shx, y: L.shy, b: L.shb, s: L.shs, c: L.shc }));
+  if (+L.iso) fx.push(ukFx('inner', { x: L.isx, y: L.isy, b: L.isb, s: L.iss, c: L.isc }));
+  if (+L.tso) fx.push(ukFx('tshadow', { x: L.tsx, y: L.tsy, b: L.tsb, c: L.tsc }));
+  if (+L.bl) fx.push(ukFx('bgblur', { b: L.bl }));
+  return { ff: L.ff, fs: L.fs, fw: L.fw, fi: L.fi, lh: Math.round(L.lh * 100), ls: +((L.ls / Math.max(1, L.fs)) * 100).toFixed(1), tt: L.tt, td: L.td, ta: L.ta, tabs: 0, lig: 1, smc: 0, trunc: 0,
+    tp: ukP(L.fg), tsw: 0, tsc: '#00000066', ic: L.ic, ip: L.ip, isz: L.isz, ig: L.ig, icc: L.icc || '#FFFFFF00', px: L.px, py: L.py, r: (L.r || [0, 0, 0, 0]).slice(), sm: 0, op: Math.round(L.op * 100), bm: 'normal',
+    fills: L.ft === 'none' ? [] : L.ft === 'solid' ? [ukP(L.c1)] : [ukG(L.ft === 'rad' ? 'rad' : 'lin', L.ga, [[0, L.c1], [100, L.c2]])],
+    stroke: { on: +L.bw > 0 ? 1 : 0, p: ukP(L.bc), w: [L.bw, L.bw, L.bw, L.bw].map(v => +v || 1), pos: 'in', st: L.bst === 'double' ? 'solid' : L.bst, da: 6, ga: 4, cap: 'butt' },
+    fx, dy: L.dy, sc: Math.round(L.sc * 100), tr: L.tr };
 }
+function ukBtnMig(it) {
+  if (it.t !== 'button' || !it.b || Array.isArray(it.b.fills)) return it;
+  const b = ukFromFlat(it.b), bs = {};
+  for (const st of ['h', 'p', 'd']) { const o = it.bs && it.bs[st]; if (!o || !Object.keys(o).length) continue; const full = ukFromFlat(Object.assign({}, it.b, o)), d = {}; for (const k in full) if (JSON.stringify(full[k]) !== JSON.stringify(b[k])) d[k] = full[k]; bs[st] = d; }
+  return Object.assign({}, it, { b, bs });
+}
+/* a paint as background layers: [{ i: image, z: size, q: position }] */
+const ukFade = (c, f) => ukMix(ukRgb(c), ukAlpha(c) * f);
+const ukSorted = p => { let s = (p.s && p.s.length ? p.s : [[0, p.c], [100, p.c]]).slice().sort((a, b) => a[0] - b[0]); if (s.length === 1) s = [s[0], [100, s[0][1]]]; return s; };
+const ukStops = (p, f, k = 1, o = 0) => ukSorted(p).map(([q, c]) => `${ukCss(ukFade(c, f))} ${+(o + q * k).toFixed(2)}%`).join(', ');
+function ukPaintLayers(p) {
+  if (!p || !+ukN(p.on, 1)) return [];
+  const f = clamp(ukN(p.op, 100), 0, 100) / 100, at = `${ukN(p.cx, 50)}% ${ukN(p.cy, 50)}%`, one = i => [{ i, z: '100% 100%', q: '0 0' }];
+  if (p.t === 'lin') return one(`linear-gradient(${ukN(p.a, 180)}deg, ${ukStops(p, f)})`);
+  if (p.t === 'rad') { const r = ukN(p.sz, 100) / 2; return one(`radial-gradient(${r}% ${r}% at ${at}, ${ukStops(p, f)})`); }
+  if (p.t === 'ang') return one(`conic-gradient(from ${ukN(p.a, 0)}deg at ${at}, ${ukStops(p, f)})`);
+  if (p.t === 'dia') return [['top left', 'left top'], ['top right', 'right top'], ['bottom left', 'left bottom'], ['bottom right', 'right bottom']].map(([to, q]) => ({ i: `linear-gradient(to ${to}, ${ukStops(p, f, .5)})`, z: '50% 50%', q }));
+  const c = ukCss(ukFade(p.c, f)); return one(`linear-gradient(${c}, ${c})`);
+}
+/* a list of paints (top first) as background declarations */
+function ukBgDecl(list) {
+  const L = []; for (const p of list || []) for (const l of ukPaintLayers(p)) L.push(Object.assign({ m: p.bm || 'normal' }, l));
+  if (!L.length) return 'background:none;';
+  return `background-image:${L.map(l => l.i).join(',')};background-size:${L.map(l => l.z).join(',')};background-position:${L.map(l => l.q).join(',')};background-repeat:no-repeat;background-blend-mode:${L.map(l => l.m).join(',')};background-color:transparent;`;
+}
+/* the plain colour of a paint (icons, dashes): its colour or its first stop */
+const ukPaintColor = p => !p ? '#000000FF' : p.t === 'solid' ? ukFade(p.c, ukN(p.op, 100) / 100) : ukFade(ukSorted(p)[0][1], ukN(p.op, 100) / 100);
+/* a rounded rectangle with four radii, as an SVG path */
+function ukRR(x, y, w, h, r) {
+  const m = Math.max(0, Math.min(w, h) / 2), [a, b, c, d] = r.map(v => +clamp(+v || 0, 0, m).toFixed(2)), n = v => +v.toFixed(2);
+  return `M${n(x + a)} ${n(y)}H${n(x + w - b)}${b ? `A${b} ${b} 0 0 1 ${n(x + w)} ${n(y + b)}` : ''}V${n(y + h - c)}${c ? `A${c} ${c} 0 0 1 ${n(x + w - c)} ${n(y + h)}` : ''}H${n(x + d)}${d ? `A${d} ${d} 0 0 1 ${n(x)} ${n(y + h - d)}` : ''}V${n(y + a)}${a ? `A${a} ${a} 0 0 1 ${n(x + a)} ${n(y)}` : ''}Z`;
+}
+const ukSvgUrl = s => `url("data:image/svg+xml,${encodeURIComponent(s)}")`;
+/* the stroke: an overlay painted with the stroke's paint, masked by an SVG ring (solid) or a dashed outline */
+function ukStrokeDecl(s, W, H) {
+  const k = s.stroke || {}; if (!+k.on || !k.p || !+ukN(k.p.on, 1)) return 'display:none;';
+  const w = [0, 1, 2, 3].map(i => Math.max(0, +((k.w || [])[i] ?? (k.w || [1])[0]) || 0)); if (!w.some(v => v > 0)) return 'display:none;';
+  const off = w.map(v => k.pos === 'out' ? v : k.pos === 'center' ? v / 2 : 0), r = (s.r || [0, 0, 0, 0]).map(v => +v || 0);
+  const R = [r[0] ? r[0] + Math.max(off[0], off[3]) : 0, r[1] ? r[1] + Math.max(off[0], off[1]) : 0, r[2] ? r[2] + Math.max(off[2], off[1]) : 0, r[3] ? r[3] + Math.max(off[2], off[3]) : 0];
+  const OW = Math.max(1, W + off[1] + off[3]), OH = Math.max(1, H + off[0] + off[2]), n = v => +v.toFixed(2);
+  let body;
+  if (k.st === 'dashed' || k.st === 'dotted') {
+    const t = w[0] || Math.max(...w), d = k.st === 'dotted' ? `0.01 ${n(Math.max(.5, ukN(k.ga, 4) + t))}` : `${n(Math.max(.5, ukN(k.da, 6)))} ${n(Math.max(.5, ukN(k.ga, 4)))}`;
+    body = `<path d="${ukRR(t / 2, t / 2, OW - t, OH - t, R.map(v => Math.max(0, v - t / 2)))}" fill="none" stroke="#000" stroke-width="${n(t)}" stroke-dasharray="${d}" stroke-linecap="${k.st === 'dotted' ? 'round' : k.cap || 'butt'}"/>`;
+  } else {
+    const ri = [Math.max(0, R[0] - Math.max(w[0], w[3])), Math.max(0, R[1] - Math.max(w[0], w[1])), Math.max(0, R[2] - Math.max(w[2], w[1])), Math.max(0, R[3] - Math.max(w[2], w[3]))];
+    body = `<path fill-rule="evenodd" d="${ukRR(0, 0, OW, OH, R)}${ukRR(w[3], w[0], Math.max(0, OW - w[1] - w[3]), Math.max(0, OH - w[0] - w[2]), ri)}"/>`;
+  }
+  const m = ukSvgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${n(OW)}" height="${n(OH)}" viewBox="0 0 ${n(OW)} ${n(OH)}" preserveAspectRatio="none">${body}</svg>`);
+  return `display:block;top:${n(-off[0])}px;right:${n(-off[1])}px;bottom:${n(-off[2])}px;left:${n(-off[3])}px;${ukBgDecl([Object.assign({}, k.p, { bm: 'normal' })])}-webkit-mask:${m} 0 0/100% 100% no-repeat;mask:${m} 0 0/100% 100% no-repeat;`;
+}
+const ukNoise = f => ukSvgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="${(clamp(ukN(f, 80), 5, 100) / 100).toFixed(2)}" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`);
+/* all the declarations of one state: m (the button), l (label), i (icon), bs (stroke), sh (shine), nz (noise) */
+function ukBtnCss(s, W, H, mode) {
+  const fx = (s.fx || []).filter(e => e && +ukN(e.on, 1)), px = v => `${+(+v || 0).toFixed(2)}px`;
+  const box = [], tsh = [], filt = [];
+  for (const e of fx) {
+    if (e.t === 'drop') box.push(`${px(e.x)} ${px(e.y)} ${px(Math.max(0, e.b))} ${px(e.s)} ${ukCss(e.c)}`);
+    else if (e.t === 'inner') box.push(`inset ${px(e.x)} ${px(e.y)} ${px(Math.max(0, e.b))} ${px(e.s)} ${ukCss(e.c)}`);
+    else if (e.t === 'glow') box.push(`0 0 ${px(Math.max(0, e.b))} ${px(e.s)} ${ukCss(e.c)}`);
+    else if (e.t === 'ring') box.push(`0 0 0 ${px(Math.max(0, e.s))} ${ukCss(e.c)}`, `0 0 ${px(Math.max(0, e.b))} ${px(e.s)} ${ukCss(e.c)}`);
+    else if (e.t === 'bevel') { const a = ukN(e.a, 90) * Math.PI / 180, d = ukN(e.d, 2), dx = -Math.cos(a) * d, dy = Math.sin(a) * d; box.push(`inset ${px(dx)} ${px(dy)} ${px(Math.max(0, e.b))} 0 ${ukCss(e.c)}`, `inset ${px(-dx)} ${px(-dy)} ${px(Math.max(0, e.b))} 0 ${ukCss(e.c2)}`); }
+    else if (e.t === 'tshadow') tsh.push(e);
+    else if (e.t === 'blur') filt.push(`blur(${px(Math.max(0, e.b))})`);
+  }
+  const bg = fx.find(e => e.t === 'bgblur'), shine = fx.find(e => e.t === 'shine'), noise = fx.find(e => e.t === 'noise');
+  const r = (s.r || [0, 0, 0, 0]).map(px).join(' '), dir = { l: 'row', r: 'row-reverse', t: 'column', b: 'column-reverse', o: 'row' }[s.ip] || 'row', jc = { left: 'flex-start', center: 'center', right: 'flex-end' }[s.ta] || 'center';
+  const fs = ukN(s.fs, 13), ls = ukN(s.ls, 0) / 100 * fs, sm = ukN(s.sm, 0);
+  const m = ukBgDecl(s.fills) + `color:${ukCss(ukPaintColor(s.tp))};font:${+s.fi ? 'italic ' : ''}${s.fw} ${fs}px/${ukN(s.lh, 120) / 100} ${ukFont(s.ff)},var(--font-ui);letter-spacing:${px(ls)};text-transform:${s.tt};`
+    + `flex-direction:${dir};justify-content:${jc};gap:${px(s.ig)};padding:${px(s.py)} ${px(s.px)};border-radius:${r};${sm > 0 ? `corner-shape:superellipse(${(1 + sm / 100 * 1.5).toFixed(2)});` : ''}`
+    + `box-shadow:${box.join(',') || 'none'};opacity:${clamp(ukN(s.op, 100), 0, 100) / 100};mix-blend-mode:${s.bm || 'normal'};filter:${filt.join(' ') || 'none'};backdrop-filter:${bg ? `blur(${px(Math.max(0, bg.b))})` : 'none'};`
+    + `transform:translateY(${px(s.dy)}) scale(${ukN(s.sc, 100) / 100});transition:all ${ukN(s.tr, 120)}ms ease;`;
+  const grad = s.tp && s.tp.t !== 'solid' && +ukN(s.tp.on, 1), tsc = tsh.map(e => `${px(e.x)} ${px(e.y)} ${px(Math.max(0, e.b))} ${ukCss(e.c)}`);
+  const l = (grad ? ukBgDecl([Object.assign({}, s.tp, { bm: 'normal' })]) + '-webkit-background-clip:text;background-clip:text;color:transparent;' : `background:none;color:${ukCss(ukPaintColor(s.tp))};`)
+    + (grad ? `text-shadow:none;filter:${tsh.map(e => `drop-shadow(${px(e.x)} ${px(e.y)} ${px(Math.max(0, e.b))} ${ukCss(e.c)})`).join(' ') || 'none'};` : `text-shadow:${tsc.join(',') || 'none'};filter:none;`)
+    + `-webkit-text-stroke:${+s.tsw > 0 ? `${px(s.tsw)} ${ukCss(s.tsc)}` : '0'};paint-order:stroke fill;text-decoration:${s.td || 'none'};`
+    + `font-variant-numeric:${+s.tabs ? 'tabular-nums' : 'normal'};font-variant-ligatures:${+ukN(s.lig, 1) ? 'normal' : 'none'};font-variant-caps:${+s.smc ? 'small-caps' : 'normal'};`
+    + (+s.trunc ? 'overflow:hidden;text-overflow:ellipsis;min-width:0;' : 'overflow:visible;text-overflow:clip;');
+  const i = `color:${ukCss(s.icc && ukAlpha(s.icc) > 0 ? s.icc : ukPaintColor(s.tp))};width:${px(s.isz)};height:${px(s.isz)};`;
+  let sh = 'display:none;';
+  if (shine && !(+shine.anim && mode !== 'hover' && mode !== 'still')) {
+    const c = ukCss(shine.c), w = clamp(ukN(shine.w, 30), 1, 100), a = ukN(shine.a, 110);
+    if (+shine.anim && mode === 'hover') sh = `display:block;background:linear-gradient(${a}deg, transparent ${50 - w / 6}%, ${c} 50%, transparent ${50 + w / 6}%) 100% 0/300% 100% no-repeat;animation:uk-shine 900ms ease-out both;`;
+    else { const p = ukN(shine.p, 50); sh = `display:block;background:linear-gradient(${a}deg, transparent ${p - w / 2}%, ${c} ${p}%, transparent ${p + w / 2}%);animation:none;`; }
+  }
+  const nz = noise ? `display:block;background:${ukNoise(noise.f)} 0 0/160px 160px;opacity:${clamp(ukN(noise.op, 12), 0, 100) / 100};mix-blend-mode:${noise.bm || 'overlay'};` : 'display:none;';
+  return { m, l, i, bs: ukStrokeDecl(s, W, H), sh, nz };
+}
+function ukBtnRules(sel, d) { return `${sel}{${d.m}}${sel} .uk-bl{${d.l}}${sel} .uk-ic{${d.i}}${sel}>.uk-bs{${d.bs}}${sel}>.uk-sh{${d.sh}}${sel}>.uk-nz{${d.nz}}`; }
+
+
+/* ---------- styles ---------- */
 const ukTxtStyle = it => Object.assign({}, UI_TXT, it.f || {});
 const ukBoxStyle = it => Object.assign({}, UI_BOX, it.c || {});
 /* the part of a box above its content: a title bar, a group title */
@@ -95,10 +194,11 @@ const ukChrome = c => ({ window: 32, dialog: 38, group: 20 }[c.sk] || 0);
 const ukMulti = s => esc(s).replace(/\n/g, '<br>');
 function uicHTML(it, dir) {
   if (it.t === 'button') {
-    const st = it.dis ? 'd' : it.pv || 'n', s = ukBtnStyle(it, st), id = esc(it.id);
-    const css = `[data-b="${id}"]{${ukBtnDecl(s)}}` + (it.dis ? '' : `.uitest [data-b="${id}"]{${ukBtnDecl(ukBtnStyle(it, 'n'))}}.uitest [data-b="${id}"]:hover{${ukBtnDecl(ukBtnStyle(it, 'h'))}}.uitest [data-b="${id}"]:active{${ukBtnDecl(ukBtnStyle(it, 'p'))}}`);
-    const ic = s.ic ? ukIcon(s.ic, s.isz, s.icc ? ukCss(s.icc) : '') : '', lab = s.ip === 'o' && ic ? '' : `<span class="uk-bl">${ukMulti(it.txt)}</span>`;
-    return `<style>${css}</style><div class="uk-b" data-b="${id}"${it.dis ? '' : ' data-ukbtn="1"'}>${ic}${lab}</div>`;
+    const st = it.dis ? 'd' : it.pv || 'n', s = ukBtnStyle(it, st), id = esc(it.id), W = +it.w || 0, H = +it.h || 0, B = `[data-b="${id}"]`, T = `.uitest ${B}`;
+    let css = ukBtnRules(B, ukBtnCss(s, W, H, 'still'));
+    if (!it.dis) css += ukBtnRules(T, ukBtnCss(ukBtnStyle(it, 'n'), W, H, 'n')) + ukBtnRules(T + ':hover', ukBtnCss(ukBtnStyle(it, 'h'), W, H, 'hover')) + ukBtnRules(T + ':active', ukBtnCss(ukBtnStyle(it, 'p'), W, H, 'p'));
+    const ic = s.ic ? ukIcon(s.ic, s.isz, '') : '', lab = s.ip === 'o' && ic ? '' : `<span class="uk-bl">${ukMulti(it.txt)}</span>`;
+    return `<style>${css}</style><div class="uk-b" data-b="${id}"${it.dis ? '' : ' data-ukbtn="1"'}><span class="uk-nz"></span><span class="uk-sh"></span>${ic}${lab}<span class="uk-bs"></span></div>`;
   }
   if (it.t === 'text') {
     const f = ukTxtStyle(it), jc = { top: 'flex-start', center: 'center', bottom: 'flex-end' }[f.va] || 'center';
@@ -143,10 +243,11 @@ function ukTextBox(txt, f) {
 /* hint and minimum hint of a leaf block (boxes are computed from their content in uiLayout) */
 function ukLeafHint(it, dir) {
   if (it.t === 'button') {
-    const s = ukBtnStyle(it, it.dis ? 'd' : 'n'), tb = s.ip === 'o' && s.ic ? { w: 0, h: 0 } : ukTextBox(it.txt, s), I = s.ic ? +s.isz : 0, g = I && tb.w ? +s.ig : 0;
+    const s = ukBtnStyle(it, it.dis ? 'd' : 'n'), fs = ukN(s.fs, 13), f = { ff: s.ff, fs, fw: s.fw, fi: s.fi, tt: s.tt, ls: ukN(s.ls, 0) / 100 * fs, lh: ukN(s.lh, 120) / 100 };
+    const tb = s.ip === 'o' && s.ic ? { w: 0, h: 0 } : ukTextBox(it.txt, f), I = s.ic ? +s.isz : 0, g = I && tb.w ? +s.ig : 0;
     const vert = s.ip === 't' || s.ip === 'b', cw = vert ? Math.max(tb.w, I) : tb.w + g + I, chh = vert ? tb.h + g + I : Math.max(tb.h, I);
-    const w = Math.ceil(cw + 2 * s.px + 2 * s.bw), h = Math.ceil(chh + 2 * s.py + 2 * s.bw);
-    return { w, h, mw: w, mh: h };
+    const w = Math.ceil(cw + 2 * s.px), h = Math.ceil(chh + 2 * s.py);
+    return { w, h, mw: +s.trunc ? Math.ceil(Math.min(w, 2 * s.px + I + g + fs * 2)) : w, mh: h };
   }
   if (it.t === 'text') {
     const f = ukTxtStyle(it), tb = ukTextBox(it.txt, f), w = f.wr === 'wrap' ? Math.min(tb.w, 320) : tb.w;
@@ -211,6 +312,7 @@ function ukGridPlace(kids, cols, lp) {
 let uiFloat = null;   // blocks being dragged: out of their layout while the pointer holds them
 function uiLayout(arr) {
   if (!arr.some(i => i.k === 'uic')) return arr;
+  if (arr.some(i => i.t === 'button' && i.k === 'uic' && i.b && !Array.isArray(i.b.fills))) arr = arr.map(i => i.k === 'uic' ? ukBtnMig(i) : i);
   const byId = new Map(), kids = new Map();
   for (const i of arr) if (i.k === 'uic') byId.set(i.id, i);
   /* a parent must be an existing box, without cycles */
