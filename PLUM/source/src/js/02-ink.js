@@ -37,8 +37,11 @@ const PENS = {
   sponge: { name: 'Éponge', icon: 'water', hint: 'Tampon poreux, irrégulier', size: 56, min: 8, max: 240, thin: .4, gamma: 1, o: 1, smooth: .5, alpha: 1, stamp: { sh: 't_sponge', tx: 'none', fl: .75, sp: .32, dy: { ps: 1, po: 1, rot: 0, sc: 1 }, fx: { pm: .15, jt: .35, oj: .45, sa: .5, cj: .08 } } },
   alcohol: { name: 'Marqueur', icon: 'marker', hint: 'Pointe rectangulaire tenue à 45°, encre irrégulière qui se charge et se vide', size: 22, min: 4, max: 90, thin: .1, gamma: 1, o: .85, multiply: true, smooth: .45, alpha: 1, stamp: { sh: 't_marker', tx: 'none', fl: .16, sp: .035, dy: { ps: 0, po: 0, rot: 0, sc: 0 }, fx: { rd: .3, ov: .85, ol: 3, wet: .2 } } }
 };
+/* chalk (0.2.42): a soft round stick, then the paper's grain, much bigger than the stick, decides pixel by pixel whether the
+   chalk caught (fx.ch: threshold, not a cut-out): the contour itself breaks up, light pressure leaves only the grain's tops */
+PENS.craie = { name: 'Craie', icon: 'marker', hint: 'Bâton de craie : le gros grain du papier ronge le contour, appuyez pour couvrir', size: 18, min: 3, max: 140, thin: .4, gamma: 1, o: 1, smooth: .45, alpha: 1, stamp: { sh: 'soft', tx: 'none', fl: .22, sp: .06, dy: { ps: 1, po: 1, rot: 0, sc: 0 }, fx: { pm: .35, jt: .05, ch: 1, chs: 4, tl: .4 } } };
 /* the alpha brushes, in the order of the drawing bar */
-const ALPHA_PENS = ['graphite', 'inkbrush', 'fusain', 'aqua', 'crayon', 'bristle', 'airsoft', 'sponge', 'alcohol'];
+const ALPHA_PENS = ['graphite', 'inkbrush', 'fusain', 'aqua', 'crayon', 'bristle', 'airsoft', 'sponge', 'alcohol', 'craie'];
 /* 1 to 8 stay the classic pens of 0.5; 9 is the natural pencil */
 const PEN_ORDER = ['pencil', 'pen', 'fine', 'brush', 'marker', 'water', 'air', 'highlight', 'natural', 'charcoal', 'chalk', 'dry', 'gouache', 'spray', 'inkfine', 'knife', ...ALPHA_PENS];
 const PEN_DEFAULT_COLORS = { pencil: '#3A3F46', pen: '#1B1E22', fine: '#1971C2', brush: '#23496F', marker: '#8EC5D8', water: '#4F86B8', air: '#E58C73', highlight: '#FDE047', natural: '#3B3A36', charcoal: '#2B2826', chalk: '#E8DCC4', dry: '#6E8F5E', gouache: '#C8553D', spray: '#2A6F7F', inkfine: '#24262A' };
@@ -53,7 +56,7 @@ const LITE_PENS = [...FAST_PENS, ...ALPHA_PENS];
 const radiusFor = (def, s, p) => s * .5 * ((1 - def.thin) + def.thin * Math.pow(clamp(p, 0, 1), def.gamma));
 const STAMP_DEF = { sh: 'native', tx: 'none', fl: 1, sp: .1, dy: { ps: 1, po: 0, rot: 0, sc: 0 } };
 /* a pen not given a colour yet takes this number of the theme's scheme (00-util.js) */
-const PEN_DEFAULT_SCHEME = { pencil: 2, pen: 1, fine: 11, brush: 11, marker: 19, water: 11, air: 6, highlight: 8, natural: 1, charcoal: 1, chalk: 14, dry: 9, gouache: 6, spray: 10, inkfine: 1, knife: 11, graphite: 2, inkbrush: 1, fusain: 1, aqua: 11, crayon: 6, bristle: 9, airsoft: 10, sponge: 8, alcohol: 11 };
+const PEN_DEFAULT_SCHEME = { pencil: 2, pen: 1, fine: 11, brush: 11, marker: 19, water: 11, air: 6, highlight: 8, natural: 1, charcoal: 1, chalk: 14, dry: 9, gouache: 6, spray: 10, inkfine: 1, knife: 11, craie: 4, graphite: 2, inkbrush: 1, fusain: 1, aqua: 11, crayon: 6, bristle: 9, airsoft: 10, sponge: 8, alcohol: 11 };
 const penPref = k => { const d = PENS[k] || PENS.pen, p = (S && S.prefs.pens[k]) || {}, b = d.stamp || STAMP_DEF;
   return { c: p.c || schemeHex(PEN_DEFAULT_SCHEME[k]) || PEN_DEFAULT_COLORS[k] || '#1B1E22', s: p.s || d.size, o: p.o ?? d.o, sm: p.sm ?? d.smooth, sh: p.sh || b.sh, tx: p.tx || b.tx, fl: p.fl ?? b.fl, sp: p.sp ?? b.sp, dy: Object.assign({}, b.dy, p.dy || {}), fx: Object.assign({}, b.fx, p.fx || {}) }; };
 /* the brush settings a new stroke carries; null keeps the pen's own vector outline */
@@ -148,7 +151,7 @@ const NIBS = {
   /* real alpha tips (0.2.36) */
   t_graphite: { name: 'Graphite', tip: 'graphite', jit: 6.28 }, t_charcoal: { name: 'Fusain', tip: 'charcoal', jit: 6.28 }, t_ink: { name: 'Encre', tip: 'ink', jit: .2 },
   t_bristle: { name: 'Brosse', tip: 'bristle', jit: .08 }, t_crayon: { name: 'Craie', tip: 'crayon', jit: 6.28 }, t_water: { name: 'Lavis', tip: 'water', jit: 6.28 },
-  t_spray: { name: 'Spray', tip: 'spray', jit: 6.28 }, t_sponge: { name: 'Éponge', tip: 'sponge', jit: 6.28 }, t_marker: { name: 'Biseau', tip: 'marker', ang: -Math.PI / 4, jit: .01 }
+  soft: { name: 'Doux', jit: 0 }, t_spray: { name: 'Spray', tip: 'spray', jit: 6.28 }, t_sponge: { name: 'Éponge', tip: 'sponge', jit: 6.28 }, t_marker: { name: 'Biseau', tip: 'marker', ang: -Math.PI / 4, jit: .01 }
 };
 /* 'line' stays for strokes drawn with it, the native outline does the same job in the panel */
 const NIB_ORDER = ['native', 'grain', 'wedge', 'flat', 'feather', 'taper', 'knife', 't_graphite', 't_charcoal', 't_ink', 't_bristle', 't_crayon', 't_water', 't_spray', 't_sponge', 't_marker'];
@@ -202,6 +205,7 @@ function nibImage(sh) {
       /* the blade across the stroke (u runs along it once turned): hard edges, ridges of paint on both ends, streaks */
       case 'knife': { const inside = clamp((.3 - Math.abs(u)) / aa, 0, 1) * clamp((.94 - Math.abs(v)) / aa, 0, 1), st = n2(3, v * 9 + 9) * .7 + n1(5, v * 3 + 3) * .3;
         a = inside * clamp(.72 + (st - .5) * 2.2, .3, 1) * (Math.abs(v) > .86 ? 1.4 : 1); a = Math.min(a, 1); break; }
+      case 'soft': a = ss(1, .15, R); break;
       default: a = clamp((.96 - R) / aa, 0, 1);
     }
     const k = (j * N + i) * 4; d[k] = d[k + 1] = d[k + 2] = 255; d[k + 3] = a * 255;
@@ -317,12 +321,37 @@ function wetEdges(ctx, amt, blur, rect) {
   ax.globalCompositeOperation = 'destination-out'; ax.drawImage(B, 0, 0, w, h, 0, 0, w, h); ax.globalCompositeOperation = 'source-over';
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); for (let n = amt * 3; n > 0; n--) { ctx.globalAlpha = clamp(n, 0, 1); ctx.drawImage(A, 0, 0, w, h, x, y, w, h); } ctx.restore();
 }
+/* chalk: what is on ctx (in rect, canvas pixels) stays only where its alpha beats the paper grain at that point of the paper.
+   The grain is read in stroke coordinates through ctx's transform (ox, oy = where the stroke sits), scaled up by sc. */
+const _grainVal = new Map();
+function grainValues(tx) { let g = _grainVal.get(tx); if (g) return g; const t = texTile(tx); if (!t) return null;
+  const d = t.getContext('2d').getImageData(0, 0, t.width, t.height).data, v = new Float32Array(t.width * t.height);
+  for (let i = 0; i < v.length; i++) v[i] = d[i * 4 + 3] / 255;
+  g = { v, w: t.width, h: t.height }; if (_tipImg.has(TEXS[tx] && TEXS[tx].img)) _grainVal.set(tx, g); return g; }
+function chalkCut(ctx, rect, ox, oy, sc, amt = 1) {
+  const g = grainValues('paper'); if (!g) return;
+  const cv = ctx.canvas; let [x, y, w, h] = rect || [0, 0, cv.width, cv.height];
+  x = Math.max(0, Math.floor(x)); y = Math.max(0, Math.floor(y)); w = Math.min(cv.width - x, Math.ceil(w)); h = Math.min(cv.height - y, Math.ceil(h)); if (w < 1 || h < 1) return;
+  const m = ctx.getTransform().inverse(), im = ctx.getImageData(x, y, w, h), d = im.data, k = 1 / sc, gw = g.w, gh = g.h, gv = g.v;
+  for (let j = 0; j < h; j++) {
+    const py = y + j + .5; let ux = (m.a * (x + .5) + m.c * py + m.e + ox) * k, uy = (m.b * (x + .5) + m.d * py + m.f + oy) * k; const dx = m.a * k, dy = m.b * k;
+    for (let i = 0; i < w; i++, ux += dx, uy += dy) {
+      const q = (j * w + i) * 4 + 3, a = d[q]; if (!a) continue;
+      const fx0 = Math.floor(ux), fy0 = Math.floor(uy), fx = ux - fx0, fy = uy - fy0, gx = (fx0 % gw + gw) % gw, gy = (fy0 % gh + gh) % gh, gx1 = (gx + 1) % gw, gy1 = (gy + 1) % gh;
+      const t = ((gv[gy * gw + gx] * (1 - fx) + gv[gy * gw + gx1] * fx) * (1 - fy) + (gv[gy1 * gw + gx] * (1 - fx) + gv[gy1 * gw + gx1] * fx) * fy) * amt;
+      /* soft threshold: a little above the grain = full chalk, below = paper */
+      const v = (a / 255 - t) * 4; d[q] = v <= 0 ? 0 : v >= 1 ? 255 : v * 255;
+    }
+  }
+  ctx.putImageData(im, x, y);
+}
 /* whole stroke into ctx (already transformed to stroke coordinates) */
 function stampInto(ctx, st) {
   if (st.b.sh === 'native') { ctx.fillStyle = inkColor(st.c); try { ctx.fill(new Path2D(inkOutline(st.p, st))); } catch (e) {} }
   else stampWalk(ctx, st, null);
   const F = st.b.fx || {};
   if (F.wet) { const m = ctx.getTransform(); wetEdges(ctx, F.wet, st.s * .22 * Math.hypot(m.a, m.b), null); }
+  if (F.ch) chalkCut(ctx, null, st.b.ox || 0, st.b.oy || 0, (F.chs || 1.5) * .42, F.ch);
   applyTexture(ctx, st.b.tx, st.b.ox || 0, st.b.oy || 0, texScale(st), F.td ?? 1);
 }
 /* textures keep a readable grain on fine strokes too (below .6 they all turned into the same fine noise) */
@@ -528,11 +557,12 @@ class InkCapture {
       else { this.xform(lx); this.walk = stampWalk(lx, c, this.walk); }
       x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(L, 0, 0);
       const F = c.b.fx || {};
-      if (F.wet && this.walk && this.walk.bb) {
+      if ((F.wet || F.ch) && this.walk && this.walk.bb) {
         /* only the stroke's box, in canvas pixels (the board may be turned: take the box around its four corners) */
         this.xform(x); const m = x.getTransform(), [a0, b0, a1, b1] = this.walk.bb, P = [[a0, b0], [a1, b0], [a0, b1], [a1, b1]].map(([u, v]) => [m.a * u + m.c * v + m.e, m.b * u + m.d * v + m.f]);
         const X0 = Math.min(...P.map(q => q[0])), Y0 = Math.min(...P.map(q => q[1])), X1 = Math.max(...P.map(q => q[0])), Y1 = Math.max(...P.map(q => q[1])), bl = c.s * .22 * Math.hypot(m.a, m.b);
-        wetEdges(x, F.wet, bl, [X0 - bl * 2, Y0 - bl * 2, X1 - X0 + bl * 4, Y1 - Y0 + bl * 4]);
+        if (F.wet) wetEdges(x, F.wet, bl, [X0 - bl * 2, Y0 - bl * 2, X1 - X0 + bl * 4, Y1 - Y0 + bl * 4]);
+        if (F.ch) chalkCut(x, [X0 - 2, Y0 - 2, X1 - X0 + 4, Y1 - Y0 + 4], 0, 0, (F.chs || 1.5) * .42, F.ch);
       }
       this.xform(x); applyTexture(x, c.b.tx, 0, 0, texScale(c), F.td ?? 1);
       return;
