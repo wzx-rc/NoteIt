@@ -640,7 +640,7 @@ const Note = (() => {
     cur = g; sheet = g.el; body = g.body; inkSvg = g.inkSvg; pad = g.pad; P = g.data;
   }
   const pageHTML = i => `<article class="${sheetClass()}${i ? ' npg-more' : ''}" data-pg="${i}">${i ? '' : `<input class="ntitle" value="${esc(D.title)}" aria-label="Titre" placeholder="Titre">
-      <div class="nsub"></div>`}<div class="nbody" contenteditable="true" spellcheck="true" data-ph="${i ? 'Page vierge. Écrivez ou dessinez ici.' : 'Écrivez ici. Tapez # pour un titre, - pour une liste, [] pour une case à cocher, ou passez en mode Dessin.'}"></div>
+      <div class="nsub"></div>`}<div class="nbody" contenteditable="true" spellcheck="true" data-ph="${i ? 'Page vierge. Écrivez ou dessinez ici.' : D.page ? 'Notes libres : idées, liens, images, dessins… Seuls la synthèse et les tâches principales remontent sur la carte.' : 'Écrivez ici. Tapez # pour un titre, - pour une liste, [] pour une case à cocher, ou passez en mode Dessin.'}"></div>
       <svg class="nink" preserveAspectRatio="xMinYMin meet" aria-hidden="true"></svg><div class="npad"></div><div class="nfolio">${i ? `<button class="npg-del" data-pga="del" title="Supprimer cette page" aria-label="Supprimer la page ${i + 1}">${icon('trash', 'sm')}</button>` : ''}<span>${i + 1}</span></div></article>`;
   function bindPage(el) {
     const g = { i: +el.dataset.pg, el, body: $('.nbody', el), inkSvg: $('.nink', el), pad: $('.npad', el) };
@@ -704,7 +704,7 @@ const Note = (() => {
   function layout() {
     if (!mounted) return;
     const vw = view.clientWidth, vh = view.clientHeight;
-    spreadOn = !!theme().noteSpread && vw >= 1100 && vw > vh * 1.2;
+    spreadOn = !D.page && !!theme().noteSpread && vw >= 1100 && vw > vh * 1.2;
     wrap.classList.toggle('spread', spreadOn);
     wrap.style.setProperty('--np', PG.length);
     const n = PG.length; spr = Math.max(0, Math.min(spr, n >> 1));
@@ -750,11 +750,12 @@ const Note = (() => {
     fresh = new WeakSet(); ndSel = null; ndOp = null; clearTimeout(autoFin);
     PG = []; cur = null; P = null; spr = 0; spreadOn = false; view = $('#view');
     const n = 1 + (D.pages || []).length;
-    v.innerHTML = `<div class="nwrap"><div class="ntool" role="toolbar" aria-label="Mise en forme"></div>
+    v.innerHTML = `<div class="nwrap${D.page ? ' ispage' : ''}">${D.page ? '<section class="ppage" id="ppage"></section>' : ''}<div class="ntool" role="toolbar" aria-label="Mise en forme"></div>
       ${Array.from({ length: n }, (_, i) => pageHTML(i)).join('')}
       <button class="naddpg" data-pga="add" title="Ajouter une page à cette note">${icon('plus')}<span>Ajouter une page</span></button>
       <nav class="npager" aria-label="Pages" hidden><button class="nb" data-pga="prev" title="Pages précédentes (Page préc.)" aria-label="Pages précédentes">${icon('chev', 'flip')}</button><span class="npg-at"></span><button class="nb" data-pga="next" title="Pages suivantes (Page suiv.)" aria-label="Pages suivantes">${icon('chev')}</button><span class="vs"></span><button class="nb" data-pga="add" title="Ajouter une page">${icon('plus')}<span class="lbl">Page</span></button></nav></div>`;
     wrap = v.firstElementChild; tool = $('.ntool', wrap);
+    if (D.page) pageHead($('#ppage', wrap), D);
     const first = $('.sheet', wrap); titleIn = $('.ntitle', first); sub = $('.nsub', first);
     liveBox = document.createElement('div'); liveBox.className = 'nlivebox'; liveBox.innerHTML = '<canvas class="nlive"></canvas>'; $('#main').append(liveBox); liveCv = liveBox.firstChild;
     ink = new InkCapture(liveCv, { toLocal, xf });

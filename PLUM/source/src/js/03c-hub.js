@@ -166,21 +166,41 @@ function hubNoteOut(spId) {
   toast(spId && spId !== DEF_SPACE ? `Note rangée dans ${spaceById(spId).name}` : 'Note créée', { label: 'Ouvrir', run: () => go('doc:' + d.id) });
 }
 
-/* ---------- Project Card ---------- */
-function projCard(sp) {
-  const pal = projPal(sp.color);
-  const docs = liveDocs().filter(d => d.sp === sp.id).sort((a, b) => b.updated - a.updated);
-  const note = docById(sp.pin) && !docById(sp.pin).trash ? docById(sp.pin) : docs.find(d => d.type === 'note');
-  const board = docById(sp.pinB) && !docById(sp.pinB).trash ? docById(sp.pinB) : docs.find(d => d.type === 'board');
-  const open = S.tasks.filter(t => t.sp === sp.id && !t.done).sort(taskSort), all = S.tasks.filter(t => t.sp === sp.id), nDone = all.length - open.length;
-  const cov = sp.cover && Assets.url(sp.cover);
-  const plate = `<div class="pc-plate"><b>${esc(sp.name)}</b><small>${all.length ? `${nDone} / ${all.length} tâches` : docs.length ? `${docs.length} page${docs.length > 1 ? 's' : ''}` : 'Projet vide'}</small></div>`;
-  const cover = `<button class="pc-cover${cov ? ' img' : ''}" data-hgo="space:${sp.id}" aria-label="Ouvrir ${esc(sp.name)}">${cov ? `<img src="${cov}" alt="" draggable="false">` : `<span class="pc-ini" aria-hidden="true">${esc(((sp.name || '?').trim()[0] || '?').toUpperCase())}</span>`}${plate}${all.length ? `<span class="pc-bar"><i style="width:${Math.round(nDone / all.length * 100)}%"></i></span>` : ''}</button>`;
-  const noteHtml = note ? `<button class="pc-note" data-hgo="doc:${note.id}"><span class="lab">${sp.pin ? 'Note épinglée' : 'Dernière note'}</span><p>${esc(stripHtml(noteHTML(note, ' ')).slice(0, 200) || note.title)}</p></button>`
-    : `<button class="pc-note empty" data-hnew="note" data-sp="${sp.id}"><span class="lab">Note</span><p>Écrire une première note…</p></button>`;
-  const tasks = open.length ? `<div class="pc-tasks">${open.slice(0, 2).map(t => `<button class="pc-tk" data-hdone="${t.id}"><i class="pc-bx"></i><span>${esc(t.t)}</span></button>`).join('')}</div>` : '';
-  const go = board ? `<button class="pc-open" data-hgo="doc:${board.id}" title="${esc(board.title)}">Board${icon('ext', 'sm')}</button>` : `<button class="pc-open" data-hnew="board" data-sp="${sp.id}">Board${icon('plus', 'sm')}</button>`;
-  return `<article class="pcard" data-hproj="${sp.id}" style="--pc1:${pal.c1};--pc2:${pal.c2};--pc3:${pal.c3};--pci:${pal.ink}">${cover}<div class="pc-side">${noteHtml}${tasks}${go}</div><button class="pc-menu" data-hmenu="${sp.id}" aria-label="Options de ${esc(sp.name)}">${icon('dots', 'sm')}</button></article>`;
+/* ---------- Project Card (0.2.53, HUB v2) ----------
+   cover + letter tile + name, then the PAGE's Synthèse (fixed 5 lines) and its main tasks (fixed 5 rows), so every card
+   has the same height. Bottom: + note, + board, + tâche (typed right in the card), progress, ↗ opens the PAGE. */
+const PC_ROWS = 5;
+function projCard(sp, o = {}) {
+  const pal = projPal(sp.color), pg = pageOf(sp), st = projStats(sp), cov = sp.cover && Assets.url(sp.cover);
+  const when = Math.max(projRecent(sp), pg ? pg.updated || 0 : 0);
+  const meta = [plural(st.nN, 'note'), plural(st.nB, 'board'), plural(st.nT, 'tâche')].join(' · ');
+  const ini = esc(((sp.name || '?').trim()[0] || '?').toUpperCase());
+  const syn = (pg && pg.synth || '').trim();
+  const tks = mainTasks(sp, o.adding ? PC_ROWS - 1 : PC_ROWS);
+  const row = t => `<button class="pc2-tk${t.done ? ' done' : ''}" data-htk="${t.id}" role="checkbox" aria-checked="${t.done}"><i class="pc2-bx">${icon('check', 'sm')}</i><span>${esc(t.t)}</span></button>`;
+  const btn = (k, ic, l) => `<button class="pc2-b" data-hnew="${k}" data-sp="${sp.id}" title="${l}" aria-label="${l}">${icon(ic)}<i>+</i></button>`;
+  return `<article class="pc2" data-hproj="${sp.id}" style="--pc1:${pal.c1};--pc2:${pal.c2};--pc3:${pal.c3}">
+    <div class="pc2-cov${cov ? ' img' : ''}" data-hgo="doc:${pg ? pg.id : ''}">${cov ? `<img src="${cov}" alt="" draggable="false">` : ''}
+      <button class="pc2-menu" data-hmenu="${sp.id}" aria-label="Options de ${esc(sp.name)}">${icon('dots', 'sm')}</button>
+      <div class="pc2-id"><span class="pc2-tile">${ini}</span><div><b>${esc(sp.name)}</b><small>${meta} · ${ago(when)}</small></div></div></div>
+    <div class="pc2-body">
+      <button class="pc2-syn${syn ? '' : ' empty'}" data-hsyn="${sp.id}" title="Ouvrir la PAGE du projet"><p>${syn ? esc(syn) : 'Écrire la synthèse du projet…'}</p></button>
+      <div class="pc2-tks">${o.adding ? taskAddHTML({ cls: 'pc2-add', ph: 'Nouvelle tâche' }) : ''}${tks.map(row).join('')}${!tks.length && !o.adding ? `<button class="pc2-tkempty" data-hnew="task" data-sp="${sp.id}">${icon('plus', 'sm')}Ajouter une tâche principale</button>` : ''}</div>
+    </div>
+    <div class="pc2-foot">${btn('note', 'note', 'Nouvelle note dans ce projet')}${btn('board', 'board', 'Nouveau board dans ce projet')}${btn('task', 'tasks', 'Nouvelle tâche dans ce projet')}
+      <div class="pc2-prog" title="${st.nD} tâche${st.nD > 1 ? 's' : ''} faite${st.nD > 1 ? 's' : ''} sur ${st.nT}"><span><i style="width:${st.pct}%"></i></span><small>${st.nD} / ${st.nT}</small></div>
+      <button class="pc2-open" data-hgo="doc:${pg ? pg.id : ''}" title="Ouvrir la PAGE du projet" aria-label="Ouvrir la PAGE du projet">${icon('ext', 'sm')}</button></div>
+  </article>`;
+}
+/* + tâche on a card: a line opens at the top of its task box; Enter adds (starred, so it shows on the card) */
+function cardTaskAdd(spId) {
+  const el = $(`.pc2[data-hproj="${spId}"]`), sp = spaceById(spId); if (!el || !sp) return;
+  const tpl = document.createElement('div'); tpl.innerHTML = projCard(sp, { adding: true }); const nx = tpl.firstElementChild; el.replaceWith(nx);
+  const close = () => { const c = $(`.pc2[data-hproj="${spId}"]`); if (c) { const t2 = document.createElement('div'); t2.innerHTML = projCard(sp); c.replaceWith(t2.firstElementChild); } };
+  const box = $('.pc2-add', nx), inp = $('[data-tkin]', box);
+  bindTaskAdd(box, spId, { close, added: () => { renderSide(); cardTaskAdd(spId); } });
+  inp.addEventListener('blur', () => setTimeout(() => { const c = $(`.pc2[data-hproj="${spId}"] .pc2-add`); if (c && !c.contains(document.activeElement) && !$('[data-tkin]', c).value.trim()) close(); }, 150));
+  inp.focus();
 }
 function projCap(sp) {
   const pal = projPal(sp.color), n = S.tasks.filter(t => t.sp === sp.id && !t.done).length, cov = sp.cover && Assets.url(sp.cover);
@@ -192,17 +212,36 @@ function recentTile(d) {
   return `<button class="hrec" data-hgo="doc:${d.id}"><span class="hrec-th">${Thumbs.svg(d)}<i class="hrec-tag${board ? ' b' : ''}">${board ? 'Board' : 'Note'}</i></span><b>${esc(d.title)}</b><small><i style="background:${sp && sp.id !== DEF_SPACE ? sp.color : 'var(--ink-3)'}"></i>${esc(sp ? sp.name : DEF_NAME)} · ${ago(d.updated)}</small></button>`;
 }
 
-/* ---------- Quick Start ---------- */
-const QS = [['note', 'note', 'Note'], ['board', 'board', 'Board'], ['mood', 'image', 'Moodboard'], ['plan', 'cal', 'Planning'], ['draw', 'pencil', 'Dessin'], ['task', 'tasks', 'Tâche'], ['hnote', 'pin', 'Note du HUB'], ['proj', 'plus', 'Projet']];
+/* ---------- Créer (0.2.53): Note, Board, Tâche, Moodboard « dans » the last project used (S.prefs.hubDest) ---------- */
+const QS = [['note', 'note', 'Note'], ['board', 'board', 'Board'], ['task', 'tasks', 'Tâche'], ['mood', 'image', 'Moodboard']];
+const QS_MORE = [['plan', 'cal', 'Planning'], ['draw', 'pencil', 'Dessin'], ['hnote', 'pin', 'Note du HUB'], ['proj', 'plus', 'Nouveau projet']];
+function hubDest() {
+  let id = S.prefs.hubDest;
+  if (!spaceById(id)) { const l = hubProjects(); id = l.length ? l[0].id : DEF_SPACE; }
+  return spaceById(id);
+}
+function destMenu(anchor) {
+  const cur = hubDest(), list = userSpaces();
+  const row = s => { const cov = s.cover && Assets.url(s.cover); return `<button class="dm-it${s.id === cur.id ? ' on' : ''}" data-dest="${s.id}"><span class="dm-th" style="--pc1:${s.color}">${cov ? `<img src="${cov}" alt="">` : esc(((s.name || '?').trim()[0] || '?').toUpperCase())}</span><span>${esc(s.name)}</span>${s.id === cur.id ? icon('check', 'sm') : ''}</button>`; };
+  const p = openPop(anchor, `<div class="dm"><div class="mh">Ranger dans</div>${list.map(row).join('')}<div class="msep"></div><button class="dm-it${cur.id === DEF_SPACE ? ' on' : ''}" data-dest="${DEF_SPACE}"><span class="dm-th none">${icon('inbox', 'sm')}</span><span>${DEF_NAME}</span>${cur.id === DEF_SPACE ? icon('check', 'sm') : ''}</button><button class="dm-it" data-dnew><span class="dm-th none">${icon('plus', 'sm')}</span><span>Nouveau projet…</span></button></div>`, { align: 'right', cls: 'dmw' });
+  p.onclick = e => {
+    const b = e.target.closest('[data-dest]'); if (b) { S.prefs.hubDest = b.dataset.dest; save(); closePop(); renderCreate(); return; }
+    if (e.target.closest('[data-dnew]')) { closePop(); askSpaceName(name => { const sp = createSpace(name, { stay: true }); S.prefs.hubDest = sp.id; save(); go('hub'); }); }
+  };
+}
+function createHTML() {
+  const d = hubDest(), def = d.id === DEF_SPACE;
+  return `<span class="hc-l">Créer</span>${QS.map(([k, ic, l]) => `<button class="hc-b" data-qs="${k}">${icon(ic)}<span>${l}</span></button>`).join('')}<button class="hc-b more" data-qmore aria-label="Autres créations" title="Planning, dessin, note du HUB, projet">${icon('dots')}</button><span class="hc-sep"></span><button class="hc-dest" data-hdest title="Où ranger ce que tu crées">${def ? icon('inbox', 'sm') : `<i style="background:${d.color}"></i>`}<span>dans ${esc(d.name)}</span>${icon('chevd', 'sm')}</button>`;
+}
+function renderCreate() { const c = $('#hubCreate'); if (c) c.innerHTML = createHTML(); }
 function quickStart(k, btn) {
-  if (k === 'note') { const d = newDoc('note', { sp: DEF_SPACE }); go('doc:' + d.id); }
-  else if (k === 'board') { const d = newDoc('board', { sp: DEF_SPACE }); go('doc:' + d.id); }
-  else if (k === 'mood') { setCurSpace(DEF_SPACE); go('mood'); }
-  else if (k === 'plan') { const H = hubState(); const d = newDoc('board', { title: 'Planning', sp: DEF_SPACE, items: [mkPlan(0, 0, H.ics ? { src: H.ics } : {})] }); go('doc:' + d.id); if (!H.ics) toast('Ajoute ton lien iCal (PRONOTE) dans le bloc Planning'); }
-  else if (k === 'draw') { const d = newDoc('board', { title: 'Dessin', sp: DEF_SPACE }); go('doc:' + d.id); setTimeout(() => { try { Board.setTool('pen'); } catch (e) {} }, 120); }
-  else if (k === 'task') { go('todo'); setTimeout(() => { const i = $('#tAdd input') || $('#tAdd'); if (i && i.focus) i.focus(); }, 60); }
+  const dest = hubDest().id;
+  if (k === 'note' || k === 'board' || k === 'mood') createIn(k, dest);
+  else if (k === 'task') quickTaskPop(btn, dest);
+  else if (k === 'plan') { const H = hubState(); const d = newDoc('board', { title: 'Planning', sp: dest, items: [mkPlan(0, 0, H.ics ? { src: H.ics } : {})] }); go('doc:' + d.id); if (!H.ics) toast('Ajoute ton lien iCal (PRONOTE) dans le bloc Planning'); }
+  else if (k === 'draw') { const d = newDoc('board', { title: 'Dessin', sp: dest }); go('doc:' + d.id); setTimeout(() => { try { Board.setTool('pen'); } catch (e) {} }, 120); }
   else if (k === 'hnote') hubNotePop(btn);
-  else if (k === 'proj') askSpaceName(name => { createSpace(name, { stay: true }); go('hub'); });
+  else if (k === 'proj') askSpaceName(name => { const sp = createSpace(name, { stay: true }); S.prefs.hubDest = sp.id; save(); go('hub'); });
 }
 function hubNotePop(anchor) {
   const H = hubState();
@@ -219,13 +258,13 @@ function renderHub(v) {
   const H = hubState(), d = new Date(), date = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   const W = S.prefs.hubWx, wxs = H.city && W && W.d ? ` · ${Math.round(W.t)}° à ${esc(H.city.name)}` : '';
   const nEv = hubEvents().length, name = (S.prefs.name || '').trim();
-  v.innerHTML = `<div class="hubpage cc">
-    <div class="hub-qs" role="toolbar" aria-label="Quick Start"><span class="lab">Quick Start</span>${QS.map(([k, ic, l]) => `<button class="qsb" data-qs="${k}"><span class="qsi">${icon(ic)}</span>${l}</button>`).join('')}</div>
+  ensurePages();
+  v.innerHTML = `<div class="hubpage cc hub2">
+    <div class="hub2-top"><div class="hub-hello"><span>${date.charAt(0).toUpperCase() + date.slice(1)}${wxs}${nEv ? ` · ${nEv} évènement${nEv > 1 ? 's' : ''} aujourd’hui` : ''}</span><h1>${name ? `Bonjour ${esc(name)}` : 'Bonjour'}</h1></div>
+      <div class="hub2-create" id="hubCreate" role="toolbar" aria-label="Créer">${createHTML()}</div></div>
     <div class="hub-main${H.sideFold ? ' side-off' : ''}">
       <div class="hub-col">
-        <div class="hub-hello"><h1>${name ? `Bonjour ${esc(name)}` : 'Bonjour'}</h1><span>${date.charAt(0).toUpperCase() + date.slice(1)}${wxs}${nEv ? ` · ${nEv} évènement${nEv > 1 ? 's' : ''} aujourd’hui` : ''}</span></div>
         <section class="hub-sec" id="hubProj"></section>
-        <section class="hub-sec" id="hubRec"></section>
       </div>
       <aside class="hub-side"><button class="hub-sfold" data-hsfold aria-expanded="${!H.sideFold}" aria-label="${H.sideFold ? 'Ouvrir le panneau' : 'Réduire le panneau'}" title="${H.sideFold ? 'Ouvrir Aujourd’hui et le Moodboard' : 'Réduire le panneau'}">${icon('chev', 'sm')}</button><button class="hub-srail" data-hsfold aria-hidden="true" tabindex="-1"><span>Moodboard</span></button><section class="hmod hm-cal" id="hubCal"></section><section class="hmod hm-mood" id="hubMood"></section></aside>
     </div></div>`;
@@ -236,15 +275,11 @@ function renderHub(v) {
 function renderHubMods() {
   const pj = $('#hubProj'); if (!pj) return;
   const H = hubState(), list = hubProjects(), fold = !!H.fold;
-  const row = $('.hub-row', pj), keep = row ? row.scrollLeft : hubScroll;
-  pj.innerHTML = `<div class="h2">Projets en cours<button class="hub-fold" data-hfold aria-expanded="${!fold}" aria-label="${fold ? 'Déplier les cartes' : 'Replier en capsules'}" title="${fold ? 'Déplier' : 'Replier'}">${icon('chev', 'sm')}</button><small>${list.length ? `${list.length} projet${list.length > 1 ? 's' : ''}${!fold && list.length > 2 ? ' · glisse pour faire défiler' : ''}` : ''}</small><button class="more" data-hopts>Personnaliser</button></div>
+  pj.innerHTML = `<div class="h2">Projets en cours<button class="hub-fold" data-hfold aria-expanded="${!fold}" aria-label="${fold ? 'Déplier les cartes' : 'Replier en capsules'}" title="${fold ? 'Déplier' : 'Replier'}">${icon('chev', 'sm')}</button><small>${list.length ? `${list.length} projet${list.length > 1 ? 's' : ''} · la carte montre la synthèse de la PAGE` : ''}</small><button class="more" data-hopts>Personnaliser</button></div>
     ${!list.length ? `<button class="hub-empty" data-qs="proj">${icon('plus')}Crée ton premier projet</button>`
       : fold ? `<div class="hub-caps">${list.map(projCap).join('')}<button class="hcap add" data-qs="proj"><span class="hcap-i">${icon('plus')}</span><b>Nouveau projet</b></button></div>`
-      : `<div class="hub-rowwrap"><div class="hub-row">${list.map(projCard).join('')}<button class="pcard add" data-qs="proj">${icon('plus', 'lg')}<b>Nouveau projet</b></button></div></div>`}`;
-  const r2 = $('.hub-row', pj); if (r2) { r2.scrollLeft = keep; hubRowEdges(r2); }
-  const rec = liveDocs().slice().sort((a, b) => b.updated - a.updated).slice(0, 12);
-  $('#hubRec').innerHTML = `<div class="h2">Récents<button class="more" data-hgo="all">Tout voir${icon('chev', 'sm')}</button></div>${rec.length ? `<div class="hub-rowwrap"><div class="hub-row rec">${rec.map(recentTile).join('')}</div></div>` : '<div class="empty">Tes notes et boards récents apparaîtront ici.</div>'}`;
-  const r3 = $('#hubRec .hub-row'); if (r3) hubRowEdges(r3);
+      : `<div class="hub2-grid">${list.map(p => projCard(p)).join('')}<button class="pc2 add" data-qs="proj"><span class="pc2-addi">${icon('plus', 'lg')}</span><b>Nouveau projet</b><small>Un nom, une couleur, une image. Sa PAGE est créée avec lui.</small></button></div>`}`;
+  renderCreate();
   $('#hubCal').innerHTML = calMod({ sz: 'M' });
   const mo = $('#hubMood'), ta = document.activeElement;
   if (!(ta && mo.contains(ta) && ta.matches('input'))) mo.innerHTML = moodMod({ sz: 'M' });
@@ -296,7 +331,12 @@ function bindHub(v) {
     const mi = e.target.closest('[data-hmi]'); if (mi) { const it = moodList().find(x => x.id === mi.dataset.hmi); if (it) Mood.view(it); return; }
     const mn = e.target.closest('[data-hmenu]'); if (mn) { projMenu(mn, spaceById(mn.dataset.hmenu)); return; }
     const dn = e.target.closest('[data-hdone]'); if (dn) { const tk = taskById(dn.dataset.hdone); if (!tk) return; dn.classList.add('ticked'); setTimeout(() => { setTaskDone(tk, true); renderHubMods(); renderSide(); toast('Tâche terminée', { label: 'Annuler', run: () => { setTaskDone(tk, false); renderHubMods(); renderSide(); } }); }, 280); return; }
-    const nw = e.target.closest('[data-hnew]'); if (nw) { const d = newDoc(nw.dataset.hnew, { sp: nw.dataset.sp }); go('doc:' + d.id); return; }
+    if (e.target.closest('[data-hdest]')) { destMenu(e.target.closest('[data-hdest]')); return; }
+    if (e.target.closest('[data-qmore]')) { const b = e.target.closest('[data-qmore]'); openPop(b, QS_MORE.map(([k, ic, l]) => ({ label: l, icon: ic, run: () => quickStart(k, b) })), { align: 'right' }); return; }
+    if (e.target.closest('.pc2-add')) return;
+    const nw = e.target.closest('[data-hnew]'); if (nw) { const sp = nw.dataset.sp; S.prefs.hubDest = sp; save(); if (nw.dataset.hnew === 'task') cardTaskAdd(sp); else createIn(nw.dataset.hnew, sp); return; }
+    const tk = e.target.closest('[data-htk]'); if (tk) { const t = taskById(tk.dataset.htk); if (!t) return; const v = !t.done; tk.classList.toggle('done', v); tk.setAttribute('aria-checked', v); setTimeout(() => { setTaskDone(t, v); if (v) toast('Tâche terminée', { label: 'Annuler', run: () => setTaskDone(t, false) }); }, 220); return; }
+    const sy = e.target.closest('[data-hsyn]'); if (sy) { const pg = pageOf(spaceById(sy.dataset.hsyn)); if (pg) { go('doc:' + pg.id); setTimeout(() => { const ta = $('#ppage [data-psyn]'); if (ta && !pg.synth) ta.focus(); }, 80); } return; }
     const g = e.target.closest('[data-hgo]'); if (g) { go(g.dataset.hgo); return; }
     if (e.target.closest('#hubCal')) hubOptions(e.target.closest('#hubCal'));
   }, true);

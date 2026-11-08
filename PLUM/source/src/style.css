@@ -2807,3 +2807,162 @@ html[data-focus] #tbar .tb-f [data-f="exit"] span { display: none; }
 .frame-it.fz .ftitle[contenteditable="true"], .frame-it.fz .ftitle[contenteditable="plaintext-only"] { text-transform: none; letter-spacing: 0; outline: 2px solid var(--accent); outline-offset: 1px; }
 .frame-it.fz.nt .fzh { display: none; }
 .frame-it.fz.nt { background-position: 0 0; }
+
+/* ================= HUB v2 (0.2.53): Créer bar, project cards with the PAGE synthesis and main tasks ================= */
+.hub2-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px 24px; flex-wrap: wrap; }
+.hub2 .hub-hello { flex-direction: column; align-items: flex-start; gap: 4px; }
+.hub2 .hub-hello h1 { font-size: 32px; }
+.hub2 .hub-hello span { font-size: 13px; }
+.hub2-create { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.hub2-create::-webkit-scrollbar { display: none; }
+.hc-l { font-size: 12px; color: var(--ink-3); padding: 0 6px 0 8px; white-space: nowrap; }
+.hc-b { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--sunk); color: var(--ink); font: 500 13px/1 inherit; cursor: pointer; white-space: nowrap; flex: none; }
+.hc-b .i { width: 18px; height: 18px; }
+.hc-b.more { padding: 0 10px; color: var(--ink-2); }
+.hc-b:hover { background: color-mix(in oklab, var(--sunk) 70%, var(--ink) 8%); }
+.hc-sep { width: 1px; height: 24px; background: var(--line-2); flex: none; margin: 0 2px; }
+.hc-dest { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 10px; border-radius: 10px; border: 1px dashed var(--line-2); background: none; color: var(--ink-2); font: 500 13px/1 inherit; cursor: pointer; white-space: nowrap; flex: none; max-width: 220px; }
+.hc-dest > span { overflow: hidden; text-overflow: ellipsis; }
+.hc-dest > i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.hc-dest:hover { color: var(--ink); border-color: var(--ink-3); }
+.pop.dmw { min-width: 250px; }
+.dm { display: flex; flex-direction: column; gap: 2px; }
+.dm-it { display: flex; align-items: center; gap: 12px; padding: 7px 8px; border-radius: 10px; border: 0; background: none; color: var(--ink); font: 500 14px inherit; text-align: left; cursor: pointer; }
+.dm-it > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-it:hover, .dm-it.on { background: var(--sunk); }
+.dm-th { width: 40px; height: 30px; border-radius: 7px; background: var(--pc1); color: #fff; display: grid; place-items: center; font: 700 14px inherit; overflow: hidden; flex: none; }
+.dm-th img { width: 100%; height: 100%; object-fit: cover; }
+.dm-th.none { background: var(--sunk); color: var(--ink-2); border: 1px dashed var(--line-2); }
+.pop.tkpopw { min-width: 320px; }
+.tkpop { display: flex; flex-direction: column; gap: 6px; padding: 2px; }
+.tkpop small { color: var(--ink-3); font-size: 11.5px; padding: 0 4px 2px; }
+/* the task line (card, Créer, PAGE) */
+.tkadd { display: flex; align-items: center; gap: 10px; padding: 4px 4px 4px 8px; border-radius: 10px; background: var(--sunk); box-shadow: inset 0 0 0 1.5px var(--pc1, var(--accent)); }
+.tkadd-o { flex: none; width: 15px; height: 15px; border-radius: 50%; border: 1.6px solid var(--pc1, var(--accent)); }
+.tkadd input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 500 13.5px inherit; padding: 4px 0; }
+.tkadd-st { flex: none; width: 28px; height: 28px; border-radius: 8px; border: 0; background: none; color: var(--ink-3); display: grid; place-items: center; cursor: pointer; }
+.tkadd-st[aria-pressed="true"] { background: color-mix(in oklab, var(--pc1, var(--accent)) 20%, transparent); color: var(--pc3, var(--accent)); }
+.tkadd-st[aria-pressed="true"] .i { fill: currentColor; }
+
+.hub2-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 22px; align-items: start; }
+.pc2 { position: relative; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; box-shadow: 0 18px 40px -24px rgba(0,0,0,.45); transition: box-shadow .15s, transform .15s; min-width: 0; }
+.pc2 button { font: inherit; color: inherit; text-align: left; border: 0; background: none; padding: 0; cursor: pointer; min-width: 0; }
+.pc2-cov { position: relative; height: 116px; cursor: pointer; background: linear-gradient(135deg, var(--pc2), var(--pc1)); }
+.pc2-cov img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pc2-cov::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 25%, color-mix(in oklab, var(--card) 97%, transparent) 100%); pointer-events: none; }
+.pc2-menu { position: absolute !important; right: 10px; top: 8px; z-index: 2; width: 30px; height: 30px; border-radius: 9px !important; background: rgba(0,0,0,.45) !important; color: #fff !important; display: grid !important; place-items: center; opacity: 0; transition: opacity .15s; }
+.pc2:hover .pc2-menu, .pc2-menu:focus-visible { opacity: 1; }
+@media (hover: none) { .pc2-menu { opacity: 1; } }
+.pc2-id { position: absolute; z-index: 1; left: 12px; right: 12px; bottom: 8px; display: flex; align-items: center; gap: 10px; }
+.pc2-id > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pc2-id b { font: 600 17px/1.2 "Jost", "Figtree", sans-serif; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc2-id small { font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc2-tile { flex: none; width: 38px; height: 38px; border-radius: 11px; background: var(--pc1); color: #fff; display: grid; place-items: center; font: 700 19px "Jost", "Figtree", sans-serif; box-shadow: 0 0 0 3px var(--card); }
+.pc2-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 8px; }
+.pc2-syn { display: flex !important; align-items: flex-start; width: 100%; height: 118px; box-sizing: border-box; overflow: hidden; padding: 9px 11px !important; border-radius: 12px; background: color-mix(in oklab, var(--pc1) 13%, var(--card)) !important; border: 1px solid color-mix(in oklab, var(--pc1) 32%, var(--card)) !important; }
+.pc2-syn p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.pc2-syn.empty p { color: var(--ink-3); font-style: italic; }
+.pc2-syn:hover { border-color: color-mix(in oklab, var(--pc1) 60%, var(--card)) !important; }
+.pc2-tks { display: flex; flex-direction: column; height: 148px; box-sizing: border-box; overflow: hidden; padding: 8px 11px; border-radius: 12px; background: var(--sunk); border: 1px solid var(--line); }
+.pc2-tk { display: flex !important; align-items: center; gap: 9px; height: 26px; flex: none; font-size: 13px; color: var(--ink); white-space: nowrap; }
+.pc2-tk span { overflow: hidden; text-overflow: ellipsis; }
+.pc2-bx { flex: none; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--ink-3); display: grid; place-items: center; transition: background .15s, border-color .15s; }
+.pc2-bx .i { width: 10px; height: 10px; color: #fff; stroke-width: 3.4; opacity: 0; }
+.pc2-tk:hover .pc2-bx { border-color: var(--pc1); }
+.pc2-tk.done { color: var(--ink-3); }
+.pc2-tk.done span { text-decoration: line-through; }
+.pc2-tk.done .pc2-bx { background: var(--ink-3); border-color: var(--ink-3); }
+.pc2-tk.done .pc2-bx .i { opacity: 1; }
+.pc2-tkempty { display: flex !important; align-items: center; gap: 8px; height: 26px; color: var(--ink-3) !important; font-size: 12.5px; }
+.pc2-tkempty:hover { color: var(--ink) !important; }
+.pc2-add { flex: none; height: 30px; margin: -2px -6px 2px; padding: 0 2px 0 8px; }
+.pc2-add input { font-size: 13px; }
+.pc2-add .tkadd-st { width: 24px; height: 24px; }
+.pc2-foot { display: flex; align-items: center; gap: 5px; padding: 6px 10px 10px; }
+.pc2-b { position: relative; flex: none; width: 38px; height: 34px; border-radius: 10px !important; background: var(--sunk) !important; color: var(--ink-2) !important; display: grid !important; place-items: center; }
+.pc2-b .i { width: 17px; height: 17px; }
+.pc2-b i { position: absolute; right: 3px; top: 2px; font: 700 11px/1 inherit; font-style: normal; color: var(--pc3); }
+:root:not([data-resolved="dark"]) .pc2-b i { color: var(--pc1); }
+.pc2-b:hover { color: var(--ink) !important; background: color-mix(in oklab, var(--sunk) 70%, var(--pc1) 22%) !important; }
+.pc2-prog { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 8px; }
+.pc2-prog > span { flex: 1; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.pc2-prog > span i { display: block; height: 100%; border-radius: 4px; background: var(--pc1); }
+.pc2-prog small { font: 600 11px inherit; color: var(--ink-3); white-space: nowrap; }
+.pc2-open { flex: none; width: 38px; height: 34px; border-radius: 10px !important; background: var(--pc1) !important; color: #fff !important; display: grid !important; place-items: center; }
+.pc2-open:hover { filter: brightness(1.1); }
+.pc2.add { min-height: 300px; border: 1.5px dashed var(--line-2); background: none; box-shadow: none; align-items: center; justify-content: center; gap: 12px; padding: 24px; color: var(--ink-3); font: inherit; cursor: pointer; text-align: center; }
+.pc2.add b { font-size: 15px; color: var(--ink); }
+.pc2.add small { font-size: 12.5px; line-height: 1.5; max-width: 220px; }
+.pc2-addi { width: 44px; height: 44px; border-radius: 14px; background: var(--sunk); display: grid; place-items: center; color: var(--ink); }
+.pc2.add:hover { border-color: var(--ink-3); color: var(--ink-2); }
+.pc2.hdrop { box-shadow: 0 0 0 4px color-mix(in srgb, var(--pc1) 45%, transparent), 0 24px 60px rgba(0,0,0,.4); transform: scale(1.01); }
+.hubpage.hmd-dragging .pc2[data-hproj] { outline: 2px dashed color-mix(in srgb, var(--pc1) 60%, transparent); outline-offset: 3px; }
+@media (max-width: 699px) { .hub2-grid { grid-template-columns: minmax(0, 1fr); } .hub2-create { width: 100%; } .hc-b span { display: none; } .hc-b { padding: 0 11px; } }
+
+/* ================= the PAGE of a project (0.2.53) ================= */
+.nwrap.ispage .sheet[data-pg="0"] .ntitle { display: none; }
+.nwrap.ispage .sheet[data-pg="0"] { padding-top: 34px; }
+.ppage { width: min(1100px, 100%); display: flex; flex-direction: column; gap: 18px; margin-top: 12px; }
+.pp-hero { position: relative; height: 200px; border-radius: 20px; overflow: hidden; background: linear-gradient(135deg, var(--pc2), var(--pc1)); }
+.pp-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pp-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.05) 0%, color-mix(in oklab, var(--paper) 96%, transparent) 100%); pointer-events: none; }
+.pp-hero button { font: inherit; cursor: pointer; border: 0; }
+.pp-back { position: absolute; z-index: 1; left: 18px; top: 16px; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 8px; border-radius: 10px; background: rgba(0,0,0,.5); color: #fff; font-size: 13px !important; font-weight: 500 !important; }
+.pp-id { position: absolute; z-index: 1; left: 28px; bottom: 16px; right: 330px; display: flex; align-items: flex-end; gap: 16px; }
+.pp-id > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pp-tile { flex: none; width: 60px; height: 60px; border-radius: 17px; background: var(--pc1); color: #fff; display: grid; place-items: center; font: 700 28px "Jost", "Figtree", sans-serif; box-shadow: 0 0 0 4px var(--paper); }
+.pp-lab { display: inline-flex; align-items: center; gap: 6px; font: 600 11px/1 inherit; letter-spacing: .08em; text-transform: uppercase; color: var(--pc3); }
+:root:not([data-resolved="dark"]) .pp-lab { color: var(--pc1); }
+.pp-id h1 { margin: 0; font: 600 32px/1.1 "Jost", "Figtree", sans-serif; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-acts { position: absolute; z-index: 1; right: 22px; bottom: 18px; display: flex; gap: 6px; }
+.pp-acts button { display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 12px; border-radius: 10px; background: color-mix(in oklab, var(--card) 90%, transparent); color: var(--ink); font-size: 13px !important; font-weight: 500 !important; }
+.pp-acts button.pri { background: var(--pc1); color: #fff; font-weight: 600 !important; }
+.pp-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+.pp-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.pp-box { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; }
+.pp-syn { border-color: color-mix(in oklab, var(--pc1) 35%, var(--line)); background: color-mix(in oklab, var(--pc1) 7%, var(--card)); }
+.pp-h { display: flex; align-items: center; gap: 8px; font: 600 11px/1.2 inherit; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.pp-h small { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink-3); font-size: 11.5px; margin-left: 2px; }
+.pp-h .i.sm { width: 14px; height: 14px; }
+.pp-pill { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 11.5px; color: var(--pc3); background: color-mix(in oklab, var(--pc1) 16%, transparent); border-radius: 999px; padding: 4px 9px; }
+:root:not([data-resolved="dark"]) .pp-pill { color: var(--pc1); }
+.pp-syn textarea { width: 100%; box-sizing: border-box; resize: none; overflow: hidden; border: 0; outline: 0; background: transparent; color: var(--ink); font: 400 16px/1.55 inherit; padding: 0; min-height: 50px; }
+.pp-syn textarea::placeholder { color: var(--ink-3); }
+.pp-list { display: flex; flex-direction: column; }
+.pp-tr { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 14.5px; color: var(--ink); }
+.pp-tr button { border: 0; background: none; cursor: pointer; padding: 0; color: inherit; }
+.pp-ck { flex: none; width: 19px; height: 19px; box-sizing: border-box; border-radius: 50%; border: 1.6px solid var(--ink-3) !important; display: grid; place-items: center; }
+.pp-ck .i { width: 11px; height: 11px; color: #fff; stroke-width: 3.2; opacity: 0; }
+.pp-ck:hover { border-color: var(--pc1) !important; }
+.pp-tr.done { color: var(--ink-3); }
+.pp-tr.done .pp-tt { text-decoration: line-through; }
+.pp-tr.done .pp-ck { background: var(--ink-3); border-color: var(--ink-3) !important; }
+.pp-tr.done .pp-ck .i { opacity: 1; }
+.pp-tt { flex: 1; min-width: 0; }
+.pp-st { flex: none; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--ink-3) !important; opacity: .5; }
+.pp-st.on { color: var(--pc3) !important; opacity: 1; }
+:root:not([data-resolved="dark"]) .pp-st.on { color: var(--pc1) !important; }
+.pp-st.on .i { fill: currentColor; }
+.pp-tr:hover .pp-st { opacity: 1; }
+.pp-add { margin-top: 4px; }
+.pp-oth { margin-top: 4px; font-size: 13px; color: var(--ink-2); }
+.pp-oth summary { cursor: pointer; padding: 4px 0; color: var(--ink-3); }
+.pp-oth .pp-tr { font-size: 13.5px; padding: 3px 0; }
+.pp-free { font: 600 20px "Jost", "Figtree", sans-serif; color: var(--ink); padding: 8px 4px 0; }
+.pp-side { display: flex; flex-direction: column; gap: 12px; }
+.pp-side button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; text-align: left; padding: 0; }
+.pp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pp-stats button { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 3px; }
+.pp-stats b { font: 600 20px "Jost", "Figtree", sans-serif; }
+.pp-stats span { font-size: 12px; color: var(--ink-3); }
+.pp-docs { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 6px; display: flex; flex-direction: column; }
+.pp-docs button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; font-size: 13.5px; }
+.pp-docs button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-docs button small { font-size: 11.5px; color: var(--ink-3); }
+.pp-docs button:hover { background: var(--sunk); }
+.pp-docs .all { justify-content: center; color: var(--ink-3); font-size: 13px; }
+.pp-mood { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pp-mood button { height: 72px; border-radius: 10px; overflow: hidden; }
+.pp-mood img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pp-mood .add { border: 1.5px dashed var(--line-2); display: flex; align-items: center; justify-content: center; gap: 4px; color: var(--ink-3); font-size: 12px; }
+@media (max-width: 860px) { .pp-grid { grid-template-columns: minmax(0, 1fr); } .pp-id { right: 22px; bottom: 66px; } .pp-acts { left: 22px; right: auto; bottom: 14px; } .pp-hero { height: 230px; } }

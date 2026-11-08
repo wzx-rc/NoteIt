@@ -71,6 +71,7 @@ function ctxSpace() {
 }
 /* file a note or a board in a space (or back to « Non classées ») */
 function fileDoc(d, spId) {
+  if (isPage(d)) { toast('La PAGE reste dans son projet'); return; }
   const sp = spaceById(spId); if (!d || !sp || d.sp === spId) return;
   const was = d.sp; d.sp = spId; touch(d); renderSide(); if (R.name === 'doc' && R.id === d.id) { setCurSpace(spId); renderTop(); }
   toast(spId === DEF_SPACE ? 'Retirée des espaces' : `Rangée dans ${sp.name}`, { label: 'Annuler', run: () => { d.sp = was; touch(d); if (R.name === 'doc' && R.id === d.id) setCurSpace(was); go(R, { keepFocus: true }); } });
@@ -220,6 +221,7 @@ function createSpace(name, o = {}) {
   const cols = themeColors('space', SPACE_COLORS);
   const sp = { id: uid('s'), name: String(name).trim().slice(0, 60) || 'Nouvel espace', color: cols[userSpaces().length % cols.length], media: [], created: Date.now() };
   S.spaces.push(sp); S.prefs.welcomed = true;
+  ensurePage(sp);
   if (o.stay) { save(); renderSide(); return sp; }
   S.prefs.cur = sp.id; save();
   go('space:' + sp.id); toast(`Espace « ${sp.name} » créé`);
@@ -247,7 +249,7 @@ function deleteSpace(sp) {
   openModal(`<div class="mhd"><h2>Supprimer « ${esc(sp.name)} » ?</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
     <p style="margin:0 0 14px;color:var(--ink-2)">${n ? `Ses ${n} note(s) et board(s) iront dans la corbeille. ` : ''}${nt ? `Ses ${nt} tâche(s) seront supprimées.` : ''}${!n && !nt ? "L'espace est vide." : ''}</p>
     <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost" data-close>Annuler</button><button class="btn pri" id="spDel" style="background:var(--err);border-color:var(--err)">Supprimer</button></div>`,
-    m => { $('#spDel', m).onclick = () => { S.docs.forEach(d => { if (d.sp === sp.id) { d.trash = true; d.sp = DEF_SPACE; } }); S.tasks = S.tasks.filter(t => t.sp !== sp.id); S.spaces = S.spaces.filter(s => s !== sp); if (S.prefs.cur === sp.id) S.prefs.cur = DEF_SPACE; save(); closeModal(); go('space:' + DEF_SPACE); toast('Espace supprimé'); }; });
+    m => { $('#spDel', m).onclick = () => { S.docs.forEach(d => { if (d.sp === sp.id) { d.trash = true; d.sp = DEF_SPACE; if (d.page) { d.page = 0; d.title = 'PAGE · ' + sp.name; } } }); S.tasks = S.tasks.filter(t => t.sp !== sp.id); S.spaces = S.spaces.filter(s => s !== sp); if (S.prefs.cur === sp.id) S.prefs.cur = DEF_SPACE; save(); closeModal(); go('space:' + DEF_SPACE); toast('Espace supprimé'); }; });
 }
 
 /* ================= top bar ================= */
@@ -287,7 +289,7 @@ function renderTop() {
     $('#favBtn').onclick = () => { d.fav = !d.fav; touch(d); $('#favBtn').setAttribute('aria-pressed', d.fav); renderSide(); toast(d.fav ? 'Ajouté aux favoris' : 'Retiré des favoris'); };
     $('#focusBtn').onclick = () => setFocus(true);
     $('#docMore').onclick = e => docMenu(e.currentTarget, d);
-    $('#docSp').onclick = e => fileMenu(e.currentTarget, d);
+    $('#docSp').onclick = e => isPage(d) ? go('space:' + d.sp) : fileMenu(e.currentTarget, d);
   }
   const sm = $('#spMore'); if (sm) sm.onclick = e => spaceMenu(e.currentTarget, spaceById(R.id));
   const mb = $('#moodBtn'); if (mb) mb.onclick = () => Mood.toggle();
@@ -296,10 +298,10 @@ function renderTop() {
 }
 function docMenu(anchor, d) {
   openPop(anchor, [
-    { label: 'Ranger dans…', icon: 'folder', run: () => fileMenu($('#docSp') || anchor, d) },
+    ...(isPage(d) ? [] : [{ label: 'Ranger dans…', icon: 'folder', run: () => fileMenu($('#docSp') || anchor, d) }]),
     { label: 'Dupliquer', icon: 'dup', run: () => { const c = JSON.parse(JSON.stringify(d)); c.id = uid('d'); c.title = d.title + ' (copie)'; c.created = c.updated = Date.now(); c.fav = false; S.docs.push(c); save(); go('doc:' + c.id); toast('Copie créée'); } },
     { label: 'Exporter en fichier', icon: 'download', run: () => exportJSON({ docs: [d] }, `${d.title || 'document'}.json`) },
-    { label: 'Mettre à la corbeille', icon: 'trash', danger: true, run: () => { d.trash = true; touch(d); go(d.sp === DEF_SPACE ? 'all' : d.type === 'board' ? 'boards' : 'notes'); toast('Mis à la corbeille', { label: 'Annuler', run: () => { d.trash = false; touch(d); go('doc:' + d.id); } }); } }
+    ...(isPage(d) ? [] : [{ label: 'Mettre à la corbeille', icon: 'trash', danger: true, run: () => { d.trash = true; touch(d); go(d.sp === DEF_SPACE ? 'all' : d.type === 'board' ? 'boards' : 'notes'); toast('Mis à la corbeille', { label: 'Annuler', run: () => { d.trash = false; touch(d); go('doc:' + d.id); } }); } }])
   ], { align: 'right' });
 }
 
@@ -573,6 +575,7 @@ function refreshTaskViews() {
   renderSide();
   if (R.name === 'hub') renderHubMods();
   else if (R.name === 'tasks' || R.name === 'space' || R.name === 'todo') { const v = $('#view'), st = v.scrollTop; go(R, { keepFocus: true }); v.scrollTop = st; }
+  else if (R.name === 'doc' && Note.mounted && isPage(Note.doc)) refreshPageHead();
   else if (R.name === 'doc' && typeof Board !== 'undefined') Board.refreshRefs();
 }
 
@@ -711,6 +714,7 @@ function renameDoc(d) {
       i.focus(); i.select(); i.onkeydown = e => { if (e.key === 'Enter') ok(); }; $('#rnOk', m).onclick = ok; });
 }
 function trashDoc(d) {
+  if (isPage(d)) { toast('La PAGE du projet ne se supprime pas'); return; }
   d.trash = true; touch(d); renderSide(); go(R, { keepFocus: true });
   toast('Mis à la corbeille', { label: 'Annuler', run: () => { d.trash = false; touch(d); renderSide(); go(R, { keepFocus: true }); } });
 }
