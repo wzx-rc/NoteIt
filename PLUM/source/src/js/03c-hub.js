@@ -233,6 +233,18 @@ function moodFile(id, spId) {
   const [m] = from.media.splice(k, 1); (to.media = to.media || []).unshift(m); save(); renderHubMods(); renderSide();
   toast(`Rangé dans le moodboard de ${to.name}`, { label: 'Annuler', run: () => { const j = to.media.indexOf(m); if (j >= 0) to.media.splice(j, 1); from.media.splice(k, 0, m); save(); renderHubMods(); renderSide(); } });
 }
+/* right-click (or long press on touch, through contextmenu) on a Général tile: file it, copy the link, delete with undo */
+function moodItemMenu(tile, id) {
+  const sp = spaceById(DEF_SPACE), m = sp && (sp.media || []).find(x => x.id === id); if (!m) return;
+  const del = () => { const k = sp.media.indexOf(m); if (k < 0) return; sp.media.splice(k, 1); save(); renderHubMods(); renderSide();
+    toast('Supprimé du moodboard', { label: 'Annuler', run: () => { sp.media.splice(Math.min(k, sp.media.length), 0, m); save(); renderHubMods(); renderSide(); } }); };
+  openPop(tile, [
+    { label: 'Ranger dans un projet…', icon: 'folder', run: () => setTimeout(() => moodFileMenu(tile, id), 0) },
+    ...(m.url ? [{ label: 'Copier le lien', icon: 'link', run: () => { try { navigator.clipboard.writeText(m.url); toast('Lien copié'); } catch (e) {} } }] : []),
+    '-',
+    { label: 'Supprimer', icon: 'trash', danger: true, run: del }
+  ], { align: 'right' });
+}
 function moodFileMenu(anchor, id) {
   const sps = userSpaces();
   if (!sps.length) { toast('Crée d’abord un projet'); return; }
@@ -505,6 +517,7 @@ function bindHub(v) {
   root.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('.hub-row') && !e.target.closest('[data-hmi]')) e.preventDefault(); });
   /* the Moodboard Général: tiles dragged onto a project (card or capsule) are filed there; links or files dropped on a project go to it */
   const MT = 'application/x-plum-mood';
+  root.addEventListener('contextmenu', e => { const it = e.target.closest && e.target.closest('[data-hmi]'); if (!it) return; e.preventDefault(); moodItemMenu(it, it.dataset.hmi); });
   root.addEventListener('dragstart', e => { const it = e.target.closest && e.target.closest('[data-hmi]'); if (!it) return; e.dataTransfer.setData(MT, it.dataset.hmi); const m = moodList().find(x => x.id === it.dataset.hmi); if (m && m.url) e.dataTransfer.setData('text/uri-list', m.url); e.dataTransfer.effectAllowed = 'copyMove'; it.classList.add('dragging'); root.classList.add('hmd-dragging'); });
   root.addEventListener('dragend', () => { root.classList.remove('hmd-dragging'); $$('.dragging, .hdrop', root).forEach(x => x.classList.remove('dragging', 'hdrop')); });
   const projAt = e => e.target.closest && e.target.closest('[data-hproj]');
