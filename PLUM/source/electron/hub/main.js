@@ -35,8 +35,6 @@ function createWindow() {
   });
   Menu.setApplicationMenu(null);
   if (saved && saved.maximized) win.maximize();
-  /* 0.3.0: a window without a native frame could cover the taskbar when maximized: keep it to the work area */
-  if (process.platform === 'win32') win.on('maximize', () => { try { const b = win.getBounds(), a = screen.getDisplayMatching(b).workArea; if (b.height > a.height + 20 || b.width > a.width + 20) win.setBounds(a); } catch (err) {} });
   const sendState = () => { if (!win.isDestroyed()) win.webContents.send('win-state', { max: win.isMaximized(), full: win.isFullScreen() }); };
   for (const ev of ['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen']) win.on(ev, sendState);
   win.webContents.on('did-finish-load', sendState);
@@ -72,6 +70,8 @@ ipcMain.on('win', (e, a) => {
   if (a === 'min') win.minimize();
   else if (a === 'max') { if (win.isFullScreen()) win.setFullScreen(false); else if (win.isMaximized()) win.unmaximize(); else win.maximize(); }
   else if (a === 'close') win.close();
+  else if (a === 'full-on') { if (!win.isFullScreen()) win.setFullScreen(true); }
+  else if (a === 'full-off') { if (win.isFullScreen()) win.setFullScreen(false); }
 });
 
 ipcMain.handle('save-file', async (e, req) => {

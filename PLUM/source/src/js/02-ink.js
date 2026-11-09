@@ -472,7 +472,7 @@ class InkCapture {
     /* alpha brushes also keep the speed and the stylus tilt of each point (st.d), for thick and thin and pencil shading */
     this.dyn = st.b && st.b.fx ? { t: ev.timeStamp || now(), x: ev.clientX, y: ev.clientY, v: 0, tl: this.tilt(ev) } : null;
     if (this.dyn) this.cur.d = [0, this.dyn.tl];
-    this.walk = null;
+    this.walk = null; this.shaped = false; this.fedAt = 0;
     /* the three simple brushes (0.2.25) are drawn live piece by piece: each frame only adds the new bits of the line,
        instead of rebuilding the whole outline of the stroke; the finished stroke gets its exact outline */
     this.fast = !st.b && FAST_PENS.includes(st.t); this.li = 0; this.len = 0;
@@ -520,7 +520,37 @@ class InkCapture {
       if (n >= 3) { const dx = s.x - out[n - 3], dy = s.y - out[n - 2], m = .5 / s.k; if (dx * dx + dy * dy < m * m) { out[n - 1] = s.p; if (dd) { const d = this.cur.d; d[d.length - 2] = dd[0]; d[d.length - 1] = dd[1]; } continue; } }
       out.push(s.x, s.y, s.p); if (dd) this.cur.d.push(dd[0], dd[1]);
     }
-    if (!this.raf) this.raf = requestAnimationFrame(() => { this.raf = 0; this.draw(); });
+    this.fedAt = performance.now();
+    this.tick();
+  }
+  /* 0.3.1: the smoothed point used to wait for the next mouse event: when the hand slows down or stops, it now
+     keeps closing in on the pointer frame by frame, so smoothing never leaves the line behind the cursor */
+  tick() { if (!this.raf) this.raf = requestAnimationFrame(() => { this.raf = 0; if (this.catchUp()) this.tick(); this.draw(); }); }
+  catchUp() {
+    const c = this.cur, s = this.sm; if (!c || this.shaped) return false;
+    const d = Math.hypot(s.lx - s.x, s.ly - s.y); if (d < .35 / s.k) return false;
+    if (performance.now() - (this.fedAt || 0) < 20) return true;   // still moving: the events do the smoothing
+    const f = Math.max(s.f, .38); s.x += (s.lx - s.x) * f; s.y += (s.ly - s.y) * f;
+    c.p.push(s.x, s.y, s.p); if (c.d) c.d.push(...c.d.slice(-2));
+    return true;
+  }
+  /* 0.3.1: Shift = a straight line from the press point, Shift + Alt = the same snapped to 0 / 45 / 90°,
+     Ctrl + Shift = a rectangle; the brush keeps its look, the pressure stays even */
+  shapeTo(ax, ay, bx, by, mode) {
+    const c = this.cur; if (!c) return;
+    if (!this.shaped) { this.shaped = true; this.shapeP = clamp(Math.max(c.p[2], this.sm.p, .55), .5, .8); }
+    if (mode === 'snap') { const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy), a = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4); bx = ax + Math.cos(a) * L; by = ay + Math.sin(a) * L; }
+    const P = (mode === 'rect' ? [[ax, ay], [bx, ay], [bx, by], [ax, by], [ax, ay]] : [[ax, ay], [bx, by]]).map(([x, y]) => this.map.toLocal(x, y));
+    const p = this.shapeP, step = Math.max(.6 / this.sm.k, c.s * .3), out = [P[0].x, P[0].y, p];
+    for (let i = 1; i < P.length; i++) {
+      const a = P[i - 1], b = P[i], n = Math.min(400, Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / step)));
+      for (let j = 1; j <= n; j++) out.push(a.x + (b.x - a.x) * j / n, a.y + (b.y - a.y) * j / n, p);
+    }
+    c.p = out; if (c.d) { const t = c.d[1] || 0; c.d = []; for (let i = 0; i < out.length; i += 3) c.d.push(0, t); }
+    const e = P[P.length - 1]; this.sm.last = { x: e.x, y: e.y, p, dd: null }; this.sm.x = this.sm.lx = e.x; this.sm.y = this.sm.ly = e.y;
+    this.li = 0; this.len = 0; this.walk = null;
+    if (c.b && this.layer) { const l = this.layer.getContext('2d'); l.setTransform(1, 0, 0, 1, 0, 0); l.clearRect(0, 0, this.layer.width, this.layer.height); }
+    this.tick();
   }
   end() {
     if (!this.cur) return null;

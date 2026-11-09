@@ -1022,6 +1022,8 @@ function setFocus(on) {
   const r = document.documentElement;
   if (on && R.name !== 'doc') return;
   r.toggleAttribute('data-focus', on);
+  // 0.3.1: on the PC, focus is a true full screen over the taskbar (like ZBrush)
+  if (DESKTOP && window.notely.win) try { window.notely.win(on ? 'full-on' : 'full-off'); } catch (e) {}
   if (typeof Board !== 'undefined') Board.layoutChanged();
   Mood.layout();
 }

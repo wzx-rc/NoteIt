@@ -73,9 +73,13 @@ const Note = (() => {
       case 'h1': case 'h2': case 'h3': document.execCommand('formatBlock', false, blk && blk.tagName === c.toUpperCase() ? 'p' : c); break;
       case 'p': document.execCommand('formatBlock', false, 'p'); break;
       case 'fold': {
-        let n = blk; while (n && n.parentNode !== body) n = n.parentNode;
+        /* 0.3.1: with several lines selected, only the first one becomes the title (the others stay its content) */
+        let b0 = blk;
+        if (s && !s.isCollapsed) { const r0 = s.getRangeAt(0); s.collapse(r0.startContainer, r0.startOffset); b0 = blockOf(s.anchorNode); }
+        b0 = splitLine(b0, s) || b0;
+        let n = b0; while (n && n.parentNode !== body) n = n.parentNode;
         if (n && isHead(n)) { foldToggle(n); return; }
-        const li = blk && blk.closest && blk.closest('li');
+        const li = b0 && b0.closest && b0.closest('li');
         if (li && li.parentNode && li.parentNode.parentNode === body) {   // 0.3.0: a list line becomes a real title, the lines under it its section
           const ul = li.parentNode, h = document.createElement('h2'), rest = document.createElement(ul.tagName);
           for (const c of [...li.childNodes]) if (!(c.nodeType === 1 && /^(UL|OL)$/.test(c.tagName))) h.append(c);
@@ -148,6 +152,19 @@ const Note = (() => {
       f.removeAttribute('size'); f.style.fontSize = px + 'px';
       for (const n of $$('[style*="font-size"], font[size]', f)) { n.style.removeProperty('font-size'); n.removeAttribute('size'); if (!n.getAttribute('style')) n.removeAttribute('style'); if (n.tagName === 'FONT' && !n.attributes.length) n.replaceWith(...n.childNodes); }
     }
+  }
+  /* a paragraph of several lines (Maj + Entrée): the line of the caret becomes a paragraph of its own */
+  function splitLine(b, s) {
+    if (!b || !s || b.parentNode !== body || !/^(P|DIV)$/.test(b.tagName) || !b.querySelector(':scope > br')) return null;
+    const runs = [[]]; for (const c of [...b.childNodes]) { if (c.nodeType === 1 && c.tagName === 'BR') runs.push([]); else runs[runs.length - 1].push(c); }
+    const full = runs.filter(r => r.some(c => (c.textContent || '').trim() || (c.nodeType === 1 && c.querySelector && c.querySelector('img'))));
+    if (full.length < 2) return null;
+    let at = s.anchorNode; while (at && at.parentNode !== b) at = at.parentNode;
+    let mine = null; const made = [];
+    for (const r of runs) { if (!r.length) continue; const p = document.createElement(b.tagName); if (b.className) p.className = b.className; for (const c of r) p.append(c); made.push(p); if (at && r.includes(at)) mine = p; }
+    b.replaceWith(...made); mine = mine || made[0];
+    const rg = document.createRange(); rg.selectNodeContents(mine); rg.collapse(false); s.removeAllRanges(); s.addRange(rg);
+    return mine;
   }
   function textPop(btn) {
     const s0 = selInBody(), k = btn.dataset.tx; let range = s0 && s0.rangeCount ? s0.getRangeAt(0).cloneRange() : null;

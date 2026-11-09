@@ -2320,7 +2320,8 @@ const Board = (() => {
     closePop(); lastClient = { x: e.clientX, y: e.clientY };
     if (mm) { mmDown(e); return; }
     // Ctrl + left or middle drag with a brush: its size (Photoshop, Substance)
-    if ((e.ctrlKey || e.metaKey) && (e.button === 0 || e.button === 1) && !op && (PENS[tool] || tool === 'pick' || tool === 'eraser')) { e.preventDefault(); Studio.hideLoupe(); startSize(e); return; }
+    if (rotMode && e.button === 0 && !op) { e.preventDefault(); startRotate(e); return; }
+    if ((e.ctrlKey || e.metaKey) && (e.button === 0 || e.button === 1) && !op && !(e.shiftKey && e.button === 0 && PENS[tool]) && (PENS[tool] || tool === 'pick' || tool === 'eraser')) { e.preventDefault(); Studio.hideLoupe(); startSize(e); return; }
     if (e.button === 2 && !(op && op.keep) && e.pointerType !== 'touch') { e.preventDefault(); if (editing) finishEdit(); openMarking(e, hitAt(e)); return; }
     if (e.pointerType === 'touch' && !touches.size && !drawingTool()) holdFor(e);
     if (op && op.keep) { if (e.button === 0) { e.preventDefault(); op.click(e); } else if (e.button === 2) { e.preventDefault(); op.finish(); } return; }
@@ -2356,7 +2357,7 @@ const Board = (() => {
     if (e.pointerType === 'touch' && (penSeen || penSeenGlobal) && !['select', 'hand', 'pick'].includes(tool)) { const h0 = hitSel(e); if (h0) setTool('select'); else if (PENS[tool] || tool === 'eraser') { startPan(e); return; } }
     // 0.2.48: a finger or the pencil: press, slide with the loupe above it, let go to take the colour
     if (tool === 'pick' && e.pointerType !== 'mouse') { e.preventDefault(); startTouchPick(e); return; }
-    if (tool === 'pick' || (PENS[tool] && e.altKey)) { e.preventDefault(); pickAt(e); return; }
+    if (tool === 'pick' || (PENS[tool] && e.altKey && !e.shiftKey)) { e.preventDefault(); pickAt(e); return; }
     if (PENS[tool]) { e.preventDefault(); startInk(e); return; }
     if (tool === 'eraser') { e.preventDefault(); startErase(e, eraseAll); return; }
     const w = toW(e.clientX, e.clientY), hit = tool === 'select' ? hitSel(e) : hitAt(e);
@@ -2900,6 +2901,10 @@ const Board = (() => {
       move(ev) { const p = toW(ev.clientX, ev.clientY); if (!moved && Math.hypot((p.x - w.x) * view.k, (p.y - w.y) * view.k) < 6) return; moved = true; setLive(before.concat(Object.assign({}, c, { b: endFor(ev, from.id ? { id: from.id } : null, o, c.id) }))); },
       up(ev) { attachHi = null; attachSock = null; if (!moved) { if (side && h) { op = null; setLive(before); quickNode(h, side); return; } startPoly(c, from, before); return; } op = null; const last = items[items.length - 1];
         // let go on empty board: a marking menu offers an item there, already linked (0.2.58); Escape keeps the free end
+        if (ev && last && last.k === 'conn' && last.b && last.b.id && byId.get(last.b.id) && byId.get(last.b.id).k === 'frame') {
+          const f = byId.get(last.b.id), p = toW(ev.clientX, ev.clientY), m = 16 / view.k;
+          if (p.x > f.x + m && p.x < f.x + f.w - m && p.y > f.y + m && p.y < f.y + f.h - m) { last.b = { x: p.x, y: p.y }; setLive(items.slice()); }
+        }
         if (ev && last && last.k === 'conn' && last.b && last.b.x != null && !last.b.id && !last.b.on) { dropMenu(ev, last, before, o); return; }
         commit(items, { before }); sel = new Set([last.id]); setTool('select'); },
       cancel() { attachHi = null; setLive(before); } };
@@ -2960,29 +2965,32 @@ const Board = (() => {
   /* 0.2.51: the lasso — a free loop around strokes selects them (half their length inside), other elements only when wholly inside */
   function inPoly(x, y, P) { let c = false; for (let i = 0, j = P.length - 2; i < P.length; j = i, i += 2) { const xi = P[i], yi = P[i + 1], xj = P[j], yj = P[j + 1]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; }
   function lassoInSel(w) { if (!sel.size) return false; const b = unionBox(selItems()); if (!b) return false; const pd = 10 / view.k; return inBox(w.x, w.y, [b[0] - pd, b[1] - pd, b[2] + pd, b[3] + pd]); }
-  function lassoPick(P, add) {
-    const s = add ? new Set(sel) : new Set(); if (P.length < 8) return s;
+  function lassoPick(P, add, base) {
+    const s = add ? new Set(base || sel) : new Set(); if (P.length < 8) return s;
     let bb = [Infinity, Infinity, -Infinity, -Infinity]; for (let i = 0; i < P.length; i += 2) { bb[0] = Math.min(bb[0], P[i]); bb[1] = Math.min(bb[1], P[i + 1]); bb[2] = Math.max(bb[2], P[i]); bb[3] = Math.max(bb[3], P[i + 1]); }
     for (const i of items) {
       if (i.hid || i.lock || i.k === 'conn' || i.k === 'frame' || (i.k === 'mind' && i.parent)) continue;
       const q = boxOf(i); if (!boxHit(q, bb)) continue;
-      if (i.k === 'ink') { const sx = i.w / i.w0, sy = i.h / i.h0, n = i.p.length / 3, st = Math.max(1, Math.floor(n / 48)); let a = 0, c = 0; for (let j = 0; j < n; j += st) { c++; if (inPoly(i.x + i.p[j * 3] * sx, i.y + i.p[j * 3 + 1] * sy, P)) a++; } if (c && a / c >= .5) s.add(i.id); }
+      if (i.k === 'ink') { const sx = i.w / i.w0, sy = i.h / i.h0, n = i.p.length / 3, st = Math.max(1, Math.floor(n / 400)); for (let j = 0; j < n; j += st) if (inPoly(i.x + i.p[j * 3] * sx, i.y + i.p[j * 3 + 1] * sy, P)) { s.add(i.id); break; } }
       else if (inPoly(q[0], q[1], P) && inPoly(q[2], q[1], P) && inPoly(q[2], q[3], P) && inPoly(q[0], q[3], P)) s.add(i.id);
     }
     return s;
   }
   function startLasso(e, add) {
-    grab(e); const w = toW(e.clientX, e.clientY); lassoPts = [w.x, w.y];
+    grab(e); const w = toW(e.clientX, e.clientY); lassoPts = [w.x, w.y]; const base0 = new Set(sel); let lp = 0;
     op = { id: e.pointerId, kind: 'lasso', moved: false,
-      move(ev) { if (ev.pointerId !== this.id) return; const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : []; for (const x of evs.length ? evs : [ev]) { const p = toW(x.clientX, x.clientY), n = lassoPts.length; if (Math.hypot((p.x - lassoPts[n - 2]) * view.k, (p.y - lassoPts[n - 1]) * view.k) < 3) continue; lassoPts.push(p.x, p.y); } renderOverlay(); },
-      up() { op = null; const P = lassoPts; lassoPts = null; sel = lassoPick(P, add); schedule(); },
+      move(ev) { if (ev.pointerId !== this.id) return; const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : []; for (const x of evs.length ? evs : [ev]) { const p = toW(x.clientX, x.clientY), n = lassoPts.length; if (Math.hypot((p.x - lassoPts[n - 2]) * view.k, (p.y - lassoPts[n - 1]) * view.k) < 3) continue; lassoPts.push(p.x, p.y); } renderOverlay();
+        if (!lp) lp = requestAnimationFrame(() => { lp = 0; if (lassoPts && op && op.kind === 'lasso') { sel = lassoPick(lassoPts, add, base0); schedule(); } }); },
+      up() { op = null; cancelAnimationFrame(lp); const P = lassoPts; lassoPts = null; sel = lassoPick(P, add, base0); schedule(); },
       cancel() { lassoPts = null; } };
   }
   function startInk(e) {
     grab(e); if (sel.size) { sel.clear(); schedule(); }
     const pk = penKind, pr = penPref(pk), def = PENS[pk];
     ink.begin(e, { t: pk, c: pr.c, s: pr.s / view.k, o: pr.o, smooth: pr.sm, k: view.k, b: strokeBrush(pk, pr, view.k) });
-    op = { id: e.pointerId, kind: 'ink', move(ev) { if (ev.pointerId === this.id) ink.feed(ev); },
+    const ax = e.clientX, ay = e.clientY; let shp = null;
+    const shapeOf = ev => ev.shiftKey ? (ev.ctrlKey || ev.metaKey ? 'rect' : ev.altKey ? 'snap' : 'line') : shp;
+    op = { id: e.pointerId, kind: 'ink', move(ev) { if (ev.pointerId !== this.id) return; const m = shapeOf(ev); if (m) { shp = m; ink.shapeTo(ax, ay, ev.clientX, ev.clientY, m); } else ink.feed(ev); },
       up() { op = null; const st = ink.end(); if (st && st.p.length >= 3) { if (st.p.length === 3) st.p.push(st.p[0] + .4 / view.k, st.p[1] + .2 / view.k, st.p[2]); commit(inkSessionAdd(mkInk(st))); useColor(st.c); if (Studio.on) Studio.refresh('history'); } },
       cancel() { ink.cancel(); } };
   }
@@ -3398,6 +3406,9 @@ const Board = (() => {
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
     const mod = e.ctrlKey || e.metaKey, k = e.key;
     // Alt held alone with a brush: the pipette while it is held (Photoshop)
+    if (k === 'Shift' && altPick) { endAltPick(); return false; }
+    if ((k === 's' || k === 'S') && !mod && !e.altKey) { e.preventDefault(); if (e.repeat) return true; if (rotMode && !rotHeld) { rotExit(); return true; } rotHeld = true; rotEnter(); rotDraw(); return true; }
+    if (rotMode && (k === 'Escape' || k === '0')) { e.preventDefault(); if (k === '0') rotSet(0); else rotExit(); return true; }
     if (k === 'Alt' && !mod && !e.shiftKey && !op && (PENS[tool] || tool === 'eraser')) { e.preventDefault(); altPick = true; setTool('pick'); return true; }
     if (op && op.keep) { if (k === 'Enter') { op.finish(); e.preventDefault(); return true; } if (k === 'Escape') { cancelOp(); e.preventDefault(); return true; } }
     { const sh = sheetSelOf(); if (sh && sheetSelKey(e, sh)) return true; }
@@ -3446,7 +3457,41 @@ const Board = (() => {
     if (TOOL_KEYS[lk]) { if (lk === 'o') shapeKind = 'ellipse'; if (lk === 'r') shapeKind = 'rect'; setTool(TOOL_KEYS[lk] === 'pen' ? penKind : TOOL_KEYS[lk]); return true; }
     return false;
   }
-  function keyUp(e) { if (e.key === ' ') { spaceDown = false; host.classList.toggle('t-hand', tool === 'hand'); } if (e.key === 'Alt') { e.preventDefault(); endAltPick(); } }
+  /* ---------- 0.3.1: S turns the board (held: while held; tapped: until S again or Échap), around the middle of the view ---------- */
+  let rotMode = false, rotHeld = false, rotUsed = false, rotEl = null, rotTap = 0;
+  function rotEnter() {
+    if (rotMode) return; rotMode = true; rotUsed = false; host.classList.add('t-rot');
+    rotEl = document.createElement('div'); rotEl.className = 'rotgz'; wrap.append(rotEl); rotDraw();
+  }
+  function rotExit() { if (!rotMode) return; rotMode = false; rotHeld = false; host.classList.remove('t-rot'); if (rotEl) rotEl.remove(); rotEl = null; if (op && op.kind === 'rot') op = null; }
+  function rotCenter() { const r = hostRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: Math.max(90, Math.min(r.width, r.height) * .3) }; }
+  function rotDraw() {
+    if (!rotEl) return;
+    const c = rotCenter(), r = hostRect(), R = c.R, a = (view.r || 0) * Math.PI / 180, cx = c.x - r.left, cy = c.y - r.top;
+    let ticks = '';
+    for (let d = 0; d < 360; d += 15) { const t = (d - 90) * Math.PI / 180, big = d % 90 === 0, mid = d % 45 === 0, r0 = R - (big ? 14 : mid ? 10 : 6); ticks += `<line x1="${(cx + Math.cos(t + a) * r0).toFixed(1)}" y1="${(cy + Math.sin(t + a) * r0).toFixed(1)}" x2="${(cx + Math.cos(t + a) * R).toFixed(1)}" y2="${(cy + Math.sin(t + a) * R).toFixed(1)}" class="${big ? 'big' : mid ? 'mid' : ''}"/>`; }
+    const hx = cx + Math.sin(a) * R, hy = cy - Math.cos(a) * R, deg = Math.round(((view.r || 0) + 360) % 360);
+    rotEl.innerHTML = `<svg><circle cx="${cx}" cy="${cy}" r="${R}" class="ring"/>${ticks}<line x1="${cx}" y1="${cy - R - 16}" x2="${cx}" y2="${cy - R + 2}" class="north"/><line x1="${cx}" y1="${cy}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" class="arm"/><circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="9" class="knob"/><circle cx="${cx}" cy="${cy}" r="4" class="ctr"/></svg>
+      <div class="rotgz-v" style="left:${cx}px;top:${cy + 22}px">${deg > 180 ? deg - 360 : deg}°</div>
+      <div class="rotgz-h">Rotation du board · glisser pour tourner (Maj : par 15°) · double-clic ou 0 : remettre droit · ${rotHeld ? 'relâcher S pour sortir' : 'S ou Échap pour sortir'}</div>`;
+  }
+  function rotSet(r) {
+    const c = rotCenter(), w0 = toW(c.x, c.y);
+    r = ((r % 360) + 540) % 360 - 180; if (Math.abs(r) < .01) r = 0;
+    view.r = r === -180 ? 180 : r; const u = unrot(c.x, c.y); view.x = u.x - w0.x * view.k; view.y = u.y - w0.y * view.k; viewChanged(); rotDraw();
+  }
+  function startRotate(e) {
+    grab(e); rotUsed = true;
+    const c = rotCenter(), a0 = Math.atan2(e.clientY - c.y, e.clientX - c.x), r0 = view.r || 0; let moved = false;
+    op = { id: e.pointerId, kind: 'rot',
+      move(ev) { if (ev.pointerId !== this.id) return; if (!moved && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 3) return; moved = true; let r = r0 + (Math.atan2(ev.clientY - c.y, ev.clientX - c.x) - a0) * 180 / Math.PI;
+        if (ev.shiftKey) r = Math.round(r / 15) * 15; else { const st = Math.round(r / 45) * 45; if (Math.abs(r - st) < 3) r = st; }
+        rotSet(r); },
+      up() { op = null; if (moved) return; const t = performance.now(); if (t - rotTap < 330) { rotSet(0); rotTap = 0; } else rotTap = t; } };
+  }
+  function keyUp(e) { if ((e.key === 's' || e.key === 'S') && rotHeld) { rotHeld = false; if (rotUsed) rotExit(); else rotDraw(); }
+    if (e.key === 'Shift' && altPick) endAltPick();
+    if (e.key === ' ') { spaceDown = false; host.classList.toggle('t-hand', tool === 'hand'); } if (e.key === 'Alt') { e.preventDefault(); endAltPick(); } }
   function endAltPick() { if (!altPick) return; altPick = false; if (tool === 'pick') { Studio.hideLoupe(); setTool(pickBack && PENS[pickBack] ? pickBack : pickBack === 'eraser' ? 'eraser' : penKind); } }
 
   /* ---------- tools and islands ---------- */
