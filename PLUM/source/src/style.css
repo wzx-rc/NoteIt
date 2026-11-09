@@ -3312,3 +3312,14 @@ html[data-focus] #tbar .tb-f .tbf-l, html[data-focus] #tbar .tb-f [data-f="exit"
 .rotgz .ctr { fill: var(--ink); }
 .rotgz-v { position: absolute; transform: translateX(-50%); padding: 4px 10px; border-radius: 999px; background: var(--card); color: var(--ink); font: 600 13px/1 var(--font-ui, system-ui); font-variant-numeric: tabular-nums; box-shadow: var(--shadow-2); }
 .rotgz-h { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); padding: 7px 14px; border-radius: 10px; background: var(--card); color: var(--ink-2); font: 500 12px/1.2 var(--font-ui, system-ui); white-space: nowrap; box-shadow: var(--shadow-2); }
+
+/* 0.3.3: the folded rail in the tree-sidebar themes (Minimal Sommet, Sommet, Briques): no tree indent (the space tiles
+   were pushed out of the rail), no "Principal" label, no Clair / Sombre switch */
+@media (min-width: 761px) {
+  html[data-sidex] #side #spaces { margin-left: 0; padding-left: 0; border-left: 0; }
+  html[data-sidex] #side #nav::before { display: none; }
+  html[data-sidex] #side .som-mode { display: none; }
+}
+/* 0.3.3: on the iPad the project cover is a low band: the name and buttons fill it, no empty strip above them */
+html:not([data-pc]) .pp2-hero.img { height: 128px; }
+html:not([data-pc]) .pp2-hero.img img { object-position: center 40%; }
