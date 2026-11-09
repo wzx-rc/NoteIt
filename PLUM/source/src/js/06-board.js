@@ -3464,15 +3464,15 @@ const Board = (() => {
     rotEl = document.createElement('div'); rotEl.className = 'rotgz'; wrap.append(rotEl); rotDraw();
   }
   function rotExit() { if (!rotMode) return; rotMode = false; rotHeld = false; host.classList.remove('t-rot'); if (rotEl) rotEl.remove(); rotEl = null; if (op && op.kind === 'rot') op = null; }
-  function rotCenter() { const r = hostRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: Math.max(90, Math.min(r.width, r.height) * .3) }; }
+  function rotCenter() { const r = hostRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: Math.max(45, Math.min(r.width, r.height) * .15) }; }
   function rotDraw() {
     if (!rotEl) return;
     const c = rotCenter(), r = hostRect(), R = c.R, a = (view.r || 0) * Math.PI / 180, cx = c.x - r.left, cy = c.y - r.top;
     let ticks = '';
-    for (let d = 0; d < 360; d += 15) { const t = (d - 90) * Math.PI / 180, big = d % 90 === 0, mid = d % 45 === 0, r0 = R - (big ? 14 : mid ? 10 : 6); ticks += `<line x1="${(cx + Math.cos(t + a) * r0).toFixed(1)}" y1="${(cy + Math.sin(t + a) * r0).toFixed(1)}" x2="${(cx + Math.cos(t + a) * R).toFixed(1)}" y2="${(cy + Math.sin(t + a) * R).toFixed(1)}" class="${big ? 'big' : mid ? 'mid' : ''}"/>`; }
+    for (let d = 0; d < 360; d += 15) { const t = (d - 90) * Math.PI / 180, big = d % 90 === 0, mid = d % 45 === 0, r0 = R - (big ? 8 : mid ? 6 : 3.5); ticks += `<line x1="${(cx + Math.cos(t + a) * r0).toFixed(1)}" y1="${(cy + Math.sin(t + a) * r0).toFixed(1)}" x2="${(cx + Math.cos(t + a) * R).toFixed(1)}" y2="${(cy + Math.sin(t + a) * R).toFixed(1)}" class="${big ? 'big' : mid ? 'mid' : ''}"/>`; }
     const hx = cx + Math.sin(a) * R, hy = cy - Math.cos(a) * R, deg = Math.round(((view.r || 0) + 360) % 360);
-    rotEl.innerHTML = `<svg><circle cx="${cx}" cy="${cy}" r="${R}" class="ring"/>${ticks}<line x1="${cx}" y1="${cy - R - 16}" x2="${cx}" y2="${cy - R + 2}" class="north"/><line x1="${cx}" y1="${cy}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" class="arm"/><circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="9" class="knob"/><circle cx="${cx}" cy="${cy}" r="4" class="ctr"/></svg>
-      <div class="rotgz-v" style="left:${cx}px;top:${cy + 22}px">${deg > 180 ? deg - 360 : deg}°</div>
+    rotEl.innerHTML = `<svg><circle cx="${cx}" cy="${cy}" r="${R}" class="ring"/>${ticks}<line x1="${cx}" y1="${cy - R - 9}" x2="${cx}" y2="${cy - R + 1}" class="north"/><line x1="${cx}" y1="${cy}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" class="arm"/><circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="6" class="knob"/><circle cx="${cx}" cy="${cy}" r="3" class="ctr"/></svg>
+      <div class="rotgz-v" style="left:${cx}px;top:${cy + R + 10}px">${deg > 180 ? deg - 360 : deg}°</div>
       <div class="rotgz-h">Rotation du board · glisser pour tourner (Maj : par 15°) · double-clic ou 0 : remettre droit · ${rotHeld ? 'relâcher S pour sortir' : 'S ou Échap pour sortir'}</div>`;
   }
   function rotSet(r) {
@@ -3496,6 +3496,7 @@ const Board = (() => {
 
   /* ---------- tools and islands ---------- */
   function setTool(t) {
+    if (rotMode) rotExit();   // 0.3.2: another tool (D, P, V…) leaves the rotation
     if (PENS[t] && !LITE_PENS.includes(t) && !atelierFull()) t = 'pen';   // the simple drawing module: three quick pens and the alpha brushes
     if (t === 'eraser' && tool !== 'pick') eraseAll = true;   // E and the tool bar: everything; the drawing bar's eraser sets it back to strokes only
     if (editing) finishEdit();
