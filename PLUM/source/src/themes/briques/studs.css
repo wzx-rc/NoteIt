@@ -16,14 +16,13 @@
 [data-skin="briques"] .hm-h .lab, [data-skin="briques"] .wk-h, [data-skin="briques"] .som-lab { font-family: var(--font-head); font-weight: 600; letter-spacing: .02em; text-transform: none; }
 
 /* ---- sidebar: a baseplate ---- */
-[data-skin="briques"] #side { background-color: var(--side); background-image: var(--bq-stud); background-size: 16px 16px; background-position: 4px 4px; }
+[data-skin="briques"] #side { background: var(--side); }
 [data-skin="briques"] .brand .pill { background: var(--accent); box-shadow: 0 3px 0 var(--bq-ledge), inset 0 1px rgb(255 255 255 / .25); border-radius: 9px; }
 [data-skin="briques"] .brand .pill b { color: var(--on-accent); font-family: var(--font-head); font-weight: 600; }
 /* the open page = a brick */
 [data-skin="briques"] .nv { border-radius: 7px; }
-[data-skin="briques"] .nv[aria-current="page"], [data-skin="briques"] .nv[aria-current="page"]:hover { position: relative; margin-top: 3px; background: var(--accent); color: var(--on-accent); font-weight: 550; box-shadow: 0 3px 0 var(--bq-ledge), inset 0 1px rgb(255 255 255 / .22); }
+[data-skin="briques"] .nv[aria-current="page"], [data-skin="briques"] .nv[aria-current="page"]:hover { position: relative; background: var(--accent); color: var(--on-accent); font-weight: 550; box-shadow: 0 3px 0 var(--bq-ledge), inset 0 1px rgb(255 255 255 / .22); }
 [data-skin="briques"] .nv[aria-current="page"] .i, [data-skin="briques"] .nv[aria-current="page"] .ct { color: var(--on-accent); --i-d: var(--on-accent); --i-dk: 1.2; }
-[data-skin="briques"] .nv[aria-current="page"]::before { content: ""; position: absolute; left: 12px; top: -4px; width: 30px; height: 5px; background: linear-gradient(90deg, var(--accent) 0 11px, transparent 11px 19px, var(--accent) 19px); border-radius: 3px 3px 0 0; pointer-events: none; }
 [data-skin="briques"] .nv:hover { background: color-mix(in oklab, var(--side-2) 85%, transparent); }
 /* project dots become 1x1 round plates */
 [data-skin="briques"] #spaces .sdot, [data-skin="briques"] .spr .sdot, [data-skin="briques"] #spaces .dot { border-radius: 50%; box-shadow: inset 0 -1.5px 0 rgb(0 0 0 / .25), inset 0 1px 0 rgb(255 255 255 / .35); }
@@ -77,3 +76,9 @@
 [data-skin="briques"] .hub2 .hub2-top.own::before { background: var(--hub-cov) center / cover no-repeat; }
 @media (max-width: 700px) { [data-skin="briques"] .hub2 .hub2-top::before { background-size: cover; opacity: .5; } }
 [data-skin="briques"][data-resolved="dark"] .pc2-cov::before { mix-blend-mode: normal; filter: none; opacity: 1; }
+
+/* 0.2.68: squarer corners, like real bricks */
+:root[data-skin="briques"] { --r-sm: 3px; --r-md: 4px; --r-lg: 6px; --r-xl: 8px; }
+[data-skin="briques"] :is(.nv, .btn, .btn.sm, .tb, .tb.pri, .chip, .sbox, .mi, .tl, .seg button, .stabs button, .pc2-b, .pc2-open, .hub-covbtn, .hc-b, .som-mode button, .spsw, .spadd, .spm-new, .mw-fav, .mw-ext) { border-radius: 4px !important; }
+[data-skin="briques"] :is(.brand .pill, .me, .seg, .stabs, .pop, .qbar, .isl, .props, .som-mode, .wk-d, .pc2-tile, .pc2-syn, .pc2-tks, .pc2-cov, .pc2-cov img, .pc2-cov::before, .dcard .th, .trow, .hub2-create, .mw, .mw-fold, .mw-empty, .mdr, .skin-c, .skin-pv) { border-radius: 5px !important; }
+[data-skin="briques"] :is(.pc2, .hmod, .hub2 .hub2-top, .card, .tlist, .sheet-m, .pp-hero, .focuscard, .hub-side > section) { border-radius: 7px !important; }
