@@ -3,6 +3,33 @@
    HUB and the project PAGE. The CSS starts from Minimal's rules (theme.css) and adds the Sommet layer (sommet.css).
    Icons are Minimal's fine lines without their second tone. */
 const SOM_D = o => `stroke="none" style="fill:var(--i-d,currentColor);opacity:calc(var(--i-dk,1)*${o})"`;
+/* Sommet adds two small things to the sidebar while it is on (removed when another theme is chosen):
+   a Clair / Sombre / Système switch under the profile card, and a chevron that folds the Espaces list. */
+function somApply(on) {
+  const side = document.getElementById('side'); if (!side) return;
+  side.querySelectorAll('.som-x').forEach(e => e.remove()); side.classList.remove('som-spfold');
+  if (somApply.mo) { somApply.mo.disconnect(); somApply.mo = null; }
+  if (!on) return;
+  const foot = side.querySelector('.side-foot');
+  if (foot) {
+    const seg = document.createElement('div'); seg.className = 'som-x som-mode'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Apparence');
+    const cur = () => (S && S.prefs.theme) || 'auto';
+    const draw = () => { seg.innerHTML = [['light', 'sun', 'Clair'], ['dark', 'moon', 'Sombre'], ['auto', 'focus', 'Système']].map(([v, ic, l]) => `<button data-som-mode="${v}" aria-pressed="${cur() === v}">${icon(ic, 'sm')}<span>${l}</span></button>`).join(''); };
+    draw();
+    seg.onclick = e => { const b = e.target.closest('[data-som-mode]'); if (!b) return; S.prefs.theme = b.dataset.somMode; save(); applyTheme(); draw(); if (typeof R !== 'undefined' && R.name !== 'doc') go(R, { keepFocus: true }); };
+    foot.after(seg);
+    somApply.mo = new MutationObserver(draw); somApply.mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+  const sec = document.getElementById('spacesSec');
+  if (sec) {
+    const fb = document.createElement('button'); fb.className = 'som-x som-fold'; fb.title = 'Replier les espaces'; fb.setAttribute('aria-label', 'Replier les espaces');
+    fb.innerHTML = icon('chev', 'sm');
+    const set = v => { side.classList.toggle('som-spfold', v); fb.setAttribute('aria-expanded', String(!v)); };
+    set(!!(S && S.prefs.somSpFold));
+    fb.onclick = () => { S.prefs.somSpFold = !S.prefs.somSpFold; save(); set(S.prefs.somSpFold); };
+    sec.append(fb);
+  }
+}
 defineTheme({
   id: 'sommet', order: .5, label: 'Sommet', desc: 'Monochrome, typo mono, paysages peints',
   mode: 'user', meta: '#FFFFFF', chalk: '#ECECEC', ring: 'clean',
@@ -45,5 +72,6 @@ defineTheme({
     moon: `<path ${SOM_D(.18)} d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z"/><path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z"/>`,
     sliders: `<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle ${SOM_D(.2)} cx="15" cy="7" r="2"/><circle ${SOM_D(.2)} cx="9" cy="17" r="2"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>`,
     link: `<path d="M10 14a4 4 0 0 0 5.66 0l3-3A4 4 0 0 0 13 5.34l-1.2 1.2M14 10a4 4 0 0 0-5.66 0l-3 3A4 4 0 0 0 11 18.66l1.2-1.2"/>`
-  }
+  },
+  apply: on => somApply(on)
 });
