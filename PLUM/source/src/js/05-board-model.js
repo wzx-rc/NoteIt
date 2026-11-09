@@ -227,6 +227,8 @@ const inBox = (x, y, b) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3];
 
 /* outline of a shape as a polygon (relative to its box) */
 /* corner radius of a rectangle (rect: 0 unless set, round: 18 unless set), never more than half a side */
+/* 0.2.83: corner radius of a picture (Ombre 10 px, Carré 0, Polaroïd none), it.rad overrides */
+function imgRad(it) { return it.frm === 'polaroid' ? 0 : Math.max(0, Math.min(it.rad != null ? it.rad : it.frm === 'square' ? 0 : 10, it.w / 2, it.h / 2)); }
 function shapeRad(sh, w, h, rad) { return sh === 'rect' || sh === 'round' ? Math.max(0, Math.min(rad != null ? rad : sh === 'round' ? Math.min(18, w / 4, h / 4) : 0, w / 2, h / 2)) : 0; }
 function shapePoly(sh, w, h, n = 56, rad) {
   const P = [];

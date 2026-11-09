@@ -128,7 +128,7 @@ const Board = (() => {
       case 'note': return `n${it.w}|${it.h}|${it.c}|${it.fs}|${it.font}|${it.al}|${it.txt}|${skin()}`;
       case 'text': return `t${it.fw ? it.w : ''}|${it.fs}|${it.font}|${it.color}|${it.bold}|${it.ital}|${it.al}|${it.txt}|${theme()}`;
       case 'shape': return `s${it.w}|${it.h}|${it.sh}|${it.rad}|${it.fo}|${it.so}|${it.sc}|${it.fc}|${it.sw}|${it.sty}|${it.dash}|${it.fill}|${it.txt}|${it.fs}|${it.font}|${it.color}|${theme()}`;
-      case 'image': return `i${it.asset}|${it.frm}|${it.cap}|${Assets.has(it.asset)}`;
+      case 'image': return `i${it.asset}|${it.frm}|${it.cap}|${it.rad}|${Assets.has(it.asset)}`;
       case 'file': return `f${it.asset}|${it.name}|${it.mime}`;
       case 'link': return `l${Math.round(it.w)}|${Math.round(it.h)}|${it.url}|${it.title}|${it.asset || it.pic || ''}|${Assets.has(it.asset)}`;
       case 'paint': return `c${it.c}|${it.seed}|${theme()}`;
@@ -170,7 +170,7 @@ const Board = (() => {
         n.innerHTML = shapeSVG(it) + `<div class="txt" style="font:600 ${it.fs}px/1.12 ${fontCSS(it)};color:${inkColor(it.color || it.sc)}">${fmtText(it.txt)}</div>`;
         if (it.txt) fitShape(n, it); break;
       case 'image': {
-        n.className = 'it image ' + (it.frm || 'shadow');
+        n.className = 'it image ' + (it.frm || 'shadow'); n.style.borderRadius = it.rad != null && it.frm !== 'polaroid' ? imgRad(it) + 'px' : '';
         const u = Assets.url(it.asset);
         n.innerHTML = u ? `<img src="${u}" alt="${esc(it.cap || 'Image')}" draggable="false">${it.frm === 'polaroid' && it.cap ? `<div class="cap">${esc(it.cap)}</div>` : ''}` : `<div class="ph"><div>${icon('image')}Glissez une image ici${it.cap ? `<small class="ph-n">${esc(it.cap)}</small>` : ''}${it.miro && it.miro.i && miroCan() ? `<button class="ph-miro" data-miro="1">Récupérer depuis Miro</button>` : ''}</div></div>`;
         break;
@@ -410,9 +410,9 @@ const Board = (() => {
           if (one && LINKABLE(one)) for (const [k, [dx, dy]] of Object.entries(DIRS)) { if (R) continue; h += `<div class="hdl cdot" data-cd="${k}" title="Glisser vers un élément pour le relier · clic : nouvel élément relié (Ctrl + flèche)" style="left:${P[k][0] + dx * 22}px;top:${P[k][1] + dy * 22}px"></div>`; }
         }
         // a dot inside the top-left corner of a rectangle: drag it to round the corners (0.2.23)
-        if (one && one.k === 'shape' && (one.sh === 'rect' || one.sh === 'round') && !editing && !locked && !R && (!dragging || op.kind === 'rad') && one.w * view.k > 56 && one.h * view.k > 56) {
+        if (one && ((one.k === 'shape' && (one.sh === 'rect' || one.sh === 'round')) || (one.k === 'image' && one.frm !== 'polaroid')) && !editing && !locked && !R && (!dragging || op.kind === 'rad') && one.w * view.k > 56 && one.h * view.k > 56) {
           /* outside the top right corner, off the resize handles: pull it in towards the shape to round the corners */
-          const r = shapeRad(one.sh, one.w, one.h, one.rad) * view.k, q = toS(one.x + one.w, one.y), hx = q.x + RAD_OFF, hy = q.y - RAD_OFF;
+          const r = (one.k === 'image' ? imgRad(one) : shapeRad(one.sh, one.w, one.h, one.rad)) * view.k, q = toS(one.x + one.w, one.y), hx = q.x + RAD_OFF, hy = q.y - RAD_OFF;
           h += `<div class="hdl crad" data-rad="1" title="Arrondir les angles · ${Math.round(r / view.k)} px : tirer vers la forme" style="left:${hx}px;top:${hy}px"></div>`;
           if (op && op.kind === 'rad') h += `<div class="radtip" style="left:${hx + 12}px;top:${hy - 26}px">${Math.round(r / view.k)} px</div>`;
         }
@@ -883,7 +883,7 @@ const Board = (() => {
     if (want.fs) out.push(sec('Taille du texte', seg('fs', fsLevel(first(has('text') ? 'text' : undefined) || first()), [[0, 'S'], [1, 'M'], [2, 'L'], [3, 'XL']])));
     if (want.al) out.push(sec('Alignement', seg('al', first().al || 'left', [['left', icon('al-l'), 'À gauche'], ['center', icon('al-c'), 'Centré'], ['right', icon('al-r'), 'À droite']], 'ic')));
     if (want.bold) out.push(sec('Graisse', seg('bold', one ? !!one.bold : false, [[false, 'Normal'], [true, '<b>Gras</b>']])));
-    if (one && one.k === 'image') out.push(sec('Image', seg('frm', one.frm || 'shadow', [['shadow', 'Ombre'], ['polaroid', 'Polaroïd'], ['square', 'Carré'], ['none', 'Simple']]) + btnRow([['cap', 'text', 'Légende'], Assets.has(one.asset) ? ['view', 'focus', 'Voir en grand'] : null, one.href ? ['src', 'ext', isInsta(one.href) ? 'Voir sur Instagram' : 'Page d’origine'] : null].filter(Boolean))));
+    if (one && one.k === 'image') out.push(sec('Image', seg('frm', one.frm || 'shadow', [['shadow', 'Ombre'], ['polaroid', 'Polaroïd'], ['square', 'Carré'], ['none', 'Simple']]) + (one.frm !== 'polaroid' ? slide('rad', 'Arrondi', Math.round(imgRad(one)), 0, Math.round(Math.min(one.w, one.h) / 2), 1, 'px') : '') + btnRow([['cap', 'text', 'Légende'], Assets.has(one.asset) ? ['view', 'focus', 'Voir en grand'] : null, one.href ? ['src', 'ext', isInsta(one.href) ? 'Voir sur Instagram' : 'Page d’origine'] : null].filter(Boolean))));
     if (one && one.k === 'shape' && (one.sh === 'rect' || one.sh === 'round')) out.push(sec('Angles', seg('corner', shapeRad(one.sh, one.w, one.h, one.rad) > 0 ? 'round' : 'sharp', [['sharp', icon('rect'), 'Vifs'], ['round', icon('round'), 'Arrondis']], 'ic')), radSlide(list));
     if (list.length && list.every(i => i.k === 'todo')) { const f = first();
       out.push(sec('Liste', `<div class="pp-hint" style="margin:0 0 6px">Progression</div>` + seg('tprog', !f.noprog, [[true, 'Affichée'], [false, 'Masquée']])
@@ -969,8 +969,8 @@ const Board = (() => {
       case 'ital': return it.k === 'text' ? { ital: v === true || v === 'true' } : null;
       case 'op': return { op: +v >= 1 ? undefined : +v };
       case 'fo': case 'so': return it.k === 'shape' ? { [prop]: +v >= 1 ? undefined : +v } : null;
-      case 'rad': return it.k === 'shape' && (it.sh === 'rect' || it.sh === 'round') ? { sh: 'rect', rad: Math.max(0, Math.round(+v)) } : null;
-      case 'frm': return it.k === 'image' ? { frm: v } : null;
+      case 'rad': return it.k === 'shape' && (it.sh === 'rect' || it.sh === 'round') ? { sh: 'rect', rad: Math.max(0, Math.round(+v)) } : it.k === 'image' && it.frm !== 'polaroid' ? { rad: Math.max(0, Math.round(+v)) } : null;
+      case 'frm': return it.k === 'image' ? { frm: v, rad: undefined } : null;
       case 'ftc': return it.k === 'frame' ? { tc: v || undefined } : null;
       case 'ffc': return it.k === 'frame' ? { fc: v || undefined } : null;
       case 'ftitle': return it.k === 'frame' ? { nt: v === false || v === 'false' ? true : undefined } : null;
@@ -2746,15 +2746,15 @@ const Board = (() => {
   const RAD_OFF = 18;   // screen px from the top right corner, outwards, to the radius dot
   function startRadius(e) {
     grab(e);
-    const it0 = selItems()[0]; if (!it0 || it0.k !== 'shape') return;
-    const before = items, r0 = shapeRad(it0.sh, it0.w, it0.h, it0.rad), x0 = e.clientX, y0 = e.clientY;
+    const it0 = selItems()[0]; if (!it0 || (it0.k !== 'shape' && it0.k !== 'image')) return;
+    const img = it0.k === 'image', before = items, r0 = img ? imgRad(it0) : shapeRad(it0.sh, it0.w, it0.h, it0.rad), x0 = e.clientX, y0 = e.clientY;
     op = { id: e.pointerId, kind: 'rad', moved: true,
       move(ev) {
         if (ev.pointerId !== this.id) return;
         /* towards the shape (left and down) rounds more, away from it less */
         const d = ((x0 - ev.clientX) + (ev.clientY - y0)) / 2 / view.k;
         const rad = Math.round(clamp(r0 + d, 0, Math.min(it0.w, it0.h) / 2));
-        setLive(items.map(i => i.id === it0.id ? Object.assign({}, i, { sh: 'rect', rad }) : i));
+        setLive(items.map(i => i.id === it0.id ? Object.assign({}, i, img ? { rad } : { sh: 'rect', rad }) : i));
       },
       up() { op = null; commit(items, { before }); },
       cancel() { setLive(before); } };
