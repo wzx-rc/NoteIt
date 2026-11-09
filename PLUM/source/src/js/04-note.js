@@ -57,6 +57,11 @@ const Note = (() => {
     switch (c) {
       case 'h1': case 'h2': case 'h3': document.execCommand('formatBlock', false, blk && blk.tagName === c.toUpperCase() ? 'p' : c); break;
       case 'p': document.execCommand('formatBlock', false, 'p'); break;
+      case 'fold': {
+        let n = blk; while (n && n.parentNode !== body) n = n.parentNode;
+        if (n && isHead(n)) { foldToggle(n); return; }
+        document.execCommand('formatBlock', false, 'h2'); applyFolds(body); break;
+      }
       case 'bold': case 'italic': case 'underline': case 'strikeThrough': document.execCommand(c); break;
       case 'ul': { const ul = s && s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentNode).closest('ul'); if (ul && ul.classList.contains('chk')) { ul.classList.remove('chk'); break; } document.execCommand('insertUnorderedList'); break; }
       case 'chk': {
@@ -99,6 +104,9 @@ const Note = (() => {
       let c = f && li.textContent.trim().startsWith(f.textContent.trim()) ? f.getAttribute('color') : '';
       if (!txt) { const prev = li.previousElementSibling; c = (prev && prev.style.color) || ''; const ff = li.querySelector('font[color]'); if (ff) c = ff.getAttribute('color'); }
       if (c) li.style.color = c; else li.style.removeProperty('color');
+      // 0.2.77: the marker takes the size its text starts with
+      const z = [...li.querySelectorAll('[style*="font-size"]')].find(x => x.closest('li') === li && x.textContent.trim()), zt = z && txt.startsWith(z.textContent.trim().slice(0, 12)) ? z.style.fontSize : '';
+      if (zt) li.style.fontSize = zt; else li.style.removeProperty('font-size');
       if (!li.getAttribute('style')) li.removeAttribute('style');
     }
   }
@@ -116,8 +124,8 @@ const Note = (() => {
     }
   }
   function textPop(btn) {
-    const s0 = selInBody(), range = s0 && s0.rangeCount ? s0.getRangeAt(0).cloneRange() : null, k = btn.dataset.tx;
-    const apply = f => { body.focus(); const sel = getSelection(); if (range) { sel.removeAllRanges(); sel.addRange(range); } else ensureFocus(); try { document.execCommand('styleWithCSS', false, false); } catch (e) {} f(); saveBody(); renderTool(); };
+    const s0 = selInBody(), k = btn.dataset.tx; let range = s0 && s0.rangeCount ? s0.getRangeAt(0).cloneRange() : null;
+    const apply = f => { body.focus(); const sel = getSelection(); if (range) { sel.removeAllRanges(); sel.addRange(range); } else ensureFocus(); try { document.execCommand('styleWithCSS', false, false); } catch (e) {} f(); const s1 = getSelection(); if (s1.rangeCount && body.contains(s1.anchorNode)) range = s1.getRangeAt(0).cloneRange(); syncMarkers(body); saveBody(); renderTool(); };
     const color = c => apply(() => {
       document.execCommand('foreColor', false, c || NOCOLOR);
       if (!c) for (const el of $$('font[color]', body)) if (el.getAttribute('color').toLowerCase() === NOCOLOR) { el.removeAttribute('color'); if (!el.attributes.length) el.replaceWith(...el.childNodes); }
@@ -126,12 +134,18 @@ const Note = (() => {
     /* 0.2.16: the theme's 20 colours (n°1, the ink, is the default text colour), free colours kept on the « Récentes » line */
     if (k === 'color') { Colors.open(btn, { value: S.prefs.noteColor, none: true, onPick: (c, final) => { if (final) color(c && schemeNo(c) === 1 ? null : c); } }); return; }
     const html = k === 'font' ? TFONTS.map(([v, l, ff]) => `<button class="mi" data-v="${v}"><span style="font-family:${ff};font-size:16px">${l}</span></button>`).join('')
-      : k === 'size' ? `<label class="tsz-in"><input type="number" min="6" max="160" step="1" value="${curSize()}" aria-label="Taille en pixels"><span>px</span></label>` + TPX.map(v => `<button class="mi tsz-mi" data-v="${v}"${v === curSize() ? ' aria-pressed="true"' : ''}><span style="font-size:${Math.min(v, 26)}px">${v}</span></button>`).join('')
+      : k === 'size' ? `<div class="tsz"><div class="tsz-hd"><span>Taille</span><label class="tsz-in"><input type="number" min="6" max="96" step="1" value="${curSize()}" aria-label="Taille en pixels"><span>px</span></label></div><input class="tsz-r" type="range" min="6" max="96" step="1" value="${curSize()}" aria-label="Taille du texte"><div class="tsz-sc"><span>6</span><span>Aa</span><span>96</span></div></div>`
       : '';
     const pop = openPop(btn, html, { cls: 'tpop', focus: false });
     pop.addEventListener('pointerdown', e => { if (!e.target.closest('input')) e.preventDefault(); });
     const szIn = k === 'size' && $('.tsz-in input', pop);
-    if (szIn) { szIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = Math.round(+szIn.value); if (v >= 6 && v <= 160) { closePop(); apply(() => setPx(v)); } } else if (e.key === 'Escape') closePop(); }); setTimeout(() => { szIn.focus(); szIn.select(); }, 0); }
+    if (szIn) {
+      const rg = $('.tsz-r', pop); let raf = 0, want = 0;
+      const live = v => { want = v; cancelAnimationFrame(raf); raf = requestAnimationFrame(() => apply(() => setPx(want))); };
+      rg.addEventListener('input', () => { szIn.value = rg.value; live(+rg.value); });
+      szIn.addEventListener('input', () => { const v = Math.round(+szIn.value); if (v >= 6 && v <= 96) { rg.value = v; live(v); } });
+      szIn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); closePop(); } });
+    }
     pop.addEventListener('click', e => {
       const b = e.target.closest('[data-v]'); if (!b) return; const v = b.dataset.v; closePop();
       if (k === 'font') apply(() => document.execCommand('fontName', false, v));
@@ -184,6 +198,7 @@ const Note = (() => {
   }
   /* ---------- 0.2.76: foldable titles (T1 / T2 / T3, like Evernote) and a grip to move lines and blocks ---------- */
   const isHead = n => n && /^H[1-3]$/.test(n.tagName);
+  const FOLD_IC = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 9h6M7 14.5h13M7 19h13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
   const lvl = n => +n.tagName[1];
   function applyFolds(root = body) {
     if (!root) return;
@@ -406,7 +421,7 @@ const Note = (() => {
   function renderTool() {
     if (!tool) return;
     const s = selInBody(), el = s && s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentNode), blk = s && blockOf(s.anchorNode);
-    const st = { h1: blk && blk.tagName === 'H1', h2: blk && blk.tagName === 'H2', quote: blk && blk.tagName === 'BLOCKQUOTE', hand: blk && blk.classList.contains('hand-p'),
+    const st = { fold: !!(blk && /^H[1-3]$/.test(blk.tagName)), h1: blk && blk.tagName === 'H1', h2: blk && blk.tagName === 'H2', quote: blk && blk.tagName === 'BLOCKQUOTE', hand: blk && blk.classList.contains('hand-p'),
       bold: s && document.queryCommandState('bold'), italic: s && document.queryCommandState('italic'), mark: !!(el && el.closest('mark')),
       chk: !!(el && el.closest('ul.chk')), ul: !!(el && el.closest('ul:not(.chk)')) };
     for (const b of $$('[data-cmd]', tool)) if (b.dataset.cmd in st) b.setAttribute('aria-pressed', !!st[b.dataset.cmd]);
@@ -734,7 +749,7 @@ const Note = (() => {
   /* ---------- toolbar ---------- */
   function renderToolbar() {
     const pr = penPref(pen === 'eraser' ? 'pen' : pen), cols = pen === 'highlight' ? themeColors('hl', HL_COLORS) : themeColors('ink', INK_COLORS), b = (c, ic, t, extra = '') => `<button class="nb" data-cmd="${c}" title="${t}" aria-label="${t}" ${extra}>${ic}</button>`;
-    const textG = `<div class="grp">${b('h1', '<span class="txt">T1</span>', 'Grand titre (#)')}${b('h2', '<span class="txt">T2</span>', 'Sous-titre (##)')}${b('bold', icon('bold'), 'Gras (Ctrl B)')}${b('italic', icon('ital'), 'Italique (Ctrl I)')}${b('mark', icon('hl'), 'Surligner')}</div><span class="vs"></span>
+    const textG = `<div class="grp">${b('fold', FOLD_IC, 'Section repliable : la ligne devient un titre qui replie ce qu’il y a dessous (re-clic : replier / déplier)')}${b('h2', '<span class="txt">T2</span>', 'Sous-titre (##)')}${b('bold', icon('bold'), 'Gras (Ctrl B)')}${b('italic', icon('ital'), 'Italique (Ctrl I)')}${b('mark', icon('hl'), 'Surligner')}</div><span class="vs"></span>
       <div class="grp tfmt"><button class="nb tx" data-tx="font" title="Police" aria-label="Police"><span class="txt" style="font-family:'Instrument Serif',Georgia,serif;font-size:17px">Aa</span>${icon('chevd', 'sm')}</button><button class="nb tx" data-tx="size" title="Taille du texte" aria-label="Taille du texte"><span class="txt tsz">T<small>T</small></span>${icon('chevd', 'sm')}</button><button class="nb tx" data-tx="color" title="Couleur du texte" aria-label="Couleur du texte"><span class="tca">A<i style="background:${S.prefs.noteColor || '#E03131'}"></i></span>${icon('chevd', 'sm')}</button></div><span class="vs"></span>
       <div class="grp">${b('ul', icon('list'), 'Liste (-)')}${b('chk', icon('chk'), 'Cases à cocher ([])')}${b('quote', icon('sticky'), 'Post-it (>)')}${b('hand', '<span class="txt" style="font-family:var(--font-hand);font-size:17px">Aa</span>', 'Écriture manuscrite')}</div>`;
     if (PENS[pen] && !notePens().includes(pen)) pen = 'pen';

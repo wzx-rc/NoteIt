@@ -3228,3 +3228,16 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 .hmd-folder figcaption b { font-size: 12px; font-weight: 600; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hmd-folder figcaption small { font-size: 10.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hmd-folder { cursor: pointer; }
+
+/* 0.2.77 text size slider; bullets and check boxes follow the size of their line */
+.tpop .tsz { width: 236px; padding: 6px 8px 4px; }
+.tpop .tsz-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: var(--ink-3); }
+.tpop .tsz .tsz-in { margin: 0; height: 28px; padding: 0 8px; }
+.tpop .tsz .tsz-in input { width: 34px; text-align: right; -moz-appearance: textfield; }
+.tpop .tsz .tsz-in input::-webkit-inner-spin-button, .tpop .tsz .tsz-in input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.tpop .tsz-r { width: 100%; accent-color: var(--accent); margin: 0; }
+.tpop .tsz-sc { display: flex; justify-content: space-between; align-items: baseline; margin-top: 2px; font-size: 10.5px; color: var(--ink-3); }
+.tpop .tsz-sc span:nth-child(2) { font-size: 15px; }
+.nbody ul.chk > li[style*="font-size"], [data-skin] .nbody ul.chk > li[style*="font-size"] { padding-left: 1.65em; }
+.nbody ul.chk > li[style*="font-size"]::before, [data-skin] .nbody ul.chk > li[style*="font-size"]::before { top: .2em; width: 1em; height: 1em; border-radius: .28em; border-width: max(1px, .085em); }
+[data-skin] .nbody ul.chk > li[style*="font-size"][data-done]::before { background-size: .68em; }
