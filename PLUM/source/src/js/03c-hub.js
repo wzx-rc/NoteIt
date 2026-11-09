@@ -79,11 +79,11 @@ function weekMod() {
   const col = e => e[5] === 'g' ? '#4285F4' : PLAN_COLORS[Math.floor(hashStr(lab(e).toUpperCase()) * PLAN_COLORS.length)];
   const days = Array.from({ length: 7 }, (_, i) => dAdd(mon, i)).map(d => {
     const k = ymd(d), list = ev.filter(e => String(e[0]).slice(0, 10) === k), past = k < today;
-    return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b></div>
-      <div class="wk-l">${list.slice(0, 3).map(e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}${e[1] && String(e[1]).length > 11 ? '–' + String(e[1]).slice(11, 16) : ''}</em>`}<span>${esc(lab(e))}</span></div>`).join('')}${list.length > 3 ? `<small>+${list.length - 3}</small>` : ''}</div></div>`;
+    return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b>${list.length > 3 ? `<small class="wk-more">+${list.length - 3}</small>` : ''}</div>
+      <div class="wk-l">${list.slice(0, 3).map(e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i><span>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}</em>`}${esc(lab(e))}</span></div>`).join('')}</div></div>`;
   }).join('');
   const mon2 = mon.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-  return `<div class="wk-top"><span class="lab">Semaine du ${mon2}</span>${calSrcs(H).length ? '' : `<button class="wk-link" data-hopts>${icon('cal', 'sm')}Connecter Google Agenda</button>`}</div><div class="wk-g">${days}</div>`;
+  return `<div class="wk-top"><span class="lab">Semaine du ${mon2}</span>${calSrcs(H).length ? '' : `<button class="wk-link" data-hopts>${icon('cal', 'sm')}Connecter Google Agenda</button>`}<button class="wk-set" data-wkset title="Affichage de la semaine" aria-label="Affichage de la semaine">${icon('sliders', 'sm')}</button></div><div class="wk-g${H.wkBox ? ' box' : ''}">${days}</div>`;
 }
 function calMod(m) {
   const ev = hubEvents(), now = ymdhm(new Date()), next = ev.find(e => e[1] > now) || null;
@@ -382,6 +382,7 @@ function bindHub(v) {
     const mi = e.target.closest('[data-hmi]'); if (mi) { const it = moodList().find(x => x.id === mi.dataset.hmi); if (it) Mood.view(it); return; }
     const mn = e.target.closest('[data-hmenu]'); if (mn) { projMenu(mn, spaceById(mn.dataset.hmenu)); return; }
     const dn = e.target.closest('[data-hdone]'); if (dn) { const tk = taskById(dn.dataset.hdone); if (!tk) return; dn.classList.add('ticked'); setTimeout(() => { setTaskDone(tk, true); renderHubMods(); renderSide(); toast('Tâche terminée', { label: 'Annuler', run: () => { setTaskDone(tk, false); renderHubMods(); renderSide(); } }); }, 280); return; }
+    const ws = e.target.closest('[data-wkset]'); if (ws) { const H = hubState(); openPop(ws, [{ head: 'Affichage des rendez-vous' }, { label: 'Lignes', icon: 'list', small: H.wkBox ? '' : 'actuel', run: () => { H.wkBox = false; save(); renderHubMods(); } }, { label: 'Blocs de couleur', icon: 'rect', small: H.wkBox ? 'actuel' : '', run: () => { H.wkBox = true; save(); renderHubMods(); } }], { align: 'right' }); return; }
     if (e.target.closest('[data-hdest]')) { destMenu(e.target.closest('[data-hdest]')); return; }
     if (e.target.closest('[data-qmore]')) { const b = e.target.closest('[data-qmore]'); openPop(b, QS_MORE.map(([k, ic, l]) => ({ label: l, icon: ic, run: () => quickStart(k, b) })), { align: 'right' }); return; }
     if (e.target.closest('.pc2-add')) return;
