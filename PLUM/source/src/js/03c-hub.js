@@ -292,10 +292,10 @@ function hubWxIcon() {
 }
 
 //COLOR
-function projColor(anchor, sp) {
+function projColor(anchor, sp, after) {
   const cols = themeColors('space', SPACE_COLORS);
   const p = openPop(anchor, `<div class="pc-cols">${cols.map(c => `<button data-c="${c}" style="--c:${c}" aria-label="${c}"${c === sp.color ? ' aria-pressed="true"' : ''}></button>`).join('')}<label class="pc-any" title="Autre couleur"><input type="color" value="${/^#[0-9a-f]{6}$/i.test(sp.color) ? sp.color : '#888888'}" aria-label="Autre couleur"></label></div><small class="pc-colhint">La 2e et la 3e couleur du projet en sont tirées.</small>`, { align: 'right' });
-  const set = c => { sp.color = c; save(); renderHubMods(); renderSide(); };
+  const set = c => { sp.color = c; save(); renderHubMods(); renderSide(); if (after) after(); };
   p.onclick = e => { const b = e.target.closest('[data-c]'); if (b) { set(b.dataset.c); closePop(); } };
   $('input', p).oninput = e => set(e.target.value);
 }

@@ -3172,3 +3172,11 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 .pp2-sub { min-height: 30px; }
 .pp2-mood .mwall.pv { columns: 2 120px; }
 .pp2-mood .mwall .pp2-mopen { width: 100%; height: 92px; margin: 0 0 8px; break-inside: avoid; }
+
+/* 0.2.75 project page head: colour dot = colour picker, smaller create buttons, cover fade ends before the buttons */
+.pp2-id .sp-kick .pp2-col { width: 12px; height: 12px; padding: 0; border: 0; border-radius: 4px; cursor: pointer; box-shadow: 0 0 0 0 transparent; transition: box-shadow .15s, transform .15s; }
+.pp2-id .sp-kick .pp2-col:hover, .pp2-id .sp-kick .pp2-col:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklab, var(--ink) 18%, transparent); transform: scale(1.12); outline: none; }
+.pp2-sub .pp-acts { gap: 3px; margin-left: 4px; }
+.pp2-sub .pp-acts button { height: 21px; padding: 0 7px; gap: 4px; border-radius: 6px; font-size: 10.5px !important; }
+.pp2-sub .pp-acts .i { width: 11px; height: 11px; }
+@media (min-width: 901px) { .pp2-hero.img img { -webkit-mask-image: linear-gradient(90deg, transparent, #000 150px); mask-image: linear-gradient(90deg, transparent, #000 150px); } }
