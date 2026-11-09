@@ -2905,15 +2905,12 @@ const Board = (() => {
       commit(items.map(i => i.id === c.id ? cc : i).concat(n), { before }); sel = new Set([n.id]); setTool('select'); render(); startEdit(n.id);
     };
     const keep = () => { commit(items, { before }); sel = new Set([c.id]); setTool('select'); };
-    const list = around([
-      { label: 'Rectangle', run: add(() => mkShape(0, 0, 180 * s, 110 * s, 'rect', { fs: Math.round(26 * s) })) },
-      { label: 'Texte', run: add(() => { const t = mkText(0, 0, '', { fs: Math.round(28 * s) }); t.w = 160 * s; t.h = 40 * s; return t; }) },
-      null,
-      { label: 'Ellipse', run: add(() => mkShape(0, 0, 170 * s, 110 * s, 'ellipse', { fs: Math.round(26 * s) })) },
-      { label: 'Post-it', sw: noteColor, run: add(() => mkNote(0, 0, '', noteColor, { w: 200 * s, h: 200 * s, fs: Math.round(30 * s) })) },
-      null,
-      { label: 'Losange', run: add(() => mkShape(0, 0, 170 * s, 120 * s, 'diamond', { fs: Math.round(24 * s) })) },
-      { label: 'Flèche seule', run: keep }]);
+    /* 0.2.73: Rectangle straight ahead (right), Texte above it, Post-it below it, Flèche seule back left; no Ellipse / Losange */
+    const list = [
+      { dir: 2, label: 'Rectangle', run: add(() => mkShape(0, 0, 180 * s, 110 * s, 'rect', { fs: Math.round(26 * s) })) },
+      { dir: 1, label: 'Texte', run: add(() => { const t = mkText(0, 0, '', { fs: Math.round(28 * s) }); t.w = 160 * s; t.h = 40 * s; return t; }) },
+      { dir: 3, label: 'Post-it', sw: noteColor, run: add(() => mkNote(0, 0, '', noteColor, { w: 200 * s, h: 200 * s, fs: Math.round(30 * s) })) },
+      { dir: 5, label: 'Flèche seule', run: keep }];
     openMarking({ clientX: ev.clientX, clientY: ev.clientY, pointerId: -1, button: 0 }, null, true, { items: list, title: 'Créer au bout', onClose: keep });
   }
   /* point-by-point: each click adds a corner, a click on an item binds the end, Enter or double-click finishes, Escape cancels */
