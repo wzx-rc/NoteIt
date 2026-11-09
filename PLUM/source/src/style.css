@@ -3104,3 +3104,12 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1) 70%, var(-
 .pc2-tkplus { display: flex !important; align-items: center; gap: 8px; min-height: 26px; width: 100%; padding: 0 2px !important; border: 0; background: none; color: var(--ink-3) !important; font-size: 12.5px; cursor: pointer; text-align: left; flex: none; }
 .pc2-tkplus:hover { color: var(--ink) !important; }
 .pc2-tkplus .i { width: 15px; height: 15px; }
+/* 0.2.69: fine, quiet outlines on the card's text fields (like the Créer bar): 1 px line, the project colour only as a hint on focus */
+textarea.pc2-syn { border: 1px solid var(--line) !important; border-radius: 10px !important; background: color-mix(in oklab, var(--pc1, var(--accent)) 5%, var(--card)) !important; box-shadow: none !important; }
+textarea.pc2-syn:hover { border-color: var(--line-2) !important; }
+textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--accent)) 45%, var(--line-2)) !important; box-shadow: none !important; }
+.tkadd { box-shadow: inset 0 0 0 1px var(--line); background: var(--card); }
+.tkadd:focus-within { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pc1, var(--accent)) 45%, var(--line-2)); }
+.tkadd-o { border-width: 1.3px; border-color: var(--ink-3); }
+.tkadd-st { color: var(--ink-3); }
+.tkadd-st[aria-pressed="true"] { background: none; color: var(--pc1, var(--accent)); }
