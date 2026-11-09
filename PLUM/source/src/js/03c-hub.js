@@ -80,7 +80,7 @@ function weekMod() {
   const days = Array.from({ length: 7 }, (_, i) => dAdd(mon, i)).map(d => {
     const k = ymd(d), list = ev.filter(e => String(e[0]).slice(0, 10) === k), past = k < today;
     return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b></div>
-      <div class="wk-l">${list.slice(0, 3).map(e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i><span>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}</em>`}${esc(lab(e))}</span></div>`).join('')}${list.length > 3 ? `<small>+${list.length - 3}</small>` : ''}</div></div>`;
+      <div class="wk-l">${list.slice(0, 3).map(e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}${e[1] && String(e[1]).length > 11 ? '–' + String(e[1]).slice(11, 16) : ''}</em>`}<span>${esc(lab(e))}</span></div>`).join('')}${list.length > 3 ? `<small>+${list.length - 3}</small>` : ''}</div></div>`;
   }).join('');
   const mon2 = mon.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
   return `<div class="wk-top"><span class="lab">Semaine du ${mon2}</span>${calSrcs(H).length ? '' : `<button class="wk-link" data-hopts>${icon('cal', 'sm')}Connecter Google Agenda</button>`}</div><div class="wk-g">${days}</div>`;

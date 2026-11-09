@@ -3036,3 +3036,11 @@ html[data-focus] #tbar .tb-f [data-f="exit"] span { display: none; }
 .hub2-row > .pc2.add { min-height: 0; align-self: stretch; padding: 16px; gap: 8px; }
 .pc2.add small { font-size: 11.5px; }
 @media (max-width: 699px) { .hub2-row > .pc2 { width: 82%; } .wk-g { grid-template-columns: repeat(7, 120px); overflow-x: auto; } }
+/* 0.2.55: week events in a coloured container */
+.wk-l { gap: 4px; }
+.wk-e { display: flex; flex-direction: column; align-items: stretch; gap: 1px; padding: 4px 7px 5px; border-radius: 7px; background: color-mix(in oklab, var(--c) 24%, var(--sunk)); border-left: 3px solid var(--c); font-size: 11.5px; }
+.wk-e i { display: none; }
+.wk-e span { font-weight: 500; }
+.wk-e em { display: block; font-size: 10.5px; margin: 0; color: color-mix(in oklab, var(--c) 55%, var(--ink)); }
+.wk-e.done { opacity: .45; }
+.wk-d { min-height: 110px; }
