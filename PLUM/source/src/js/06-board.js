@@ -541,14 +541,16 @@ const Board = (() => {
     } catch (e) {}
     return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
   }
+  let qPin = null, qPinKey = '';
   function renderQuick(list, dragging) {
     const show = list.length && !dragging && !(op && op.kind === 'marquee') && !editing && !wrap.classList.contains('drawing');
     if (!show) { qbarEl.hidden = true; qSig = ''; return; }
     const html = ctxHTML(list);
-    if (html !== qSig) { qSig = html; qbarEl.innerHTML = html; }
-    qbarEl.hidden = false; if (S.prefs.qbarPin) { delete S.prefs.qbarPin; save(); }   // 0.2.74: the Element Option Bar always sits above the selection (no more pinning)
-    /* moved by its grip: the bar stays where it was put (S.prefs.qbarPin, px from the board's top left) */
-    if (S.prefs.qbarPin) { const W = wrap.clientWidth, H = wrap.clientHeight, w = qbarEl.offsetWidth, hh = qbarEl.offsetHeight; qbarEl.style.left = clamp(S.prefs.qbarPin.x, 8, Math.max(8, W - w - 8)) + 'px'; qbarEl.style.top = clamp(S.prefs.qbarPin.y, 8, Math.max(8, H - hh - 8)) + 'px'; return; }
+    if (html !== qSig) { qSig = html; qbarEl.innerHTML = `<button class="qgrip" title="Glisser pour déplacer la barre (elle revient au-dessus à la prochaine sélection)" aria-label="Déplacer la barre"></button>` + html; }
+    qbarEl.hidden = false; if (S.prefs.qbarPin) { delete S.prefs.qbarPin; save(); }
+    /* 0.2.82: the grip moves the bar for the current selection only; a new selection puts it back above (qPin, not saved) */
+    const qk = list.map(i => i.id).join(','); if (qk !== qPinKey) { qPin = null; qPinKey = qk; }
+    if (qPin) { const W = wrap.clientWidth, H = wrap.clientHeight, w = qbarEl.offsetWidth, hh = qbarEl.offsetHeight; qbarEl.style.left = clamp(qPin.x, 8, Math.max(8, W - w - 8)) + 'px'; qbarEl.style.top = clamp(qPin.y, 8, Math.max(8, H - hh - 8)) + 'px'; return; }
     // the box of everything selected, arrows included with their curve, head and end handles (0.2.22)
     let bb = unionBox(list.filter(i => i.k !== 'conn'));
     for (const c of list.filter(i => i.k === 'conn')) { const q = connBox(c); bb = bb ? [Math.min(bb[0], q[0]), Math.min(bb[1], q[1]), Math.max(bb[2], q[2]), Math.max(bb[3], q[3])] : q; }
@@ -3600,13 +3602,12 @@ const Board = (() => {
     propsEl.addEventListener('contextmenu', e => { const t = e.target.closest('[data-media]'); if (!t) return; e.preventDefault(); const m = spaceMedia(D.sp)[+t.dataset.media], sp = spaceById(D.sp); if (!m) return; openPop({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }, [{ label: 'Placer sur le board', icon: 'board', run: () => placeMedia([m]) }, ...(sp && (sp.media || []).includes(m) ? [{ label: 'Retirer du moodboard', icon: 'trash', danger: true, run: () => { sp.media = sp.media.filter(x => x !== m); save(); propSig = ''; renderProps(); } }] : [])]); });
     qbarEl.addEventListener('pointerdown', e => e.preventDefault());
     bindPress(qbarEl); bindPress(optsEl);
-    let gripTap = 0;
     qbarEl.addEventListener('pointerdown', e => {
       const g = e.target.closest('.qgrip'); if (!g) return; e.stopPropagation();
       const r = qbarEl.getBoundingClientRect(), wr = wrap.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top, x0 = e.clientX, y0 = e.clientY; let moved = false;
-      const mv = ev => { if (ev.pointerId !== e.pointerId) return; if (!moved && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return; moved = true; qbarEl.classList.add('dragging'); S.prefs.qbarPin = { x: Math.round(ev.clientX - wr.left - dx), y: Math.round(ev.clientY - wr.top - dy) }; renderQuick(selItems(), false); };
+      const mv = ev => { if (ev.pointerId !== e.pointerId) return; if (!moved && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return; moved = true; qbarEl.classList.add('dragging'); qPin = { x: Math.round(ev.clientX - wr.left - dx), y: Math.round(ev.clientY - wr.top - dy) }; renderQuick(selItems(), false); };
       const up = ev => { if (ev.pointerId !== e.pointerId) return; removeEventListener('pointermove', mv, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); qbarEl.classList.remove('dragging');
-        if (moved) { save(); return; } const now = performance.now(); if (now - gripTap < 380) { delete S.prefs.qbarPin; save(); gripTap = 0; renderQuick(selItems(), false); } else gripTap = now; };
+        if (!moved) { qPin = null; renderQuick(selItems(), false); } };
       addEventListener('pointermove', mv, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
     });
     qbarEl.onclick = ctxClick;
