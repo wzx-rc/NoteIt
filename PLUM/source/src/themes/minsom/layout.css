@@ -1,0 +1,180 @@
+/* ================= Minimal Sommet: the layout and UX of Sommet (layout.css, taken from sommet.css) =================
+   On top of Minimal's look (theme.css + notes.css, copied from minimal/ and renamed): Minimal's fonts, greys, accent and
+   two-tone icons, with Sommet's arrangement: tree sidebar with a profile card and the Clair/Sombre/Système switch,
+   the painted HUB band (cover changeable), sketch-well project cards, the PAGE hero, pencil empty states.
+   What Sommet paints black (pills) takes the accent here (--som-pill). */
+:root[data-skin="minsom"] { --som-pill: var(--accent); --som-on-pill: var(--on-accent); }
+
+[data-skin="minsom"] .i { stroke-width: 1.45; }
+
+/* ---------- sidebar: white, hairline on the right, the open page is a black pill ---------- */
+[data-skin="minsom"] .sbox { height: 34px; border-radius: 8px; background: var(--raise); box-shadow: inset 0 0 0 1px var(--side-line); font-size: 12px; }
+[data-skin="minsom"] .sbox kbd { font: 500 10px var(--font-ui); padding: 2px 5px; border-radius: 5px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--side-line); opacity: 1; }
+[data-skin="minsom"] .nv { height: 32px; border-radius: 8px; font-size: 12.5px; font-weight: 400; }
+[data-skin="minsom"] .nv .ct { font: 500 10px var(--font-ui); min-width: 18px; height: 18px; display: inline-grid; place-items: center; padding: 0 4px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--side-line); }
+[data-skin="minsom"] .sec { font-size: 11px; font-weight: 500; color: var(--side-mute); }
+[data-skin="minsom"] .spsw { border-radius: 9px; box-shadow: inset 0 0 0 1px var(--side-line); }
+[data-skin="minsom"] .spadd { border-radius: 9px; box-shadow: inset 0 0 0 1px var(--side-line); }
+
+/* ---------- top bar and buttons: the main action is black ---------- */
+[data-skin="minsom"] #top { border-bottom-color: transparent; }
+[data-skin="minsom"] #top .crumbs { font-size: 12px; }
+[data-skin="minsom"] .tb { border-radius: 8px; }
+[data-skin="minsom"] .btn { height: 34px; border-radius: 8px; font-weight: 450; font-size: 12px; border-color: var(--line); box-shadow: 0 1px 2px rgb(17 17 19 / .04); }
+[data-skin="minsom"] .btn.sm { height: 28px; font-size: 11.5px; border-radius: 7px; }
+[data-skin="minsom"] .seg, [data-skin="minsom"] .stabs { border-radius: 9px; padding: 3px; background: var(--sunk); box-shadow: inset 0 0 0 1px var(--line); }
+[data-skin="minsom"] .seg button, [data-skin="minsom"] .stabs button { border-radius: 7px; font-weight: 450; }
+[data-skin="minsom"] .chip { border-radius: 6px; font: 500 10.5px var(--font-ui); }
+[data-skin="minsom"] .pop, [data-skin="minsom"] .qbar, [data-skin="minsom"] .sheet-m { border-radius: 12px; }
+[data-skin="minsom"] .cb { border-radius: 6px; }
+[data-skin="minsom"] .tg input:checked + span { background: var(--accent); }
+
+/* ---------- page heads and cards ---------- */
+[data-skin="minsom"] .ph .sub { font-size: 12px; line-height: 1.6; }
+[data-skin="minsom"] .card, [data-skin="minsom"] .tlist, [data-skin="minsom"][data-resolved="light"] .card, [data-skin="minsom"][data-resolved="light"] .tlist { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 2px rgb(17 17 19 / .03); }
+[data-skin="minsom"] .card > h2 { font-size: 13.5px; font-weight: 500; letter-spacing: -.02em; }
+
+/* ---------- progress: sky blue in thin vertical stripes, like a gauge ---------- */
+[data-skin="minsom"] .sprow .bar, [data-skin="minsom"] .pc2-prog span { height: 8px; border-radius: 2px; background: repeating-linear-gradient(90deg, var(--line-2) 0 2px, transparent 2px 4px); }
+[data-skin="minsom"] .sprow .bar i, [data-skin="minsom"] .pc2-prog span i { border-radius: 0; background: repeating-linear-gradient(90deg, var(--accent) 0 2px, transparent 2px 4px); }
+
+/* ---------- board: pale canvas, white islands with hairlines, the chosen tool is a black tile ---------- */
+[data-skin="minsom"] .isl { border-radius: 12px; background: var(--menu); }
+[data-skin="minsom"] .tl { border-radius: 8px; }
+[data-skin="minsom"] .props { border-radius: 14px; }
+[data-skin="minsom"] .ptab[aria-pressed="true"] { color: var(--strong); box-shadow: inset 0 -2px var(--strong); }
+
+
+[data-skin="minsom"] .nv .ct:empty { display: none; }
+
+/* ---------- the painted landscapes (Recraft): the one place with colour ---------- */
+/* HUB head: a wide band with the mountains on the right, the greeting and the Créer bar on the left */
+[data-skin="minsom"] .hub2 .hub2-top { position: relative; isolation: isolate; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 14px; min-height: 168px; padding: 22px 26px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--paper); }
+[data-skin="minsom"] .hub2 .hub2-top::before { content: ""; position: absolute; inset: 0; z-index: -1; background: url("asset:banner-wide.webp") right 38% / auto 135% no-repeat; -webkit-mask-image: linear-gradient(90deg, transparent 22%, #000 58%); mask-image: linear-gradient(90deg, transparent 22%, #000 58%); pointer-events: none; }
+[data-skin="minsom"] .hub2 .hub2-top .hub-hello { position: relative; }
+[data-skin="minsom"] .hub2 .hub2-create { background: color-mix(in oklab, var(--paper) 88%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); border-radius: 10px; }
+/* dark: the picture's left side is a white mist, so only its painted right part shows, faded into the dark page */
+[data-skin="minsom"][data-resolved="dark"] .hub2 .hub2-top::before { background-size: auto 280px; background-position: right 40%; -webkit-mask-image: linear-gradient(270deg, #000 180px, transparent 330px); mask-image: linear-gradient(270deg, #000 180px, transparent 330px); }
+[data-skin="minsom"][data-resolved="dark"] .pp-hero:not(.img) { background-size: auto 300px; background-position: right 30%; }
+[data-skin="minsom"][data-resolved="dark"] .pp-hero:not(.img)::after { background: linear-gradient(270deg, transparent 230px, var(--paper) 330px); }
+@media (max-width: 700px) { [data-skin="minsom"] .hub2 .hub2-top::before { background-size: auto 100%; opacity: .55; } }
+/* the project PAGE without a cover image: the person on the hill, with the project's tile and name on the white side */
+[data-skin="minsom"] .pp-hero:not(.img) { background: var(--paper) url("asset:banner-sit.webp") right 30% / auto 150% no-repeat; border: 1px solid var(--line); border-radius: 16px; }
+[data-skin="minsom"] .pp-hero:not(.img)::after { background: linear-gradient(90deg, var(--paper) 18%, transparent 55%); }
+[data-skin="minsom"] .pp-tile { border-radius: 12px; font-family: var(--font-head); font-weight: 500; }
+
+/* empty places get a pencil vignette */
+[data-skin="minsom"] .tempty { padding-top: 132px !important; background: url("asset:sketch-stairs.webp") center 10px / 120px no-repeat; text-align: center; }
+[data-skin="minsom"] .empty { padding-top: 150px !important; background: url("asset:sketch-book.webp") center 10px / 140px no-repeat; text-align: center; }
+[data-skin="minsom"] .mw-empty .mw-empty-i { width: 140px; height: 140px; background: url("asset:sketch-plant.webp") center / contain no-repeat; border: 0; box-shadow: none; }
+[data-skin="minsom"] .mw-empty .mw-empty-i > * { display: none; }
+[data-skin="minsom"][data-resolved="dark"] :is(.tempty, .empty) { background-image: none; padding-top: 18px !important; }
+[data-skin="minsom"][data-resolved="dark"] .mw-empty .mw-empty-i { mix-blend-mode: screen; filter: invert(1); opacity: .5; }
+/* the assistant greets with the glossy orb */
+[data-skin="minsom"] .aiempty::before { content: ""; display: block; width: 56px; height: 56px; margin: 0 auto 14px; background: url("asset:orb.webp") center / contain no-repeat; }
+
+/* ================= 0.2.60: closer to the mockup ================= */
+/* ---------- sidebar: a grey panel, small grey labels, tree lines, chevrons ---------- */
+[data-skin="minsom"] #side { border-right: 1px solid var(--side-line); padding-top: 16px; }
+/* quick note and search: outlined, quiet */
+[data-skin="minsom"] .spsw.qnote { height: 34px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--side-line); }
+[data-skin="minsom"] .spadd { width: 34px; height: 34px; background: var(--paper); }
+[data-skin="minsom"] .sbox { background: var(--paper); }
+/* the main list gets its small "Principal" label, like the other sections */
+[data-skin="minsom"] #nav::before { content: "Principal"; display: block; margin: 14px 10px 6px; font-size: 10.5px; color: var(--side-mute); }
+[data-skin="minsom"] .nv { height: 30px; font-size: 12px; color: var(--side-text); }
+[data-skin="minsom"] .nv .i { width: 16px; height: 16px; color: var(--side-mute); }
+[data-skin="minsom"] .nv:hover { background: var(--side-2); }
+[data-skin="minsom"] .sec { margin: 18px 10px 6px; font-size: 10.5px; }
+[data-skin="minsom"] .sec > span { flex: 1; }
+[data-skin="minsom"] .som-fold { order: 3; }
+[data-skin="minsom"] .som-fold .i { transition: rotate .15s; rotate: 90deg; }
+[data-skin="minsom"] #side.som-spfold .som-fold .i { rotate: 0deg; }
+[data-skin="minsom"] #side.som-spfold #spaces { display: none; }
+/* spaces read as a tree: one hairline down the left, small grey rows, the dot kept small */
+[data-skin="minsom"] #spaces { margin-left: 16px; padding-left: 6px; border-left: 1px solid var(--side-line); }
+[data-skin="minsom"] #spaces .sprow { height: 28px; font-size: 11.5px; color: color-mix(in oklab, var(--side-text) 78%, var(--side)); }
+[data-skin="minsom"] #spaces .sprow .dot { width: 6px; height: 6px; }
+[data-skin="minsom"] #spaces .nv.sub { height: 27px; font-size: 11.5px; }
+[data-skin="minsom"] #spaces .spsub { border-left-color: var(--side-line); }
+[data-skin="minsom"] #spaces #pages:not(:empty) { border-top: 0; }
+[data-skin="minsom"] .nav2 { border-top: 1px solid var(--side-line); padding-top: 8px; }
+/* profile card and the appearance switch */
+[data-skin="minsom"] .side-foot { flex-wrap: wrap; gap: 6px; padding-top: 10px; }
+[data-skin="minsom"] .side-foot #themeBtn { display: none; }
+[data-skin="minsom"] .me { position: relative; flex: 1; height: 46px; padding: 6px 30px 6px 7px; border-radius: 10px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--side-line), 0 1px 2px rgb(0 0 0 / .04); color: var(--strong); font-size: 11.5px; font-weight: 600; flex-direction: row; text-align: left; }
+[data-skin="minsom"] .me .av { width: 30px; height: 30px; flex: none; border-radius: 7px; font-size: 12px; }
+[data-skin="minsom"] .me #meName { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+[data-skin="minsom"] .me #meName::after { content: "Profil et réglages"; font-size: 9.5px; font-weight: 400; color: var(--side-mute); white-space: nowrap; }
+[data-skin="minsom"] .me::after { content: ""; position: absolute; right: 10px; top: 50%; width: 12px; height: 12px; translate: 0 -50%; background: currentColor; opacity: .55; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; }
+[data-skin="minsom"] .side-foot #setBtn { width: 46px; height: 46px; border-radius: 10px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--side-line); }
+[data-skin="minsom"] .som-mode { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 8px; padding: 3px; border-radius: 9px; background: var(--side-2); box-shadow: inset 0 0 0 1px var(--side-line); }
+[data-skin="minsom"] .som-mode button { display: flex; align-items: center; justify-content: center; gap: 5px; height: 26px; border: 0; border-radius: 7px; background: none; color: var(--side-mute); font: 450 10.5px var(--font-ui); cursor: pointer; }
+[data-skin="minsom"] .som-mode button .i { width: 13px; height: 13px; }
+[data-skin="minsom"] .som-mode button:hover { color: var(--side-text); }
+[data-skin="minsom"] #side.fold .som-mode, [data-skin="minsom"] [data-sidex] .som-mode { display: none; }
+
+/* ---------- project cards, after the mockup's Vision Board cards: white, hairline, a grey picture well with a
+   pencil sketch (or the cover), the name in mono, grey description, a hairline footer. The project's colour is
+   only a soft tint on its small tile. ---------- */
+[data-skin="minsom"] .pc2 { border-radius: 12px; border-color: var(--line); box-shadow: 0 1px 2px rgb(17 17 19 / .04); }
+[data-skin="minsom"] .pc2:hover { box-shadow: 0 6px 18px -8px rgb(17 17 19 / .18); }
+[data-skin="minsom"] .pc2-cov { height: 156px; background: linear-gradient(var(--sunk), var(--sunk)) center 8px / calc(100% - 16px) 100px no-repeat, var(--card); }
+[data-skin="minsom"] .pc2-cov::before { content: ""; position: absolute; left: 8px; right: 8px; top: 8px; height: 100px; border-radius: 8px; background: url("asset:sketch-stairs.webp") center / auto 92px no-repeat; mix-blend-mode: multiply; pointer-events: none; }
+[data-skin="minsom"] .pc2:nth-child(3n+2) .pc2-cov::before { background-image: url("asset:sketch-book.webp"); }
+[data-skin="minsom"] .pc2:nth-child(3n+3) .pc2-cov::before { background-image: url("asset:sketch-plant.webp"); }
+[data-skin="minsom"] .pc2-cov.img::before { display: none; }
+[data-skin="minsom"] .pc2-cov.img img { position: absolute; left: 8px; top: 8px; width: calc(100% - 16px); height: 100px; border-radius: 8px; }
+[data-skin="minsom"] .pc2-cov::after { display: none; }
+[data-skin="minsom"] .pc2-id { left: 14px; right: 14px; bottom: 8px; }
+[data-skin="minsom"] .pc2-id b { font: 500 13px/1.3 var(--font-ui); letter-spacing: -.02em; color: var(--strong); }
+[data-skin="minsom"] .pc2-id small { font-size: 10px; color: var(--ink-3); }
+/* the tile: a small chip at the top left of the picture, tinted by the project's colour */
+[data-skin="minsom"] .pc2-tile { position: absolute; left: -2px; top: -102px; width: 24px; height: 24px; border-radius: 6px; font: 600 11px/1 var(--font-ui); color: color-mix(in oklab, var(--pc1) 80%, black); background: color-mix(in oklab, var(--pc1) 16%, white); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pc1) 30%, white); }
+[data-skin="minsom"] .pc2-menu { background: var(--paper) !important; color: var(--ink-2) !important; box-shadow: inset 0 0 0 1px var(--line); width: 26px !important; height: 26px !important; border-radius: 7px !important; top: 14px; right: 14px; }
+[data-skin="minsom"] .pc2-body { gap: 8px; padding: 2px 14px 10px; }
+[data-skin="minsom"] .pc2-syn { height: auto; min-height: 56px; max-height: 56px; padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0; }
+[data-skin="minsom"] .pc2-syn p { font-size: 10.5px; line-height: 1.5; color: var(--ink-2); -webkit-line-clamp: 3; }
+[data-skin="minsom"] .pc2-tks { height: 132px; padding: 6px 10px; border-radius: 8px; background: var(--raise); border-color: var(--line); }
+[data-skin="minsom"] .pc2-tk { height: 24px; font-size: 11px; }
+[data-skin="minsom"] .pc2-bx { width: 14px; height: 14px; border-radius: 4px; border-width: 1.3px; border-color: var(--line-2); }
+[data-skin="minsom"] .pc2-tk:hover .pc2-bx { border-color: var(--ink-2); }
+[data-skin="minsom"] .pc2-tk.done .pc2-bx { background: var(--som-pill); border-color: var(--som-pill); }
+[data-skin="minsom"] .pc2-tkempty { font-size: 11px; }
+[data-skin="minsom"] .pc2-foot { gap: 4px; margin: 0 14px; padding: 9px 0 11px; border-top: 1px solid var(--line); }
+[data-skin="minsom"] .pc2-b { width: 28px; height: 26px; border-radius: 7px !important; background: none !important; box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-3) !important; }
+[data-skin="minsom"] .pc2-b .i { width: 14px; height: 14px; }
+[data-skin="minsom"] .pc2-b i { color: var(--ink-3) !important; font-size: 9px; }
+[data-skin="minsom"] .pc2-prog small { font-size: 10px; color: var(--ink-3); }
+[data-skin="minsom"] .pc2-open { height: 26px !important; width: 28px; border-radius: 7px !important; background: var(--som-pill) !important; color: var(--som-on-pill) !important; }
+:root[data-skin="minsom"][data-resolved="dark"] .pc2-tile { color: color-mix(in oklab, var(--pc1) 70%, white); background: color-mix(in oklab, var(--pc1) 22%, var(--card)); box-shadow: none; }
+:root[data-skin="minsom"][data-resolved="dark"] .pc2-cov::before { mix-blend-mode: screen; filter: invert(1); opacity: .5; }
+/* the week strip in the same quiet register: white days with hairlines, today outlined in black */
+[data-skin="minsom"] .wk-d { background: var(--raise); border: 1px solid var(--line); border-radius: 8px; }
+[data-skin="minsom"] .wk-d.today, [data-skin="minsom"] .wk-d[aria-current] { background: var(--paper); border-color: var(--strong); box-shadow: 0 1px 3px rgb(17 17 19 / .1); }
+
+/* 0.2.62: the user's own cover for the HUB head (hubState().cov), and the button that changes it */
+[data-skin="minsom"] .hub2 .hub2-top.own::before { background: var(--hub-cov) center / cover no-repeat; }
+[data-skin="minsom"][data-resolved="dark"] .hub2 .hub2-top.own::before { background-size: cover; -webkit-mask-image: linear-gradient(90deg, transparent 30%, #000 70%); mask-image: linear-gradient(90deg, transparent 30%, #000 70%); }
+[data-skin="minsom"] .hub-covbtn { display: inline-flex; align-items: center; gap: 5px; position: absolute; right: 12px; top: 12px; z-index: 2; height: 28px; padding: 0 10px 0 8px; border: 0; border-radius: 8px; background: color-mix(in oklab, var(--paper) 82%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: var(--ink); font: 450 11px var(--font-ui); cursor: pointer; opacity: 0; transition: opacity .15s; box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+[data-skin="minsom"] .hub2-top:hover .hub-covbtn, [data-skin="minsom"] .hub-covbtn:focus-visible { opacity: 1; }
+@media (hover: none) { [data-skin="minsom"] .hub-covbtn { opacity: .9; } }
+
+/* ---------- Minimal's own touches kept over Sommet's layout ---------- */
+[data-skin="minsom"] .hub2 .hub2-top .hub-hello h1, :root[data-skin="minsom"][data-pc] .hub2 .hub-hello h1 { font: 300 32px/1.1 var(--font-head); letter-spacing: -.035em; }
+[data-skin="minsom"] .som-mode button[aria-pressed="true"] { background: var(--paper); color: var(--strong); box-shadow: 0 1px 2px rgb(20 20 18 / .12), 0 0 0 1px rgb(20 20 18 / .05); }
+[data-skin="minsom"][data-resolved="dark"] .som-mode button[aria-pressed="true"] { background: var(--side-3); box-shadow: none; }
+[data-skin="minsom"] .som-mode button[aria-pressed="true"] .i { color: var(--accent); }
+[data-skin="minsom"] .pc2-open { background: var(--accent) !important; color: var(--on-accent) !important; }
+[data-skin="minsom"] .pc2-tk.done .pc2-bx { background: var(--accent); border-color: var(--accent); }
+[data-skin="minsom"] .wk-d.today { border-color: var(--accent); }
+[data-skin="minsom"] .pc2-id b { font-weight: 600; }
+
+/* preview card in Réglages > UI: Minimal's pale rail with the tree line, a painted strip */
+.sk-minsom .skin-pv { background: #FFFFFF; }
+.sk-minsom .skin-pv::before { content: ""; position: absolute; inset: 0; background: linear-gradient(#F4F3F1 0 0) 0 0 / 26% 100% no-repeat; }
+.sk-minsom .skin-pv i:nth-child(1) { left: 4%; top: 20%; width: 18%; height: 9%; background: #E9E7E3; border-radius: 3px; box-shadow: inset 2px 0 0 #22A55B; }
+.sk-minsom .skin-pv i:nth-child(2) { left: 8%; top: 38%; width: 12%; height: 4%; background: #E4E2DE; border-radius: 2px; box-shadow: 0 8px 0 #E4E2DE, -3px 4px 0 -1px #E4E2DE; }
+.sk-minsom .skin-pv i:nth-child(3) { left: 32%; top: 16%; width: 62%; height: 36%; border-radius: 4px; background: linear-gradient(90deg, #FFFFFF 10%, #BFD8F5 45%, #7FA96B 100%); }
+.sk-minsom .skin-pv i:nth-child(4) { left: 32%; top: 62%; width: 40%; height: 7%; background: none; font: 300 12px/1 "Manrope", sans-serif; color: #1B1A19; }
+.sk-minsom .skin-pv i:nth-child(4)::before { content: "Bonjour"; }

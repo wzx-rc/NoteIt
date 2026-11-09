@@ -390,7 +390,7 @@ function renderHub(v) {
   const nEv = hubEvents().length, name = (S.prefs.name || '').trim();
   ensurePages();
   v.innerHTML = `<div class="hubpage cc hub2">
-    <div class="hub2-top"><div class="hub-hello"><span>${date.charAt(0).toUpperCase() + date.slice(1)}${wxs}${nEv ? ` · ${nEv} évènement${nEv > 1 ? 's' : ''} aujourd’hui` : ''}</span><div class="hub-hi">${DESKTOP ? `<span id="hubWx">${hubWxIcon()}</span>` : ''}<h1>${name ? `Bonjour ${esc(name)}` : 'Bonjour'}</h1>${DESKTOP ? '' : `<span id="hubWx">${hubWxIcon()}</span>`}</div></div>
+    <div class="hub2-top${hubCovOn() ? ' own' : ''}"${hubCovOn() ? ` style="--hub-cov:url('${Assets.url(hubState().cov)}')"` : ''}><button class="hub-covbtn" data-hcov title="Changer la couverture" aria-label="Changer la couverture">${icon('image', 'sm')}<span>Couverture</span></button><div class="hub-hello"><span>${date.charAt(0).toUpperCase() + date.slice(1)}${wxs}${nEv ? ` · ${nEv} évènement${nEv > 1 ? 's' : ''} aujourd’hui` : ''}</span><div class="hub-hi">${DESKTOP ? `<span id="hubWx">${hubWxIcon()}</span>` : ''}<h1>${name ? `Bonjour ${esc(name)}` : 'Bonjour'}</h1>${DESKTOP ? '' : `<span id="hubWx">${hubWxIcon()}</span>`}</div></div>
       <div class="hub2-create" id="hubCreate" role="toolbar" aria-label="Créer">${createHTML()}</div></div>
     <div class="hub-main${H.sideFold ? ' side-off' : ''}">
       <div class="hub-col">
@@ -435,6 +435,20 @@ function projMenu(anchor, sp) {
     { label: 'Masquer du HUB', icon: 'x', danger: true, run: () => { const H = hubState(); H.off.push(sp.id); save(); renderHubMods(); toast(`${sp.name} masqué du HUB`, { label: 'Annuler', run: () => { H.off = H.off.filter(x => x !== sp.id); save(); renderHubMods(); } }); } }
   ], { align: 'right' });
 }
+/* the HUB head's cover (themes that paint one, Sommet and Minimal Sommet): the theme's picture by default, or the
+   user's own (hubState().cov = an asset id, synced with the HUB) */
+const hubCovOn = () => { const c = hubState().cov; return !!(c && Assets.has(c)); };
+function hubCovMenu(anchor) {
+  const H = hubState(), set = id => { if (id) H.cov = id; else delete H.cov; save(); if (R.name === 'hub') go('hub', { keepFocus: true }); };
+  const imgs = (S.media || []).concat(...userSpaces().map(sp => spaceMedia(sp.id))).filter(x => x && x.asset && (x.type === 'image' || /^image\//.test(x.mime || '')) && Assets.has(x.asset)).slice(0, 6);
+  const pick = () => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = async () => { const f = i.files[0]; if (!f) return; try { const im = await importImage(f, 2000); set(im.id); } catch (e) { toast('Image illisible'); } }; i.click(); };
+  openPop(anchor, [
+    { head: 'Couverture du HUB' },
+    { label: 'Choisir une image…', icon: 'image', run: pick },
+    ...imgs.map(x => ({ label: 'Image du moodboard', icon: 'image', small: x.name || '', run: () => set(x.asset) })),
+    ...(H.cov ? ['-', { label: 'Remettre l’image du thème', icon: 'restore', run: () => set(null) }] : [])
+  ], { align: 'right' });
+}
 function hubOptions(anchor) {
   const H = hubState(), hidden = userSpaces().filter(s => H.off.includes(s.id));
   const p = openPop(anchor, `<div class="hub-opts"><label><span>Ville pour la météo</span><input id="hoCity" value="${esc((H.city || {}).name || '')}" placeholder="Ta ville" autocomplete="off"></label>
@@ -467,6 +481,7 @@ function bindHub(v) {
     const mn = e.target.closest('[data-hmenu]'); if (mn) { projMenu(mn, spaceById(mn.dataset.hmenu)); return; }
     const dn = e.target.closest('[data-hdone]'); if (dn) { const tk = taskById(dn.dataset.hdone); if (!tk) return; dn.classList.add('ticked'); setTimeout(() => { setTaskDone(tk, true); renderHubMods(); renderSide(); toast('Tâche terminée', { label: 'Annuler', run: () => { setTaskDone(tk, false); renderHubMods(); renderSide(); } }); }, 280); return; }
     const ws = e.target.closest('[data-wkset]'); if (ws) { weekSettings(ws); return; }
+    const hc = e.target.closest('[data-hcov]'); if (hc) { hubCovMenu(hc); return; }
     if (e.target.closest('[data-gapps]')) { gappsSetup(); return; }
     if (e.target.closest('[data-hdest]')) { destMenu(e.target.closest('[data-hdest]')); return; }
     if (e.target.closest('[data-qmore]')) { const b = e.target.closest('[data-qmore]'); openPop(b, QS_MORE.map(([k, ic, l]) => ({ label: l, icon: ic, run: () => quickStart(k, b) })), { align: 'right' }); return; }
