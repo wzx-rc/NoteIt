@@ -3258,3 +3258,12 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 .miro-st { font-size: 12px; color: var(--ink-3); min-height: 18px; }
 .miro-b { display: flex; gap: 8px; align-items: center; }
 .miro-b span { flex: 1; }
+
+/* 0.2.81: the « file elsewhere » arrow before the project name in the path */
+#top .crumbs .spmv { width: 24px; height: 28px; padding: 0; justify-content: center; margin-left: -6px; margin-right: -4px; border-radius: 8px; color: var(--ink-3); }
+#top .crumbs .spmv:hover { background: var(--sunk); color: var(--ink); }
+#top .crumbs .spmv .i.sm { width: 14px; height: 14px; }
+#top .crumbs .spmv + .spfile { margin-left: 0; }
+
+/* 0.2.81: a picked picture / link card / file in a note (Suppr removes it) */
+.nbody figure.fsel, .nbody .nfile.fsel { outline: 2px solid var(--accent, #6aa0ff); outline-offset: 3px; border-radius: 6px; }

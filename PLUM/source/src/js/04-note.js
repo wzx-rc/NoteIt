@@ -15,7 +15,22 @@ const Note = (() => {
   let PG = [], cur = null, P = null, spr = 0, spreadOn = false, fillH = 0;
   let mode = 'text', pen = 'pen', hist = [], fut = [], mounted = false, penSeen = false, drawing = null, erasing = null;
   /* drawings in the text: strokes of the current drawing session, the pause timer of a stylus in text mode, the picked drawing, a move or resize */
-  let fresh = new WeakSet(), autoFin = 0, ndSel = null, ndOp = null;
+  let fresh = new WeakSet(), autoFin = 0, ndSel = null, ndOp = null, fSel = null;
+  /* 0.2.81: a picture, a link card or a file in the text is picked with a click and goes with Suppr / Retour arrière */
+  function fPick(f) { if (fSel && fSel !== f) fSel.classList.remove('fsel'); fSel = f || null; if (f) f.classList.add('fsel'); }
+  function fDelete(g) {
+    const f = fSel; if (!f || !f.isConnected) { fSel = null; return; }
+    use(g); saveBody.flush(); P.html = serialize(); pushSnap(P);
+    const host = f.classList.contains('nfile') ? f.closest('p') : f, nx = host.nextElementSibling;
+    // the empty line that came with it goes too, and the caret lands where it was
+    const gone = nx && nx.tagName === 'P' && !nx.textContent.trim() && !nx.querySelector('img,figure,.nfile') ? nx : null;
+    const after = (gone || host).nextElementSibling, before = host.previousElementSibling;
+    fSel = null; host.remove(); if (gone) gone.remove();
+    if (!body.firstElementChild) body.innerHTML = '<p><br></p>';
+    const to = after || before || body.firstElementChild;
+    try { const r = document.createRange(); r.selectNodeContents(to); r.collapse(!!after); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) {}
+    P.html = serialize(); touch(D); syncMarkers(body); renderSub(); renderToolbar();
+  }
 
   const scale = () => sheet.getBoundingClientRect().width / SW;
   // the layout scale, without the zoom of the double page
@@ -39,7 +54,7 @@ const Note = (() => {
     const c = body.cloneNode(true);
     for (const im of $$('img[data-asset]', c)) im.removeAttribute('src');
     for (const f of $$('figure.ndraw', c)) { f.innerHTML = ''; f.classList.remove('sel', 'dragging'); f.style.transform = ''; }
-    for (const n of $$('.nf-hid, .ng-dragging', c)) { n.classList.remove('nf-hid', 'ng-dragging'); if (!n.classList.length) n.removeAttribute('class'); }
+    for (const n of $$('.nf-hid, .ng-dragging, .fsel', c)) { n.classList.remove('nf-hid', 'ng-dragging', 'fsel'); if (!n.classList.length) n.removeAttribute('class'); }
     return c.innerHTML.replace(/<br>(<\/(p|div|li|h1|h2|h3)>)/g, '$1');
   }
   const saveBody = debounce(() => { if (!mounted) return; P.html = serialize(); touch(D); renderSub(); }, 400);
@@ -386,6 +401,8 @@ const Note = (() => {
   /* « # », « ## », « - », « [] », « > » and « 1. » at the start of a line */
   function onKey(e) {
     if (ndSel && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); ndAction(cur, ndSel, 'del'); return; }
+    if (fSel && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); fDelete(cur); return; }
+    if (fSel) fPick(null);
     if (ndSel && e.key === 'Escape') { ndPick(null); return; }
     if (ndSel) ndPick(null);
     // Tab / Shift + Tab: a list item goes one level down or back up, as deep as wanted
@@ -820,6 +837,9 @@ const Note = (() => {
     b.addEventListener('pointerdown', e => {
       if (mode === 'text' && e.pointerType === 'mouse' && e.button === 2) { const s = getSelection(); if (s.rangeCount && !s.isCollapsed && b.contains(s.anchorNode) && s.toString().trim()) { e.preventDefault(); use(g); openMM(e); } return; }
       if (mode !== 'text' || (e.pointerType === 'mouse' && e.button > 0)) return;
+      const fp = e.target.closest('figure:not(.ndraw), .nfile');
+      if (fp && b.contains(fp)) { if (ndSel) ndPick(null); use(g); fPick(fp); b.focus({ preventScroll: true }); getSelection().removeAllRanges(); e.preventDefault(); return; }
+      if (fSel) fPick(null);
       const f = e.target.closest('figure.ndraw'); if (!f) { if (ndSel) ndPick(null); return; }
       e.preventDefault(); use(g);
       const a = e.target.closest('[data-nd]'); if (a) { ndAction(g, f, a.dataset.nd); return; }

@@ -269,7 +269,11 @@ function renderTop() {
   if (d) {
     // the space of the page, as a button to file it elsewhere (or nowhere)
     const sp = spaceById(d.sp) || spaceById(DEF_SPACE), def = sp.id === DEF_SPACE;
-    crumbs = `<button class="sp spfile${def ? ' none' : ''}" id="docSp" aria-haspopup="menu" title="${def ? 'Ranger dans un espace' : 'Changer d’espace'}">${def ? icon('inbox', 'sm') : `<span class="sdot" style="background:${sp.color}"></span>`}<span>${def ? 'Ranger…' : esc(sp.name)}</span>${icon('chevd', 'sm')}</button><span>/</span><input class="cur" id="docTitle" value="${esc(d.title)}" aria-label="Titre">`;
+    // 0.2.81: the arrow (file elsewhere) comes first, the project name goes back to the project page
+    crumbs = def || isPage(d)
+      ? `<button class="sp spfile${def ? ' none' : ''}" id="docSp" aria-haspopup="menu" title="${def ? 'Ranger dans un espace' : esc(sp.name)}">${def ? icon('inbox', 'sm') : `<span class="sdot" style="background:${sp.color}"></span>`}<span>${def ? 'Ranger…' : esc(sp.name)}</span>${def ? icon('chevd', 'sm') : ''}</button><span>/</span>`
+      : `<button class="sp spmv" id="docSp" aria-haspopup="menu" title="Changer d’espace">${icon('chevd', 'sm')}</button><button class="sp spfile" data-go="space:${sp.id}" title="Ouvrir la page du projet"><span class="sdot" style="background:${sp.color}"></span><span>${esc(sp.name)}</span></button><span>/</span>`;
+    crumbs += `<input class="cur" id="docTitle" value="${esc(d.title)}" aria-label="Titre">`;
     acts = `<button class="tb" id="favBtn" aria-pressed="${d.fav}" title="Favori">${icon('star')}</button>${moodBtn}
       <button class="tb" id="focusBtn" title="Mode focus (Ctrl .)">${icon('focus')}<span class="lbl">Focus</span></button>${aiBtn}
       <button class="tb" id="docMore" aria-label="Plus d'actions">${icon('dots')}</button>`;
@@ -641,7 +645,7 @@ const CardMM = (() => {
   let mm = null, hold = null, eatClick = false;
   const items = d => [
     { dir: 0, label: 'Renommer', icon: 'text', run: at => renameDoc(d) },
-    { dir: 2, label: 'Ajouter au projet', icon: 'folder', run: at => fileMenu(at, d, { after: () => go(R, { keepFocus: true }) }) },
+    { dir: 2, label: 'Ajouter au projet', icon: 'folder', run: at => fileMenu(at, d, { after: stayRender }) },
     { dir: 4, label: 'Supprimer', icon: 'trash', danger: true, run: () => trashDoc(d) }];
   function bind(v) {
     v.addEventListener('pointerdown', e => {
@@ -712,17 +716,24 @@ const CardMM = (() => {
   }
   return { bind, close };
 })();
+/* 0.2.81: after a rename / delete / move, the view is redrawn where it was (the project page only refreshes its blocks) */
+function stayRender() {
+  if (R.name === 'doc' && Note.mounted && isPage(Note.doc) && $('#ppage')) { refreshPageHead(); return; }
+  const v = $('#view'), st = v.scrollTop; go(R, { keepFocus: true }); v.scrollTop = st; requestAnimationFrame(() => { v.scrollTop = st; });
+}
 function renameDoc(d) {
   openModal(`<div class="mhd"><h2>Renommer</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
     <input id="rnName" class="mw-name" maxlength="120" autocomplete="off" aria-label="Nom" value="${esc(d.title || '')}">
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn ghost" data-close>Annuler</button><button class="btn pri" id="rnOk">Renommer</button></div>`,
-    m => { const i = $('#rnName', m), ok = () => { const n = i.value.trim(); if (!n) { i.focus(); return; } closeModal(); if (n !== d.title) { d.title = n; touch(d); renderSide(); go(R, { keepFocus: true }); } };
+    m => { const i = $('#rnName', m), ok = () => { const n = i.value.trim(); if (!n) { i.focus(); return; } closeModal(); if (n !== d.title) { d.title = n; touch(d); renderSide(); if (R.name === 'doc' && R.id === d.id) go(R, { keepFocus: true }); else stayRender(); } };
       i.focus(); i.select(); i.onkeydown = e => { if (e.key === 'Enter') ok(); }; $('#rnOk', m).onclick = ok; });
 }
 function trashDoc(d) {
   if (isPage(d)) { toast('La PAGE du projet ne se supprime pas'); return; }
-  d.trash = true; touch(d); renderSide(); go(R, { keepFocus: true });
-  toast('Mis à la corbeille', { label: 'Annuler', run: () => { d.trash = false; touch(d); renderSide(); go(R, { keepFocus: true }); } });
+  const here = R.name === 'doc' && R.id === d.id;
+  d.trash = true; touch(d); renderSide();
+  if (here) go(d.sp !== DEF_SPACE ? 'space:' + d.sp : 'all'); else stayRender();
+  toast('Mis à la corbeille', { label: 'Annuler', run: () => { d.trash = false; touch(d); renderSide(); if (here) go('doc:' + d.id); else stayRender(); } });
 }
 function purgeDocs(list) {
   const box = $('#purgeBox') || document.createElement('div');

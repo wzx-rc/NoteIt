@@ -48,7 +48,12 @@ function bindShell() {
   $('#side .sbox').addEventListener('pointerdown', e => { if (!S.prefs.sideFold || innerWidth <= 760) return; e.preventDefault(); setSideFold(false); setTimeout(() => $('#q').focus(), 30); });
   $('#addSpace').onclick = () => askSpaceName(n => createSpace(n));
   $('#spaces').addEventListener('click', e => { const m = e.target.closest('[data-spmore]'); if (m) { e.stopPropagation(); spaceMenu(m, spaceById(m.dataset.spmore)); } });
-  $('#spaces').addEventListener('contextmenu', e => { const r = e.target.closest('[data-spi]'); if (r) { e.preventDefault(); spaceMenu(r, spaceById(r.dataset.spi)); } });
+  $('#spaces').addEventListener('contextmenu', e => {
+    const pg = e.target.closest('.nv.pg[data-go^="doc:"]');
+    if (pg) { e.preventDefault(); const d = docById(pg.dataset.go.slice(4)); if (d) openPop(pg, [
+      { label: 'Renommer', icon: 'text', run: () => renameDoc(d) },
+      ...(isPage(d) ? [] : [{ label: 'Supprimer', icon: 'trash', danger: true, run: () => trashDoc(d) }])]); return; }
+    const r = e.target.closest('[data-spi]'); if (r) { e.preventDefault(); spaceMenu(r, spaceById(r.dataset.spi)); } });
   /* drag a note or board card onto a space of the sidebar (or onto « Non classées ») to file it there */
   const DOC_T = 'application/x-plum-doc', side = $('#side');
   document.addEventListener('dragstart', e => { const c = e.target.closest && e.target.closest('.dcard[draggable="true"]'); if (!c) return; e.dataTransfer.setData(DOC_T, c.dataset.doc); e.dataTransfer.effectAllowed = 'move'; document.documentElement.classList.add('filing'); });
