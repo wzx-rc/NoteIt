@@ -30,6 +30,7 @@ const Note = (() => {
     body.innerHTML = html || '';
     for (const im of $$('img[data-asset]', body)) { const u = Assets.url(im.dataset.asset); if (u) im.src = u; else im.closest('figure') ? im.closest('figure').classList.add('missing') : im.remove(); }
     for (const f of $$('figure.ndraw', body)) drawFig(f, data);
+    applyFolds(body);
     // a link card left without a picture (preview failed before 0.2.24): asked again once per session
     for (const f of $$('figure.nlink', body)) { const p = f.querySelector('.nl-pic'), u = f.dataset.url; if (!p || p.children.length || !u || retried.has(u)) continue; retried.add(u); if (!f.dataset.lk) f.dataset.lk = uid('lk'); setTimeout(() => unfurlCard(f.dataset.lk, u), 400); }
   }
@@ -38,6 +39,7 @@ const Note = (() => {
     const c = body.cloneNode(true);
     for (const im of $$('img[data-asset]', c)) im.removeAttribute('src');
     for (const f of $$('figure.ndraw', c)) { f.innerHTML = ''; f.classList.remove('sel', 'dragging'); f.style.transform = ''; }
+    for (const n of $$('.nf-hid, .ng-dragging', c)) { n.classList.remove('nf-hid', 'ng-dragging'); if (!n.classList.length) n.removeAttribute('class'); }
     return c.innerHTML.replace(/<br>(<\/(p|div|li|h1|h2|h3)>)/g, '$1');
   }
   const saveBody = debounce(() => { if (!mounted) return; P.html = serialize(); touch(D); renderSub(); }, 400);
@@ -100,6 +102,19 @@ const Note = (() => {
       if (!li.getAttribute('style')) li.removeAttribute('style');
     }
   }
+  /* 0.2.76: real sizes in px (the old 1–7 steps still display through the font[size] rules) */
+  const TPX = [10, 12, 13, 14, 15, 16, 18, 20, 24, 28, 32, 40, 48, 64];
+  function curSize() {
+    const s = selInBody(); let el = s && s.anchorNode; if (el && el.nodeType !== 1) el = el.parentNode;
+    return el ? Math.round(parseFloat(getComputedStyle(el).fontSize)) : 16;
+  }
+  function setPx(px) {
+    document.execCommand('fontSize', false, '7');
+    for (const f of $$('font[size="7"]', body)) {
+      f.removeAttribute('size'); f.style.fontSize = px + 'px';
+      for (const n of $$('[style*="font-size"], font[size]', f)) { n.style.removeProperty('font-size'); n.removeAttribute('size'); if (!n.getAttribute('style')) n.removeAttribute('style'); if (n.tagName === 'FONT' && !n.attributes.length) n.replaceWith(...n.childNodes); }
+    }
+  }
   function textPop(btn) {
     const s0 = selInBody(), range = s0 && s0.rangeCount ? s0.getRangeAt(0).cloneRange() : null, k = btn.dataset.tx;
     const apply = f => { body.focus(); const sel = getSelection(); if (range) { sel.removeAllRanges(); sel.addRange(range); } else ensureFocus(); try { document.execCommand('styleWithCSS', false, false); } catch (e) {} f(); saveBody(); renderTool(); };
@@ -111,14 +126,16 @@ const Note = (() => {
     /* 0.2.16: the theme's 20 colours (n°1, the ink, is the default text colour), free colours kept on the « Récentes » line */
     if (k === 'color') { Colors.open(btn, { value: S.prefs.noteColor, none: true, onPick: (c, final) => { if (final) color(c && schemeNo(c) === 1 ? null : c); } }); return; }
     const html = k === 'font' ? TFONTS.map(([v, l, ff]) => `<button class="mi" data-v="${v}"><span style="font-family:${ff};font-size:16px">${l}</span></button>`).join('')
-      : k === 'size' ? TSIZES.map(([v, l, px]) => `<button class="mi" data-v="${v}"><span style="font-size:${px}px">${l}</span></button>`).join('')
+      : k === 'size' ? `<label class="tsz-in"><input type="number" min="6" max="160" step="1" value="${curSize()}" aria-label="Taille en pixels"><span>px</span></label>` + TPX.map(v => `<button class="mi tsz-mi" data-v="${v}"${v === curSize() ? ' aria-pressed="true"' : ''}><span style="font-size:${Math.min(v, 26)}px">${v}</span></button>`).join('')
       : '';
     const pop = openPop(btn, html, { cls: 'tpop', focus: false });
-    pop.addEventListener('pointerdown', e => e.preventDefault());
+    pop.addEventListener('pointerdown', e => { if (!e.target.closest('input')) e.preventDefault(); });
+    const szIn = k === 'size' && $('.tsz-in input', pop);
+    if (szIn) { szIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = Math.round(+szIn.value); if (v >= 6 && v <= 160) { closePop(); apply(() => setPx(v)); } } else if (e.key === 'Escape') closePop(); }); setTimeout(() => { szIn.focus(); szIn.select(); }, 0); }
     pop.addEventListener('click', e => {
       const b = e.target.closest('[data-v]'); if (!b) return; const v = b.dataset.v; closePop();
       if (k === 'font') apply(() => document.execCommand('fontName', false, v));
-      else if (k === 'size') apply(() => document.execCommand('fontSize', false, v));
+      else if (k === 'size') apply(() => setPx(+v));
       else color(v);
     });
   }
@@ -130,6 +147,7 @@ const Note = (() => {
       : `<button class="nb" data-bc="${x[0]}" title="${x[2]}" aria-label="${x[2].replace(/ \(.*/, '')}">${x[1][0] === '#' ? icon(x[1].slice(1)) : `<span class="bt">${x[1]}</span>`}</button>`).join('');
   }
   function bubMount() {
+    if (D && D.page) return;   // 0.2.76: the Quick Note of the project page keeps only its toolbar
     bub = document.createElement('div'); bub.className = 'nbub'; bub.setAttribute('role', 'toolbar'); bub.setAttribute('aria-label', 'Mise en forme de la sélection'); bub.hidden = true;
     $('#main').append(bub);
     bub.addEventListener('pointerdown', e => e.preventDefault());
@@ -164,6 +182,132 @@ const Note = (() => {
     if (y < 52) y = r.bottom + 10 - m.top;
     bub.style.left = clamp(x, 8, m.width - w - 8) + 'px'; bub.style.top = y + 'px';
   }
+  /* ---------- 0.2.76: foldable titles (T1 / T2 / T3, like Evernote) and a grip to move lines and blocks ---------- */
+  const isHead = n => n && /^H[1-3]$/.test(n.tagName);
+  const lvl = n => +n.tagName[1];
+  function applyFolds(root = body) {
+    if (!root) return;
+    let foldAt = 0;
+    for (const n of root.children) {
+      if (isHead(n) && foldAt && lvl(n) <= foldAt) foldAt = 0;
+      n.classList.toggle('nf-hid', !!foldAt);
+      if (!n.classList.length) n.removeAttribute('class');
+      if (!foldAt && isHead(n) && n.hasAttribute('data-fold')) foldAt = lvl(n);
+    }
+  }
+  // the caret ended up inside a folded part (Enter at the end of a folded title): open it
+  function unfoldAtCaret(root) {
+    const s = selInBody(); let n = s && s.anchorNode; if (!n) return;
+    while (n && n.parentNode !== root) n = n.parentNode;
+    if (!n || !n.classList || !n.classList.contains('nf-hid')) return;
+    for (let p = n.previousElementSibling; p; p = p.previousElementSibling) if (isHead(p) && p.hasAttribute('data-fold')) p.removeAttribute('data-fold');
+    applyFolds(root);
+  }
+  function foldToggle(h) {
+    const g = PG.find(g => g.body.contains(h)); if (!g) return; use(g);
+    h.toggleAttribute('data-fold'); applyFolds(g.body); saveBody(); gutShow(g, h);
+  }
+  // the section a block drags with it: a folded title takes its hidden lines along
+  function sectionOf(n) {
+    const out = [n];
+    if (isHead(n) && n.hasAttribute('data-fold')) for (let x = n.nextElementSibling; x && x.classList.contains('nf-hid'); x = x.nextElementSibling) out.push(x);
+    return out;
+  }
+  let gut = null, gutG = null, gutB = null, gutT = 0, gDrag = null;
+  function gutMount() {
+    gut = document.createElement('div'); gut.className = 'ngut'; gut.hidden = true;
+    gut.innerHTML = `<button class="ng-grip" title="Glisser pour déplacer · clic : sélectionner le bloc" aria-label="Déplacer le bloc"></button><button class="ng-fold" title="Replier / déplier" aria-label="Replier ou déplier">${icon('chevd', 'sm')}</button>`;
+    $('#main').append(gut);
+    gut.addEventListener('pointerenter', () => clearTimeout(gutT));
+    gut.addEventListener('pointerleave', () => { if (!gDrag) gutHideSoon(); });
+    $('.ng-fold', gut).addEventListener('pointerdown', e => e.preventDefault());
+    $('.ng-fold', gut).addEventListener('click', () => { if (gutB && isHead(gutB)) foldToggle(gutB); });
+    $('.ng-grip', gut).addEventListener('pointerdown', gripDown);
+  }
+  function gutUnmount() { clearTimeout(gutT); if (gut) gut.remove(); gut = null; gutG = gutB = null; gDropEnd(); }
+  function gutHideSoon() { clearTimeout(gutT); gutT = setTimeout(() => { if (gut && !gDrag) { gut.hidden = true; gutB = null; } }, 450); }
+  // the block under the pointer: a list line, else a block straight under the text area
+  function blockAt(b, t) {
+    if (!t || t === b || !b.contains(t)) return null;
+    const li = t.closest('li'); if (li && b.contains(li)) return li;
+    let n = t; while (n && n.parentNode !== b) n = n.parentNode;
+    return n && n.nodeType === 1 && !n.classList.contains('nf-hid') ? n : null;
+  }
+  function gutShow(g, n) {
+    if (!gut || mode !== 'text' || !n) return;
+    clearTimeout(gutT); gutG = g; gutB = n;
+    const r = n.getBoundingClientRect(), m = $('#main').getBoundingClientRect();
+    if (!r.height) { gut.hidden = true; return; }
+    const head = isHead(n);
+    gut.classList.toggle('hd', head); gut.classList.toggle('folded', head && n.hasAttribute('data-fold'));
+    gut.hidden = false;
+    const lh = Math.min(r.height, parseFloat(getComputedStyle(n).lineHeight) || 24), li = n.tagName === 'LI' ? 22 : 0;
+    gut.style.left = (r.left - m.left - gut.offsetWidth - 8 - li) + 'px';
+    gut.style.top = (r.top - m.top + lh / 2 - gut.offsetHeight / 2) + 'px';
+  }
+  function gutMove(e) {
+    if (!gut || gDrag || mode !== 'text') return;
+    if (gut.contains(e.target)) { clearTimeout(gutT); return; }
+    const g = PG.find(g => g.body.contains(e.target));
+    const n = g && blockAt(g.body, e.target);
+    if (n) { if (n !== gutB || gut.hidden) gutShow(g, n); else clearTimeout(gutT); }
+    else if (!gut.hidden) gutHideSoon();
+  }
+  // candidates of a move: list lines move among list lines, other blocks among the blocks of the text
+  function dropSpots(g, src) {
+    const b = g.body, li = src.tagName === 'LI', skip = new Set(li ? [src] : sectionOf(src));
+    const list = li ? $$('li', b).filter(x => !src.contains(x)) : [...b.children].filter(x => !x.classList.contains('nf-hid'));
+    return list.filter(x => !skip.has(x));
+  }
+  function gripDown(e) {
+    if (!gutB || !gutG || (e.pointerType === 'mouse' && e.button > 0)) return;
+    e.preventDefault(); e.stopPropagation();
+    const g = gutG, src = gutB; use(g);
+    const x0 = e.clientX, y0 = e.clientY, id = e.pointerId;
+    let moved = false, at = null;
+    const line = document.createElement('div'); line.className = 'ng-drop'; line.hidden = true;
+    const mv = ev => {
+      if (ev.pointerId !== id) return;
+      if (!moved) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return; moved = true; gDrag = { line }; $('#main').append(line); for (const n of src.tagName === 'LI' ? [src] : sectionOf(src)) n.classList.add('ng-dragging'); gut.classList.add('dragging'); document.body.classList.add('ng-grabbing'); getSelection().removeAllRanges(); }
+      const spots = dropSpots(g, src); if (!spots.length) return;
+      const m = $('#main').getBoundingClientRect(), br = g.body.getBoundingClientRect();
+      let tgt = spots[spots.length - 1], before = false;
+      for (const s of spots) { const r = s.getBoundingClientRect(); if (ev.clientY < r.top + r.height / 2) { tgt = s; before = true; break; } }
+      at = { tgt, before };
+      const r = tgt.getBoundingClientRect(), y = before ? r.top - 3 : r.bottom + 3, l = tgt.tagName === 'LI' ? r.left : br.left;
+      line.hidden = false; line.style.left = (l - m.left) + 'px'; line.style.width = (br.right - l) + 'px'; line.style.top = (y - m.top - 1) + 'px';
+      gut.style.top = (ev.clientY - m.top - gut.offsetHeight / 2) + 'px';
+      const v = view, vr = v.getBoundingClientRect(); if (ev.clientY < vr.top + 50) v.scrollTop -= 12; else if (ev.clientY > vr.bottom - 50) v.scrollTop += 12;
+    };
+    const up = ev => {
+      if (ev.pointerId !== id) return;
+      removeEventListener('pointermove', mv); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
+      document.body.classList.remove('ng-grabbing'); gut.classList.remove('dragging');
+      for (const n of $$('.ng-dragging', g.body)) n.classList.remove('ng-dragging');
+      gDropEnd();
+      if (!moved) { const r = document.createRange(); r.selectNodeContents(src); const s = getSelection(); s.removeAllRanges(); s.addRange(r); gutShow(g, src); return; }
+      if (at && ev.type === 'pointerup') blockMove(g, src, at.tgt, at.before);
+      gutShow(g, src);
+    };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  }
+  function gDropEnd() { if (gDrag && gDrag.line) gDrag.line.remove(); gDrag = null; }
+  function blockMove(g, src, tgt, before) {
+    if (src.tagName === 'LI') {
+      const from = src.parentNode;
+      if (before) tgt.before(src); else tgt.after(src);
+      if (from && !from.children.length) from.remove();
+      syncMarkers(g.body);
+    } else {
+      const sec = sectionOf(src);
+      // after a folded title, the move lands after its hidden part
+      let ref = tgt; if (!before) { const st = sectionOf(tgt); ref = st[st.length - 1]; }
+      if (before) ref.before(...sec); else ref.after(...sec);
+    }
+    applyFolds(g.body); saveBody(); renderSub();
+    src.animate && src.animate([{ background: 'color-mix(in oklab, var(--accent) 16%, transparent)' }, { background: 'transparent' }], { duration: 700, easing: 'ease-out' });
+  }
+
   /* the marking menu of the selected text (right button): pressed, flick toward an item and let go; a quick right click
      opens a classic list instead (0.2.22). Up is always the last colour. Same look as the board's (.mmenu). */
   const MM_R = 64, MM_DEAD = 16;
@@ -647,7 +791,7 @@ const Note = (() => {
     g.data = pageData(g.i);
     const b = g.body;
     b.addEventListener('focusin', () => use(g));
-    b.addEventListener('input', () => { use(g); syncMarkers(b); saveBody(); wrap.classList.add('typing'); });
+    b.addEventListener('input', () => { use(g); syncMarkers(b); applyFolds(b); unfoldAtCaret(b); saveBody(); wrap.classList.add('typing'); if (gut) gut.hidden = true; });
     b.addEventListener('keydown', onKey);
     b.addEventListener('keyup', renderTool); b.addEventListener('mouseup', renderTool);
     b.addEventListener('paste', onPaste);
@@ -767,7 +911,7 @@ const Note = (() => {
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
     tool.addEventListener('pointerdown', e => { if (e.target.closest('[data-cmd],[data-tx]')) e.preventDefault(); });
     tool.addEventListener('click', onToolClick);
-    bubMount();
+    bubMount(); gutMount(); wrap.addEventListener('pointermove', gutMove);
     wrap.addEventListener('click', e => {
       const a = e.target.closest('[data-pga]'); if (!a) return;
       const k = a.dataset.pga;
@@ -787,11 +931,11 @@ const Note = (() => {
     if (old) { finalizeDrawing(); use(PG[0]); }
   }
   /* themes can mark the toolbar once the note scrolls under it (.scrolled) and dim it while typing (.typing, cleared by a mouse move) */
-  function onScroll() { if (mounted) { wrap.classList.toggle('scrolled', view.scrollTop > 4); if (bub && !bub.hidden) bubQueue(); } }
+  function onScroll() { if (mounted) { wrap.classList.toggle('scrolled', view.scrollTop > 4); if (bub && !bub.hidden) bubQueue(); if (gut && !gut.hidden && !gDrag && gutB && gutG) gutShow(gutG, gutB); } }
   function flush() { if (!mounted) return; saveBody.flush(); }
   function unmount() {
     if (!mounted) return;
-    closeMM(); finalizeDrawing(); flush(); mounted = false; bubUnmount();
+    closeMM(); finalizeDrawing(); flush(); mounted = false; bubUnmount(); gutUnmount();
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onCancel);
     if (ro) ro.disconnect(); if (liveBox) liveBox.remove(); if (view) view.removeEventListener('scroll', onScroll);
     D = null; PG = []; cur = null; P = null; view = null;

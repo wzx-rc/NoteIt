@@ -3180,3 +3180,26 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 .pp2-sub .pp-acts button { height: 21px; padding: 0 7px; gap: 4px; border-radius: 6px; font-size: 10.5px !important; }
 .pp2-sub .pp-acts .i { width: 11px; height: 11px; }
 @media (min-width: 901px) { .pp2-hero.img img { -webkit-mask-image: linear-gradient(90deg, transparent, #000 150px); mask-image: linear-gradient(90deg, transparent, #000 150px); } }
+
+/* 0.2.76 note editor: numeric text sizes, foldable titles, block grip */
+.tpop .tsz-in { display: flex; align-items: center; gap: 6px; margin: 2px 4px 6px; padding: 0 8px; height: 32px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-3); font-size: 12px; }
+.tpop .tsz-in:focus-within { box-shadow: inset 0 0 0 1px var(--accent); }
+.tpop .tsz-in input { width: 56px; border: 0; background: none; color: var(--ink); font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; outline: none; }
+.tpop .tsz-mi { min-width: 120px; font-variant-numeric: tabular-nums; }
+.tpop .tsz-mi[aria-pressed="true"] { color: var(--accent); }
+.nbody .nf-hid { display: none !important; }
+.nbody :is(h1, h2, h3)[data-fold]::after { content: "···"; display: inline-block; margin-left: 10px; padding: 0 7px; border-radius: 6px; font: 600 12px/18px var(--font-ui, system-ui); letter-spacing: .1em; vertical-align: middle; color: var(--ink-3); background: color-mix(in oklab, var(--ink) 8%, transparent); }
+.ngut { position: absolute; z-index: 55; display: flex; align-items: center; gap: 2px; animation: nbubIn .12s ease-out; }
+.ngut[hidden] { display: none; }
+.ngut button { display: grid; place-items: center; width: 20px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink-3); cursor: pointer; }
+.ngut .ng-grip { cursor: grab; touch-action: none; position: relative; }
+.ngut .ng-grip::before { content: ""; position: absolute; left: 7px; top: 50%; width: 2.6px; height: 2.6px; margin-top: -1.3px; border-radius: 50%; background: currentColor; box-shadow: 4.4px 0 currentColor, 0 -5px currentColor, 4.4px -5px currentColor, 0 5px currentColor, 4.4px 5px currentColor; }
+.ngut .ng-fold { display: none; width: 22px; background: color-mix(in oklab, var(--ink) 7%, transparent); }
+.ngut.hd .ng-fold { display: grid; }
+.ngut .ng-fold .i { transition: transform .15s; }
+.ngut.folded .ng-fold .i { transform: rotate(-90deg); }
+.ngut button:hover { color: var(--ink); background: color-mix(in oklab, var(--ink) 10%, transparent); }
+.ngut.dragging .ng-grip, body.ng-grabbing, body.ng-grabbing * { cursor: grabbing !important; }
+.nbody .ng-dragging { opacity: .35; }
+.ng-drop { position: absolute; z-index: 56; height: 2px; border-radius: 2px; background: var(--accent); pointer-events: none; transition: top .08s ease-out; }
+.ng-drop[hidden] { display: none; }
