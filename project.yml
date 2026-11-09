@@ -69,7 +69,7 @@ targets:
         buildPhase: resources
     settings:
       base:
-        MARKETING_VERSION: "0.2.53"
+        MARKETING_VERSION: "0.3.2"
         PRODUCT_BUNDLE_IDENTIFIER: com.wzxrc.notelyhub
         PRODUCT_NAME: NotelyHub
         TARGETED_DEVICE_FAMILY: "1,2"
