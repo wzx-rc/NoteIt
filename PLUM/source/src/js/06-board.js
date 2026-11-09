@@ -545,8 +545,8 @@ const Board = (() => {
     const show = list.length && !dragging && !(op && op.kind === 'marquee') && !editing && !wrap.classList.contains('drawing');
     if (!show) { qbarEl.hidden = true; qSig = ''; return; }
     const html = ctxHTML(list);
-    if (html !== qSig) { qSig = html; qbarEl.innerHTML = `<button class="qgrip" title="Glisser pour poser la barre ailleurs · double-clic : la remettre au-dessus de la sélection" aria-label="Déplacer la barre"></button>` + html; }
-    qbarEl.hidden = false; qbarEl.classList.toggle('pinned', !!S.prefs.qbarPin);
+    if (html !== qSig) { qSig = html; qbarEl.innerHTML = html; }
+    qbarEl.hidden = false; if (S.prefs.qbarPin) { delete S.prefs.qbarPin; save(); }   // 0.2.74: the Element Option Bar always sits above the selection (no more pinning)
     /* moved by its grip: the bar stays where it was put (S.prefs.qbarPin, px from the board's top left) */
     if (S.prefs.qbarPin) { const W = wrap.clientWidth, H = wrap.clientHeight, w = qbarEl.offsetWidth, hh = qbarEl.offsetHeight; qbarEl.style.left = clamp(S.prefs.qbarPin.x, 8, Math.max(8, W - w - 8)) + 'px'; qbarEl.style.top = clamp(S.prefs.qbarPin.y, 8, Math.max(8, H - hh - 8)) + 'px'; return; }
     // the box of everything selected, arrows included with their curve, head and end handles (0.2.22)
