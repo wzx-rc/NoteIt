@@ -134,7 +134,7 @@ const Board = (() => {
       case 'paint': return `c${it.c}|${it.seed}|${theme()}`;
       case 'ink': return `k${pv(it.p)}|${it.c}|${it.o}|${it.t}|${it.w0}|${it.h0}|${theme()}|${it.b ? JSON.stringify(it.b) : ''}`;
       case 'mind': return `m${it.lv}|${it.c}|${it.txt}|${skin()}|${it.side}|${it.ms || 1}|${it.lv === 1 && MT().mindArt ? artOff(it) : ''}`;
-      case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs || 1}|${it.tc || ''}|${it.fc || ''}|${theme()}`;
+      case 'frame': return `r${it.title}|${it.nt ? 1 : 0}|${it.tfs ?? 1}|${it.tc || ''}|${it.fc || ''}|${theme()}`;
       case 'uic': return `u${it.t}|${Math.round(it.w)}|${Math.round(it.h)}|${uiFid(it)}|${uiDir(it)}|${JSON.stringify([it.txt, it.b, it.bs, it.c, it.f, it.pv, it.dis])}`;
       case 'task': { const t = taskById(it.task) || {}; return `T${t.t}|${t.done}|${t.due}|${t.time}|${t.sp}`; }
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
@@ -461,7 +461,7 @@ const Board = (() => {
   const primaryProp = it => it.k === 'note' || it.k === 'todo' ? 'fc' : it.k === 'frame' || it.k === 'image' || it.k === 'file' || it.k === 'link' || it.k === 'doc' || it.k === 'task' || it.k === 'sheet' ? null : 'sc';
   const propValue = (it, prop) => prop === 'fc' ? (it.k === 'shape' ? it.fc : it.c) : prop === 'sc' ? (it.k === 'text' ? it.color : it.k === 'ink' || it.k === 'mind' || it.k === 'paint' ? it.c : it.sc) : it[prop];
   const SC_KINDS = ['shape', 'conn', 'text', 'ink', 'mind'];
-  const qsw = (prop, cur, title) => `<button class="qb qc" data-qc="${prop}" title="${esc(title)}" aria-label="${esc(title)}"><span class="qsw${prop === 'fc' ? ' fill' : ''}${cur ? '' : ' none'}" style="--c:${cur || 'transparent'}"></span></button>`;
+  const qsw = (prop, cur, title) => `<button class="qb qc" data-qc="${prop}" title="${esc(title)}" aria-label="${esc(title)}"><span class="qsw${prop === 'fc' || prop === 'ffc' ? ' fill' : ''}${cur ? '' : ' none'}" style="--c:${cur || 'transparent'}"></span></button>`;
   const qbtn = (id, inner, title, chev = true) => `<button class="qb" data-qp="${id}" title="${esc(title)}" aria-label="${esc(title)}">${inner}${chev ? '<svg class="qchev" viewBox="0 0 8 8"><path d="M1.5 3 4 5.5 6.5 3"/></svg>' : ''}</button>`;
   const qact = (a, ic, title, label) => `<button class="qb" data-qa="${a}" title="${esc(title)}" aria-label="${esc(title)}">${icon(ic)}${label ? `<span>${label}</span>` : ''}</button>`;
   /* what the bar is about: the selection, or (empty list) the tool about to draw */
@@ -491,7 +491,8 @@ const Board = (() => {
     if (td && !['shape', 'conn', 'text', 'note', 'todo'].includes(T)) return '';
     /* colours */
     const cols = [];
-    if (only('mind')) cols.push(qsw('sc', val('sc', null, 'mind'), 'Couleur de la branche'));
+    if (only('frame')) cols.push(qsw('ftc', list[0].tc, 'Couleur du titre du cadre'), qsw('ffc', list[0].fc, 'Fond du cadre'));
+    else if (only('mind')) cols.push(qsw('sc', val('sc', null, 'mind'), 'Couleur de la branche'));
     else if (only('note', 'todo')) cols.push(qsw('fc', td ? (T === 'note' ? noteColor : '#FFFFFF') : val('fc', null, 'note', 'todo'), 'Couleur'));
     else {
       if (has(...SC_KINDS)) cols.push(qsw('sc', td ? (T === 'conn' ? bd.csc : bd.sc) : val('sc', null, ...SC_KINDS), only('text') ? 'Couleur du texte' : only('ink') ? 'Couleur du trait' : 'Couleur du trait ou du contour'));
@@ -571,6 +572,7 @@ const Board = (() => {
   function ctxColor(prop, btn) {
     if (prop === 'pen') { Colors.open(btn, { value: penPref(penKind).c, onPick: (c, final) => { if (!c) return; S.prefs.pens[penKind].c = c; save(); const d = $('[data-tool="pen"] .cdot', toolsEl); if (d) d.style.background = c; if (final) { refreshTools(); propSig = ''; renderProps(); Studio.sync(); } } }); return; }
     const list = selItems(), notes = list.length ? list.every(i => i.k === 'note' || i.k === 'todo') : tool === 'note' || tool === 'todo';
+    if (prop === 'ftc' || prop === 'ffc') { const f = list.find(i => i.k === 'frame'); Colors.open(btn, { value: f && f[prop === 'ftc' ? 'tc' : 'fc'] || (prop === 'ftc' ? '#1E1E1E' : '#FFFFFF'), none: true, onPick: (v, final) => { setProp(prop, v, !final); if (final) qSig = ''; } }); return; }
     const it = list.find(i => (prop === 'fc' ? ['shape', 'note', 'todo'] : SC_KINDS).includes(i.k));
     const cur = it ? propValue(it, prop) : prop === 'fc' ? (tool === 'note' ? noteColor : BD().fc) : tool === 'conn' || tool === 'line' ? BD().csc : BD().sc;
     const ap = prop === 'fc' ? 'fo' : 'so', shp = list.find(i => i.k === 'shape');
@@ -854,7 +856,7 @@ const Board = (() => {
     const T = tool; const td = !list.length;
     if (td && T === 'select') {
       out.push(sec('Attributs', `<div class="pp-hint">Sélectionnez un élément ou choisissez un outil : ses options s’affichent ici. Le fond du board est sous l’icône ${icon('styles', 'sm')} en bas à droite.</div>`));
-      out.push(sec('Astuces', `<div class="pp-hint">Double-clic sur le vide : post-it. <b>V</b> sélection, <b>P</b> stylo, <b>A</b> flèche, <b>L</b> ligne, <b>C</b> liste à faire, <b>1</b>–<b>9</b> changent de pinceau, <b>K</b> pipette (ou <b>Alt</b> + clic en dessinant).<br>Glissez images et fichiers sur le board, ou depuis l’onglet Moodboard.</div>`));
+      out.push(sec('Astuces', `<div class="pp-hint">Double-clic sur le vide : post-it. <b>V</b> sélection, <b>P</b> stylo, <b>A</b> flèche, <b>L</b> ligne, <b>C</b> liste à faire, <b>1</b>–<b>9</b> changent de pinceau, <b>K</b> pipette (ou <b>Alt</b> + clic en dessinant).<br>Glissez images et fichiers sur le board, ou depuis le Moodboard de la barre du haut.</div>`));
       out.push(sec('Raccourcis', `<button class="btn sm" data-act="help">${icon('help', 'sm')}Tous les raccourcis</button>`));
       return out.join('');
     }
@@ -938,7 +940,7 @@ const Board = (() => {
   function renderProps(force) {
     if (!propsOpen()) return;
     const sk = [...sel].join(',');
-    if (sk !== propSelKey) { propSelKey = sk; propsHold = false; if (sk && propsTab === 'media') propsTab = 'style'; }
+    if (sk !== propSelKey) { propSelKey = sk; propsHold = false; propsTab = 'style'; }
     if (propsHold) return;
     const list = selItems();
     const sig = [propsTab, tool, penKind, shapeKind, noteColor, editing, D.bg, JSON.stringify(S.prefs.bd), JSON.stringify(S.prefs.pens[penKind] || {}), S.prefs.pressure, theme(), skin(),
@@ -2887,8 +2889,32 @@ const Board = (() => {
     let moved = false;
     op = { id: e.pointerId, kind: 'conn', moved: false,
       move(ev) { const p = toW(ev.clientX, ev.clientY); if (!moved && Math.hypot((p.x - w.x) * view.k, (p.y - w.y) * view.k) < 6) return; moved = true; setLive(before.concat(Object.assign({}, c, { b: endFor(ev, from.id ? { id: from.id } : null, o, c.id) }))); },
-      up() { attachHi = null; attachSock = null; if (!moved) { if (side && h) { op = null; setLive(before); quickNode(h, side); return; } startPoly(c, from, before); return; } op = null; const last = items[items.length - 1]; commit(items, { before }); sel = new Set([last.id]); setTool('select'); },
+      up(ev) { attachHi = null; attachSock = null; if (!moved) { if (side && h) { op = null; setLive(before); quickNode(h, side); return; } startPoly(c, from, before); return; } op = null; const last = items[items.length - 1];
+        // let go on empty board: a marking menu offers an item there, already linked (0.2.58); Escape keeps the free end
+        if (ev && last && last.k === 'conn' && last.b && last.b.x != null && !last.b.id && !last.b.on) { dropMenu(ev, last, before, o); return; }
+        commit(items, { before }); sel = new Set([last.id]); setTool('select'); },
       cancel() { attachHi = null; setLive(before); } };
+  }
+  /* the arrow end left on empty board: Rectangle, Texte, Post-it or Ellipse at that spot, its end bound to it */
+  function dropMenu(ev, c, before, o) {
+    const p = { x: c.b.x, y: c.b.y }, s = clamp(1 / view.k, .5, 4), dx = p.x - o[0], dy = p.y - o[1], horiz = Math.abs(dx) >= Math.abs(dy);
+    const place = n => { if (horiz) { n.x = dx >= 0 ? p.x : p.x - n.w; n.y = p.y - n.h / 2; } else { n.y = dy >= 0 ? p.y : p.y - n.h; n.x = p.x - n.w / 2; } return n; };
+    const add = mk => () => {
+      const n = place(mk()), side = horiz ? (dx >= 0 ? 'w' : 'e') : (dy >= 0 ? 'n' : 's');
+      const cc = Object.assign({}, c, { b: { id: n.id, fx: SOCKS[side][0], fy: SOCKS[side][1] } });
+      commit(items.map(i => i.id === c.id ? cc : i).concat(n), { before }); sel = new Set([n.id]); setTool('select'); render(); startEdit(n.id);
+    };
+    const keep = () => { commit(items, { before }); sel = new Set([c.id]); setTool('select'); };
+    const list = around([
+      { label: 'Rectangle', run: add(() => mkShape(0, 0, 180 * s, 110 * s, 'rect', { fs: Math.round(26 * s) })) },
+      { label: 'Texte', run: add(() => { const t = mkText(0, 0, '', { fs: Math.round(28 * s) }); t.w = 160 * s; t.h = 40 * s; return t; }) },
+      null,
+      { label: 'Ellipse', run: add(() => mkShape(0, 0, 170 * s, 110 * s, 'ellipse', { fs: Math.round(26 * s) })) },
+      { label: 'Post-it', sw: noteColor, run: add(() => mkNote(0, 0, '', noteColor, { w: 200 * s, h: 200 * s, fs: Math.round(30 * s) })) },
+      null,
+      { label: 'Losange', run: add(() => mkShape(0, 0, 170 * s, 120 * s, 'diamond', { fs: Math.round(24 * s) })) },
+      { label: 'Flèche seule', run: keep }]);
+    openMarking({ clientX: ev.clientX, clientY: ev.clientY, pointerId: -1, button: 0 }, null, true, { items: list, title: 'Créer au bout', onClose: keep });
   }
   /* point-by-point: each click adds a corner, a click on an item binds the end, Enter or double-click finishes, Escape cancels */
   function startPoly(c, from, before) {
@@ -3471,7 +3497,7 @@ const Board = (() => {
       <div class="tdock"><div class="trow"><button class="tgrip" title="Glisser pour déplacer les barres · double-clic pour les remettre en place" aria-label="Déplacer les barres d’outils"></button><nav class="isl tools" aria-label="Outils"></nav></div><div class="isl topts" role="toolbar" aria-label="Options de l’outil" hidden></div></div>
       <div class="isl tr"><button class="tl" data-a="props" title="Attributs et moodboard" aria-label="Panneau" aria-pressed="${open}">${icon('sliders')}<span>Attributs</span></button></div>
       <div class="qbar" hidden></div>
-      <aside class="props"${open ? '' : ' hidden'} aria-label="Propriétés"><div class="phead"><button class="ptab" data-tab="style">Attributs</button><button class="ptab" data-tab="media">Moodboard</button><button class="pclose" data-a="close" aria-label="Fermer">${icon('x', 'sm')}</button></div><div class="pbody"></div></aside>
+      <aside class="props"${open ? '' : ' hidden'} aria-label="Propriétés"><div class="phead"><button class="ptab" data-tab="style">Attributs</button><button class="pclose" data-a="close" aria-label="Fermer">${icon('x', 'sm')}</button></div><div class="pbody"></div></aside>
       <div class="isl bl zoom"><button class="tl" data-a="zout" title="Dézoomer (−)" aria-label="Dézoomer">${icon('zout')}</button><button class="zv" data-a="z100" title="Revenir à 100 %">100 %</button><button class="tl" data-a="zin" title="Zoomer (+)" aria-label="Zoomer">${icon('zin')}</button></div>
       <div class="isl bl undo"><button class="tl" data-a="undo" title="Annuler (Ctrl Z)" aria-label="Annuler">${icon('undo')}</button><button class="tl" data-a="redo" title="Rétablir (Ctrl Y)" aria-label="Rétablir">${icon('redo')}</button></div>
       <div class="isl br"><button class="tl" data-a="bstyle" title="Style du board" aria-label="Style du board">${icon('styles')}</button><button class="tl snapb" data-a="snap" title="Alignement auto (aimant) : activé" aria-label="Alignement automatique" aria-pressed="true">${icon('magnet')}</button><button class="tl" data-a="fit" title="Tout voir (F ou 0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
@@ -3681,23 +3707,25 @@ const Board = (() => {
     if (all('conn')) return around([{ label: 'Texte', run: () => one && startEdit(one.id) }, colorIt, { label: 'Tracé', run: null, sub: () => around(Object.entries(ROUTES).map(([k, l]) => ({ label: l, on: one && one.route === k, run: () => setProp('route', k) }))) }, null, del, null, more, dup]);
     return around([editIt, colorIt, sizeIt, fontIt, del, list.some(i => i.k === 'frame') ? null : alignIt, more, dup]);
   }
-  function openMarking(e, hit, sticky) {
-    closeMarking(); cancelOp();
+  function openMarking(e, hit, sticky, custom) {
+    closeMarking(); if (!custom) cancelOp();
     if (hit && !sel.has(hit)) { sel = new Set([hit]); sheetSel = null; render(); }
     if (!hit && sel.size) { sel.clear(); schedule(); }
     if (hit && sel.size === 1 && e.target && e.target.closest) sheetCtx(e.target, byId.get(hit));
     const el = document.createElement('div'); el.className = 'mmenu'; wrap.append(el);
     el.addEventListener('pointerdown', e => mm && mmDown(e)); el.addEventListener('contextmenu', e => e.preventDefault());
-    const items1 = hit ? mmItemItems(hit) : mmToolItems(toW(e.clientX, e.clientY));
+    const items1 = custom ? custom.items : hit ? mmItemItems(hit) : mmToolItems(toW(e.clientX, e.clientY));
     mm = { el, pid: e.pointerId, x: e.clientX, y: e.clientY, mx: e.clientX, my: e.clientY, hover: -1, shown: false, sticky: !!sticky, moved: false,
-      title: hit ? (sel.size > 1 ? sel.size + ' éléments' : KIND_NAMES[(byId.get(hit) || {}).k] || 'Élément') : 'Outils', items: items1, lvl1: null, quick: e.button === 2 };
+      title: custom ? custom.title : hit ? (sel.size > 1 ? sel.size + ' éléments' : KIND_NAMES[(byId.get(hit) || {}).k] || 'Élément') : 'Outils', items: items1, lvl1: null, quick: e.button === 2, onClose: custom && custom.onClose };
     addEventListener('pointermove', mmMove, true); addEventListener('pointerup', mmUp, true); addEventListener('keydown', mmKey, true);
     if (sticky) mmShow(); else mm.t = setTimeout(() => mm && mmShow(), MM_DELAY);
   }
   function closeMarking() {
     if (!mm) return;
+    const cb = mm.onClose;
     clearTimeout(mm.t); clearTimeout(mm.subT); mm.el.remove(); mm = null;
     removeEventListener('pointermove', mmMove, true); removeEventListener('pointerup', mmUp, true); removeEventListener('keydown', mmKey, true);
+    if (cb) cb();
   }
   /* level 2: the options of item it, around (x, y); level 1 stays behind, dimmed, its item lit */
   function mmOpenSub(it, x, y) {
@@ -3767,6 +3795,7 @@ const Board = (() => {
   function mmKey(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMarking(); } }
   function mmRun() {
     const it = mm.items.find(i => i.dir === mm.hover); if (!it || !it.run) { closeMarking(); return; }
+    mm.onClose = null;
     const flash = !mm.shown && { x: mm.x, y: mm.y, it };
     closeMarking();
     if (flash) mmFlash(flash);

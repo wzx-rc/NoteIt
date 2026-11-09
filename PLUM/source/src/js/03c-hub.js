@@ -48,7 +48,7 @@ function hubEvents() {
   const seen = new Set();
   return ev.filter(e => !(e[4] & 1) && String(e[0]).slice(0, 10) === day && !seen.has(e[0] + e[2]) && seen.add(e[0] + e[2])).sort((a, b) => a[0] < b[0] ? -1 : 1);
 }
-const calSrcs = H => [H.ics, H.gcal].filter(Boolean);
+const calSrcs = H => [H.ics, H.gcal, H.gapps].filter(Boolean);
 async function hubCalRefresh(force) {
   const H = hubState(), C = S.prefs.hubCal, key = calSrcs(H).join(' ');
   if (!key || hubCalBusy || (!force && C && C.src === key && Date.now() - C.at < 3600e3)) return;
@@ -56,12 +56,17 @@ async function hubCalRefresh(force) {
   try {
     const mon = weekStart(new Date()), from = ymd(dAdd(mon, -1)), to = ymd(dAdd(mon, 15));
     let ev = [], okN = 0;
+    let cals = null;
+    if (H.gapps) {   // the whole Google account, through the user's own Apps Script (see gappsSetup)
+      const r = await Net.ics(gappsUrl(H)); const g = r && r.ok ? gappsParse(r.text, from, to) : null;
+      if (g) { okN++; cals = g.cals; ev = ev.concat(g.ev); }
+    }
     for (const [k, u] of [['p', H.ics], ['g', H.gcal]]) {
       if (!u) continue;
       const r = await Net.ics(u); const pr = r && r.ok ? icsParse(r.text) : null; if (!pr) continue;
       okN++; ev = ev.concat(pr.ev.filter(e => String(e[0]).slice(0, 10) >= from && String(e[0]).slice(0, 10) <= to).map(e => e.slice(0, 5).concat(k)));
     }
-    if (okN) { S.prefs.hubCal = { src: key, at: Date.now(), ev }; save(); if (R.name === 'hub') renderHubMods(); }
+    if (okN) { S.prefs.hubCal = { src: key, at: Date.now(), ev, cals }; save(); if (R.name === 'hub') renderHubMods(); }
     else if (force) toast(DESKTOP ? 'Ce lien ne donne pas de calendrier.' : 'Ce lien ne se lit que dans l’app Windows ou iPad.');
   } finally { hubCalBusy = false; }
 }
@@ -71,20 +76,83 @@ function weekEvents() {
   const C = S.prefs.hubCal; let ev = C && C.ev ? C.ev : [];
   if (!ev.length) for (const d of liveDocs()) for (const it of d.items || []) if (it.k === 'plan' && it.ev) ev = ev.concat(it.ev);
   const seen = new Set();
-  return ev.filter(e => !(e[4] & 1) && !seen.has(e[0] + e[2]) && seen.add(e[0] + e[2])).sort((a, b) => a[0] < b[0] ? -1 : 1);
+  const off = hubState().gcalOff || [];
+  return ev.filter(e => !(e[4] & 1) && !(e[6] && off.includes(e[6])) && !seen.has(e[0] + e[2] + (e[6] || '')) && seen.add(e[0] + e[2] + (e[6] || ''))).sort((a, b) => a[0] < b[0] ? -1 : 1);
+}
+const gcalColor = id => { const C = S.prefs.hubCal, c = C && C.cals && C.cals.find(x => x.id === id); return c && c.c || '#4285F4'; };
+/* ---------- the whole Google Agenda (0.2.58): every calendar of the account through a small Apps Script the user
+   deploys once from their own Google account (no Google Cloud project, works on PC and iPad). It answers a text
+   that starts like a calendar (so the app's calendar fetch accepts it) with one JSON line per calendar and event. ---------- */
+function gappsKey(H) { if (!H.gkey) { H.gkey = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join(''); save(); } return H.gkey; }
+const gappsUrl = H => H.gapps + (H.gapps.includes('?') ? '&' : '?') + 'k=' + gappsKey(H);
+const gappsScript = key => `// PLUM · tout Google Agenda dans le HUB
+// Colle ce code dans script.google.com, puis Déployer > Nouveau déploiement > Application Web
+// (Exécuter en tant que : moi · Accès : tout le monde). Copie l'URL /exec dans PLUM.
+var KEY = '${key}';
+function doGet(e) {
+  if (!e || !e.parameter || e.parameter.k !== KEY) return ContentService.createTextOutput('BEGIN:VCALENDAR\\nEND:VCALENDAR');
+  var now = new Date(), from = new Date(now.getTime() - 10 * 864e5), to = new Date(now.getTime() + 30 * 864e5);
+  var out = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PLUM//Google Agenda//FR'];
+  CalendarApp.getAllCalendars().forEach(function (c) {
+    out.push('X-PLUM-CAL:' + JSON.stringify({ id: c.getId(), n: c.getName(), c: c.getColor(), h: c.isHidden() }));
+    c.getEvents(from, to).forEach(function (ev) {
+      out.push('X-PLUM-EV:' + JSON.stringify({ c: c.getId(), s: ev.getStartTime().getTime(), e: ev.getEndTime().getTime(), t: ev.getTitle(), a: ev.isAllDayEvent() ? 1 : 0, l: ev.getLocation() || '' }));
+    });
+  });
+  out.push('END:VCALENDAR');
+  return ContentService.createTextOutput(out.join('\\n')).setMimeType(ContentService.MimeType.TEXT);
+}`;
+function gappsParse(text, from, to) {
+  if (!/X-PLUM-/.test(text)) return null;
+  const cals = [], ev = [], loc = ms => ymdhm(new Date(ms));
+  for (const ln of text.split(/\r?\n/)) {
+    try {
+      if (ln.startsWith('X-PLUM-CAL:')) { const c = JSON.parse(ln.slice(11)); cals.push({ id: c.id, n: c.n, c: c.c, h: !!c.h }); }
+      else if (ln.startsWith('X-PLUM-EV:')) { const x = JSON.parse(ln.slice(10)), s0 = loc(x.s); if (s0.slice(0, 10) < from || s0.slice(0, 10) > to) continue; ev.push([x.a ? s0.slice(0, 10) + 'T00:00' : s0, x.a ? s0.slice(0, 10) + 'T23:59' : loc(x.e), x.t || '(sans titre)', x.l || '', x.a ? 2 : 0, 'g', x.c]); }
+    } catch (e) {}
+  }
+  return { cals, ev };
+}
+function gappsSetup() {
+  const H = hubState(), code = gappsScript(gappsKey(H));
+  openModal(`<div class="mhd"><h2>Tout Google Agenda dans le HUB</h2><button class="tb" data-close aria-label="Fermer">${icon('x')}</button></div>
+    <ol class="ga-steps"><li>Ouvre <b>script.google.com</b> avec ton compte Google, puis <b>Nouveau projet</b>.</li>
+      <li>Remplace tout le code par celui-ci : <button class="btn sm" id="gaCopy">${icon('dup', 'sm')}Copier le code</button></li>
+      <li><b>Déployer › Nouveau déploiement › Application Web</b>. Exécuter en tant que : <b>moi</b>. Accès : <b>tout le monde</b>. Accepte l’autorisation Agenda.</li>
+      <li>Colle ici l’URL qui finit par <b>/exec</b> :</li></ol>
+    <input id="gaUrl" class="mw-name" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(H.gapps || '')}" autocomplete="off" spellcheck="false">
+    <p class="ga-note">Tous tes agendas arrivent d’un coup ; tu choisis ensuite ceux à afficher dans le réglage de la semaine. Le code contient une clé à toi : sans elle, le lien ne renvoie rien.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">${H.gapps ? '<button class="btn ghost danger" id="gaOff">Déconnecter</button><span style="flex:1"></span>' : ''}<button class="btn ghost" data-close>Annuler</button><button class="btn pri" id="gaOk">Connecter</button></div>`,
+    m => {
+      $('#gaCopy', m).onclick = () => { try { navigator.clipboard.writeText(code).then(() => toast('Code copié'), () => toast('Copie impossible')); } catch (e) { toast('Copie impossible'); } };
+      const off = $('#gaOff', m); if (off) off.onclick = () => { delete H.gapps; delete S.prefs.hubCal; save(); closeModal(); hubCalRefresh(true); renderHubMods(); };
+      $('#gaOk', m).onclick = () => { const u = $('#gaUrl', m).value.trim(); if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(u)) { toast('Colle l’URL /exec de ton script'); return; } H.gapps = u.replace(/\?.*$/, ''); delete S.prefs.hubCal; save(); closeModal(); toast('Google Agenda connecté, chargement…'); hubCalRefresh(true); };
+    });
+}
+function weekSettings(anchor) {
+  const H = hubState(), cals = (S.prefs.hubCal && S.prefs.hubCal.cals) || [], off = H.gcalOff || [];
+  const p = openPop(anchor, `<div class="wks"><div class="mh">Affichage</div>
+    <div class="wks-seg"><button data-wkm="0" aria-pressed="${!H.wkBox}">${icon('list', 'sm')}Lignes</button><button data-wkm="1" aria-pressed="${!!H.wkBox}">${icon('rect', 'sm')}Blocs</button></div>
+    ${cals.length ? `<div class="mh">Agendas Google</div><div class="wks-cals">${cals.map(c => `<label class="wks-cal"><input type="checkbox" data-gcal="${esc(c.id)}"${off.includes(c.id) ? '' : ' checked'}><i style="background:${esc(c.c || '#4285F4')}"></i><span>${esc(c.n)}</span></label>`).join('')}</div>` : ''}
+    <div class="msep"></div><button class="mi" data-gapps>${icon('cal')}<span>${H.gapps ? 'Compte Google Agenda…' : 'Connecter tout Google Agenda…'}</span></button></div>`, { align: 'right', cls: 'wksw' });
+  p.addEventListener('click', e => {
+    const m = e.target.closest('[data-wkm]'); if (m) { H.wkBox = m.dataset.wkm === '1'; save(); $$('[data-wkm]', p).forEach(b => b.setAttribute('aria-pressed', b === m)); renderHubMods(); return; }
+    if (e.target.closest('[data-gapps]')) { closePop(); gappsSetup(); }
+  });
+  p.addEventListener('change', e => { const c = e.target.closest('[data-gcal]'); if (!c) return; const id = c.dataset.gcal; H.gcalOff = (H.gcalOff || []).filter(x => x !== id); if (!c.checked) H.gcalOff.push(id); save(); renderHubMods(); });
 }
 const WK_MAX = DESKTOP ? 5 : 3;
 function weekMod() {
   const H = hubState(), mon = weekStart(new Date()), today = ymd(new Date()), now = ymdhm(new Date()), ev = weekEvents();
   const lab = e => (e[2] || '').split(/\s+[-–]\s+/)[0];
-  const col = e => e[5] === 'g' ? '#4285F4' : PLAN_COLORS[Math.floor(hashStr(lab(e).toUpperCase()) * PLAN_COLORS.length)];
+  const col = e => e[6] ? gcalColor(e[6]) : e[5] === 'g' ? '#4285F4' : PLAN_COLORS[Math.floor(hashStr(lab(e).toUpperCase()) * PLAN_COLORS.length)];
   const days = Array.from({ length: 7 }, (_, i) => dAdd(mon, i)).map(d => {
     const k = ymd(d), list = ev.filter(e => String(e[0]).slice(0, 10) === k), past = k < today;
     return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b>${list.length > WK_MAX ? `<small class="wk-more">+${list.length - WK_MAX}</small>` : ''}</div>
       <div class="wk-l">${list.slice(0, WK_MAX).map(e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i><span>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}</em>`}${esc(lab(e))}</span></div>`).join('')}</div></div>`;
   }).join('');
   const mon2 = mon.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-  return `<div class="wk-top"><span class="lab">Semaine du ${mon2}</span>${calSrcs(H).length ? '' : `<button class="wk-link" data-hopts>${icon('cal', 'sm')}Connecter Google Agenda</button>`}<button class="wk-set" data-wkset title="Affichage de la semaine" aria-label="Affichage de la semaine">${icon('sliders', 'sm')}</button></div><div class="wk-g${H.wkBox ? ' box' : ''}">${days}</div>`;
+  return `<div class="wk-top"><span class="lab">Semaine du ${mon2}</span>${calSrcs(H).length ? '' : `<button class="wk-link" data-gapps>${icon('cal', 'sm')}Connecter Google Agenda</button>`}<button class="wk-set" data-wkset title="Affichage de la semaine" aria-label="Affichage de la semaine">${icon('sliders', 'sm')}</button></div><div class="wk-g${H.wkBox ? ' box' : ''}">${days}</div>`;
 }
 function calMod(m) {
   const ev = hubEvents(), now = ymdhm(new Date()), next = ev.find(e => e[1] > now) || null;
@@ -354,15 +422,14 @@ function projMenu(anchor, sp) {
 function hubOptions(anchor) {
   const H = hubState(), hidden = userSpaces().filter(s => H.off.includes(s.id));
   const p = openPop(anchor, `<div class="hub-opts"><label><span>Ville pour la météo</span><input id="hoCity" value="${esc((H.city || {}).name || '')}" placeholder="Ta ville" autocomplete="off"></label>
-    <label><span>Google Agenda : adresse secrète au format iCal</span><input id="hoGcal" value="${esc(H.gcal || '')}" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" autocomplete="off" spellcheck="false"><small class="ho-hint">Google Agenda › Paramètres › ton agenda › Intégrer l’agenda › Adresse secrète au format iCal</small></label>
+    <div class="ho-ga"><span>Google Agenda</span><button class="btn sm" data-gapps type="button">${icon('cal', 'sm')}${H.gapps ? 'Compte connecté · gérer' : 'Connecter tout le compte'}</button></div>
     <label><span>Lien iCal du planning (PRONOTE…)</span><input id="hoIcs" value="${esc(H.ics || '')}" placeholder="https://… .ics" autocomplete="off" spellcheck="false"></label>
     ${hidden.length ? `<div class="ho-hid"><span>Projets masqués</span>${hidden.map(s => `<button class="btn sm" data-show="${s.id}"><i class="sdot" style="background:${s.color}"></i>${esc(s.name)}</button>`).join('')}</div>` : ''}
     <div style="display:flex;justify-content:flex-end"><button class="btn sm pri" id="hoOk">Enregistrer</button></div></div>`, { align: 'right' });
-  p.addEventListener('click', e => { const b = e.target.closest('[data-show]'); if (b) { H.off = H.off.filter(x => x !== b.dataset.show); save(); b.remove(); renderHubMods(); } });
+  p.addEventListener('click', e => { if (e.target.closest('[data-gapps]')) { closePop(); gappsSetup(); return; } const b = e.target.closest('[data-show]'); if (b) { H.off = H.off.filter(x => x !== b.dataset.show); save(); b.remove(); renderHubMods(); } });
   $('#hoOk', p).onclick = () => {
-    const c = $('#hoCity', p).value.trim(), i = $('#hoIcs', p).value.trim(), gc0 = $('#hoGcal', p).value.trim(); closePop();
-    const gc = gc0;
-    if (i !== (H.ics || '') || gc !== (H.gcal || '')) { H.ics = i; H.gcal = gc; delete S.prefs.hubCal; save(); hubCalRefresh(true); }
+    const c = $('#hoCity', p).value.trim(), i = $('#hoIcs', p).value.trim(); closePop();
+    if (i !== (H.ics || '')) { H.ics = i; delete S.prefs.hubCal; save(); hubCalRefresh(true); }
     if (c && c !== (H.city || {}).name) hubSetCity(c); else if (!c && H.city) { delete H.city; save(); }
     go('hub', { keepFocus: true });
   };
@@ -383,7 +450,8 @@ function bindHub(v) {
     const mi = e.target.closest('[data-hmi]'); if (mi) { const it = moodList().find(x => x.id === mi.dataset.hmi); if (it) Mood.view(it); return; }
     const mn = e.target.closest('[data-hmenu]'); if (mn) { projMenu(mn, spaceById(mn.dataset.hmenu)); return; }
     const dn = e.target.closest('[data-hdone]'); if (dn) { const tk = taskById(dn.dataset.hdone); if (!tk) return; dn.classList.add('ticked'); setTimeout(() => { setTaskDone(tk, true); renderHubMods(); renderSide(); toast('Tâche terminée', { label: 'Annuler', run: () => { setTaskDone(tk, false); renderHubMods(); renderSide(); } }); }, 280); return; }
-    const ws = e.target.closest('[data-wkset]'); if (ws) { const H = hubState(); openPop(ws, [{ head: 'Affichage des rendez-vous' }, { label: 'Lignes', icon: 'list', small: H.wkBox ? '' : 'actuel', run: () => { H.wkBox = false; save(); renderHubMods(); } }, { label: 'Blocs de couleur', icon: 'rect', small: H.wkBox ? 'actuel' : '', run: () => { H.wkBox = true; save(); renderHubMods(); } }], { align: 'right' }); return; }
+    const ws = e.target.closest('[data-wkset]'); if (ws) { weekSettings(ws); return; }
+    if (e.target.closest('[data-gapps]')) { gappsSetup(); return; }
     if (e.target.closest('[data-hdest]')) { destMenu(e.target.closest('[data-hdest]')); return; }
     if (e.target.closest('[data-qmore]')) { const b = e.target.closest('[data-qmore]'); openPop(b, QS_MORE.map(([k, ic, l]) => ({ label: l, icon: ic, run: () => quickStart(k, b) })), { align: 'right' }); return; }
     if (e.target.closest('.pc2-add')) return;
