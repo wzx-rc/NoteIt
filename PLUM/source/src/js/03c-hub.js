@@ -123,6 +123,7 @@ function gappsWhy(r) {
   if (!r) return 'Google Agenda : pas de réponse.';
   if (r.ok) return 'Google Agenda : le script répond, mais pas avec le code PLUM. Recopie le code puis fais une nouvelle version du déploiement.';
   if (/abort/i.test(r.error || '')) return 'Google Agenda : le script a mis plus d’une minute à répondre. Réessaie dans un instant.';
+  if (r.status === 401 || r.status === 403) return 'Google Agenda : le script refuse l’accès (erreur ' + r.status + '). Dans Apps Script : Déployer › Gérer les déploiements › crayon › « Accès » = Tout le monde (pas « Tout utilisateur avec un compte Google »), Version = Nouvelle version, puis Déployer.';
   if (r.status) return `Google Agenda : le script répond « erreur ${r.status} ». Vérifie que l’URL finit bien par /exec.`;
   if (/accounts\.google/.test(host) || /connexion|sign in|se connecter|login/i.test(h)) return 'Google Agenda : Google demande une connexion. Dans Déployer › Gérer les déploiements, mets « Accès : Tout le monde » (pas « tout utilisateur disposant d’un compte Google »), puis Déployer.';
   if (/autoris|authoriz/i.test(h)) return 'Google Agenda : le script n’a pas encore l’autorisation Agenda. Dans Apps Script, clique Exécuter une fois et accepte, puis réessaie.';
