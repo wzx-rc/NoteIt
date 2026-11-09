@@ -7,6 +7,8 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const icon = (n, c = '') => `<svg class="i ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const DESKTOP = !!(window.notely && window.notely.platform === 'desktop');
+/* 0.2.57: the PC layout differs a little from the iPad one (HUB); CSS keys on html[data-pc] */
+if (DESKTOP) document.documentElement.dataset.pc = '1';
 const IN_VIEWER = !!window.claude;
 /* the iPad app (WKWebView shell) sets this before the page loads */
 const IPAD = !!window.__notelyIPad;

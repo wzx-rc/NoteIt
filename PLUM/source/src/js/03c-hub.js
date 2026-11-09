@@ -73,14 +73,15 @@ function weekEvents() {
   const seen = new Set();
   return ev.filter(e => !(e[4] & 1) && !seen.has(e[0] + e[2]) && seen.add(e[0] + e[2])).sort((a, b) => a[0] < b[0] ? -1 : 1);
 }
+const WK_MAX = DESKTOP ? 5 : 3;
 function weekMod() {
   const H = hubState(), mon = weekStart(new Date()), today = ymd(new Date()), now = ymdhm(new Date()), ev = weekEvents();
   const lab = e => (e[2] || '').split(/\s+[-–]\s+/)[0];
   const col = e => e[5] === 'g' ? '#4285F4' : PLAN_COLORS[Math.floor(hashStr(lab(e).toUpperCase()) * PLAN_COLORS.length)];
   const days = Array.from({ length: 7 }, (_, i) => dAdd(mon, i)).map(d => {
     const k = ymd(d), list = ev.filter(e => String(e[0]).slice(0, 10) === k), past = k < today;
-    return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b>${list.length > 3 ? `<small class="wk-more">+${list.length - 3}</small>` : ''}</div>
-      <div class="wk-l">${list.slice(0, 3).map(e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i><span>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}</em>`}${esc(lab(e))}</span></div>`).join('')}</div></div>`;
+    return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b>${list.length > WK_MAX ? `<small class="wk-more">+${list.length - WK_MAX}</small>` : ''}</div>
+      <div class="wk-l">${list.slice(0, WK_MAX).map(e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i><span>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}</em>`}${esc(lab(e))}</span></div>`).join('')}</div></div>`;
   }).join('');
   const mon2 = mon.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
   return `<div class="wk-top"><span class="lab">Semaine du ${mon2}</span>${calSrcs(H).length ? '' : `<button class="wk-link" data-hopts>${icon('cal', 'sm')}Connecter Google Agenda</button>`}<button class="wk-set" data-wkset title="Affichage de la semaine" aria-label="Affichage de la semaine">${icon('sliders', 'sm')}</button></div><div class="wk-g${H.wkBox ? ' box' : ''}">${days}</div>`;
@@ -305,7 +306,7 @@ function renderHub(v) {
   const nEv = hubEvents().length, name = (S.prefs.name || '').trim();
   ensurePages();
   v.innerHTML = `<div class="hubpage cc hub2">
-    <div class="hub2-top"><div class="hub-hello"><span>${date.charAt(0).toUpperCase() + date.slice(1)}${wxs}${nEv ? ` · ${nEv} évènement${nEv > 1 ? 's' : ''} aujourd’hui` : ''}</span><div class="hub-hi"><h1>${name ? `Bonjour ${esc(name)}` : 'Bonjour'}</h1><span id="hubWx">${hubWxIcon()}</span></div></div>
+    <div class="hub2-top"><div class="hub-hello"><span>${date.charAt(0).toUpperCase() + date.slice(1)}${wxs}${nEv ? ` · ${nEv} évènement${nEv > 1 ? 's' : ''} aujourd’hui` : ''}</span><div class="hub-hi">${DESKTOP ? `<span id="hubWx">${hubWxIcon()}</span>` : ''}<h1>${name ? `Bonjour ${esc(name)}` : 'Bonjour'}</h1>${DESKTOP ? '' : `<span id="hubWx">${hubWxIcon()}</span>`}</div></div>
       <div class="hub2-create" id="hubCreate" role="toolbar" aria-label="Créer">${createHTML()}</div></div>
     <div class="hub-main${H.sideFold ? ' side-off' : ''}">
       <div class="hub-col">
