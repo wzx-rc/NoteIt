@@ -154,6 +154,8 @@ function go(route, opts = {}) {
   if (R.name === 'doc') { const d = docById(R.id); if (!d) R = { name: 'space' }; else if (d.trash) R = { name: 'trash' }; else setCurSpace(d.sp); }
   if (R.name === 'home') R = { name: 'hub' };
   if (R.name === 'space') { if (spaceById(R.id)) setCurSpace(R.id); R = { name: 'space', id: curSpace().id }; }
+  /* 0.2.70: a project has one page, its PAGE (Non classées keeps the space home) */
+  if (R.name === 'space' && R.id !== DEF_SPACE) { const pg = ensurePage(spaceById(R.id)); if (pg) R = { name: 'doc', id: pg.id }; }
   if (!S.prefs.welcomed) R = { name: 'welcome' };
   else if (R.name === 'welcome') R = { name: 'all' };
   S.prefs.last = routeStr(R); save();

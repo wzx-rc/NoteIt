@@ -318,7 +318,7 @@ function projCard(sp, o = {}) {
   const when = Math.max(projRecent(sp), pg ? pg.updated || 0 : 0);
   const meta = [plural(st.nN, 'note'), plural(st.nB, 'board'), plural(st.nT, 'tâche')].join(' · ');
   const ini = esc(((sp.name || '?').trim()[0] || '?').toUpperCase());
-  const syn = (pg && pg.synth || '').trim();
+  const syn = pg ? pageText(pg) : '', synRO = pg && !pagePlain(pg);
   const tks = mainTasks(sp, PC_ROWS - 1);
   const row = t => `<button class="pc2-tk${t.done ? ' done' : ''}" data-htk="${t.id}" role="checkbox" aria-checked="${t.done}"><i class="pc2-bx">${icon('check', 'sm')}</i><span>${esc(t.t)}</span></button>`;
   const btn = (k, ic, l) => `<button class="pc2-b" data-hnew="${k}" data-sp="${sp.id}" title="${l}" aria-label="${l}">${icon(ic)}<i>+</i></button>`;
@@ -327,7 +327,7 @@ function projCard(sp, o = {}) {
       <button class="pc2-menu" data-hmenu="${sp.id}" aria-label="Options de ${esc(sp.name)}">${icon('dots', 'sm')}</button>
       <div class="pc2-id"><span class="pc2-tile">${ini}</span><div><b>${esc(sp.name)}</b><small>${meta} · ${ago(when)}</small></div></div></div>
     <div class="pc2-body">
-      <textarea class="pc2-syn" data-hsynin="${sp.id}" placeholder="Écrire la synthèse du projet…" aria-label="Synthèse de ${esc(sp.name)}" spellcheck="false">${esc(syn)}</textarea>
+      <textarea class="pc2-syn" data-hsynin="${sp.id}"${synRO ? ' readonly title="La Quick Note contient de la mise en forme : modifie-la sur la page du projet"' : ''} placeholder="Écrire la synthèse du projet…" aria-label="Synthèse de ${esc(sp.name)}" spellcheck="false">${esc(syn)}</textarea>
       <div class="pc2-tks">${tks.map(row).join('')}${o.adding ? taskAddHTML({ cls: 'pc2-add', ph: 'Nouvelle tâche' }) : `<button class="pc2-tkplus" data-hnew="task" data-sp="${sp.id}" title="Ajouter une tâche principale" aria-label="Ajouter une tâche principale">${icon('plus', 'sm')}${tks.length ? '' : '<span>Ajouter une tâche principale</span>'}</button>`}</div>
     </div>
     <div class="pc2-foot">${btn('note', 'note', 'Nouvelle note dans ce projet')}${btn('board', 'board', 'Nouveau board dans ce projet')}${btn('task', 'tasks', 'Nouvelle tâche dans ce projet')}
@@ -515,7 +515,7 @@ function bindHub(v) {
   });
   /* the card's synthesis is typed in place: it is the PAGE's synthesis (saved as you type) */
   let synT = 0;
-  root.addEventListener('input', e => { const ta = e.target.closest && e.target.closest('[data-hsynin]'); if (!ta) return; const sp = spaceById(ta.dataset.hsynin); const pg = sp && ensurePage(sp); if (!pg) return; pg.synth = ta.value; clearTimeout(synT); synT = setTimeout(() => touch(pg), 300); });
+  root.addEventListener('input', e => { const ta = e.target.closest && e.target.closest('[data-hsynin]'); if (!ta) return; const sp = spaceById(ta.dataset.hsynin); const pg = sp && ensurePage(sp); if (!pg) return; if (!pagePlain(pg)) return; pg.html = ta.value.trim() ? textHtml(ta.value) : ''; clearTimeout(synT); synT = setTimeout(() => touch(pg), 300); });
   root.addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.matches && e.target.matches('[data-hsynin]')) e.target.blur(); });
   root.addEventListener('scroll', e => { if (e.target.classList && e.target.classList.contains('hub-row')) { hubRowEdges(e.target); if (e.target.closest('#hubProj')) hubScroll = e.target.scrollLeft; } }, true);
   root.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('.hub-row') && !e.target.closest('[data-hmi]')) e.preventDefault(); });

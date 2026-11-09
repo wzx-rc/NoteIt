@@ -3113,3 +3113,48 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 .tkadd-o { border-width: 1.3px; border-color: var(--ink-3); }
 .tkadd-st { color: var(--ink-3); }
 .tkadd-st[aria-pressed="true"] { background: none; color: var(--pc1, var(--accent)); }
+/* ================= 0.2.70: the project page = PAGE + space home in one (user mockup) ================= */
+.nwrap.ispage { padding: 0 28px 120px; }
+.nwrap.ispage .ppage { width: min(1440px, 100%); margin-top: 18px; gap: 0; }
+.pp2-hero { height: 222px; border-radius: 20px; background: none; }
+.pp2-hero::after { display: none; }
+.pp2-hero.img img { position: absolute; right: 0; top: 0; width: 60%; height: 100%; object-fit: cover; -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); mask-image: linear-gradient(90deg, transparent, #000 45%); border-radius: 0 20px 20px 0; }
+.pp2-id { position: absolute; z-index: 1; left: 0; right: 0; bottom: 22px; padding: 0 2px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.pp2-id > * { pointer-events: auto; }
+.pp2-id .sp-title { max-width: min(720px, 60%); }
+.pp2-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; font-size: 13.5px; color: var(--ink-3); }
+.pp2-sub .pp-acts { position: static; display: inline-flex; gap: 4px; }
+.pp2-sub .pp-acts button { height: 26px; padding: 0 9px; gap: 5px; border-radius: 7px; font-size: 11.5px !important; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.pp2-sub .pp-acts button.pri { background: var(--pc1); box-shadow: none; }
+.pp2-sub .pp-acts .i { width: 13px; height: 13px; }
+/* when a theme paints a landscape behind the head (no cover), the text sits on its calm left side with some room */
+.pp-hero.pp2-hero:not(.img) .pp2-id { left: 26px; }
+.pp2-grid { width: min(1440px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 30%); grid-template-areas: "qn mood" "tk mood"; gap: 18px 22px; align-items: start; margin-top: 22px; }
+.pp2-mod { min-width: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); padding: 14px 18px 18px; box-sizing: border-box; }
+.pp2-qn { grid-area: qn; display: flex; flex-direction: column; align-items: stretch; }
+.pp2-tk { grid-area: tk; }
+.pp2-mood { grid-area: mood; position: sticky; top: 12px; min-height: 360px; }
+/* one header for the three modules, set like the Moodboard title */
+.pp2-h { display: flex; align-items: center; gap: 8px; height: 26px; margin-bottom: 10px; font: 600 12.5px/1 var(--font-ui, inherit); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+.pp2-h .ct { letter-spacing: 0; color: var(--ink-3); font-weight: 500; }
+.pp2-h .more { margin-left: auto; border: 0; background: none; color: var(--ink-2); font: 500 12.5px var(--font-ui, inherit); letter-spacing: 0; text-transform: none; cursor: pointer; }
+.pp2-h .more:hover { color: var(--ink); }
+/* the Quick Note: the note editor inside the module */
+.pp2-qn .ntool { position: relative; top: auto; margin: 0 0 4px; width: 100%; justify-content: flex-start; }
+.pp2-qn .sheet { width: 100% !important; min-height: 240px !important; height: auto !important; padding: 14px 6px 28px !important; margin: 0; background: none !important; box-shadow: none !important; border-radius: 0; }
+.nwrap.ispage .pp2-qn .sheet[data-pg="0"] { padding-top: 14px !important; }
+.pp2-qn .naddpg, .pp2-qn .npager { display: none !important; }
+/* the Tâches module, same box */
+.pp2-tk .qadd { margin-bottom: 8px; }
+.pp2-tk .donegrp { margin-top: 8px; }
+.pp2-docs { width: min(1440px, 100%); margin-top: 34px; }
+@media (max-width: 900px) {
+  .nwrap.ispage { padding: 0 14px 100px; }
+  .pp2-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "qn" "tk" "mood"; }
+  .pp2-mood { position: static; min-height: 0; }
+  .pp2-hero.img img { width: 100%; opacity: .45; }
+  .pp2-id .sp-title { max-width: 100%; }
+}
+.pp2-qn .nsub { display: none !important; }
+.pp2-qn .ntool { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.pp2-qn .nbody { min-height: 220px !important; }
