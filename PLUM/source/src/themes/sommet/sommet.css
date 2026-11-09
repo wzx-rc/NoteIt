@@ -1,0 +1,114 @@
+/* ================= Sommet layer (0.2.59) =================
+   On top of Minimal's rules (theme.css). The look: everything set in Geist Mono, white pages on a pale grey, hairlines
+   (#ECECEE), black pills for the open page and the main buttons, one sky blue for progress (striped bars), and painted
+   mountain landscapes as the only picture (HUB head, project PAGE). Light is the reference; dark keeps the same rules. */
+:root[data-skin="sommet"] { --r-sm: 6px; --r-md: 8px; --r-lg: 10px; --r-xl: 14px; --i-dk: 0; }
+:root[data-skin="sommet"][data-resolved="light"] {
+  --side: #FFFFFF; --side-2: oklch(.968 var(--mn) var(--th-h)); --side-3: oklch(.945 var(--mn) var(--th-h)); --side-line: oklch(.925 var(--mn) var(--th-h));
+  --side-text: oklch(.24 var(--mn) var(--th-h)); --side-mute: oklch(.56 var(--mn) var(--th-h));
+  --paper: #FFFFFF; --card: #FFFFFF; --raise: oklch(.982 var(--mn) var(--th-h)); --sunk: oklch(.962 var(--mn) var(--th-h));
+  --canvas: oklch(.975 var(--mn) var(--th-h)); --line: oklch(.93 var(--mn) var(--th-h)); --line-2: oklch(.88 var(--mn) var(--th-h));
+  --ink: oklch(.21 var(--mn) var(--th-h)); --ink-2: oklch(.45 var(--mn) var(--th-h)); --ink-3: oklch(.62 var(--mn) var(--th-h)); --strong: #111113;
+  --accent: #3B6CF6; --accent-2: #2C59DA; --on-accent: #FFFFFF;
+  --som-pill: #111113; --som-on-pill: #FFFFFF;
+  --shadow-2: 0 12px 32px rgb(17 17 19 / .10), 0 0 0 1px rgb(17 17 19 / .06);
+  --tb-l: #FFFFFF;
+}
+:root[data-skin="sommet"][data-resolved="dark"] { --accent: #6C91FF; --accent-2: #8AA8FF; --on-accent: #0D1020; --som-pill: #F2F2F3; --som-on-pill: #111113; }
+:root[data-skin="sommet"][data-accent="custom"] { --accent: var(--accent-c); --on-accent: var(--on-accent-c); }
+
+[data-skin="sommet"] body { font-size: 12.5px; letter-spacing: -.01em; font-feature-settings: normal; }
+[data-skin="sommet"] .i { stroke-width: 1.45; }
+[data-skin="sommet"] h1, [data-skin="sommet"] h2, [data-skin="sommet"] h3 { letter-spacing: -.03em; }
+
+/* ---------- sidebar: white, hairline on the right, the open page is a black pill ---------- */
+[data-skin="sommet"] .sbox { height: 34px; border-radius: 8px; background: var(--raise); box-shadow: inset 0 0 0 1px var(--side-line); font-size: 12px; }
+[data-skin="sommet"] .sbox kbd { font: 500 10px var(--font-ui); padding: 2px 5px; border-radius: 5px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--side-line); opacity: 1; }
+[data-skin="sommet"] .nv { height: 32px; border-radius: 8px; font-size: 12.5px; font-weight: 400; }
+[data-skin="sommet"] .nv[aria-current="page"] { background: var(--som-pill); color: var(--som-on-pill); font-weight: 500; box-shadow: 0 2px 6px rgb(17 17 19 / .18); }
+[data-skin="sommet"] .nv[aria-current="page"] .i, [data-skin="sommet"] .nv[aria-current="page"] .ct { color: var(--som-on-pill); }
+[data-skin="sommet"] .nv .ct { font: 500 10px var(--font-ui); min-width: 18px; height: 18px; display: inline-grid; place-items: center; padding: 0 4px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--side-line); }
+[data-skin="sommet"] .nv[aria-current="page"] .ct { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .28); }
+[data-skin="sommet"] .sec { font-size: 11px; font-weight: 500; color: var(--side-mute); }
+[data-skin="sommet"] .spsw { border-radius: 9px; box-shadow: inset 0 0 0 1px var(--side-line); }
+[data-skin="sommet"] .spadd { border-radius: 9px; box-shadow: inset 0 0 0 1px var(--side-line); }
+[data-skin="sommet"] .av { background: var(--som-pill); color: var(--som-on-pill); border-radius: 7px; }
+
+/* ---------- top bar and buttons: the main action is black ---------- */
+[data-skin="sommet"] #top { border-bottom-color: transparent; }
+[data-skin="sommet"] #top .crumbs { font-size: 12px; }
+[data-skin="sommet"] .tb { border-radius: 8px; }
+[data-skin="sommet"] .tb.pri, [data-skin="sommet"] .btn.pri, [data-skin="sommet"] .fab { background: var(--som-pill); border-color: var(--som-pill); color: var(--som-on-pill); box-shadow: 0 2px 6px rgb(17 17 19 / .16); }
+[data-skin="sommet"] .tb.pri:hover, [data-skin="sommet"] .btn.pri:hover { background: color-mix(in oklab, var(--som-pill) 84%, var(--paper)); color: var(--som-on-pill); border-color: transparent; }
+[data-skin="sommet"] .btn { height: 34px; border-radius: 8px; font-weight: 450; font-size: 12px; border-color: var(--line); box-shadow: 0 1px 2px rgb(17 17 19 / .04); }
+[data-skin="sommet"] .btn.sm { height: 28px; font-size: 11.5px; border-radius: 7px; }
+[data-skin="sommet"] .seg, [data-skin="sommet"] .stabs { border-radius: 9px; padding: 3px; background: var(--sunk); box-shadow: inset 0 0 0 1px var(--line); }
+[data-skin="sommet"] .seg button, [data-skin="sommet"] .stabs button { border-radius: 7px; font-weight: 450; }
+[data-skin="sommet"] .chip { border-radius: 6px; font: 500 10.5px var(--font-ui); }
+[data-skin="sommet"] .pop, [data-skin="sommet"] .qbar, [data-skin="sommet"] .sheet-m { border-radius: 12px; }
+[data-skin="sommet"] .cb { border-radius: 6px; }
+[data-skin="sommet"] .tg input:checked + span { background: var(--accent); }
+
+/* ---------- page heads and cards ---------- */
+[data-skin="sommet"] .ph h1, [data-skin="sommet"] .sp-title { font: 500 30px/1.15 var(--font-head); letter-spacing: -.045em; }
+[data-skin="sommet"] .ph .sub { font-size: 12px; line-height: 1.6; }
+[data-skin="sommet"] .card, [data-skin="sommet"] .tlist, [data-skin="sommet"][data-resolved="light"] .card, [data-skin="sommet"][data-resolved="light"] .tlist { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 2px rgb(17 17 19 / .03); }
+[data-skin="sommet"] .card > h2 { font-size: 13.5px; font-weight: 500; letter-spacing: -.02em; }
+[data-skin="sommet"] .wl-h { font: 500 40px/1.05 var(--font-head); letter-spacing: -.05em; }
+[data-skin="sommet"] .wl-txt > b { font: 500 20px/1.15 var(--font-title); }
+[data-skin="sommet"] .mw-text p { font: 400 15px/1.45 var(--font-title); }
+
+/* ---------- progress: sky blue in thin vertical stripes, like a gauge ---------- */
+[data-skin="sommet"] .sprow .bar, [data-skin="sommet"] .pc2-prog span { height: 8px; border-radius: 2px; background: repeating-linear-gradient(90deg, var(--line-2) 0 2px, transparent 2px 4px); }
+[data-skin="sommet"] .sprow .bar i, [data-skin="sommet"] .pc2-prog span i { border-radius: 0; background: repeating-linear-gradient(90deg, var(--accent) 0 2px, transparent 2px 4px); }
+
+/* ---------- board: pale canvas, white islands with hairlines, the chosen tool is a black tile ---------- */
+[data-skin="sommet"] .isl { border-radius: 12px; background: var(--menu); }
+[data-skin="sommet"] .tl { border-radius: 8px; }
+[data-skin="sommet"] .tl[aria-pressed="true"] { background: var(--som-pill); color: var(--som-on-pill); }
+[data-skin="sommet"] .props { border-radius: 14px; }
+[data-skin="sommet"] .ptab[aria-pressed="true"] { color: var(--strong); box-shadow: inset 0 -2px var(--strong); }
+
+/* preview card in Réglages > UI: white rail with a black pill, a mono title, and a painted strip */
+.sk-sommet .skin-pv { background: #FFFFFF; }
+.sk-sommet .skin-pv::before { content: ""; position: absolute; inset: 0; background: linear-gradient(#ECECEE 0 0) 26% 0 / 1px 100% no-repeat; }
+.sk-sommet .skin-pv i:nth-child(1) { left: 4%; top: 20%; width: 18%; height: 10%; background: #111113; border-radius: 3px; }
+.sk-sommet .skin-pv i:nth-child(2) { left: 4%; top: 38%; width: 14%; height: 5%; background: #E4E4E7; border-radius: 2px; box-shadow: 0 9px 0 #E4E4E7; }
+.sk-sommet .skin-pv i:nth-child(3) { left: 32%; top: 16%; width: 62%; height: 36%; border-radius: 4px; background: linear-gradient(90deg, #FFFFFF 10%, #BFD8F5 45%, #7FA96B 100%); }
+.sk-sommet .skin-pv i:nth-child(4) { left: 32%; top: 62%; width: 40%; height: 6%; background: none; font: 500 11px/1 "Geist Mono", monospace; color: #111113; }
+.sk-sommet .skin-pv i:nth-child(4)::before { content: "Sommet"; }
+
+/* the base sheet hard-codes Figtree on many HUB and card labels: in Sommet every piece of interface text is mono
+   (the writing inside notes and on boards keeps its own fonts) */
+[data-skin="sommet"] :is(#side, #top, .hub-main, .hub2-top, .ppage, .ph, .props, .qbar, .pop, .sheet-m, .modal, .wl) :not(svg, svg *, .nbody, .nbody *, .kbd-font) { font-family: var(--font-ui); }
+[data-skin="sommet"] .nv .ct:empty { display: none; }
+[data-skin="sommet"] .hub-hello h1, :root[data-skin="sommet"][data-pc] .hub-hi h1 { font-weight: 500; letter-spacing: -.05em; }
+[data-skin="sommet"] .nv[aria-current="page"] :is(.pt, span, small, b) { color: var(--som-on-pill); }
+
+/* ---------- the painted landscapes (Recraft): the one place with colour ---------- */
+/* HUB head: a wide band with the mountains on the right, the greeting and the Créer bar on the left */
+[data-skin="sommet"] .hub2 .hub2-top { position: relative; isolation: isolate; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 14px; min-height: 168px; padding: 22px 26px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--paper); }
+[data-skin="sommet"] .hub2 .hub2-top::before { content: ""; position: absolute; inset: 0; z-index: -1; background: url("asset:banner-wide.webp") right 38% / auto 135% no-repeat; -webkit-mask-image: linear-gradient(90deg, transparent 22%, #000 58%); mask-image: linear-gradient(90deg, transparent 22%, #000 58%); pointer-events: none; }
+[data-skin="sommet"] .hub2 .hub2-top .hub-hello { position: relative; }
+[data-skin="sommet"] .hub2 .hub2-top .hub-hello h1, :root[data-skin="sommet"][data-pc] .hub2 .hub-hello h1 { font: 500 30px/1.1 var(--font-head); letter-spacing: -.05em; }
+[data-skin="sommet"] .hub2 .hub2-create { background: color-mix(in oklab, var(--paper) 88%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); border-radius: 10px; }
+/* dark: the picture's left side is a white mist, so only its painted right part shows, faded into the dark page */
+[data-skin="sommet"][data-resolved="dark"] .hub2 .hub2-top::before { background-size: auto 280px; background-position: right 40%; -webkit-mask-image: linear-gradient(270deg, #000 180px, transparent 330px); mask-image: linear-gradient(270deg, #000 180px, transparent 330px); }
+[data-skin="sommet"][data-resolved="dark"] .pp-hero:not(.img) { background-size: auto 300px; background-position: right 30%; }
+[data-skin="sommet"][data-resolved="dark"] .pp-hero:not(.img)::after { background: linear-gradient(270deg, transparent 230px, var(--paper) 330px); }
+@media (max-width: 700px) { [data-skin="sommet"] .hub2 .hub2-top::before { background-size: auto 100%; opacity: .55; } }
+/* the project PAGE without a cover image: the person on the hill, with the project's tile and name on the white side */
+[data-skin="sommet"] .pp-hero:not(.img) { background: var(--paper) url("asset:banner-sit.webp") right 30% / auto 150% no-repeat; border: 1px solid var(--line); border-radius: 16px; }
+[data-skin="sommet"] .pp-hero:not(.img)::after { background: linear-gradient(90deg, var(--paper) 18%, transparent 55%); }
+[data-skin="sommet"][data-resolved="light"] .pp-hero:not(.img) .pp-back { background: var(--som-pill); color: var(--som-on-pill); }
+[data-skin="sommet"] .pp-tile { border-radius: 12px; font-family: var(--font-head); font-weight: 500; }
+
+/* empty places get a pencil vignette */
+[data-skin="sommet"] .tempty { padding-top: 132px !important; background: url("asset:sketch-stairs.webp") center 10px / 120px no-repeat; text-align: center; }
+[data-skin="sommet"] .empty { padding-top: 150px !important; background: url("asset:sketch-book.webp") center 10px / 140px no-repeat; text-align: center; }
+[data-skin="sommet"] .mw-empty .mw-empty-i { width: 140px; height: 140px; background: url("asset:sketch-plant.webp") center / contain no-repeat; border: 0; box-shadow: none; }
+[data-skin="sommet"] .mw-empty .mw-empty-i > * { display: none; }
+[data-skin="sommet"][data-resolved="dark"] :is(.tempty, .empty) { background-image: none; padding-top: 18px !important; }
+[data-skin="sommet"][data-resolved="dark"] .mw-empty .mw-empty-i { mix-blend-mode: screen; filter: invert(1); opacity: .5; }
+/* the assistant greets with the glossy orb */
+[data-skin="sommet"] .aiempty::before { content: ""; display: block; width: 56px; height: 56px; margin: 0 auto 14px; background: url("asset:orb.webp") center / contain no-repeat; }

@@ -1,0 +1,187 @@
+/* ================= Sommet: Minimal's rules (copied from minimal/theme.css, renamed) under the Sommet layer in sommet.css ================= */
+@font-face { font-family: "Geist Mono"; font-style: normal; font-weight: 300 700; font-display: swap; src: url("asset:fonts/geist-mono.woff2") format("woff2"); }
+
+:root[data-skin="sommet"] {
+  --th-h: 80; --th-c: .003;
+  --mn: var(--th-c); --mn-lo: calc(var(--th-c) * .5); --mn-hi: calc(var(--th-c) * 1.4);
+  --font-ui: "Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-head: "Geist Mono", ui-monospace, Consolas, monospace;
+  --font-title: "Geist Mono", ui-monospace, Consolas, monospace;
+  --r-sm: 5px; --r-md: 7px; --r-lg: 10px; --r-xl: 14px;
+  --ok: #2FA96A; --warn: #E09A2E; --err: #E5564B; --info: #3E7BFA; --pink: #E5579A;
+}
+/* ---- dark: rail a touch lighter than the page, like Evernote; the note page is the page itself ---- */
+:root[data-skin="sommet"][data-resolved="dark"] {
+  --side: oklch(calc(.205 + var(--th-ld, 0)) var(--mn) var(--th-h)); --side-2: oklch(calc(.245 + var(--th-ld, 0)) var(--mn) var(--th-h)); --side-3: oklch(calc(.275 + var(--th-ld, 0)) var(--mn-hi) var(--th-h)); --side-line: oklch(calc(.24 + var(--th-ld, 0)) var(--mn) var(--th-h));
+  --side-text: oklch(.9 var(--mn-lo) var(--th-h)); --side-mute: oklch(.62 var(--mn) var(--th-h));
+  --paper: oklch(calc(.18 + var(--th-ld, 0)) var(--mn) var(--th-h)); --card: oklch(calc(.215 + var(--th-ld, 0)) var(--mn) var(--th-h)); --sunk: oklch(calc(.165 + var(--th-ld, 0)) var(--mn) var(--th-h)); --raise: oklch(calc(.245 + var(--th-ld, 0)) var(--mn) var(--th-h));
+  --menu: oklch(calc(.235 + var(--th-ld, 0)) var(--mn) var(--th-h)); --canvas: oklch(calc(.2 + var(--th-ld, 0)) var(--mn) var(--th-h));
+  --line: oklch(calc(.265 + var(--th-ld, 0)) var(--mn) var(--th-h)); --line-2: oklch(calc(.33 + var(--th-ld, 0)) var(--mn-hi) var(--th-h));
+  --ink: oklch(.93 var(--mn-lo) var(--th-h)); --ink-2: oklch(.74 var(--mn) var(--th-h)); --ink-3: oklch(.57 var(--mn-hi) var(--th-h));
+  --strong: oklch(.985 var(--mn-lo) var(--th-h));
+  --dot: oklch(1 0 0 / .07);
+  --accent: #22A55B; --accent-2: #33B86C; --on-accent: #FFFFFF;
+  --shadow-1: none;
+  --shadow-2: 0 16px 40px rgb(0 0 0 / .5), 0 0 0 1px oklch(calc(.3 + var(--th-ld, 0)) var(--mn) var(--th-h));
+  --shadow-note: 0 1px 1px rgb(0 0 0 / .3), 0 8px 16px -8px rgb(0 0 0 / .6);
+  --br-a: oklch(calc(.27 + var(--th-ld, 0)) var(--mn) var(--th-h)); --br-b: oklch(calc(.235 + var(--th-ld, 0)) var(--mn) var(--th-h)); --br-rim: rgb(255 255 255 / .06); --br-l1: #FFFFFF; --br-l2: var(--accent); --br-vein: oklch(calc(.24 + var(--th-ld, 0)) var(--mn) var(--th-h)); --br-text: var(--strong);
+  color-scheme: dark;
+}
+/* ---- light: white page, a pale rail, ink almost black ---- */
+:root[data-skin="sommet"][data-resolved="light"] {
+  --side: oklch(calc(.972 + var(--th-ll, 0)) calc(var(--th-c) * 1.4) var(--th-h)); --side-2: oklch(calc(.94 + var(--th-ll, 0)) calc(var(--th-c) * 1.6) var(--th-h)); --side-3: oklch(calc(.915 + var(--th-ll, 0)) calc(var(--th-c) * 1.8) var(--th-h)); --side-line: oklch(calc(.925 + var(--th-ll, 0)) calc(var(--th-c) * 1.6) var(--th-h));
+  --side-text: oklch(.25 var(--mn) var(--th-h)); --side-mute: oklch(.52 var(--mn-hi) var(--th-h));
+  --paper: #FFFFFF; --card: #FFFFFF; --sunk: oklch(calc(.965 + var(--th-ll, 0)) calc(var(--th-c) * 1.4) var(--th-h)); --raise: oklch(calc(.975 + var(--th-ll, 0)) calc(var(--th-c) * 1.2) var(--th-h));
+  --menu: #FFFFFF; --canvas: oklch(calc(.975 + var(--th-ll, 0)) calc(var(--th-c) * 1.2) var(--th-h));
+  --line: oklch(calc(.92 + var(--th-ll, 0)) calc(var(--th-c) * 1.6) var(--th-h)); --line-2: oklch(calc(.86 + var(--th-ll, 0)) calc(var(--th-c) * 2) var(--th-h));
+  --ink: oklch(.22 var(--mn) var(--th-h)); --ink-2: oklch(.46 var(--mn-hi) var(--th-h)); --ink-3: oklch(.6 var(--mn-hi) var(--th-h));
+  --strong: oklch(.15 var(--mn) var(--th-h));
+  --dot: oklch(.3 var(--mn-hi) var(--th-h) / .14);
+  --accent: #1E9A53; --accent-2: #17864A; --on-accent: #FFFFFF;
+  --shadow-1: none;
+  --shadow-2: 0 16px 40px rgb(20 20 18 / .12), 0 0 0 1px rgb(20 20 18 / .07);
+  --shadow-note: 0 1px 1px rgb(20 20 18 / .08), 0 6px 14px -6px rgb(20 20 18 / .25);
+  --br-a: #262624; --br-b: #161615; --br-rim: rgb(255 255 255 / .08); --br-l1: #FFFFFF; --br-l2: var(--accent); --br-vein: #161615; --br-text: #FFFFFF;
+  color-scheme: light;
+}
+:root[data-skin="sommet"][data-accent="custom"] { --accent: var(--accent-c); --on-accent: var(--on-accent-c); --accent-2: color-mix(in oklab, var(--accent) 88%, white); }
+:root[data-skin="sommet"][data-accent="custom"][data-resolved="light"] { --accent-2: color-mix(in oklab, var(--accent) 86%, black); }
+:root[data-skin="sommet"] { --tb-l: var(--side); --tb-r: var(--paper); --tb-sym: var(--ink-2); --tb-text: var(--side-mute); --accent-soft: color-mix(in oklab, var(--accent) 14%, transparent); }
+
+[data-skin="sommet"] body { font-size: 13.5px; font-feature-settings: "ss01", "cv11"; }
+[data-skin="sommet"] ::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+[data-skin="sommet"] .i { stroke-width: 1.5; }
+
+/* ---------- sidebar: small dense rows, no boxes; the open page gets a faint tile and its icon's tone in the accent ---------- */
+[data-skin="sommet"] #side { border-right: 1px solid var(--side-line); }
+/* the usual PLUM pill (style.css), a little smaller, in the theme's greys with the accent on the leaves */
+[data-skin="sommet"] .brand .pill { height: 40px; padding: 0 16px 0 11px; box-shadow: inset 0 0 0 1px var(--br-rim), inset 0 1px rgb(255 255 255 / .05), 0 2px 8px rgb(0 0 0 / .25); }
+[data-skin="sommet"] .brand b { font-size: 19.5px; }
+[data-skin="sommet"] .sbox { height: 32px; border-radius: 8px; background: var(--side-2); box-shadow: none; color: var(--side-mute); }
+[data-skin="sommet"] .sbox kbd { border: 0; opacity: .7; font-weight: 500; }
+[data-skin="sommet"] .nv { height: 30px; border-radius: 6px; font-size: 13px; font-weight: 450; color: color-mix(in oklab, var(--side-text) 86%, var(--side)); gap: 10px; }
+[data-skin="sommet"] .nv .i { width: 17px; height: 17px; color: var(--side-mute); }
+[data-skin="sommet"] .nv:hover { background: var(--side-2); color: var(--side-text); }
+[data-skin="sommet"] .nv:hover .i { color: var(--side-text); }
+[data-skin="sommet"] .nv[aria-current="page"] { background: var(--side-3); color: var(--strong); font-weight: 550; }
+[data-skin="sommet"] .nv[aria-current="page"] .i { color: var(--strong); }
+[data-skin="sommet"] .nv[aria-current="page"] .i { --i-d: var(--accent); --i-dk: 3.5; }
+[data-skin="sommet"] .nv .ct { color: var(--side-mute); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+[data-skin="sommet"] .sec { margin: 22px 10px 4px; font-size: 12px; font-weight: 550; letter-spacing: 0; color: var(--side-mute); }
+[data-skin="sommet"] .sec span { display: inline-block; text-transform: lowercase; }
+[data-skin="sommet"] .sec span::first-letter { text-transform: uppercase; }
+[data-skin="sommet"] .me { color: var(--side-text); font-weight: 500; }
+[data-skin="sommet"] .av { background: var(--accent); color: var(--on-accent); }
+[data-skin="sommet"] .sib { color: var(--side-mute); }
+[data-skin="sommet"] .sib:hover { color: var(--side-text); background: var(--side-2); }
+
+/* ---------- top bar: part of the page, a hairline under it ---------- */
+[data-skin="sommet"] #top { height: 48px; background: var(--paper); border-bottom-color: var(--line); }
+[data-skin="sommet"] #top .crumbs { font-size: 12.5px; }
+[data-skin="sommet"] #top .crumbs .cur { color: var(--ink); font-weight: 550; }
+[data-skin="sommet"] .tb { border-radius: 7px; height: 30px; color: var(--ink-2); }
+[data-skin="sommet"] .tb:hover { background: var(--raise); color: var(--ink); }
+[data-skin="sommet"] .tb[aria-pressed="true"] .i { --i-d: var(--accent); --i-dk: 3.5; }
+[data-skin="sommet"] .tb.pri { background: var(--accent); color: var(--on-accent); border-radius: 7px; }
+[data-skin="sommet"] .tb.pri:hover { background: var(--accent-2); color: var(--on-accent); }
+
+/* ---------- pages: serif titles, cards as quiet panels ---------- */
+[data-skin="sommet"] .ph h1 { font: 300 38px/1.1 var(--font-head); letter-spacing: -.035em; color: var(--strong); }
+[data-skin="sommet"] .ph .acts { border: 0; padding: 0; align-self: center; }
+[data-skin="sommet"] .ph .sub { font-size: 13px; color: var(--ink-3); }
+[data-skin="sommet"] .card, [data-skin="sommet"] .tlist { background: var(--card); border-color: var(--line); border-radius: 10px; box-shadow: none; }
+[data-skin="sommet"][data-resolved="light"] .card, [data-skin="sommet"][data-resolved="light"] .tlist { background: var(--raise); border-color: transparent; }
+[data-skin="sommet"] .card > h2 { font-size: 13px; font-weight: 600; color: var(--strong); }
+[data-skin="sommet"] .card > h2 .i { color: var(--ink-3); }
+[data-skin="sommet"] .card > h2 .more { color: var(--ink-2); font-weight: 500; }
+[data-skin="sommet"] .card > h2 .more:hover { color: var(--accent); }
+[data-skin="sommet"] .dcard .th { border-radius: 8px; border-color: var(--line); background: var(--sunk); }
+[data-skin="sommet"][data-resolved="light"] .dcard .th { background: #FFFFFF; }
+[data-skin="sommet"] .dcard:hover .th { transform: none; border-color: var(--line-2); box-shadow: none; }
+[data-skin="sommet"] .dcard .kind { border-radius: 5px; }
+[data-skin="sommet"] .trow { border-radius: 7px; }
+[data-skin="sommet"] .trow:hover, [data-skin="sommet"] .sprow:hover { background: var(--raise); }
+[data-skin="sommet"][data-resolved="light"] .trow:hover, [data-skin="sommet"][data-resolved="light"] .sprow:hover { background: #FFFFFF; }
+[data-skin="sommet"] .sprow .bar { height: 3px; }
+[data-skin="sommet"] .chip { border-radius: 5px; font-weight: 500; }
+[data-skin="sommet"] .cb { border-radius: 50%; background: transparent; }
+[data-skin="sommet"] .cb[aria-checked="true"] { color: var(--on-accent); }
+[data-skin="sommet"] .focuscard { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+[data-skin="sommet"] .focuscard p { color: var(--ink-2); }
+[data-skin="sommet"] .fab { background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 24px -6px color-mix(in oklab, var(--accent) 60%, transparent); }
+[data-skin="sommet"] .fab .i { --i-dk: 2; }
+
+/* ---------- controls ---------- */
+[data-skin="sommet"] .btn { height: 32px; border-radius: 7px; font-weight: 500; background: var(--card); border-color: var(--line-2); }
+[data-skin="sommet"] .btn:hover { background: var(--raise); }
+[data-skin="sommet"] .btn.pri { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+[data-skin="sommet"] .btn.pri:hover { background: var(--accent-2); border-color: var(--accent-2); }
+[data-skin="sommet"] .btn.pri .i { --i-dk: 2; }
+[data-skin="sommet"] .btn.ghost { background: none; }
+[data-skin="sommet"] .btn.sm { height: 28px; border-radius: 6px; }
+[data-skin="sommet"] .seg, [data-skin="sommet"] .stabs { background: var(--sunk); border-radius: 8px; }
+[data-skin="sommet"] .stabs { border-color: var(--line); }
+[data-skin="sommet"] .seg button, [data-skin="sommet"] .stabs button { border-radius: 6px; font-weight: 500; }
+[data-skin="sommet"] .seg button[aria-pressed="true"], [data-skin="sommet"] .stabs button[aria-selected="true"] { background: var(--raise); color: var(--strong); box-shadow: 0 0 0 1px var(--line); }
+[data-skin="sommet"][data-resolved="light"] .seg button[aria-pressed="true"], [data-skin="sommet"][data-resolved="light"] .stabs button[aria-selected="true"] { background: #FFFFFF; box-shadow: 0 1px 2px rgb(20 20 18 / .12), 0 0 0 1px rgb(20 20 18 / .05); }
+[data-skin="sommet"] .tg input:checked + span { background: var(--accent); }
+[data-skin="sommet"] .srow input[type="text"] { border-radius: 6px; background: var(--sunk); border-color: var(--line); }
+[data-skin="sommet"] .pop, [data-skin="sommet"] .qbar { background: var(--menu); border-color: var(--line); border-radius: 9px; box-shadow: var(--shadow-2); }
+[data-skin="sommet"] .mi { border-radius: 5px; }
+[data-skin="sommet"] .mi:hover { background: var(--raise); }
+[data-skin="sommet"][data-resolved="light"] .mi:hover { background: var(--sunk); }
+[data-skin="sommet"] .sheet-m { background: var(--menu); border-radius: 12px; box-shadow: var(--shadow-2); }
+[data-skin="sommet"] .sheet-m h2 { font: 400 22px/1.15 var(--font-head); letter-spacing: -.025em; color: var(--strong); }
+[data-skin="sommet"] .sheet-m h5 { font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12.5px; color: var(--ink-2); }
+[data-skin="sommet"] .skin-c { border-radius: 9px; background: var(--card); border-color: var(--line-2); }
+
+/* ---------- board: a plain canvas with faint dots, light islands ---------- */
+[data-skin="sommet"] .bhost { background-color: var(--canvas); }
+[data-skin="sommet"] .isl { background: color-mix(in oklab, var(--menu) 96%, transparent); border-color: var(--line); border-radius: 10px; box-shadow: var(--shadow-2); }
+[data-skin="sommet"] .tl { border-radius: 7px; }
+[data-skin="sommet"] .tl:hover { background: var(--raise); }
+[data-skin="sommet"][data-resolved="light"] .tl:hover { background: var(--sunk); }
+[data-skin="sommet"] .tl[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+[data-skin="sommet"] .props { background: var(--card); border-color: var(--line); border-radius: 10px; }
+[data-skin="sommet"] .ptab[aria-pressed="true"] { color: var(--strong); }
+[data-skin="sommet"] .ps-l { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+
+/* ---------- scrollbars: thin, only the thumb ---------- */
+[data-skin="sommet"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+[data-skin="sommet"] ::-webkit-scrollbar-track { background: transparent; }
+[data-skin="sommet"] ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+[data-skin="sommet"] ::-webkit-scrollbar-thumb:hover { background-color: var(--ink-3); }
+
+
+
+/* ---------- 0.2: the space switcher, the welcome, the space home and the moodboard ---------- */
+[data-skin="sommet"] .spsw { height: 38px; border-radius: 8px; box-shadow: none; padding-left: 10px; }
+[data-skin="sommet"] .spsw:hover, [data-skin="sommet"] .spsw[aria-expanded="true"] { background: var(--side-3); }
+[data-skin="sommet"] .spsw .spn small { font-size: 10px; letter-spacing: .6px; font-weight: 550; }
+[data-skin="sommet"] .spsw .spn b { font-weight: 600; font-size: 13.5px; color: var(--strong); }
+[data-skin="sommet"] .spsw .dot { width: 10px; height: 10px; border-radius: 3px; box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 0%, transparent); }
+[data-skin="sommet"] .spadd { width: 38px; height: 38px; border-radius: 8px; box-shadow: none; }
+[data-skin="sommet"] .spadd .i { --i-dk: 2; }
+[data-skin="sommet"] .pop.spm .mi { min-height: 32px; }
+[data-skin="sommet"] .spm-new { border-radius: 7px; height: 34px; }
+[data-skin="sommet"] .wl-h { font: 300 46px/1.05 var(--font-head); letter-spacing: -.04em; }
+[data-skin="sommet"] .wl-sub { font-size: 14.5px; }
+[data-skin="sommet"] .wl-txt > b { font: 400 26px/1.1 var(--font-title); letter-spacing: -.01em; }
+[data-skin="sommet"] .wl-plus .wl-ring svg { stroke-width: 2.6; }
+[data-skin="sommet"] .wl-th { border-radius: 10px; }
+[data-skin="sommet"] .sp-kick { font-size: 11px; letter-spacing: .7px; font-weight: 550; }
+[data-skin="sommet"] .sp-title { font: 300 38px/46px var(--font-head); letter-spacing: -.035em; }
+[data-skin="sommet"] .mw-fold { border-radius: 9px; }
+[data-skin="sommet"][data-resolved="light"] .mw-fold { background: #FFFFFF; }
+[data-skin="sommet"] .sp-h { font-size: 13px; font-weight: 600; color: var(--strong); }
+[data-skin="sommet"] .mw { border-radius: 9px; }
+[data-skin="sommet"][data-resolved="light"] .mw { background: #FFFFFF; }
+[data-skin="sommet"][data-resolved="light"] .mw-in, [data-skin="sommet"][data-resolved="light"] .qadd { background: #FFFFFF; }
+[data-skin="sommet"] .mw:hover { transform: none; box-shadow: none; border-color: var(--line-2); }
+[data-skin="sommet"] .mw-text { background: var(--card); }
+[data-skin="sommet"][data-resolved="light"] .mw-text { background: oklch(.985 .012 95); }
+[data-skin="sommet"] .mw-text p { font: 400 19px/1.35 var(--font-title); }
+[data-skin="sommet"] .mwall.dr .mw-text p, [data-skin="sommet"] .mwall.pv .mw-text p { font-size: 16px; }
+[data-skin="sommet"] .mw-fav, [data-skin="sommet"] .mw-ext { border-radius: 7px; box-shadow: none; }
+[data-skin="sommet"] .mdr { border-radius: 10px; background: var(--menu); }
+[data-skin="sommet"] .mw-empty { border-radius: 12px; }

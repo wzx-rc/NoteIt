@@ -1,0 +1,62 @@
+/* ================= Minimal: the note editor =================
+   The note is the page itself: no sheet on a canvas, no floating box for the tools. The toolbar runs flat across
+   the top of the note, its tools lined up with the text column; a hairline appears under it once the note scrolls
+   (.nwrap.scrolled), and it dims while you type (.nwrap.typing, set by 04-note.js) until the mouse moves again.
+   The sheet keeps its 820px width so drawings stay where they were drawn. */
+[data-skin="sommet"] .nwrap { background: var(--paper); padding: 0 16px 160px; }
+
+/* ---- toolbar: in the page, full width, quiet icons ---- */
+[data-skin="sommet"] .ntool {
+  justify-self: stretch; margin: 0 -16px 6px; padding: 7px 20px 7px max(20px, calc(50% - 410px + 52px));
+  justify-content: flex-start; gap: 2px; flex-wrap: wrap;
+  background: var(--paper); border: 0; border-bottom: 1px solid transparent; border-radius: 0; box-shadow: none; backdrop-filter: none;
+  transition: border-color .2s;
+}
+[data-skin="sommet"] .nwrap.scrolled .ntool { border-bottom-color: var(--line); }
+[data-skin="sommet"] .ntool :is(.grp, .vs, .pchip) { transition: opacity .35s ease; }
+[data-skin="sommet"] .nwrap.typing .ntool :is(.grp, .vs, .pchip) { opacity: .2; }
+[data-skin="sommet"] .nwrap.typing .ntool:hover :is(.grp, .vs, .pchip), [data-skin="sommet"] .nwrap.typing .ntool:focus-within :is(.grp, .vs, .pchip) { opacity: 1; }
+[data-skin="sommet"] .ntool .vs { height: 14px; margin: 0 7px; background: var(--line-2); }
+[data-skin="sommet"] .ntool .vs.end { margin-left: auto; visibility: hidden; }
+[data-skin="sommet"] .ntool .nb { height: 30px; min-width: 30px; padding: 0 6px; border-radius: 6px; color: var(--ink-3); font-weight: 500; }
+[data-skin="sommet"] .ntool .nb .i { width: 17px; height: 17px; }
+[data-skin="sommet"] .ntool .nb:hover { background: var(--raise); color: var(--ink); }
+[data-skin="sommet"][data-resolved="light"] .ntool .nb:hover { background: var(--sunk); }
+[data-skin="sommet"] .ntool .nb[aria-pressed="true"] { background: none; color: var(--accent); }
+[data-skin="sommet"] .ntool .nb[aria-pressed="true"] .i { --i-d: var(--accent); --i-dk: 1.6; }
+[data-skin="sommet"] .ntool .nb .txt { font: 600 12.5px/1 var(--font-ui); letter-spacing: .01em; }
+/* Texte / Dessin: two words, the chosen one in ink with a small accent rule under it */
+[data-skin="sommet"] .ntool .modes { gap: 0; }
+[data-skin="sommet"] .ntool .modes .nb { position: relative; color: var(--ink-3); padding: 0 9px; }
+[data-skin="sommet"] .ntool .modes .nb .i { display: none; }
+[data-skin="sommet"] .ntool .modes .nb .lbl { font-size: 13px; font-weight: 500; }
+[data-skin="sommet"] .ntool .modes .nb[aria-pressed="true"] { color: var(--strong); }
+[data-skin="sommet"] .ntool .modes .nb[aria-pressed="true"]::after { content: ""; position: absolute; left: 9px; right: 9px; bottom: 2px; height: 2px; border-radius: 2px; background: var(--accent); }
+[data-skin="sommet"] .ntool .sw { width: 18px; height: 18px; border-width: 0; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .15); margin: 0 1px; }
+[data-skin="sommet"] .ntool .sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--ink-2); }
+[data-skin="sommet"] .ntool .pchip { height: 28px; border-radius: 6px; background: none; box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-2); }
+[data-skin="sommet"] .ntool .pchip:hover { background: var(--raise); color: var(--ink); }
+
+/* ---- the page ---- */
+[data-skin="sommet"] .sheet { background-color: transparent; border-radius: 0; box-shadow: none; padding: 26px 64px 120px; }
+[data-skin="sommet"] .sheet.npg-more { border-top: 1px dashed var(--line-2); padding-top: 48px; }
+[data-skin="sommet"] .ntitle { font: 400 46px/1.08 var(--font-title); letter-spacing: -.005em; color: var(--strong); }
+[data-skin="sommet"] .ntitle::placeholder { color: var(--ink-3); font-style: italic; }
+[data-skin="sommet"] .nsub { margin: 10px 0 28px; gap: 12px; font-size: 12px; color: var(--ink-3); }
+[data-skin="sommet"] .nsub .chip { background: none; padding: 0; height: auto; color: var(--ink-2); font-weight: 500; }
+[data-skin="sommet"] .nbody { font-size: 15.5px; line-height: 1.68; color: var(--ink); }
+[data-skin="sommet"] .nbody h1 { font: 400 32px/1.15 var(--font-title); letter-spacing: -.005em; margin: 28px 0 8px; color: var(--strong); }
+[data-skin="sommet"] .nbody h2 { font: 600 20px/1.3 var(--font-ui); letter-spacing: -.01em; margin: 24px 0 6px; color: var(--strong); }
+[data-skin="sommet"] .nbody h3 { font: 600 16px/1.4 var(--font-ui); margin: 18px 0 4px; }
+[data-skin="sommet"] .nbody ul.chk > li::before { top: 5px; width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid var(--ink-3); }
+[data-skin="sommet"] .nbody ul.chk > li[data-done]::before { background-color: var(--accent); border-color: var(--accent); background-size: 12px; }
+[data-skin="sommet"] .nbody ul.chk > li[data-done] { text-decoration-color: color-mix(in oklab, var(--ink-3) 70%, transparent); }
+[data-skin="sommet"] .nbody blockquote { transform: none; box-shadow: none; border-radius: 6px; background: #F8EBB0; }
+[data-skin="sommet"] .nbody figure img, [data-skin="sommet"] .nbody img { border-radius: 6px; }
+[data-skin="sommet"] .nbody mark { background: color-mix(in oklab, #F5D547 55%, transparent); }
+[data-skin="sommet"] .nbody .nfile { border-radius: 7px; }
+[data-skin="sommet"] .naddpg { border-style: solid; border-width: 1px; border-color: var(--line); color: var(--ink-3); font-weight: 500; }
+[data-skin="sommet"] .naddpg:hover { color: var(--ink); border-color: var(--line-2); }
+[data-skin="sommet"] .npager { background: var(--menu); border-color: var(--line); box-shadow: var(--shadow-2); }
+
+@media (prefers-reduced-motion: reduce) { [data-skin="sommet"] .ntool, [data-skin="sommet"] .ntool :is(.grp, .vs, .pchip) { transition: none; } }
