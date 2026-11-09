@@ -208,13 +208,14 @@ async function hubSetCity(name) {
 /* ---------- Moodboard Général: the moodboard of « Non classées », a tray for anything dropped; ⇢ files it into a project ---------- */
 const moodHost = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
 const moodExt = n => (/\.([a-z0-9]{1,5})$/i.exec(n || '') || [, 'fichier'])[1].slice(0, 4).toUpperCase();
-const moodList = () => ((spaceById(DEF_SPACE) || {}).media || []).filter(m => m.type === 'link' || m.type === 'text' || Assets.has(m.asset));
+const moodList = () => ((spaceById(DEF_SPACE) || {}).media || []).filter(m => m.type === 'link' || m.type === 'text' || m.type === 'folder' || Assets.has(m.asset));
 function moodTile(m) {
   const mv = `<button class="hmd-mv" data-hmv="${m.id}" title="Ranger dans un projet" aria-label="Ranger dans un projet">${icon('folder', 'sm')}</button>`;
   const a = `class="hmd-it hmd-${m.type}" data-hmi="${m.id}" draggable="true"`;
   if (m.type === 'image') return `<figure ${a}><img src="${Assets.url(m.asset)}" alt="${esc(m.name || '')}" loading="lazy" draggable="false"${m.w && m.h ? ` style="aspect-ratio:${m.w}/${m.h}"` : ''}>${mv}</figure>`;
+  if (m.type === 'folder') return `<figure ${a} title="Ouvrir dans l’Explorateur : ${esc(m.path)}"><div class="hmd-fold">${Mood.FOLDER_SVG}</div><figcaption><b>${esc(m.name || 'Dossier')}</b><small>${esc(Mood.folderWhere(m.path))}</small></figcaption>${mv}</figure>`;
   if (m.type === 'link') { const h = moodHost(m.url), pic = m.pic && Assets.has(m.pic) ? Assets.url(m.pic) : '';
-    return `<figure ${a} title="${esc(m.url)}">${pic ? `<img src="${pic}" alt="" loading="lazy" draggable="false">` : `<span class="hmd-ini" style="--c:${SPACE_COLORS[Math.floor(hashStr(h) * SPACE_COLORS.length)]}">${esc((h[0] || '?').toUpperCase())}</span>`}<figcaption><b>${esc(m.title || h)}</b><small>${icon('link', 'sm')}${esc(m.site || h)}</small></figcaption>${mv}</figure>`; }
+    return `<figure ${a} title="${esc(m.url)}">${pic ? `<img src="${pic}" alt="" loading="lazy" draggable="false">` : `<span class="hmd-ini mw-web" style="--c:${SPACE_COLORS[Math.floor(hashStr(h) * SPACE_COLORS.length)]}">${Mood.GLOBE_SVG}<i>${esc((h[0] || '?').toUpperCase())}</i></span>`}<figcaption><b>${esc(m.title || h)}</b><small>${icon('link', 'sm')}${esc(m.site || h)}</small></figcaption>${mv}</figure>`; }
   if (m.type === 'file') { const e = moodExt(m.name); return `<figure ${a}><div class="hmd-fh"><span class="hmd-ext">${esc(e)}</span><b>${esc(m.name || 'Fichier')}</b></div>${m.snip ? `<pre>${esc(m.snip)}</pre>` : `<small>${m.size ? fmtSize(m.size) : ''}</small>`}${mv}</figure>`; }
   if (m.type === 'text') return `<figure ${a}><p>${esc(m.txt).replace(/\n/g, '<br>')}</p>${mv}</figure>`;
   return '';
@@ -252,10 +253,10 @@ function moodFileMenu(anchor, id) {
 }
 /* previews: a link gets its page's title and picture, a text file its first lines (once, saved in the element) */
 let moodBusy = false;
-async function moodUnfurl() {
+async function moodUnfurl(list, after) {
   if (moodBusy) return; moodBusy = true;
   try {
-    for (const m of moodList()) {
+    for (const m of list || moodList()) {
       if (m.pv) continue;
       if (m.type === 'link') {
         const r = await Net.meta(m.url);
@@ -268,7 +269,7 @@ async function moodUnfurl() {
       } else if (m.type === 'file' && (/^text\//.test(m.mime || '') || /\.(txt|md|csv|json|js|py|log)$/i.test(m.name || ''))) {
         const b = Assets.blobs.get(m.asset); if (b && b.size < 2e6) { try { m.snip = (await b.text()).slice(0, 400); } catch (e) {} }
       }
-      m.pv = 1; save(); if (R.name === 'hub') renderHubMods();
+      m.pv = 1; save(); if (after) after(); else if (R.name === 'hub') renderHubMods();
     }
   } finally { moodBusy = false; }
 }

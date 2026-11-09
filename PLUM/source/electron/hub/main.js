@@ -87,6 +87,16 @@ ipcMain.handle('save-file', async (e, req) => {
   await fs.promises.writeFile(r.filePath, Buffer.from(data));
   return { ok: true };
 });
+// moodboard folders: only absolute paths to existing folders are opened, never files (nothing is run)
+ipcMain.handle('path-kind', async (e, p) => {
+  if (typeof p !== 'string' || !path.isAbsolute(p)) return '';
+  try { const st = await fs.promises.stat(p); return st.isDirectory() ? 'dir' : st.isFile() ? 'file' : ''; } catch (err) { return ''; }
+});
+ipcMain.handle('open-folder', async (e, p) => {
+  if (typeof p !== 'string' || !path.isAbsolute(p)) return { ok: false, error: 'chemin' };
+  try { const st = await fs.promises.stat(p); if (!st.isDirectory()) return { ok: false, error: 'pas un dossier' }; } catch (err) { return { ok: false, error: 'introuvable' }; }
+  const r = await shell.openPath(p); return r ? { ok: false, error: r } : { ok: true };
+});
 ipcMain.handle('open-file', async e => {
   const win = BrowserWindow.fromWebContents(e.sender);
   const r = await dialog.showOpenDialog(win, { title: 'Ouvrir un dessin', properties: ['openFile'], filters: [{ name: 'Dessin PLUM', extensions: ['notely', 'json'] }] });

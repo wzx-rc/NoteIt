@@ -134,6 +134,8 @@ async function addMedia(spId, files, folder) {
   sp.media = sp.media || []; const added = [];
   for (const f of files) {
     try {
+      const fp = !f.type && window.notely && notely.pathOf ? notely.pathOf(f) : '';
+      if (fp && (await notely.pathKind(fp)) === 'dir') { if (!sp.media.some(x => x.type === 'folder' && x.path === fp)) { sp.media.unshift({ id: uid('m'), type: 'folder', path: fp, name: f.name, added: Date.now(), ...(folder ? { folder } : {}) }); added.push(f.name); } continue; }
       if (/^image\//.test(f.type)) { const im = await importImage(f); sp.media.unshift({ id: uid('m'), type: 'image', asset: im.id, name: f.name.replace(/\.[a-z0-9]{2,4}$/i, ''), w: im.w, h: im.h, added: Date.now(), ...(folder ? { folder } : {}) }); }
       else { if (f.size > 80e6) { toast(`« ${f.name} » dépasse 80 Mo`); continue; } const id = await Assets.put(f); sp.media.unshift({ id: uid('m'), type: 'file', asset: id, name: f.name, size: f.size, mime: f.type, added: Date.now(), ...(folder ? { folder } : {}) }); }
       added.push(f.name);

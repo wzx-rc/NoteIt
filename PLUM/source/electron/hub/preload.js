@@ -1,5 +1,5 @@
 // Native file dialogs, Wintab pen samples, the assistant's OpenAI requests and the page zoom; nothing else from Node is exposed.
-const { contextBridge, ipcRenderer, webFrame } = require('electron');
+const { contextBridge, ipcRenderer, webFrame, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('notely', {
   platform: 'desktop',
   saveFile: req => ipcRenderer.invoke('save-file', req),
@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('notely', {
   aiTranscribe: req => ipcRenderer.invoke('ai-transcribe', req),
   // board imports: { url, as: 'bytes' } -> { ok, type, data } (images only), { url, as: 'meta' } -> { ok, title, desc, image, site, isImage }
   fetchUrl: req => ipcRenderer.invoke('fetch-url', req),
+  // moodboard folders (0.2.76): the disk path of a dropped File, 'dir' | 'file' | '' for a path, open a folder in the Explorer
+  pathOf: f => { try { return (webUtils && webUtils.getPathForFile ? webUtils.getPathForFile(f) : f.path) || ''; } catch (e) { return (f && f.path) || ''; } },
+  pathKind: p => ipcRenderer.invoke('path-kind', p),
+  openFolder: p => ipcRenderer.invoke('open-folder', p),
   // { mode: 'light' | 'dark' | 'system' }: native theme
   setTheme: t => ipcRenderer.send('set-theme', t),
   // the size of the interface (Réglages > UI): 0.5 to 1.25, like the browser zoom

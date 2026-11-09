@@ -85,10 +85,21 @@ const Mood = (() => {
       <button class="mw-more" data-fm="${f.id}" aria-label="Options du dossier" title="Options">${icon('dots', 'sm')}</button></div>`;
   }
 
+  /* 0.2.76: drawn icons for folders and web links (no letter square any more) */
+  const FOLDER_SVG = '<svg class="mw-dir" viewBox="0 0 48 40" aria-hidden="true"><path d="M3 8.5A4.5 4.5 0 0 1 7.5 4h10.2c1.3 0 2.5.6 3.3 1.6L23.6 9H40.5A4.5 4.5 0 0 1 45 13.5V33.5A4.5 4.5 0 0 1 40.5 38h-33A4.5 4.5 0 0 1 3 33.5z" fill="#E8A93A"/><path d="M3 15.5A4.5 4.5 0 0 1 7.5 11h33a4.5 4.5 0 0 1 4.5 4.5v18a4.5 4.5 0 0 1-4.5 4.5h-33A4.5 4.5 0 0 1 3 33.5z" fill="#F7C65A"/><path d="M3 15.5A4.5 4.5 0 0 1 7.5 11h33a4.5 4.5 0 0 1 4.5 4.5v1.2H3z" fill="#FFF" opacity=".28"/></svg>';
+  const GLOBE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M3.6 12h16.8M12 3.4c2.4 2.4 3.6 5.3 3.6 8.6s-1.2 6.2-3.6 8.6c-2.4-2.4-3.6-5.3-3.6-8.6s1.2-6.2 3.6-8.6z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  const LINK_SVG = '<svg class="mw-lk" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  const folderWhere = p => { const parts = String(p || '').split(/[\\/]/).filter(Boolean); return parts.length > 1 ? parts.slice(-3, -1).join(' › ') : 'Dossier'; };
+  function openFolder(m) {
+    if (!(window.notely && notely.openFolder)) { toast('Ouvrir un dossier marche dans l’app PLUM sur PC'); return; }
+    notely.openFolder(m.path).then(r => { if (!r || !r.ok) toast(`Dossier introuvable : ${m.path}`); });
+  }
   function tile(m, i) {
     const a = `data-mi="${i}" draggable="true" tabindex="0"`;
     if (m.type === 'image') return `<figure class="mw mw-img" ${a}><img src="${Assets.url(m.asset)}" alt="${esc(m.name || '')}" loading="lazy" draggable="false"${m.w && m.h ? ` width="${m.w}" height="${m.h}"` : ''}>${m.name ? `<figcaption>${esc(m.name)}</figcaption>` : ''}<button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></figure>`;
-    if (m.type === 'link') { const d = domain(m.url); return `<div class="mw mw-link" ${a} title="${esc(m.url)}"><span class="mw-fav" style="--c:${SPACE_COLORS[Math.floor(hashStr(d) * SPACE_COLORS.length)]}">${esc((d[0] || '?').toUpperCase())}</span><span class="mw-t"><b>${esc(m.title || d)}</b><small>${esc(m.title ? d : m.url.replace(/^https?:\/\//, '').slice(0, 60))}</small></span><button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></div>`; }
+    if (m.type === 'folder') return `<div class="mw mw-folder" ${a} title="Ouvrir dans l’Explorateur : ${esc(m.path)}">${FOLDER_SVG}<span class="mw-t"><b>${esc(m.name || 'Dossier')}</b><small>${esc(folderWhere(m.path))}</small></span><button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></div>`;
+    if (m.type === 'link' && m.pic && Assets.has(m.pic)) { const d = domain(m.url); return `<div class="mw mw-link haspic" ${a} title="${esc(m.url)}"><img class="mw-lpic" src="${Assets.url(m.pic)}" alt="" loading="lazy" draggable="false"><span class="mw-t"><b>${esc(m.title || d)}</b><small>${LINK_SVG}${esc(m.site || d)}</small></span><button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></div>`; }
+    if (m.type === 'link') { const d = domain(m.url); return `<div class="mw mw-link" ${a} title="${esc(m.url)}"><span class="mw-web" style="--c:${SPACE_COLORS[Math.floor(hashStr(d) * SPACE_COLORS.length)]}">${GLOBE_SVG}<i>${esc((d[0] || '?').toUpperCase())}</i></span><span class="mw-t"><b>${esc(m.title || d)}</b><small>${esc(m.title ? d : m.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 80))}</small></span><button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></div>`; }
     if (m.type === 'file') { const e = extOf(m.name); return `<div class="mw mw-file" ${a}><span class="mw-ext" style="--c:${FILE_C[e] || '#5E6B78'}">${esc(e)}</span><span class="mw-t"><b>${esc(m.name || 'Fichier')}</b><small>${m.size ? fmtSize(m.size) : 'Fichier'}</small></span><button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></div>`; }
     if (m.type === 'text') return `<div class="mw mw-text" ${a}><p>${esc(m.txt).replace(/\n/g, '<br>')}</p><button class="mw-more" data-mm="${i}" aria-label="Options" title="Options">${icon('dots', 'sm')}</button></div>`;
     return '';
@@ -102,6 +113,7 @@ const Mood = (() => {
     if (R.name === 'mood' || R.name === 'space') { const vw = $('#view'), st = vw.scrollTop; go(R, { keepFocus: true }); vw.scrollTop = st; }
     if (open) renderDrawer();
     if (R.name === 'doc' && Board.mounted && Board.refreshProps) Board.refreshProps();
+    if (R.name === 'doc' && Note.mounted && typeof isPage === 'function' && isPage(Note.doc)) refreshPageHead();
   }
   async function drop(dt, sp, fid) {
     if (!sp || dragging) return 0;
@@ -122,6 +134,7 @@ const Mood = (() => {
   function pickFiles(sp, fid) { const i = $('#fileIn'); i.accept = ''; i.onchange = async () => { const f = [...i.files]; i.value = ''; if (!f.length) return; const n = await addMedia(sp.id, f, fid); if (n.length) { toast(`${n.length} élément${n.length > 1 ? 's' : ''} ajouté${n.length > 1 ? 's' : ''}`); refresh(); } }; i.click(); }
   function view(m) {
     if (m.type === 'image') { showImage(m.asset); return; }
+    if (m.type === 'folder') { openFolder(m); return; }
     if (m.type === 'link') { const a = document.createElement('a'); a.href = m.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.append(a); a.click(); a.remove(); return; }
     if (m.type === 'file') { const u = Assets.url(m.asset); if (!u) return; const a = document.createElement('a'); a.href = u; a.download = m.name || 'fichier'; document.body.append(a); a.click(); a.remove(); return; }
     if (m.type === 'text') editText(m);
@@ -146,10 +159,11 @@ const Mood = (() => {
   function menu(anchor, m, sp) {
     const d = docOpen(), mine = (sp.media || []).includes(m);
     const boards = liveDocs().filter(x => x.sp === sp.id && x.type === 'board' && (!d || x.id !== d.id)).sort((a, b) => b.updated - a.updated).slice(0, 8);
-    const label = { image: 'Voir en grand', link: 'Ouvrir le lien', file: 'Ouvrir le fichier', text: 'Modifier le texte' }[m.type];
+    const label = { image: 'Voir en grand', link: 'Ouvrir le lien', file: 'Ouvrir le fichier', text: 'Modifier le texte', folder: 'Ouvrir dans l’Explorateur' }[m.type];
     openPop(anchor, [
       ...(d ? [{ label: `Placer dans « ${d.title} »`, icon: d.type === 'board' ? 'board' : 'note', run: () => place(m) }, '-'] : []),
-      { label, icon: m.type === 'text' ? 'text' : m.type === 'link' ? 'ext' : m.type === 'file' ? 'download' : 'focus', run: () => view(m) },
+      { label, icon: m.type === 'folder' ? 'folder' : m.type === 'text' ? 'text' : m.type === 'link' ? 'ext' : m.type === 'file' ? 'download' : 'focus', run: () => view(m) },
+      ...(m.type === 'folder' ? [{ label: 'Copier le chemin', icon: 'link', run: () => { try { navigator.clipboard.writeText(m.path); toast('Chemin copié'); } catch (e) {} } }] : []),
       ...(m.type === 'link' ? [{ label: 'Copier le lien', icon: 'link', run: () => { try { navigator.clipboard.writeText(m.url); toast('Lien copié'); } catch (e) {} } }] : []),
       ...(mine && folders(sp).length ? [{ head: 'Ranger dans' }, ...(folderOf(sp, m) ? [{ label: 'Racine du moodboard', icon: 'image', run: () => moveTo(sp, m, '') }] : []), ...folders(sp).filter(f => f.id !== folderOf(sp, m)).map(f => ({ label: f.name, icon: 'folder', run: () => moveTo(sp, m, f.id) }))] : []),
       ...(mine ? [{ label: 'Nouveau dossier…', icon: 'plus', run: () => newFolder(sp, f => moveTo(sp, m, f.id)) }] : []),
@@ -294,7 +308,7 @@ const Mood = (() => {
     const pn = e.target.closest('#moodDrawer [data-mpin]'); if (pn) { S.prefs.moodPin = !pinned(); save(); renderDrawer(); toast(pinned() ? 'Moodboard épinglé' : 'Le moodboard se repliera quand la souris en sort'); }
   }); }
   return {
-    mount, toggle, preview, bindPreview, drop, renderPage, layout, view,
+    mount, toggle, preview, bindPreview, drop, renderPage, layout, view, FOLDER_SVG, GLOBE_SVG, LINK_SVG, folderWhere, openFolder,
     isOpen: () => open,
     dragging: () => !!dragging && Date.now() - dragging < 60000,
     /* after a page change: the drawer follows the space, and has no place on the moodboard page or the welcome */
