@@ -104,8 +104,8 @@ function pageHead(el, d) {
       ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div>${done.map(t => taskRow(t)).join('')}</div></details>` : ''}`,
     n => { bindTaskList(n, refreshPageHead); bindQuickAdd($('#pAdd', n), () => { refreshTaskViews(); refreshPageHead(); }); n.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) { setCurSpace(sp.id); go(g.dataset.go); } }); });
   if (keepAdd) { const i = $('#pAdd', wrap); if (i) i.focus({ preventScroll: true }); }
-  slot('ppmood', `<div class="pp2-h">Moodboard <span class="ct">${(sp.media || []).length || ''}</span><button class="more" data-pmood>Ouvrir</button></div>${Mood.preview(sp)}`,
-    n => { Mood.bindPreview(n, sp); n.addEventListener('click', e => { if (e.target.closest('[data-pmood]')) { setCurSpace(sp.id); Mood.toggle(); } }); });
+  slot('ppmood', `<div class="pp2-h">Moodboard <span class="ct">${(sp.media || []).length || ''}</span></div>${Mood.preview(sp)}${(sp.media || []).length ? `<button class="pp2-mopen" data-pmood>${icon('plus', 'sm')}Ouvrir</button>` : ''}`,
+    n => { const mo = $('.pp2-mopen', n), wl = $('.mwall', n); if (mo && wl) wl.append(mo); Mood.bindPreview(n, sp); n.addEventListener('click', e => { if (e.target.closest('[data-pmood]')) { setCurSpace(sp.id); Mood.toggle(); } }); });
   const docs = liveDocs().filter(x => x.sp === sp.id && !x.page).sort((a, b) => b.updated - a.updated);
   slot('ppdocs', `<h2 class="sp-h">Boards et notes</h2><div class="docs"><button class="newcard" data-pnew="board">${icon('plus', 'lg')}Nouveau board</button><button class="newcard" data-pnew="note">${icon('plus', 'lg')}Nouvelle note</button>${docs.map(x => docCard(x)).join('')}</div>`,
     n => { bindDocCards(n); n.addEventListener('click', e => { const nw = e.target.closest('[data-pnew]'); if (nw) createIn(nw.dataset.pnew, sp.id); }); });

@@ -3161,3 +3161,14 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 /* 0.2.71: in the Sommet layouts the card's synthesis is bare text; a fine border shows while typing in it */
 :is([data-skin="sommet"], [data-skin="minsom"], [data-skin="briques"]) .pc2-body textarea.pc2-syn { padding: 4px 7px !important; margin: 2px -8px 0; width: calc(100% + 16px); min-height: 66px; max-height: 66px; border: 1px solid transparent !important; border-radius: 7px !important; transition: border-color .12s; }
 :is([data-skin="sommet"], [data-skin="minsom"], [data-skin="briques"]) .pc2-body textarea.pc2-syn:focus { border-color: var(--line-2) !important; }
+/* 0.2.72: finer module titles, "+ Ouvrir" as a dashed tile under the moodboard, the note bar on the left, the cover ends on the buttons' line */
+.pp2-h { font: 400 12px/1 var(--font-ui, inherit); letter-spacing: .14em; color: var(--ink-3); }
+.pp2-h .ct { font-weight: 400; }
+.pp2-qn .ntool { margin: 0 0 4px !important; padding: 4px 0 8px !important; justify-content: flex-start !important; background: none !important; border: 0 !important; border-bottom: 1px solid var(--line) !important; border-radius: 0 !important; box-shadow: none !important; }
+.pp2-mopen { display: flex; align-items: center; justify-content: center; gap: 6px; width: calc(50% - 5px); height: 96px; margin: 12px 0 0 auto; border: 1px dashed var(--line-2); border-radius: 12px; background: none; color: var(--ink-3); font: 400 13px var(--font-ui, inherit); cursor: pointer; }
+.pp2-mopen:hover { color: var(--ink); border-color: var(--ink-3); }
+.pp2-id { bottom: 0; }
+.pp-hero.pp2-hero:not(.img) .pp2-id { bottom: 18px; }
+.pp2-sub { min-height: 30px; }
+.pp2-mood .mwall.pv { columns: 2 120px; }
+.pp2-mood .mwall .pp2-mopen { width: 100%; height: 92px; margin: 0 0 8px; break-inside: avoid; }
