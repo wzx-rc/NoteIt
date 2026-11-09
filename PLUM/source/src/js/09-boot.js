@@ -50,9 +50,9 @@ function bindShell() {
   $('#spaces').addEventListener('click', e => { const m = e.target.closest('[data-spmore]'); if (m) { e.stopPropagation(); spaceMenu(m, spaceById(m.dataset.spmore)); } });
   $('#spaces').addEventListener('contextmenu', e => {
     const pg = e.target.closest('.nv.pg[data-go^="doc:"]');
-    if (pg) { e.preventDefault(); const d = docById(pg.dataset.go.slice(4)); if (d) openPop(pg, [
+    if (pg) { e.preventDefault(); const d = docById(pg.dataset.go.slice(4)); if (d) openPop({ left: e.clientX + 14, right: e.clientX + 14, top: e.clientY - 10, bottom: e.clientY - 10, width: 0, height: 0 }, [
       { label: 'Renommer', icon: 'text', run: () => renameDoc(d) },
-      ...(isPage(d) ? [] : [{ label: 'Supprimer', icon: 'trash', danger: true, run: () => trashDoc(d) }])]); return; }
+      ...(isPage(d) ? [] : [{ label: 'Supprimer', icon: 'trash', danger: true, run: () => trashDoc(d) }])], { cls: 'pop-sm' }); return; }
     const r = e.target.closest('[data-spi]'); if (r) { e.preventDefault(); spaceMenu(r, spaceById(r.dataset.spi)); } });
   /* drag a note or board card onto a space of the sidebar (or onto « Non classées ») to file it there */
   const DOC_T = 'application/x-plum-doc', side = $('#side');

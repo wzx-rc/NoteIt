@@ -51,13 +51,13 @@
 html, body { height: 100%; }
 /* Windows app title bar (syncTitleBar), with its window buttons on the right */
 :root { --tb-l: var(--side); --tb-r: var(--paper); --tb-sym: var(--ink); --tb-text: var(--side-mute); }
-#tbar { position: fixed; z-index: 900; top: 0; left: 0; right: 0; height: 32px; display: flex; align-items: center; -webkit-app-region: drag; user-select: none;
+#tbar { position: fixed; z-index: 900; top: 0; left: 0; right: 0; height: var(--tbh, 32px); display: flex; align-items: center; -webkit-app-region: drag; user-select: none;
   background: linear-gradient(90deg, var(--tb-l) var(--side-w), var(--tb-r) var(--side-w)); }
 #tbar .tb-l { display: inline-flex; align-items: center; gap: 7px; padding-left: 14px; font: 600 11.5px/1 var(--font-ui); letter-spacing: .4px; color: var(--tb-text); }
 #tbar .tb-l small { font-weight: 500; opacity: .8; }
 #tbar svg { width: 14px; height: 14px; fill: var(--br-l2); }
-html.tbar #app { height: calc(100% - 32px); margin-top: 32px; }
-html.tbar .scrim { top: 32px; }
+html.tbar #app { height: calc(100% - var(--tbh, 32px)); margin-top: var(--tbh, 32px); }
+html.tbar .scrim { top: var(--tbh, 32px); }
 html[data-focus] #tbar { background: var(--tb-r); }
 #tbar .tb-w { margin-left: auto; display: flex; height: 100%; -webkit-app-region: no-drag; }
 #tbar .tb-w button { width: 46px; height: 100%; display: grid; place-items: center; color: var(--tb-sym); }
@@ -3274,3 +3274,27 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 .it.card-it.dir .fi small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .it.card-it.dir .dir-open { flex: none; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--raise); color: var(--ink); font: 600 12px/1 var(--font-ui, system-ui); cursor: pointer; }
 .it.card-it.dir .dir-open:hover { background: var(--sunk); }
+
+/* 0.3.0: compact size popover, classic sizes under the slider */
+.tpop .tsz { width: 188px; padding: 4px 6px 2px; }
+.tpop .tsz-hd { margin-bottom: 4px; font-size: 11.5px; }
+.tpop .tsz .tsz-in { height: 24px; padding: 0 6px; }
+.tpop .tsz .tsz-in input { font-size: 13px; width: 28px; }
+.tpop .tsz-r { height: 14px; }
+.tpop .tsz-pre { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-top: 6px; }
+.tpop .tsz-pre button { height: 24px; padding: 0; border: 0; border-radius: 6px; background: color-mix(in oklab, var(--ink) 6%, transparent); color: var(--ink-2); font: 500 11.5px/1 var(--font-ui, system-ui); font-variant-numeric: tabular-nums; cursor: pointer; }
+.tpop .tsz-pre button:hover { background: color-mix(in oklab, var(--ink) 12%, transparent); color: var(--ink); }
+.tpop .tsz-pre button[aria-pressed="true"] { background: color-mix(in oklab, var(--accent) 22%, transparent); color: var(--ink); }
+
+/* 0.3.0: focus mode on Windows: a taller title bar, its buttons 3x bigger with a light title under each */
+html.tbar[data-focus] { --tbh: 50px; }
+html[data-focus] #tbar .tb-f { gap: 2px; padding-right: 6px; }
+html[data-focus] #tbar .tb-f button { flex-direction: column; justify-content: center; gap: 3px; height: 100%; min-width: 66px; padding: 0 8px; opacity: .78; }
+html[data-focus] #tbar .tb-f button svg, html[data-focus] #tbar .tb-f button .i { width: 22px; height: 22px; }
+html[data-focus] #tbar .tb-f [data-f="exit"] svg { width: 20px; height: 20px; stroke-width: .9; }
+html[data-focus] #tbar .tb-f .tbf-l, html[data-focus] #tbar .tb-f [data-f="exit"] span.tbf-l { display: block; font: 400 10px/1 var(--font-ui); letter-spacing: .2px; opacity: .75; white-space: nowrap; }
+#tbar .tbf-l { display: none; }
+/* 0.3.0: smaller right-click menu (side bar pages) */
+.pop.pop-sm { min-width: 150px; padding: 4px; border-radius: 10px; }
+.pop.pop-sm .mi { min-height: 28px; padding: 4px 8px; gap: 8px; font-size: 12.5px; border-radius: 6px; }
+.pop.pop-sm .mi .i { width: 15px; height: 15px; }

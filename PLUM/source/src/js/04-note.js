@@ -75,6 +75,17 @@ const Note = (() => {
       case 'fold': {
         let n = blk; while (n && n.parentNode !== body) n = n.parentNode;
         if (n && isHead(n)) { foldToggle(n); return; }
+        const li = blk && blk.closest && blk.closest('li');
+        if (li && li.parentNode && li.parentNode.parentNode === body) {   // 0.3.0: a list line becomes a real title, the lines under it its section
+          const ul = li.parentNode, h = document.createElement('h2'), rest = document.createElement(ul.tagName);
+          for (const c of [...li.childNodes]) if (!(c.nodeType === 1 && /^(UL|OL)$/.test(c.tagName))) h.append(c);
+          if (!h.textContent.trim()) h.innerHTML = '<br>';
+          if (ul.className) rest.className = ul.className;
+          for (let x = li.nextElementSibling; x;) { const nx = x.nextElementSibling; rest.append(x); x = nx; }
+          li.remove(); ul.after(h); if (rest.children.length) h.after(rest); if (!ul.children.length) ul.remove();
+          const r = document.createRange(); r.selectNodeContents(h); r.collapse(false); s.removeAllRanges(); s.addRange(r);
+          applyFolds(body); syncMarkers(body); saveBody(); renderTool(); return;
+        }
         document.execCommand('formatBlock', false, 'h2'); applyFolds(body); break;
       }
       case 'bold': case 'italic': case 'underline': case 'strikeThrough': document.execCommand(c); break;
@@ -149,7 +160,7 @@ const Note = (() => {
     /* 0.2.16: the theme's 20 colours (n°1, the ink, is the default text colour), free colours kept on the « Récentes » line */
     if (k === 'color') { Colors.open(btn, { value: S.prefs.noteColor, none: true, onPick: (c, final) => { if (final) color(c && schemeNo(c) === 1 ? null : c); } }); return; }
     const html = k === 'font' ? TFONTS.map(([v, l, ff]) => `<button class="mi" data-v="${v}"><span style="font-family:${ff};font-size:16px">${l}</span></button>`).join('')
-      : k === 'size' ? `<div class="tsz"><div class="tsz-hd"><span>Taille</span><label class="tsz-in"><input type="number" min="6" max="96" step="1" value="${curSize()}" aria-label="Taille en pixels"><span>px</span></label></div><input class="tsz-r" type="range" min="6" max="96" step="1" value="${curSize()}" aria-label="Taille du texte"><div class="tsz-sc"><span>6</span><span>Aa</span><span>96</span></div></div>`
+      : k === 'size' ? `<div class="tsz"><div class="tsz-hd"><span>Taille</span><label class="tsz-in"><input type="number" min="6" max="96" step="1" value="${curSize()}" aria-label="Taille en pixels"><span>px</span></label></div><input class="tsz-r" type="range" min="6" max="96" step="1" value="${curSize()}" aria-label="Taille du texte"><div class="tsz-pre">${[10, 12, 14, 16, 18, 20, 24, 32, 48, 64].map(v => `<button data-v="${v}" aria-pressed="${curSize() === v}">${v}</button>`).join('')}</div></div>`
       : '';
     const pop = openPop(btn, html, { cls: 'tpop', focus: false });
     pop.addEventListener('pointerdown', e => { if (!e.target.closest('input')) e.preventDefault(); });
@@ -215,8 +226,17 @@ const Note = (() => {
   const isHead = n => n && /^H[1-3]$/.test(n.tagName);
   const FOLD_IC = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 9h6M7 14.5h13M7 19h13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
   const lvl = n => +n.tagName[1];
+  function fixHeads(root) {
+    for (const h of [...root.children]) {
+      if (!isHead(h)) continue; const l = h.querySelector(':scope > ul, :scope > ol'); if (!l) continue;
+      const lis = [...l.children].filter(x => x.tagName === 'LI'); if (!lis.length) { l.remove(); continue; }
+      const first = lis.shift(); l.remove(); for (const c of [...first.childNodes]) h.append(c);
+      if (lis.length) { const rest = document.createElement(l.tagName); if (l.className) rest.className = l.className; rest.append(...lis); h.after(rest); }
+    }
+  }
   function applyFolds(root = body) {
     if (!root) return;
+    fixHeads(root);
     let foldAt = 0;
     for (const n of root.children) {
       if (isHead(n) && foldAt && lvl(n) <= foldAt) foldAt = 0;

@@ -420,7 +420,8 @@ function namePop(anchor, title, value, done) {
 }
 /* the full atelier (wheel, palettes, harmonies… on the board) is an option in Réglages; by default drawing shows
    the simple brush panel and the colour popover */
-const atelierFull = () => S.prefs.atelier === 'complet';
+/* 0.3.0: the full atelier is retired, every theme draws with the simple module made for Minimal (brush library, simple panel) */
+const atelierFull = () => false;
 const PenPanel = {
   /* the simple panel: the brush (menu with previews), size and opacity, the colour from the theme's scheme;
      shape, texture, flow, spacing, dynamics, smoothing and pressure are folded under "Réglages avancés" */

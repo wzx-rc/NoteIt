@@ -981,9 +981,11 @@ function syncTitleBar(t) {
     bar = document.createElement('div'); bar.id = 'tbar';
     bar.innerHTML = `<span class="tb-l"><i class="pm" aria-hidden="true"></i>PLUM <small>${APP_VERSION}</small></span>`;
     // focus mode: a small exit button (and the assistant) next to the window buttons, instead of the floating pill
-    bar.insertAdjacentHTML('beforeend', `<span class="tb-f"><button data-f="exit" title="Quitter le focus (Échap)" aria-label="Quitter le focus"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 1.5v3h-3M7.5 1.5v3h3M4.5 10.5v-3h-3M7.5 10.5v-3h3"/></svg><span>Quitter le focus</span></button></span>`);
+    bar.insertAdjacentHTML('beforeend', `<span class="tb-f"><button data-f="exit" title="Quitter le focus (Échap)" aria-label="Quitter le focus"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 1.5v3h-3M7.5 1.5v3h3M4.5 10.5v-3h-3M7.5 10.5v-3h3"/></svg><span class="tbf-l">Quitter le focus</span></button></span>`);
     const ai = $('#focusAi'); if (ai) $('.tb-f', bar).prepend(ai);
     const mo = $('#focusMood'); if (mo) $('.tb-f', bar).prepend(mo);
+    /* 0.3.0: bigger focus buttons with a light title under each */
+    for (const [b, l] of [[ai, 'Assistant'], [mo, 'Moodboard']]) if (b && !b.querySelector('.tbf-l')) b.insertAdjacentHTML('beforeend', `<span class="tbf-l">${l}</span>`);
     bar.addEventListener('click', e => { if (e.target.closest('[data-f="exit"]')) setFocus(false); });
     if (window.notely.win) {
       const g = { min: '<path d="M2 6h8"/>', max: '<rect x="2" y="2" width="8" height="8" rx="1"/>', restore: '<rect x="2" y="4" width="6" height="6" rx="1"/><path d="M4 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H8"/>', close: '<path d="m2.5 2.5 7 7m0-7-7 7"/>' };
@@ -1073,7 +1075,6 @@ function openSettings(section) {
     ${DESKTOP ? `<div class="srow"><div class="l"><b>Source de pression</b><small>Auto : Windows Ink pour le stylet, Wintab quand la tablette ne passe pas par Windows Ink.</small></div>${seg('stSrc', p.source, [['auto', 'Auto'], ['ink', 'Windows Ink'], ['wintab', 'Wintab']])}</div>` : ''}
     <div class="srow"><div class="l"><b>Le stylet écrit toujours</b><small>Dans une note, le stylet dessine sans passer en mode Dessin ; le doigt fait défiler.</small></div><label class="tg"><input type="checkbox" id="stPen"${p.autoPen ? ' checked' : ''}><span></span></label></div>
     <div class="srow"><div class="l"><b>Molette de la souris sur un board</b></div>${seg('stWheel', p.wheel, [['zoom', 'Zoomer'], ['pan', 'Défiler']])}</div>
-    <div class="srow"><div class="l"><b>Atelier de dessin</b><small>Simple : le pinceau dans le panneau Style et la barre d'outils. Complet : la roue peinte, les palettes, harmonies et variations sur le board.</small></div>${seg('stAtl', p.atelier === 'complet' ? 'complet' : 'simple', [['simple', 'Simple'], ['complet', 'Complet']])}</div>
     </div>
     <div class="spane" data-pane="other"${tab === 'other' ? '' : ' hidden'}>
     <h5 style="margin-top:4px">Assistant IA</h5>
