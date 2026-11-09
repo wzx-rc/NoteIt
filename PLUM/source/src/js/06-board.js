@@ -3316,9 +3316,21 @@ const Board = (() => {
       await ingest({ files, getData: k => k === 'text/plain' ? texts.join('\n') : '' }, w || centerW());
     } catch (e) { toast('Collez avec Ctrl V'); }
   }
+  /* 0.2.78 diagnostic (Miro paste study): what a paste from another app holds is saved next to PLUM.exe, in clipboard-dump\ */
+  function clipDump(dt) {
+    if (!(window.notely && notely.dumpClip)) return;
+    try {
+      const types = [...(dt.types || [])], data = {};
+      for (const t of types) if (t !== 'Files') { try { data[t] = dt.getData(t); } catch (e) {} }
+      const files = [...(dt.files || [])].map(f => ({ name: f.name, type: f.type, size: f.size }));
+      if (!types.length) return;
+      notely.dumpClip({ types, data, files, at: new Date().toISOString() }).then(r => { if (r && r.ok) toast('Presse-papiers enregistré pour l’étude du collage Miro'); }).catch(() => {});
+    } catch (e) {}
+  }
   async function onPaste(e) {
     if (editing) return;
     const dt = e.clipboardData; if (!dt) return;
+    clipDump(dt);
     const txt = dt.getData('text/plain'), hasFile = (dt.files && dt.files.length) || [...(dt.items || [])].some(i => i.kind === 'file');
     { const sh = sheetSelOf(); if (sh && txt && !hasFile) { e.preventDefault(); sheetPaste(sh, txt); return; } }
     if (!hasFile && clip && (!txt || txt === clip.text)) { e.preventDefault(); pasteClip(); return; }

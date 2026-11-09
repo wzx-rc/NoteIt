@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell, net, nativeTheme } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell, net, nativeTheme, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const wintab = require('./wintab');
@@ -96,6 +96,19 @@ ipcMain.handle('open-folder', async (e, p) => {
   if (typeof p !== 'string' || !path.isAbsolute(p)) return { ok: false, error: 'chemin' };
   try { const st = await fs.promises.stat(p); if (!st.isDirectory()) return { ok: false, error: 'pas un dossier' }; } catch (err) { return { ok: false, error: 'introuvable' }; }
   const r = await shell.openPath(p); return r ? { ok: false, error: r } : { ok: true };
+});
+// paste study: the page's view of the paste + every native clipboard format (base64), in <PLUM>\clipboard-dump\
+ipcMain.handle('dump-clip', async (e, d) => {
+  try {
+    const dir = path.join(path.dirname(process.execPath), 'clipboard-dump');
+    await fs.promises.mkdir(dir, { recursive: true });
+    const native = {};
+    for (const f of clipboard.availableFormats()) { try { const b = clipboard.readBuffer(f); native[f] = { size: b.length, b64: b.slice(0, 8e6).toString('base64') }; } catch (err) { native[f] = { error: String(err) }; } }
+    try { const b = clipboard.readBuffer('Chromium Web Custom MIME Data Format'); if (b && b.length) native['Chromium Web Custom MIME Data Format'] = { size: b.length, b64: b.slice(0, 8e6).toString('base64') }; } catch (err) {}
+    const name = 'clip-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+    await fs.promises.writeFile(path.join(dir, name), JSON.stringify({ page: d, native, text: clipboard.readText(), html: clipboard.readHTML() }, null, 1));
+    return { ok: true, name };
+  } catch (err) { return { ok: false, error: String(err) }; }
 });
 ipcMain.handle('open-file', async e => {
   const win = BrowserWindow.fromWebContents(e.sender);

@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('notely', {
   pathOf: f => { try { return (webUtils && webUtils.getPathForFile ? webUtils.getPathForFile(f) : f.path) || ''; } catch (e) { return (f && f.path) || ''; } },
   pathKind: p => ipcRenderer.invoke('path-kind', p),
   openFolder: p => ipcRenderer.invoke('open-folder', p),
+  // paste study (0.2.78): saves what a paste holds, plus the native clipboard formats, next to PLUM.exe
+  dumpClip: d => ipcRenderer.invoke('dump-clip', d),
   // { mode: 'light' | 'dark' | 'system' }: native theme
   setTheme: t => ipcRenderer.send('set-theme', t),
   // the size of the interface (Réglages > UI): 0.5 to 1.25, like the browser zoom
