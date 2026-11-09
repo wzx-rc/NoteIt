@@ -56,10 +56,11 @@ async function hubCalRefresh(force) {
   try {
     const mon = weekStart(new Date()), from = ymd(dAdd(mon, -1)), to = ymd(dAdd(mon, 15));
     let ev = [], okN = 0;
-    let cals = null;
+    let cals = null, gwhy = '';
     if (H.gapps) {   // the whole Google account, through the user's own Apps Script (see gappsSetup)
       const r = await Net.ics(gappsUrl(H)); const g = r && r.ok ? gappsParse(r.text, from, to) : null;
       if (g) { okN++; cals = g.cals; ev = ev.concat(g.ev); }
+      else if (force) gwhy = gappsWhy(r);
     }
     for (const [k, u] of [['p', H.ics], ['g', H.gcal]]) {
       if (!u) continue;
@@ -67,7 +68,8 @@ async function hubCalRefresh(force) {
       okN++; ev = ev.concat(pr.ev.filter(e => String(e[0]).slice(0, 10) >= from && String(e[0]).slice(0, 10) <= to).map(e => e.slice(0, 5).concat(k)));
     }
     if (okN) { S.prefs.hubCal = { src: key, at: Date.now(), ev, cals }; save(); if (R.name === 'hub') renderHubMods(); }
-    else if (force) toast(DESKTOP ? 'Ce lien ne donne pas de calendrier.' : 'Ce lien ne se lit que dans l’app Windows ou iPad.');
+    if (gwhy) toast(gwhy, 10000);
+    else if (force && !okN) toast(DESKTOP ? 'Ce lien ne donne pas de calendrier.' : 'Ce lien ne se lit que dans l’app Windows ou iPad.');
   } finally { hubCalBusy = false; }
 }
 const weekStart = d => dAdd(d, -((d.getDay() + 6) % 7));
@@ -94,10 +96,12 @@ function doGet(e) {
   var now = new Date(), from = new Date(now.getTime() - 10 * 864e5), to = new Date(now.getTime() + 30 * 864e5);
   var out = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PLUM//Google Agenda//FR'];
   CalendarApp.getAllCalendars().forEach(function (c) {
-    out.push('X-PLUM-CAL:' + JSON.stringify({ id: c.getId(), n: c.getName(), c: c.getColor(), h: c.isHidden() }));
-    c.getEvents(from, to).forEach(function (ev) {
-      out.push('X-PLUM-EV:' + JSON.stringify({ c: c.getId(), s: ev.getStartTime().getTime(), e: ev.getEndTime().getTime(), t: ev.getTitle(), a: ev.isAllDayEvent() ? 1 : 0, l: ev.getLocation() || '' }));
-    });
+    try {
+      out.push('X-PLUM-CAL:' + JSON.stringify({ id: c.getId(), n: c.getName(), c: c.getColor(), h: c.isHidden() }));
+      c.getEvents(from, to).forEach(function (ev) {
+        out.push('X-PLUM-EV:' + JSON.stringify({ c: c.getId(), s: ev.getStartTime().getTime(), e: ev.getEndTime().getTime(), t: ev.getTitle(), a: ev.isAllDayEvent() ? 1 : 0, l: ev.getLocation() || '' }));
+      });
+    } catch (err) { out.push('X-PLUM-ERR:' + JSON.stringify({ c: String(c.getId ? c.getId() : ''), m: String(err) })); }
   });
   out.push('END:VCALENDAR');
   return ContentService.createTextOutput(out.join('\\n')).setMimeType(ContentService.MimeType.TEXT);
@@ -112,6 +116,18 @@ function gappsParse(text, from, to) {
     } catch (e) {}
   }
   return { cals, ev };
+}
+/* why the script gave nothing, in words the user can act on (the Windows app sends back the page it got) */
+function gappsWhy(r) {
+  const h = String((r && r.head) || ''), host = String((r && r.host) || '');
+  if (!r) return 'Google Agenda : pas de réponse.';
+  if (r.ok) return 'Google Agenda : le script répond, mais pas avec le code PLUM. Recopie le code puis fais une nouvelle version du déploiement.';
+  if (/abort/i.test(r.error || '')) return 'Google Agenda : le script a mis plus d’une minute à répondre. Réessaie dans un instant.';
+  if (r.status) return `Google Agenda : le script répond « erreur ${r.status} ». Vérifie que l’URL finit bien par /exec.`;
+  if (/accounts\.google/.test(host) || /connexion|sign in|se connecter|login/i.test(h)) return 'Google Agenda : Google demande une connexion. Dans Déployer › Gérer les déploiements, mets « Accès : Tout le monde » (pas « tout utilisateur disposant d’un compte Google »), puis Déployer.';
+  if (/autoris|authoriz/i.test(h)) return 'Google Agenda : le script n’a pas encore l’autorisation Agenda. Dans Apps Script, clique Exécuter une fois et accepte, puis réessaie.';
+  if (/erreur|error|exception/i.test(h)) return 'Google Agenda : le script a une erreur (' + h.trim().slice(0, 140) + '). Recopie le code de PLUM, puis Gérer les déploiements › Modifier › Nouvelle version.';
+  return 'Google Agenda : la réponse n’est pas un agenda. ' + (h ? '(« ' + h.trim().slice(0, 100) + ' »)' : '');
 }
 function gappsSetup() {
   const H = hubState(), code = gappsScript(gappsKey(H));

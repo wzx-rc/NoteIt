@@ -125,8 +125,9 @@ let toastT = 0;
 function toast(msg, action) {
   const t = $('#toast');
   t.innerHTML = `<span>${esc(msg)}</span>`;
+  const dur = typeof action === 'number' ? action : 0; if (dur) action = null;
   if (action) { const b = document.createElement('button'); b.textContent = action.label; b.onclick = () => { t.classList.remove('on'); action.run(); }; t.append(b); }
-  t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), action ? 5200 : 2600);
+  t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), dur || (action ? 5200 : 2600));
 }
 
 /* popover menus: items = [{label, icon, run, small, danger} | '-' | {head}] */

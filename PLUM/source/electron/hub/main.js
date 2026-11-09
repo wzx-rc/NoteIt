@@ -164,14 +164,15 @@ ipcMain.handle('fetch-url', async (e, req) => {
   }
   if (!/^https?:\/\//i.test(url)) return { ok: false, error: 'url' };
   const doFetch = net && net.fetch ? net.fetch.bind(net) : fetch;
-  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+  // an Apps Script reading a whole Google account can take a while on a cold start: calendars get a minute
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), as === 'ics' ? 60000 : 20000);
   try {
     if (as === 'ics') {   // a calendar feed (PRONOTE, Google, Outlook...): text only, 8 MB at most
       const r = await doFetch(url, { signal: ctl.signal, credentials: 'omit', headers: { 'User-Agent': BROWSER_UA, Accept: 'text/calendar,text/plain;q=0.9,*/*;q=0.5' } });
       if (!r.ok) return { ok: false, status: r.status };
       const buf = await r.arrayBuffer(); if (buf.byteLength > 8 * 1024 * 1024) return { ok: false, error: 'size' };
       const text = Buffer.from(buf).toString('utf8');
-      return /BEGIN:VCALENDAR/i.test(text.slice(0, 4096)) ? { ok: true, text } : { ok: false, error: 'notics' };
+      return /BEGIN:VCALENDAR/i.test(text.slice(0, 4096)) ? { ok: true, text } : { ok: false, error: 'notics', host: (() => { try { return new URL(r.url).host; } catch (err) { return ''; } })(), head: text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 400) };
     }
     if (as === 'meta') {
       const ask = async ua => {
