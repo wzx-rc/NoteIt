@@ -3267,3 +3267,10 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 
 /* 0.2.81: a picked picture / link card / file in a note (Suppr removes it) */
 .nbody figure.fsel, .nbody .nfile.fsel { outline: 2px solid var(--accent, #6aa0ff); outline-offset: 3px; border-radius: 6px; }
+
+/* 0.2.84: a folder on the board (from the moodboard) */
+.it.card-it.dir { gap: 12px; }
+.it.card-it.dir .mw-dir { width: 40px; height: 34px; flex: none; filter: drop-shadow(0 2px 3px rgb(0 0 0 / .18)); }
+.it.card-it.dir .fi small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.it.card-it.dir .dir-open { flex: none; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--raise); color: var(--ink); font: 600 12px/1 var(--font-ui, system-ui); cursor: pointer; }
+.it.card-it.dir .dir-open:hover { background: var(--sunk); }

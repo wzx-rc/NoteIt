@@ -130,6 +130,7 @@ const Board = (() => {
       case 'shape': return `s${it.w}|${it.h}|${it.sh}|${it.rad}|${it.fo}|${it.so}|${it.sc}|${it.fc}|${it.sw}|${it.sty}|${it.dash}|${it.fill}|${it.txt}|${it.fs}|${it.font}|${it.color}|${theme()}`;
       case 'image': return `i${it.asset}|${it.frm}|${it.cap}|${it.rad}|${Assets.has(it.asset)}`;
       case 'file': return `f${it.asset}|${it.name}|${it.mime}`;
+      case 'dir': return `D${it.path}|${it.name}`;
       case 'link': return `l${Math.round(it.w)}|${Math.round(it.h)}|${it.url}|${it.title}|${it.asset || it.pic || ''}|${Assets.has(it.asset)}`;
       case 'paint': return `c${it.c}|${it.seed}|${theme()}`;
       case 'ink': return `k${pv(it.p)}|${it.c}|${it.o}|${it.t}|${it.w0}|${it.h0}|${theme()}|${it.b ? JSON.stringify(it.b) : ''}`;
@@ -173,6 +174,11 @@ const Board = (() => {
         n.className = 'it image ' + (it.frm || 'shadow'); n.style.borderRadius = it.rad != null && it.frm !== 'polaroid' ? imgRad(it) + 'px' : '';
         const u = Assets.url(it.asset);
         n.innerHTML = u ? `<img src="${u}" alt="${esc(it.cap || 'Image')}" draggable="false">${it.frm === 'polaroid' && it.cap ? `<div class="cap">${esc(it.cap)}</div>` : ''}` : `<div class="ph"><div>${icon('image')}Glissez une image ici${it.cap ? `<small class="ph-n">${esc(it.cap)}</small>` : ''}${it.miro && it.miro.i && miroCan() ? `<button class="ph-miro" data-miro="1">Récupérer depuis Miro</button>` : ''}</div></div>`;
+        break;
+      }
+      case 'dir': {   // 0.2.84: a Windows folder from the moodboard, the same tile; double-click or Ouvrir opens it in the Explorer
+        n.className = 'it card-it dir';
+        n.innerHTML = `${Mood.FOLDER_SVG}<div class="fi"><b>${esc(it.name || 'Dossier')}</b><small>${esc(Mood.folderWhere(it.path || ''))}</small></div><button class="dir-open" data-diropen="1" title="Ouvrir dans l’Explorateur : ${esc(it.path || '')}">Ouvrir</button>`;
         break;
       }
       case 'file': {
@@ -458,7 +464,7 @@ const Board = (() => {
 
   /* ---------- contextual bars, as in Miro: the options of the selection float over it (qbar), those of the chosen
      tool under the tools (topts). Colours open the colour popover, the rest small popovers; ⋯ has order, groups, opacity. ---------- */
-  const primaryProp = it => it.k === 'note' || it.k === 'todo' ? 'fc' : it.k === 'frame' || it.k === 'image' || it.k === 'file' || it.k === 'link' || it.k === 'doc' || it.k === 'task' || it.k === 'sheet' ? null : 'sc';
+  const primaryProp = it => it.k === 'note' || it.k === 'todo' ? 'fc' : it.k === 'frame' || it.k === 'image' || it.k === 'file' || it.k === 'dir' || it.k === 'link' || it.k === 'doc' || it.k === 'task' || it.k === 'sheet' ? null : 'sc';
   const propValue = (it, prop) => prop === 'fc' ? (it.k === 'shape' ? it.fc : it.c) : prop === 'sc' ? (it.k === 'text' ? it.color : it.k === 'ink' || it.k === 'mind' || it.k === 'paint' ? it.c : it.sc) : it[prop];
   const SC_KINDS = ['shape', 'conn', 'text', 'ink', 'mind'];
   const qsw = (prop, cur, title) => `<button class="qb qc" data-qc="${prop}" title="${esc(title)}" aria-label="${esc(title)}"><span class="qsw${prop === 'fc' || prop === 'ffc' ? ' fill' : ''}${cur ? '' : ' none'}" style="--c:${cur || 'transparent'}"></span></button>`;
@@ -1179,6 +1185,7 @@ const Board = (() => {
     if (it.k === 'image' && Assets.has(it.asset)) lightbox(it);
     if (it.k === 'plan') planModal(it);
     if (it.k === 'paint') paintInfo(it);
+    if (it.k === 'dir' && it.path) Mood.openFolder(it);
   }
   function lightbox(it) { const u = Assets.url(it.asset); if (!u) return; const l = document.createElement('div'); l.className = 'lightbox'; l.innerHTML = `<img src="${u}" alt="${esc(it.cap || 'Image')}">`; l.onclick = () => l.remove(); document.body.append(l); }
 
@@ -3105,6 +3112,7 @@ const Board = (() => {
         it = { id: uid('f'), k: 'file', x: single ? at.x - W / 2 : x0 + c * (colW + gap), y: single ? at.y - H / 2 : y0 + hs[c], w: W, h: H, asset: m.asset, name: m.name || 'Fichier', size: m.size || 0, mime: m.mime || '' }; hs[c] += H + gap;
       } else if (m.type === 'link' && m.url) { const W = 300 * s, H = 80 * s, c = hs.indexOf(Math.min(...hs)); it = { id: uid('l'), k: 'link', x: single ? at.x - W / 2 : x0 + c * (colW + gap), y: single ? at.y - H / 2 : y0 + hs[c], w: W, h: H, url: m.url, title: m.title || '' }; hs[c] += H + gap; }
       else if (m.type === 'text' && m.txt) { const W = 220 * s, H = 220 * s, c = hs.indexOf(Math.min(...hs)); it = mkNote(single ? at.x - W / 2 : x0 + c * (colW + gap), single ? at.y - H / 2 : y0 + hs[c], m.txt, noteColor, { w: W, h: H, fs: m.txt.length > 120 ? 18 : 24 }); hs[c] += H + gap; }
+      else if (m.type === 'folder' && m.path) { const W = 280 * s, H = 78 * s, c = hs.indexOf(Math.min(...hs)); it = { id: uid('D'), k: 'dir', x: single ? at.x - W / 2 : x0 + c * (colW + gap), y: single ? at.y - H / 2 : y0 + hs[c], w: W, h: H, path: m.path, name: m.name || 'Dossier' }; hs[c] += H + gap; }
       else if (m.type === 'doc' && docById(m.doc) && m.doc !== D.id) { const W = 220 * s, H = 180 * s, c = hs.indexOf(Math.min(...hs)); it = { id: uid('d'), k: 'doc', x: single ? at.x - W / 2 : x0 + c * (colW + gap), y: single ? at.y - H / 2 : y0 + hs[c], w: W, h: H, doc: m.doc }; hs[c] += H + gap; }
       if (it) added.push(it);
     }
@@ -3572,6 +3580,7 @@ const Board = (() => {
       changed(partial) { propSig = ''; refreshTools(); if (!partial) { Studio.sync(); renderProps(); } } });
     mountMods();
     // « Récupérer depuis Miro » on an empty frame (0.2.80)
+    host.addEventListener('pointerdown', e => { const dop = e.target.closest && e.target.closest('[data-diropen]'); if (dop && e.button === 0) { const n = dop.closest('[data-id]'), it = n && byId.get(n.dataset.id); if (it) { e.stopPropagation(); e.preventDefault(); Mood.openFolder(it); } } }, true);
     host.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('.ph-miro')) { e.stopPropagation(); e.preventDefault(); if (miroToken()) { toast('Récupération des images Miro…'); miroFill(); } else miroSetup(miroFill); } }, true);
     host.addEventListener('pointerdown', onDown);
     host.addEventListener('mousedown', e => { if (fxPicking) e.preventDefault(); });
