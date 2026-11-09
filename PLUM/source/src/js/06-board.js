@@ -172,7 +172,7 @@ const Board = (() => {
       case 'image': {
         n.className = 'it image ' + (it.frm || 'shadow');
         const u = Assets.url(it.asset);
-        n.innerHTML = u ? `<img src="${u}" alt="${esc(it.cap || 'Image')}" draggable="false">${it.frm === 'polaroid' && it.cap ? `<div class="cap">${esc(it.cap)}</div>` : ''}` : `<div class="ph"><div>${icon('image')}Glissez une image ici</div></div>`;
+        n.innerHTML = u ? `<img src="${u}" alt="${esc(it.cap || 'Image')}" draggable="false">${it.frm === 'polaroid' && it.cap ? `<div class="cap">${esc(it.cap)}</div>` : ''}` : `<div class="ph"><div>${icon('image')}Glissez une image ici${it.cap ? `<small class="ph-n">${esc(it.cap)}</small>` : ''}</div></div>`;
         break;
       }
       case 'file': {
@@ -3317,6 +3317,19 @@ const Board = (() => {
     } catch (e) { toast('Collez avec Ctrl V'); }
   }
   /* 0.2.78 diagnostic (Miro paste study): what a paste from another app holds is saved next to PLUM.exe, in clipboard-dump\ */
+  /* a copy from Miro (05d-miro.js): its elements land centred where the pointer is, selected; pictures as empty frames */
+  function pasteMiro(r) {
+    const list = r.items; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const grow = (x, y) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
+    for (const it of list) { if (it.k === 'conn') { grow(it.a.x, it.a.y); grow(it.b.x, it.b.y); } else { grow(it.x, it.y); grow(it.x + it.w, it.y + it.h); } }
+    const w = centerW(), dx = w.x - (x0 + x1) / 2, dy = w.y - (y0 + y1) / 2;
+    for (const it of list) {
+      if (it.k === 'conn') { it.a.x += dx; it.a.y += dy; it.b.x += dx; it.b.y += dy; it.pts = (it.pts || []).map(p => [p[0] + dx, p[1] + dy]); }
+      else { it.x += dx; it.y += dy; }
+    }
+    commit(items.concat(list)); sel = new Set(list.filter(i => i.k !== 'conn').map(i => i.id)); schedule();
+    toast(`${list.length} élément${list.length > 1 ? 's' : ''} importé${list.length > 1 ? 's' : ''} de Miro` + (r.images ? ` · ${r.images} image${r.images > 1 ? 's' : ''} à déposer dans ${r.images > 1 ? 'leurs cadres' : 'son cadre'}` : ''));
+  }
   function clipDump(dt) {
     if (!(window.notely && notely.dumpClip)) return;
     try {
@@ -3330,7 +3343,8 @@ const Board = (() => {
   async function onPaste(e) {
     if (editing) return;
     const dt = e.clipboardData; if (!dt) return;
-    clipDump(dt);
+    if (S.prefs.clipDump) clipDump(dt);   // the paste study (0.2.78), now off unless asked for
+    { const mh = dt.getData('text/html'); if (mh && mh.includes('(miro-data-v1)')) { const r = miroItems(mh); if (r) { e.preventDefault(); pasteMiro(r); return; } } }
     const txt = dt.getData('text/plain'), hasFile = (dt.files && dt.files.length) || [...(dt.items || [])].some(i => i.kind === 'file');
     { const sh = sheetSelOf(); if (sh && txt && !hasFile) { e.preventDefault(); sheetPaste(sh, txt); return; } }
     if (!hasFile && clip && (!txt || txt === clip.text)) { e.preventDefault(); pasteClip(); return; }
