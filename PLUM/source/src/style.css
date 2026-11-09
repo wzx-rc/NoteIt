@@ -3158,3 +3158,6 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 .pp2-qn .nsub { display: none !important; }
 .pp2-qn .ntool { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .pp2-qn .nbody { min-height: 220px !important; }
+/* 0.2.71: in the Sommet layouts the card's synthesis is bare text; a fine border shows while typing in it */
+:is([data-skin="sommet"], [data-skin="minsom"], [data-skin="briques"]) .pc2-body textarea.pc2-syn { padding: 4px 7px !important; margin: 2px -8px 0; width: calc(100% + 16px); min-height: 66px; max-height: 66px; border: 1px solid transparent !important; border-radius: 7px !important; transition: border-color .12s; }
+:is([data-skin="sommet"], [data-skin="minsom"], [data-skin="briques"]) .pc2-body textarea.pc2-syn:focus { border-color: var(--line-2) !important; }
