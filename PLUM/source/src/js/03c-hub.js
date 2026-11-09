@@ -48,15 +48,42 @@ function hubEvents() {
   const seen = new Set();
   return ev.filter(e => !(e[4] & 1) && String(e[0]).slice(0, 10) === day && !seen.has(e[0] + e[2]) && seen.add(e[0] + e[2])).sort((a, b) => a[0] < b[0] ? -1 : 1);
 }
+const calSrcs = H => [H.ics, H.gcal].filter(Boolean);
 async function hubCalRefresh(force) {
-  const H = hubState(), C = S.prefs.hubCal;
-  if (!H.ics || hubCalBusy || (!force && C && C.src === H.ics && Date.now() - C.at < 3600e3)) return;
+  const H = hubState(), C = S.prefs.hubCal, key = calSrcs(H).join(' ');
+  if (!key || hubCalBusy || (!force && C && C.src === key && Date.now() - C.at < 3600e3)) return;
   hubCalBusy = true;
   try {
-    const r = await Net.ics(H.ics); const p = r && r.ok ? icsParse(r.text) : null;
-    if (p) { const from = ymd(new Date()), to = ymd(dAdd(new Date(), 8)); S.prefs.hubCal = { src: H.ics, at: Date.now(), ev: p.ev.filter(e => String(e[0]).slice(0, 10) >= from && String(e[0]).slice(0, 10) <= to).map(e => e.slice(0, 5)) }; save(); if (R.name === 'hub') renderHubMods(); }
+    const mon = weekStart(new Date()), from = ymd(dAdd(mon, -1)), to = ymd(dAdd(mon, 15));
+    let ev = [], okN = 0;
+    for (const [k, u] of [['p', H.ics], ['g', H.gcal]]) {
+      if (!u) continue;
+      const r = await Net.ics(u); const pr = r && r.ok ? icsParse(r.text) : null; if (!pr) continue;
+      okN++; ev = ev.concat(pr.ev.filter(e => String(e[0]).slice(0, 10) >= from && String(e[0]).slice(0, 10) <= to).map(e => e.slice(0, 5).concat(k)));
+    }
+    if (okN) { S.prefs.hubCal = { src: key, at: Date.now(), ev }; save(); if (R.name === 'hub') renderHubMods(); }
     else if (force) toast(DESKTOP ? 'Ce lien ne donne pas de calendrier.' : 'Ce lien ne se lit que dans l’app Windows ou iPad.');
   } finally { hubCalBusy = false; }
+}
+const weekStart = d => dAdd(d, -((d.getDay() + 6) % 7));
+/* the week strip above the project cards (0.2.54): Monday to Sunday, today stands out; Google Agenda + PRONOTE */
+function weekEvents() {
+  const C = S.prefs.hubCal; let ev = C && C.ev ? C.ev : [];
+  if (!ev.length) for (const d of liveDocs()) for (const it of d.items || []) if (it.k === 'plan' && it.ev) ev = ev.concat(it.ev);
+  const seen = new Set();
+  return ev.filter(e => !(e[4] & 1) && !seen.has(e[0] + e[2]) && seen.add(e[0] + e[2])).sort((a, b) => a[0] < b[0] ? -1 : 1);
+}
+function weekMod() {
+  const H = hubState(), mon = weekStart(new Date()), today = ymd(new Date()), now = ymdhm(new Date()), ev = weekEvents();
+  const lab = e => (e[2] || '').split(/\s+[-–]\s+/)[0];
+  const col = e => e[5] === 'g' ? '#4285F4' : PLAN_COLORS[Math.floor(hashStr(lab(e).toUpperCase()) * PLAN_COLORS.length)];
+  const days = Array.from({ length: 7 }, (_, i) => dAdd(mon, i)).map(d => {
+    const k = ymd(d), list = ev.filter(e => String(e[0]).slice(0, 10) === k), past = k < today;
+    return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b></div>
+      <div class="wk-l">${list.slice(0, 3).map(e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i><span>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}</em>`}${esc(lab(e))}</span></div>`).join('')}${list.length > 3 ? `<small>+${list.length - 3}</small>` : ''}</div></div>`;
+  }).join('');
+  const mon2 = mon.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+  return `<div class="wk-top"><span class="lab">Semaine du ${mon2}</span>${calSrcs(H).length ? '' : `<button class="wk-link" data-hopts>${icon('cal', 'sm')}Connecter Google Agenda</button>`}</div><div class="wk-g">${days}</div>`;
 }
 function calMod(m) {
   const ev = hubEvents(), now = ymdhm(new Date()), next = ev.find(e => e[1] > now) || null;
@@ -146,6 +173,24 @@ async function moodUnfurl() {
       m.pv = 1; save(); if (R.name === 'hub') renderHubMods();
     }
   } finally { moodBusy = false; }
+}
+
+/* weather icon next to « Bonjour » (0.2.54): real weather when a city is set, else a placeholder that changes each day */
+const WX_SVG = {
+  sun: '<circle cx="12" cy="12" r="4.6" fill="#FFC53D"/><g stroke="#FFC53D" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g>',
+  part: '<circle cx="9" cy="9" r="4" fill="#FFC53D"/><g stroke="#FFC53D" stroke-width="1.8" stroke-linecap="round"><path d="M9 1.8v1.8M1.8 9h1.8M3.9 3.9l1.3 1.3M14.1 3.9l-1.3 1.3"/></g><path d="M8 20h10.5a3.5 3.5 0 0 0 .3-7 5 5 0 0 0-9.6 1.1A3 3 0 0 0 8 20z" fill="#D9DEE6"/>',
+  cloud: '<path d="M6.5 19h11a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.8 1.3A3.4 3.4 0 0 0 6.5 19z" fill="#C3CAD5"/>',
+  rain: '<path d="M6.5 15h11a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.8 1.3A3.4 3.4 0 0 0 6.5 15z" fill="#C3CAD5"/><g stroke="#5AA9FF" stroke-width="2" stroke-linecap="round"><path d="M8 18l-1 3M12.5 18l-1 3M17 18l-1 3"/></g>',
+  snow: '<path d="M6.5 15h11a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.8 1.3A3.4 3.4 0 0 0 6.5 15z" fill="#C3CAD5"/><g fill="#E8F1FF"><circle cx="8" cy="19.5" r="1.3"/><circle cx="12.5" cy="20.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></g>',
+  storm: '<path d="M6.5 14h11a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.8 1.3A3.4 3.4 0 0 0 6.5 14z" fill="#9AA3B2"/><path d="M12.5 14l-3 5h3l-1.5 4 4.5-6h-3l1.5-3z" fill="#FFC53D"/>'
+};
+const WX_LAB = { sun: 'Ensoleillé', part: 'Éclaircies', cloud: 'Nuageux', rain: 'Pluie', snow: 'Neige', storm: 'Orage' };
+function wxKind(c) { if (c <= 1) return 'sun'; if (c === 2) return 'part'; if (c === 3 || c === 45 || c === 48) return 'cloud'; if (c >= 95) return 'storm'; if ((c >= 71 && c <= 77) || c === 85 || c === 86) return 'snow'; return 'rain'; }
+function hubWxIcon() {
+  const W = S.prefs.hubWx, real = hubState().city && W && W.d;
+  const kinds = Object.keys(WX_SVG), k = real ? wxKind(W.c) : kinds[Math.floor(hashStr(ymd(new Date())) * kinds.length)];
+  const t = real ? `${Math.round(W.t)}°` : '';
+  return `<button class="hub-wx" data-hopts title="${WX_LAB[k]}${real ? ' à ' + esc(hubState().city.name) : ' (météo à connecter : choisis ta ville dans Personnaliser)'}"><svg viewBox="0 0 24 24" aria-hidden="true">${WX_SVG[k]}</svg>${t ? `<b>${t}</b>` : ''}</button>`;
 }
 
 //COLOR
@@ -260,10 +305,11 @@ function renderHub(v) {
   const nEv = hubEvents().length, name = (S.prefs.name || '').trim();
   ensurePages();
   v.innerHTML = `<div class="hubpage cc hub2">
-    <div class="hub2-top"><div class="hub-hello"><span>${date.charAt(0).toUpperCase() + date.slice(1)}${wxs}${nEv ? ` · ${nEv} évènement${nEv > 1 ? 's' : ''} aujourd’hui` : ''}</span><h1>${name ? `Bonjour ${esc(name)}` : 'Bonjour'}</h1></div>
+    <div class="hub2-top"><div class="hub-hello"><span>${date.charAt(0).toUpperCase() + date.slice(1)}${wxs}${nEv ? ` · ${nEv} évènement${nEv > 1 ? 's' : ''} aujourd’hui` : ''}</span><div class="hub-hi"><h1>${name ? `Bonjour ${esc(name)}` : 'Bonjour'}</h1><span id="hubWx">${hubWxIcon()}</span></div></div>
       <div class="hub2-create" id="hubCreate" role="toolbar" aria-label="Créer">${createHTML()}</div></div>
     <div class="hub-main${H.sideFold ? ' side-off' : ''}">
       <div class="hub-col">
+        <section class="hub-week" id="hubWeek"></section>
         <section class="hub-sec" id="hubProj"></section>
       </div>
       <aside class="hub-side"><button class="hub-sfold" data-hsfold aria-expanded="${!H.sideFold}" aria-label="${H.sideFold ? 'Ouvrir le panneau' : 'Réduire le panneau'}" title="${H.sideFold ? 'Ouvrir Aujourd’hui et le Moodboard' : 'Réduire le panneau'}">${icon('chev', 'sm')}</button><button class="hub-srail" data-hsfold aria-hidden="true" tabindex="-1"><span>Moodboard</span></button><section class="hmod hm-cal" id="hubCal"></section><section class="hmod hm-mood" id="hubMood"></section></aside>
@@ -278,8 +324,11 @@ function renderHubMods() {
   pj.innerHTML = `<div class="h2">Projets en cours<button class="hub-fold" data-hfold aria-expanded="${!fold}" aria-label="${fold ? 'Déplier les cartes' : 'Replier en capsules'}" title="${fold ? 'Déplier' : 'Replier'}">${icon('chev', 'sm')}</button><small>${list.length ? `${list.length} projet${list.length > 1 ? 's' : ''} · la carte montre la synthèse de la PAGE` : ''}</small><button class="more" data-hopts>Personnaliser</button></div>
     ${!list.length ? `<button class="hub-empty" data-qs="proj">${icon('plus')}Crée ton premier projet</button>`
       : fold ? `<div class="hub-caps">${list.map(projCap).join('')}<button class="hcap add" data-qs="proj"><span class="hcap-i">${icon('plus')}</span><b>Nouveau projet</b></button></div>`
-      : `<div class="hub2-grid">${list.map(p => projCard(p)).join('')}<button class="pc2 add" data-qs="proj"><span class="pc2-addi">${icon('plus', 'lg')}</span><b>Nouveau projet</b><small>Un nom, une couleur, une image. Sa PAGE est créée avec lui.</small></button></div>`}`;
+      : `<div class="hub-rowwrap hub2-wrap"><div class="hub-row hub2-row">${list.map(p => projCard(p)).join('')}<button class="pc2 add" data-qs="proj"><span class="pc2-addi">${icon('plus', 'lg')}</span><b>Nouveau projet</b><small>Un nom, une couleur, une image. Sa PAGE est créée avec lui.</small></button></div></div>`}`;
+  const r2 = $('.hub2-row', pj); if (r2) { r2.scrollLeft = hubScroll; hubRowEdges(r2); }
   renderCreate();
+  const wk = $('#hubWeek'); if (wk) wk.innerHTML = weekMod();
+  const wx = $('#hubWx'); if (wx) wx.innerHTML = hubWxIcon();
   $('#hubCal').innerHTML = calMod({ sz: 'M' });
   const mo = $('#hubMood'), ta = document.activeElement;
   if (!(ta && mo.contains(ta) && ta.matches('input'))) mo.innerHTML = moodMod({ sz: 'M' });
@@ -304,13 +353,15 @@ function projMenu(anchor, sp) {
 function hubOptions(anchor) {
   const H = hubState(), hidden = userSpaces().filter(s => H.off.includes(s.id));
   const p = openPop(anchor, `<div class="hub-opts"><label><span>Ville pour la météo</span><input id="hoCity" value="${esc((H.city || {}).name || '')}" placeholder="Ta ville" autocomplete="off"></label>
+    <label><span>Google Agenda : adresse secrète au format iCal</span><input id="hoGcal" value="${esc(H.gcal || '')}" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" autocomplete="off" spellcheck="false"><small class="ho-hint">Google Agenda › Paramètres › ton agenda › Intégrer l’agenda › Adresse secrète au format iCal</small></label>
     <label><span>Lien iCal du planning (PRONOTE…)</span><input id="hoIcs" value="${esc(H.ics || '')}" placeholder="https://… .ics" autocomplete="off" spellcheck="false"></label>
     ${hidden.length ? `<div class="ho-hid"><span>Projets masqués</span>${hidden.map(s => `<button class="btn sm" data-show="${s.id}"><i class="sdot" style="background:${s.color}"></i>${esc(s.name)}</button>`).join('')}</div>` : ''}
     <div style="display:flex;justify-content:flex-end"><button class="btn sm pri" id="hoOk">Enregistrer</button></div></div>`, { align: 'right' });
   p.addEventListener('click', e => { const b = e.target.closest('[data-show]'); if (b) { H.off = H.off.filter(x => x !== b.dataset.show); save(); b.remove(); renderHubMods(); } });
   $('#hoOk', p).onclick = () => {
-    const c = $('#hoCity', p).value.trim(), i = $('#hoIcs', p).value.trim(); closePop();
-    if (i !== (H.ics || '')) { H.ics = i; delete S.prefs.hubCal; save(); hubCalRefresh(true); }
+    const c = $('#hoCity', p).value.trim(), i = $('#hoIcs', p).value.trim(), gc0 = $('#hoGcal', p).value.trim(); closePop();
+    const gc = gc0;
+    if (i !== (H.ics || '') || gc !== (H.gcal || '')) { H.ics = i; H.gcal = gc; delete S.prefs.hubCal; save(); hubCalRefresh(true); }
     if (c && c !== (H.city || {}).name) hubSetCity(c); else if (!c && H.city) { delete H.city; save(); }
     go('hub', { keepFocus: true });
   };

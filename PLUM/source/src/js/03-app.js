@@ -281,6 +281,8 @@ function renderTop() {
     acts = moodBtn + aiBtn;
   }
   t.innerHTML = `${menu}<div class="crumbs">${crumbs}</div>${acts}`;
+  /* 0.2.54: the HUB has nothing in the top bar, so it gives that height back (phones keep it for the menu) */
+  t.hidden = R.name === 'hub' && innerWidth >= 700;
   if (d) {
     const ti = $('#docTitle');
     ti.oninput = () => { d.title = ti.value; touch(d); $('#focusTtl').textContent = d.title; if (R.name === 'doc' && d.type === 'note') Note.syncTitle(); };
