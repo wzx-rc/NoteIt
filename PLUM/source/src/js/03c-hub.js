@@ -319,16 +319,16 @@ function projCard(sp, o = {}) {
   const meta = [plural(st.nN, 'note'), plural(st.nB, 'board'), plural(st.nT, 'tâche')].join(' · ');
   const ini = esc(((sp.name || '?').trim()[0] || '?').toUpperCase());
   const syn = (pg && pg.synth || '').trim();
-  const tks = mainTasks(sp, o.adding ? PC_ROWS - 1 : PC_ROWS);
+  const tks = mainTasks(sp, PC_ROWS - 1);
   const row = t => `<button class="pc2-tk${t.done ? ' done' : ''}" data-htk="${t.id}" role="checkbox" aria-checked="${t.done}"><i class="pc2-bx">${icon('check', 'sm')}</i><span>${esc(t.t)}</span></button>`;
   const btn = (k, ic, l) => `<button class="pc2-b" data-hnew="${k}" data-sp="${sp.id}" title="${l}" aria-label="${l}">${icon(ic)}<i>+</i></button>`;
   return `<article class="pc2" data-hproj="${sp.id}" style="--pc1:${pal.c1};--pc2:${pal.c2};--pc3:${pal.c3}">
-    <div class="pc2-cov${cov ? ' img' : ''}" data-hgo="doc:${pg ? pg.id : ''}">${cov ? `<img src="${cov}" alt="" draggable="false">` : ''}
+    <div class="pc2-cov${cov ? ' img' : ''}">${cov ? `<img src="${cov}" alt="" draggable="false">` : ''}
       <button class="pc2-menu" data-hmenu="${sp.id}" aria-label="Options de ${esc(sp.name)}">${icon('dots', 'sm')}</button>
       <div class="pc2-id"><span class="pc2-tile">${ini}</span><div><b>${esc(sp.name)}</b><small>${meta} · ${ago(when)}</small></div></div></div>
     <div class="pc2-body">
-      <button class="pc2-syn${syn ? '' : ' empty'}" data-hsyn="${sp.id}" title="Ouvrir la PAGE du projet"><p>${syn ? esc(syn) : 'Écrire la synthèse du projet…'}</p></button>
-      <div class="pc2-tks">${o.adding ? taskAddHTML({ cls: 'pc2-add', ph: 'Nouvelle tâche' }) : ''}${tks.map(row).join('')}${!tks.length && !o.adding ? `<button class="pc2-tkempty" data-hnew="task" data-sp="${sp.id}">${icon('plus', 'sm')}Ajouter une tâche principale</button>` : ''}</div>
+      <textarea class="pc2-syn" data-hsynin="${sp.id}" placeholder="Écrire la synthèse du projet…" aria-label="Synthèse de ${esc(sp.name)}" spellcheck="false">${esc(syn)}</textarea>
+      <div class="pc2-tks">${tks.map(row).join('')}${o.adding ? taskAddHTML({ cls: 'pc2-add', ph: 'Nouvelle tâche' }) : `<button class="pc2-tkplus" data-hnew="task" data-sp="${sp.id}" title="Ajouter une tâche principale" aria-label="Ajouter une tâche principale">${icon('plus', 'sm')}${tks.length ? '' : '<span>Ajouter une tâche principale</span>'}</button>`}</div>
     </div>
     <div class="pc2-foot">${btn('note', 'note', 'Nouvelle note dans ce projet')}${btn('board', 'board', 'Nouveau board dans ce projet')}${btn('task', 'tasks', 'Nouvelle tâche dans ce projet')}
       <div class="pc2-prog" title="${st.nD} tâche${st.nD > 1 ? 's' : ''} faite${st.nD > 1 ? 's' : ''} sur ${st.nT}"><span><i style="width:${st.pct}%"></i></span><small>${st.nD} / ${st.nT}</small></div>
@@ -507,12 +507,16 @@ function bindHub(v) {
   }, true);
   /* a row of cards: click and drag to scroll it (mouse); fingers and trackpads scroll it natively */
   root.addEventListener('pointerdown', e => {
-    const row = e.target.closest('.hub-row'); if (!row || e.pointerType !== 'mouse' || e.button !== 0 || row.scrollWidth <= row.clientWidth) return;
+    const row = e.target.closest('.hub-row'); if (!row || e.target.closest('textarea, input') || e.pointerType !== 'mouse' || e.button !== 0 || row.scrollWidth <= row.clientWidth) return;
     const x0 = e.clientX, s0 = row.scrollLeft; let moved = false;
     const mv = ev => { const dx = ev.clientX - x0; if (!moved && Math.abs(dx) < 6) return; if (!moved) { moved = true; row.classList.add('grabbing'); try { row.setPointerCapture(e.pointerId); } catch (er) {} } row.scrollLeft = s0 - dx; };
     const up = () => { row.removeEventListener('pointermove', mv); row.removeEventListener('pointerup', up); row.removeEventListener('pointercancel', up); row.classList.remove('grabbing'); if (moved) dragged = Date.now(); };
     row.addEventListener('pointermove', mv); row.addEventListener('pointerup', up); row.addEventListener('pointercancel', up);
   });
+  /* the card's synthesis is typed in place: it is the PAGE's synthesis (saved as you type) */
+  let synT = 0;
+  root.addEventListener('input', e => { const ta = e.target.closest && e.target.closest('[data-hsynin]'); if (!ta) return; const sp = spaceById(ta.dataset.hsynin); const pg = sp && ensurePage(sp); if (!pg) return; pg.synth = ta.value; clearTimeout(synT); synT = setTimeout(() => touch(pg), 300); });
+  root.addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.matches && e.target.matches('[data-hsynin]')) e.target.blur(); });
   root.addEventListener('scroll', e => { if (e.target.classList && e.target.classList.contains('hub-row')) { hubRowEdges(e.target); if (e.target.closest('#hubProj')) hubScroll = e.target.scrollLeft; } }, true);
   root.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('.hub-row') && !e.target.closest('[data-hmi]')) e.preventDefault(); });
   /* the Moodboard Général: tiles dragged onto a project (card or capsule) are filed there; links or files dropped on a project go to it */
