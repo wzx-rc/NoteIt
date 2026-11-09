@@ -1,0 +1,79 @@
+/* ================= Briques: the brick layer (after theme.css + layout.css) =================
+   The stud is the one bold idea: a baseplate of studs under the sidebar, bricks (colour block + darker ledge +
+   two studs on top) for what is active and for the main buttons, a row of studs on the project cards. */
+:root[data-skin="briques"] {
+  --bq-ledge: color-mix(in oklab, var(--accent) 72%, black);
+  --bq-stud: radial-gradient(circle at 50% 42%, var(--stud-hi) 0 2.2px, transparent 2.7px), radial-gradient(circle at 50% 58%, var(--stud-lo) 0 2.6px, transparent 3.1px);
+}
+
+/* ---- type: round and chunky titles ---- */
+[data-skin="briques"] body { font-size: 13.5px; font-feature-settings: normal; }
+[data-skin="briques"] .i { stroke-width: 1.9; }
+[data-skin="briques"] .hub2 .hub2-top .hub-hello h1, :root[data-skin="briques"][data-pc] .hub2 .hub-hello h1 { font: 600 34px/1.05 var(--font-head); letter-spacing: -.01em; color: var(--strong); }
+[data-skin="briques"] .ph h1, [data-skin="briques"] .sp-title, [data-skin="briques"] .pp-title, [data-skin="briques"] .wl-h { font-family: var(--font-head); font-weight: 600; letter-spacing: -.01em; }
+[data-skin="briques"] .sheet-m h2 { font: 600 22px/1.15 var(--font-head); letter-spacing: 0; }
+[data-skin="briques"] .card > h2, [data-skin="briques"] .sp-h, [data-skin="briques"] .pc2-id b { font-family: var(--font-head); font-weight: 600; letter-spacing: .01em; }
+[data-skin="briques"] .hm-h .lab, [data-skin="briques"] .wk-h, [data-skin="briques"] .som-lab { font-family: var(--font-head); font-weight: 600; letter-spacing: .02em; text-transform: none; }
+
+/* ---- sidebar: a baseplate ---- */
+[data-skin="briques"] #side { background-color: var(--side); background-image: var(--bq-stud); background-size: 16px 16px; background-position: 4px 4px; }
+[data-skin="briques"] .brand .pill { background: var(--accent); box-shadow: 0 3px 0 var(--bq-ledge), inset 0 1px rgb(255 255 255 / .25); border-radius: 9px; }
+[data-skin="briques"] .brand .pill b { color: var(--on-accent); font-family: var(--font-head); font-weight: 600; }
+/* the open page = a brick */
+[data-skin="briques"] .nv { border-radius: 7px; }
+[data-skin="briques"] .nv[aria-current="page"], [data-skin="briques"] .nv[aria-current="page"]:hover { position: relative; margin-top: 3px; background: var(--accent); color: var(--on-accent); font-weight: 550; box-shadow: 0 3px 0 var(--bq-ledge), inset 0 1px rgb(255 255 255 / .22); }
+[data-skin="briques"] .nv[aria-current="page"] .i, [data-skin="briques"] .nv[aria-current="page"] .ct { color: var(--on-accent); --i-d: var(--on-accent); --i-dk: 1.2; }
+[data-skin="briques"] .nv[aria-current="page"]::before { content: ""; position: absolute; left: 12px; top: -4px; width: 30px; height: 5px; background: linear-gradient(90deg, var(--accent) 0 11px, transparent 11px 19px, var(--accent) 19px); border-radius: 3px 3px 0 0; pointer-events: none; }
+[data-skin="briques"] .nv:hover { background: color-mix(in oklab, var(--side-2) 85%, transparent); }
+/* project dots become 1x1 round plates */
+[data-skin="briques"] #spaces .sdot, [data-skin="briques"] .spr .sdot, [data-skin="briques"] #spaces .dot { border-radius: 50%; box-shadow: inset 0 -1.5px 0 rgb(0 0 0 / .25), inset 0 1px 0 rgb(255 255 255 / .35); }
+[data-skin="briques"] .me { border-radius: 10px; }
+
+/* ---- bricks for the main buttons: a ledge that presses down ---- */
+[data-skin="briques"] :is(.btn.pri, .tb.pri, .pc2-open, .fab, .wl-go, #wlGo) { box-shadow: 0 3px 0 var(--bq-ledge), inset 0 1px rgb(255 255 255 / .22) !important; transition: transform .06s, box-shadow .06s; }
+[data-skin="briques"] :is(.btn.pri, .tb.pri, .pc2-open, .fab, .wl-go, #wlGo):active { transform: translateY(2px); box-shadow: 0 1px 0 var(--bq-ledge), inset 0 1px rgb(255 255 255 / .22) !important; }
+[data-skin="briques"] .btn, [data-skin="briques"] .tb, [data-skin="briques"] .chip { border-radius: 8px; }
+[data-skin="briques"] .btn:not(.pri):not(.ghost) { box-shadow: 0 2px 0 var(--line-2); }
+[data-skin="briques"] .btn:not(.pri):not(.ghost):active { transform: translateY(1px); box-shadow: 0 1px 0 var(--line-2); }
+[data-skin="briques"] .tg input:checked + span { background: var(--bq-green); }
+/* check boxes = round studs */
+[data-skin="briques"] .cb, [data-skin="briques"] .pc2-bx { border-radius: 50%; border-width: 2px; }
+[data-skin="briques"] .cb[aria-checked="true"], [data-skin="briques"] .pc2-tk.done .pc2-bx { background: var(--bq-green) !important; border-color: var(--bq-green) !important; color: #fff; box-shadow: inset 0 -2px 0 rgb(0 0 0 / .2), inset 0 1px 0 rgb(255 255 255 / .3); }
+
+/* ---- HUB ---- */
+[data-skin="briques"] .hub2 .hub2-top { border-radius: 14px; border-width: 1.5px; }
+[data-skin="briques"] .wk-d { border-radius: 9px; }
+[data-skin="briques"] .wk-d.today, [data-skin="briques"] .wk-d[aria-current] { border-color: var(--bq-yellow); border-width: 2px; box-shadow: 0 3px 0 color-mix(in oklab, var(--bq-yellow) 70%, black); }
+[data-skin="briques"] .wk-d.today b, [data-skin="briques"] .wk-d.today .wk-n { color: var(--strong); }
+/* project cards: a white brick with a row of studs on its top edge */
+[data-skin="briques"] .pc2 { position: relative; overflow: visible !important; border-radius: 12px !important; border-width: 1.5px !important; box-shadow: 0 3px 0 var(--line-2) !important; }
+[data-skin="briques"] .pc2::after { content: ""; position: absolute; left: 22px; right: 22px; top: -6px; height: 7px; z-index: 1; pointer-events: none;
+  background: radial-gradient(ellipse 7px 6px at 50% 100%, var(--card) 0 6px, transparent 6.5px) 0 0 / 25% 100% repeat-x;
+  filter: drop-shadow(0 -1px 0 var(--line-2)); }
+[data-skin="briques"] .pc2-cov::before { mix-blend-mode: normal; }
+[data-skin="briques"][data-resolved="light"] .pc2-cov::before { mix-blend-mode: multiply; }
+[data-skin="briques"][data-resolved="dark"] .pc2-cov::before { opacity: .9; }
+[data-skin="briques"] .hmod { border-radius: 14px; }
+
+/* ---- empty states: the illustrations are colour renders, keep them visible in dark too ---- */
+[data-skin="briques"][data-resolved="dark"] .mw-empty .mw-empty-i { display: block; }
+[data-skin="briques"][data-resolved="dark"] :is(.tempty, .empty) { background-blend-mode: normal; }
+
+/* ---- board ---- */
+[data-skin="briques"] .isl { border-radius: 12px; }
+[data-skin="briques"] .tl[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); box-shadow: 0 2px 0 var(--bq-ledge); }
+
+/* ---- the theme's preview card in Réglages: a baseplate rail, a red brick, a sky banner ---- */
+.sk-briques .skin-pv { background: #F6F7F9; }
+.sk-briques .skin-pv::before { content: ""; position: absolute; inset: 0 74% 0 0; background: #DADDE2 radial-gradient(circle, #ECEEF1 0 1.6px, transparent 2px) 0 0 / 8px 8px; }
+.sk-briques .skin-pv i:nth-child(1) { left: 4%; top: 22%; width: 18%; height: 13%; background: #D7261E; border-radius: 3px; box-shadow: 0 2px 0 #9A1B15; }
+.sk-briques .skin-pv i:nth-child(2) { left: 7%; top: 14%; width: 4%; height: 9%; background: #D7261E; border-radius: 2px 2px 0 0; box-shadow: 9px 0 0 #D7261E; }
+.sk-briques .skin-pv i:nth-child(3) { left: 32%; top: 14%; width: 62%; height: 40%; border-radius: 5px; background: linear-gradient(90deg, #F6F7F9 8%, #BFE0F7 40%, #7CC36E 75%, #F6C700 100%); }
+.sk-briques .skin-pv i:nth-child(4) { left: 32%; top: 64%; width: 40%; height: 10%; background: none; font: 600 12px/1 "Fredoka", sans-serif; color: #1B1D21; }
+.sk-briques .skin-pv i:nth-child(4)::before { content: "Bonjour"; }
+
+/* ---- HUB banner: the diorama sits on the right and fades in from the calm left ---- */
+[data-skin="briques"] .hub2 .hub2-top::before, [data-skin="briques"][data-resolved="dark"] .hub2 .hub2-top::before { background: url("asset:banner-wide.webp") right 64% / 66% auto no-repeat; -webkit-mask-image: linear-gradient(90deg, transparent 34%, #000 58%); mask-image: linear-gradient(90deg, transparent 34%, #000 58%); }
+[data-skin="briques"] .hub2 .hub2-top.own::before { background: var(--hub-cov) center / cover no-repeat; }
+@media (max-width: 700px) { [data-skin="briques"] .hub2 .hub2-top::before { background-size: cover; opacity: .5; } }
+[data-skin="briques"][data-resolved="dark"] .pc2-cov::before { mix-blend-mode: normal; filter: none; opacity: 1; }

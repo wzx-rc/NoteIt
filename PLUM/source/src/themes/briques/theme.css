@@ -1,0 +1,197 @@
+/* ================= Briques (id "briques", 0.2.66) =================
+   A toy construction-brick world. The memorable thing is the stud: the sidebar is a baseplate with a grid of studs,
+   the open page and the main buttons are bricks (a raised colour block with a darker ledge under it that presses down
+   when clicked, and two studs on top), project cards carry a row of studs. Everything else stays quiet: bluish-grey
+   plastic greys (the "Couleur du thème" tints them), white bricks in light mode, dark bluish-grey in dark mode,
+   brick red for the accent. Fredoka (round, chunky) for titles, Rubik (soft corners) for the interface.
+   Rules from Minimal (this file) + Sommet's layout (layout.css) + the brick layer (studs.css). Images: Recraft. */
+@font-face { font-family: "Fredoka"; font-style: normal; font-weight: 300 700; font-display: swap; src: url("asset:fonts/fredoka.woff2") format("woff2"); }
+@font-face { font-family: "Rubik"; font-style: normal; font-weight: 300 800; font-display: swap; src: url("asset:fonts/rubik.woff2") format("woff2"); }
+@font-face { font-family: "Rubik"; font-style: italic; font-weight: 300 800; font-display: swap; src: url("asset:fonts/rubik-italic.woff2") format("woff2"); }
+
+:root[data-skin="briques"] {
+  --th-h: 255; --th-c: .012;
+  --mn: var(--th-c); --mn-lo: calc(var(--th-c) * .5); --mn-hi: calc(var(--th-c) * 1.4);
+  --font-ui: "Rubik", "Segoe UI Variable Text", "Segoe UI", -apple-system, system-ui, sans-serif;
+  --font-head: "Fredoka", "Rubik", "Segoe UI", system-ui, sans-serif;
+  --font-title: "Fredoka", "Rubik", "Segoe UI", system-ui, sans-serif;
+  --r-sm: 5px; --r-md: 7px; --r-lg: 10px; --r-xl: 14px;
+  --bq-red: #D7261E; --bq-yellow: #F6C700; --bq-blue: #1E5AA8; --bq-green: #00852B; --bq-orange: #F57D20;
+  --ok: #00852B; --warn: #F57D20; --err: #D7261E; --info: #1E5AA8; --pink: #E4569A;
+}
+:root[data-skin="briques"][data-resolved="dark"] {
+  --side: oklch(calc(.235 + var(--th-ld, 0)) var(--mn) var(--th-h)); --side-2: oklch(calc(.28 + var(--th-ld, 0)) var(--mn) var(--th-h)); --side-3: oklch(calc(.32 + var(--th-ld, 0)) var(--mn-hi) var(--th-h)); --side-line: oklch(calc(.28 + var(--th-ld, 0)) var(--mn) var(--th-h));
+  --side-text: oklch(.92 var(--mn-lo) var(--th-h)); --side-mute: oklch(.66 var(--mn) var(--th-h));
+  --paper: oklch(calc(.2 + var(--th-ld, 0)) var(--mn) var(--th-h)); --card: oklch(calc(.245 + var(--th-ld, 0)) var(--mn) var(--th-h)); --sunk: oklch(calc(.18 + var(--th-ld, 0)) var(--mn) var(--th-h)); --raise: oklch(calc(.28 + var(--th-ld, 0)) var(--mn) var(--th-h));
+  --menu: oklch(calc(.265 + var(--th-ld, 0)) var(--mn) var(--th-h)); --canvas: oklch(calc(.22 + var(--th-ld, 0)) var(--mn) var(--th-h));
+  --line: oklch(calc(.3 + var(--th-ld, 0)) var(--mn) var(--th-h)); --line-2: oklch(calc(.37 + var(--th-ld, 0)) var(--mn-hi) var(--th-h));
+  --ink: oklch(.94 var(--mn-lo) var(--th-h)); --ink-2: oklch(.76 var(--mn) var(--th-h)); --ink-3: oklch(.6 var(--mn-hi) var(--th-h));
+  --strong: oklch(.99 var(--mn-lo) var(--th-h));
+  --dot: oklch(1 0 0 / .08);
+  --accent: #E3342A; --accent-2: #F0483D; --on-accent: #FFFFFF;
+  --stud-hi: rgb(255 255 255 / .1); --stud-lo: rgb(0 0 0 / .35);
+  --shadow-1: none;
+  --shadow-2: 0 16px 40px rgb(0 0 0 / .5), 0 0 0 1px oklch(calc(.34 + var(--th-ld, 0)) var(--mn) var(--th-h));
+  --shadow-note: 0 1px 1px rgb(0 0 0 / .3), 0 8px 16px -8px rgb(0 0 0 / .6);
+  --br-a: oklch(calc(.32 + var(--th-ld, 0)) var(--mn) var(--th-h)); --br-b: oklch(calc(.27 + var(--th-ld, 0)) var(--mn) var(--th-h)); --br-rim: rgb(255 255 255 / .06); --br-l1: #FFFFFF; --br-l2: var(--accent); --br-vein: oklch(calc(.26 + var(--th-ld, 0)) var(--mn) var(--th-h)); --br-text: var(--strong);
+  color-scheme: dark;
+}
+:root[data-skin="briques"][data-resolved="light"] {
+  --side: oklch(calc(.925 + var(--th-ll, 0)) calc(var(--th-c) * 1.2) var(--th-h)); --side-2: oklch(calc(.895 + var(--th-ll, 0)) calc(var(--th-c) * 1.4) var(--th-h)); --side-3: #FFFFFF; --side-line: oklch(calc(.87 + var(--th-ll, 0)) calc(var(--th-c) * 1.6) var(--th-h));
+  --side-text: oklch(.24 var(--mn) var(--th-h)); --side-mute: oklch(.5 var(--mn-hi) var(--th-h));
+  --paper: oklch(calc(.985 + var(--th-ll, 0)) calc(var(--th-c) * .4) var(--th-h)); --card: #FFFFFF; --sunk: oklch(calc(.955 + var(--th-ll, 0)) calc(var(--th-c) * 1.2) var(--th-h)); --raise: oklch(calc(.97 + var(--th-ll, 0)) calc(var(--th-c) * 1) var(--th-h));
+  --menu: #FFFFFF; --canvas: oklch(calc(.965 + var(--th-ll, 0)) calc(var(--th-c) * 1) var(--th-h));
+  --line: oklch(calc(.9 + var(--th-ll, 0)) calc(var(--th-c) * 1.6) var(--th-h)); --line-2: oklch(calc(.84 + var(--th-ll, 0)) calc(var(--th-c) * 2) var(--th-h));
+  --ink: oklch(.22 var(--mn) var(--th-h)); --ink-2: oklch(.44 var(--mn-hi) var(--th-h)); --ink-3: oklch(.58 var(--mn-hi) var(--th-h));
+  --strong: oklch(.16 var(--mn) var(--th-h));
+  --dot: oklch(.3 var(--mn-hi) var(--th-h) / .14);
+  --accent: #D7261E; --accent-2: #B81E17; --on-accent: #FFFFFF;
+  --stud-hi: rgb(255 255 255 / .7); --stud-lo: rgb(30 40 60 / .11);
+  --shadow-1: none;
+  --shadow-2: 0 16px 40px rgb(20 30 50 / .14), 0 0 0 1px rgb(20 30 50 / .08);
+  --shadow-note: 0 1px 1px rgb(20 30 50 / .08), 0 6px 14px -6px rgb(20 30 50 / .25);
+  --br-a: #2B2F36; --br-b: #1B1D21; --br-rim: rgb(255 255 255 / .08); --br-l1: #FFFFFF; --br-l2: var(--accent); --br-vein: #1B1D21; --br-text: #FFFFFF;
+  color-scheme: light;
+}
+:root[data-skin="briques"][data-accent="custom"] { --accent: var(--accent-c); --on-accent: var(--on-accent-c); --accent-2: color-mix(in oklab, var(--accent) 88%, white); }
+:root[data-skin="briques"][data-accent="custom"][data-resolved="light"] { --accent-2: color-mix(in oklab, var(--accent) 86%, black); }
+:root[data-skin="briques"] { --tb-l: var(--side); --tb-r: var(--paper); --tb-sym: var(--ink-2); --tb-text: var(--side-mute); --accent-soft: color-mix(in oklab, var(--accent) 14%, transparent); }
+
+[data-skin="briques"] body { font-size: 13.5px; font-feature-settings: "ss01", "cv11"; }
+[data-skin="briques"] ::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+[data-skin="briques"] .i { stroke-width: 1.5; }
+
+/* ---------- sidebar: small dense rows, no boxes; the open page gets a faint tile and its icon's tone in the accent ---------- */
+[data-skin="briques"] #side { border-right: 1px solid var(--side-line); }
+/* the usual PLUM pill (style.css), a little smaller, in the theme's greys with the accent on the leaves */
+[data-skin="briques"] .brand .pill { height: 40px; padding: 0 16px 0 11px; box-shadow: inset 0 0 0 1px var(--br-rim), inset 0 1px rgb(255 255 255 / .05), 0 2px 8px rgb(0 0 0 / .25); }
+[data-skin="briques"] .brand b { font-size: 19.5px; }
+[data-skin="briques"] .sbox { height: 32px; border-radius: 8px; background: var(--side-2); box-shadow: none; color: var(--side-mute); }
+[data-skin="briques"] .sbox kbd { border: 0; opacity: .7; font-weight: 500; }
+[data-skin="briques"] .nv { height: 30px; border-radius: 6px; font-size: 13px; font-weight: 450; color: color-mix(in oklab, var(--side-text) 86%, var(--side)); gap: 10px; }
+[data-skin="briques"] .nv .i { width: 17px; height: 17px; color: var(--side-mute); }
+[data-skin="briques"] .nv:hover { background: var(--side-2); color: var(--side-text); }
+[data-skin="briques"] .nv:hover .i { color: var(--side-text); }
+[data-skin="briques"] .nv[aria-current="page"] { background: var(--side-3); color: var(--strong); font-weight: 550; }
+[data-skin="briques"] .nv[aria-current="page"] .i { color: var(--strong); }
+[data-skin="briques"] .nv[aria-current="page"] .i { --i-d: var(--accent); --i-dk: 3.5; }
+[data-skin="briques"] .nv .ct { color: var(--side-mute); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+[data-skin="briques"] .sec { margin: 22px 10px 4px; font-size: 12px; font-weight: 550; letter-spacing: 0; color: var(--side-mute); }
+[data-skin="briques"] .sec span { display: inline-block; text-transform: lowercase; }
+[data-skin="briques"] .sec span::first-letter { text-transform: uppercase; }
+[data-skin="briques"] .me { color: var(--side-text); font-weight: 500; }
+[data-skin="briques"] .av { background: var(--accent); color: var(--on-accent); }
+[data-skin="briques"] .sib { color: var(--side-mute); }
+[data-skin="briques"] .sib:hover { color: var(--side-text); background: var(--side-2); }
+
+/* ---------- top bar: part of the page, a hairline under it ---------- */
+[data-skin="briques"] #top { height: 48px; background: var(--paper); border-bottom-color: var(--line); }
+[data-skin="briques"] #top .crumbs { font-size: 12.5px; }
+[data-skin="briques"] #top .crumbs .cur { color: var(--ink); font-weight: 550; }
+[data-skin="briques"] .tb { border-radius: 7px; height: 30px; color: var(--ink-2); }
+[data-skin="briques"] .tb:hover { background: var(--raise); color: var(--ink); }
+[data-skin="briques"] .tb[aria-pressed="true"] .i { --i-d: var(--accent); --i-dk: 3.5; }
+[data-skin="briques"] .tb.pri { background: var(--accent); color: var(--on-accent); border-radius: 7px; }
+[data-skin="briques"] .tb.pri:hover { background: var(--accent-2); color: var(--on-accent); }
+
+/* ---------- pages: serif titles, cards as quiet panels ---------- */
+[data-skin="briques"] .ph h1 { font: 300 38px/1.1 var(--font-head); letter-spacing: -.035em; color: var(--strong); }
+[data-skin="briques"] .ph .acts { border: 0; padding: 0; align-self: center; }
+[data-skin="briques"] .ph .sub { font-size: 13px; color: var(--ink-3); }
+[data-skin="briques"] .card, [data-skin="briques"] .tlist { background: var(--card); border-color: var(--line); border-radius: 10px; box-shadow: none; }
+[data-skin="briques"][data-resolved="light"] .card, [data-skin="briques"][data-resolved="light"] .tlist { background: var(--raise); border-color: transparent; }
+[data-skin="briques"] .card > h2 { font-size: 13px; font-weight: 600; color: var(--strong); }
+[data-skin="briques"] .card > h2 .i { color: var(--ink-3); }
+[data-skin="briques"] .card > h2 .more { color: var(--ink-2); font-weight: 500; }
+[data-skin="briques"] .card > h2 .more:hover { color: var(--accent); }
+[data-skin="briques"] .dcard .th { border-radius: 8px; border-color: var(--line); background: var(--sunk); }
+[data-skin="briques"][data-resolved="light"] .dcard .th { background: #FFFFFF; }
+[data-skin="briques"] .dcard:hover .th { transform: none; border-color: var(--line-2); box-shadow: none; }
+[data-skin="briques"] .dcard .kind { border-radius: 5px; }
+[data-skin="briques"] .trow { border-radius: 7px; }
+[data-skin="briques"] .trow:hover, [data-skin="briques"] .sprow:hover { background: var(--raise); }
+[data-skin="briques"][data-resolved="light"] .trow:hover, [data-skin="briques"][data-resolved="light"] .sprow:hover { background: #FFFFFF; }
+[data-skin="briques"] .sprow .bar { height: 3px; }
+[data-skin="briques"] .chip { border-radius: 5px; font-weight: 500; }
+[data-skin="briques"] .cb { border-radius: 50%; background: transparent; }
+[data-skin="briques"] .cb[aria-checked="true"] { color: var(--on-accent); }
+[data-skin="briques"] .focuscard { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+[data-skin="briques"] .focuscard p { color: var(--ink-2); }
+[data-skin="briques"] .fab { background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 24px -6px color-mix(in oklab, var(--accent) 60%, transparent); }
+[data-skin="briques"] .fab .i { --i-dk: 2; }
+
+/* ---------- controls ---------- */
+[data-skin="briques"] .btn { height: 32px; border-radius: 7px; font-weight: 500; background: var(--card); border-color: var(--line-2); }
+[data-skin="briques"] .btn:hover { background: var(--raise); }
+[data-skin="briques"] .btn.pri { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+[data-skin="briques"] .btn.pri:hover { background: var(--accent-2); border-color: var(--accent-2); }
+[data-skin="briques"] .btn.pri .i { --i-dk: 2; }
+[data-skin="briques"] .btn.ghost { background: none; }
+[data-skin="briques"] .btn.sm { height: 28px; border-radius: 6px; }
+[data-skin="briques"] .seg, [data-skin="briques"] .stabs { background: var(--sunk); border-radius: 8px; }
+[data-skin="briques"] .stabs { border-color: var(--line); }
+[data-skin="briques"] .seg button, [data-skin="briques"] .stabs button { border-radius: 6px; font-weight: 500; }
+[data-skin="briques"] .seg button[aria-pressed="true"], [data-skin="briques"] .stabs button[aria-selected="true"] { background: var(--raise); color: var(--strong); box-shadow: 0 0 0 1px var(--line); }
+[data-skin="briques"][data-resolved="light"] .seg button[aria-pressed="true"], [data-skin="briques"][data-resolved="light"] .stabs button[aria-selected="true"] { background: #FFFFFF; box-shadow: 0 1px 2px rgb(20 20 18 / .12), 0 0 0 1px rgb(20 20 18 / .05); }
+[data-skin="briques"] .tg input:checked + span { background: var(--accent); }
+[data-skin="briques"] .srow input[type="text"] { border-radius: 6px; background: var(--sunk); border-color: var(--line); }
+[data-skin="briques"] .pop, [data-skin="briques"] .qbar { background: var(--menu); border-color: var(--line); border-radius: 9px; box-shadow: var(--shadow-2); }
+[data-skin="briques"] .mi { border-radius: 5px; }
+[data-skin="briques"] .mi:hover { background: var(--raise); }
+[data-skin="briques"][data-resolved="light"] .mi:hover { background: var(--sunk); }
+[data-skin="briques"] .sheet-m { background: var(--menu); border-radius: 12px; box-shadow: var(--shadow-2); }
+[data-skin="briques"] .sheet-m h2 { font: 400 22px/1.15 var(--font-head); letter-spacing: -.025em; color: var(--strong); }
+[data-skin="briques"] .sheet-m h5 { font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12.5px; color: var(--ink-2); }
+[data-skin="briques"] .skin-c { border-radius: 9px; background: var(--card); border-color: var(--line-2); }
+
+/* ---------- board: a plain canvas with faint dots, light islands ---------- */
+[data-skin="briques"] .bhost { background-color: var(--canvas); }
+[data-skin="briques"] .isl { background: color-mix(in oklab, var(--menu) 96%, transparent); border-color: var(--line); border-radius: 10px; box-shadow: var(--shadow-2); }
+[data-skin="briques"] .tl { border-radius: 7px; }
+[data-skin="briques"] .tl:hover { background: var(--raise); }
+[data-skin="briques"][data-resolved="light"] .tl:hover { background: var(--sunk); }
+[data-skin="briques"] .tl[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+[data-skin="briques"] .props { background: var(--card); border-color: var(--line); border-radius: 10px; }
+[data-skin="briques"] .ptab[aria-pressed="true"] { color: var(--strong); }
+[data-skin="briques"] .ps-l { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+
+/* ---------- scrollbars: thin, only the thumb ---------- */
+[data-skin="briques"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+[data-skin="briques"] ::-webkit-scrollbar-track { background: transparent; }
+[data-skin="briques"] ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+[data-skin="briques"] ::-webkit-scrollbar-thumb:hover { background-color: var(--ink-3); }
+
+
+/* preview card in Réglages > UI: a graphite rail, a dark page with a serif title and a line of text */
+
+/* ---------- 0.2: the space switcher, the welcome, the space home and the moodboard ---------- */
+[data-skin="briques"] .spsw { height: 38px; border-radius: 8px; box-shadow: none; padding-left: 10px; }
+[data-skin="briques"] .spsw:hover, [data-skin="briques"] .spsw[aria-expanded="true"] { background: var(--side-3); }
+[data-skin="briques"] .spsw .spn small { font-size: 10px; letter-spacing: .6px; font-weight: 550; }
+[data-skin="briques"] .spsw .spn b { font-weight: 600; font-size: 13.5px; color: var(--strong); }
+[data-skin="briques"] .spsw .dot { width: 10px; height: 10px; border-radius: 3px; box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 0%, transparent); }
+[data-skin="briques"] .spadd { width: 38px; height: 38px; border-radius: 8px; box-shadow: none; }
+[data-skin="briques"] .spadd .i { --i-dk: 2; }
+[data-skin="briques"] .pop.spm .mi { min-height: 32px; }
+[data-skin="briques"] .spm-new { border-radius: 7px; height: 34px; }
+[data-skin="briques"] .wl-h { font: 300 46px/1.05 var(--font-head); letter-spacing: -.04em; }
+[data-skin="briques"] .wl-sub { font-size: 14.5px; }
+[data-skin="briques"] .wl-txt > b { font: 400 26px/1.1 var(--font-title); letter-spacing: -.01em; }
+[data-skin="briques"] .wl-plus .wl-ring svg { stroke-width: 2.6; }
+[data-skin="briques"] .wl-th { border-radius: 10px; }
+[data-skin="briques"] .sp-kick { font-size: 11px; letter-spacing: .7px; font-weight: 550; }
+[data-skin="briques"] .sp-title { font: 300 38px/46px var(--font-head); letter-spacing: -.035em; }
+[data-skin="briques"] .mw-fold { border-radius: 9px; }
+[data-skin="briques"][data-resolved="light"] .mw-fold { background: #FFFFFF; }
+[data-skin="briques"] .sp-h { font-size: 13px; font-weight: 600; color: var(--strong); }
+[data-skin="briques"] .mw { border-radius: 9px; }
+[data-skin="briques"][data-resolved="light"] .mw { background: #FFFFFF; }
+[data-skin="briques"][data-resolved="light"] .mw-in, [data-skin="briques"][data-resolved="light"] .qadd { background: #FFFFFF; }
+[data-skin="briques"] .mw:hover { transform: none; box-shadow: none; border-color: var(--line-2); }
+[data-skin="briques"] .mw-text { background: var(--card); }
+[data-skin="briques"][data-resolved="light"] .mw-text { background: oklch(.985 .012 95); }
+[data-skin="briques"] .mw-text p { font: 400 19px/1.35 var(--font-title); }
+[data-skin="briques"] .mwall.dr .mw-text p, [data-skin="briques"] .mwall.pv .mw-text p { font-size: 16px; }
+[data-skin="briques"] .mw-fav, [data-skin="briques"] .mw-ext { border-radius: 7px; box-shadow: none; }
+[data-skin="briques"] .mdr { border-radius: 10px; background: var(--menu); }
+[data-skin="briques"] .mw-empty { border-radius: 12px; }

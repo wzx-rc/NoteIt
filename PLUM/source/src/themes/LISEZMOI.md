@@ -6,6 +6,7 @@ et le passage d'un thème à l'autre se fait en fondu, sans recharger l'app.
 
 ```
 src/themes/
+  briques/    Briques (0.2.66 : jouet de construction, plaque à tenons sous la barre latérale, briques rouges pour l’actif et les boutons, Fredoka + Rubik, images Recraft ; base Minimal Sommet + studs.css)
   sommet/     Sommet (0.2.59 : monochrome, Geist Mono, pilules noires, paysages peints Recraft sur le HUB et la PAGE, croquis au crayon dans les pages vides ; règles de Minimal + sommet.css)
   minimal/     Minimal, le thème par défaut (esprit Evernote : aplats, filets, Instrument Sans et Instrument Serif, icônes bicolores, barre d'outils des notes fondue dans la page)
   notely/      Nuit, d'après le thème Nuit de WZX Web (l'id "notely" est gardé pour les données existantes ; ses couleurs de base restent dans style.css)
