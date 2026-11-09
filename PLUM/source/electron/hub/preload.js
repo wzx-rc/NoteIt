@@ -17,6 +17,9 @@ contextBridge.exposeInMainWorld('notely', {
   openFolder: p => ipcRenderer.invoke('open-folder', p),
   // paste study (0.2.78): saves what a paste holds, plus the native clipboard formats, next to PLUM.exe
   dumpClip: d => ipcRenderer.invoke('dump-clip', d),
+  // Miro pictures with the user's token (0.2.80): { board, item, token } -> { ok, type, data } ; miroCheck(token) -> { ok, user, team }
+  miroImage: req => ipcRenderer.invoke('miro-image', req),
+  miroCheck: t => ipcRenderer.invoke('miro-check', t),
   // { mode: 'light' | 'dark' | 'system' }: native theme
   setTheme: t => ipcRenderer.send('set-theme', t),
   // the size of the interface (Réglages > UI): 0.5 to 1.25, like the browser zoom

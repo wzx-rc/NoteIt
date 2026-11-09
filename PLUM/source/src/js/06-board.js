@@ -172,7 +172,7 @@ const Board = (() => {
       case 'image': {
         n.className = 'it image ' + (it.frm || 'shadow');
         const u = Assets.url(it.asset);
-        n.innerHTML = u ? `<img src="${u}" alt="${esc(it.cap || 'Image')}" draggable="false">${it.frm === 'polaroid' && it.cap ? `<div class="cap">${esc(it.cap)}</div>` : ''}` : `<div class="ph"><div>${icon('image')}Glissez une image ici${it.cap ? `<small class="ph-n">${esc(it.cap)}</small>` : ''}</div></div>`;
+        n.innerHTML = u ? `<img src="${u}" alt="${esc(it.cap || 'Image')}" draggable="false">${it.frm === 'polaroid' && it.cap ? `<div class="cap">${esc(it.cap)}</div>` : ''}` : `<div class="ph"><div>${icon('image')}Glissez une image ici${it.cap ? `<small class="ph-n">${esc(it.cap)}</small>` : ''}${it.miro && it.miro.i && miroCan() ? `<button class="ph-miro" data-miro="1">Récupérer depuis Miro</button>` : ''}</div></div>`;
         break;
       }
       case 'file': {
@@ -3328,7 +3328,37 @@ const Board = (() => {
       else { it.x += dx; it.y += dy; }
     }
     commit(items.concat(list)); sel = new Set(list.filter(i => i.k !== 'conn').map(i => i.id)); schedule();
-    toast(`${list.length} élément${list.length > 1 ? 's' : ''} importé${list.length > 1 ? 's' : ''} de Miro` + (r.images ? ` · ${r.images} image${r.images > 1 ? 's' : ''} à déposer dans ${r.images > 1 ? 'leurs cadres' : 'son cadre'}` : ''));
+    const msg = `${list.length} élément${list.length > 1 ? 's' : ''} importé${list.length > 1 ? 's' : ''} de Miro`;
+    if (!r.images) { toast(msg); return; }
+    if (miroCan() && miroToken()) { toast(msg + ` · ${r.images} image${r.images > 1 ? 's' : ''} en cours de récupération…`); miroFill(); }
+    else if (miroCan()) toast(msg + ` · images : connecte Miro pour les récupérer`, { label: 'Connecter Miro', run: () => miroSetup(miroFill) });
+    else toast(msg + ` · ${r.images} image${r.images > 1 ? 's' : ''} à déposer dans ${r.images > 1 ? 'leurs cadres' : 'son cadre'}`);
+  }
+  /* the empty frames that came from Miro get their picture through the user's token (0.2.80) */
+  let miroBusy = false;
+  async function miroFill() {
+    if (miroBusy || !miroCan()) return; const tok = miroToken(); if (!tok) return;
+    const todo = items.filter(i => i.k === 'image' && !i.asset && i.miro && i.miro.b && i.miro.i); if (!todo.length) return;
+    miroBusy = true; let got = 0, err = null;
+    try {
+      for (const ph of todo) {
+        const r = await notely.miroImage({ board: ph.miro.b, item: ph.miro.i, token: tok }).catch(e => ({ ok: false, error: String(e) }));
+        if (!r || !r.ok) { err = r; if (r && r.status === 401) break; continue; }
+        try {
+          const im = await importImage(new Blob([r.data], { type: r.type }));
+          const cur = byId.get(ph.id); if (!cur || cur.asset) continue;
+          const patch = { asset: im.id }; delete patch.miro;
+          const next = items.map(x => { if (x.id !== cur.id) return x; const o = Object.assign({}, x, patch); delete o.miro; return o; });
+          commit(next, { hist: false }); got++;
+        } catch (e) { err = { error: 'lecture' }; }
+      }
+    } finally { miroBusy = false; }
+    if (got) toast(`${got} image${got > 1 ? 's' : ''} récupérée${got > 1 ? 's' : ''} depuis Miro`);
+    if (err) {
+      if (err.status === 401) toast('Miro refuse le jeton (401)', { label: 'Changer le jeton', run: () => miroSetup(miroFill) });
+      else if (err.status === 404 || err.status === 403) toast(`Miro ne donne pas ${got ? 'certaines images' : 'les images'} (${err.status}) : le jeton doit venir de l’équipe de ce board, avec boards:read`, { label: 'Jeton', run: () => miroSetup(miroFill) });
+      else toast(`Images Miro : échec${err.status ? ' (' + err.status + ')' : err.error ? ' (' + err.error + ')' : ''}`);
+    }
   }
   function clipDump(dt) {
     if (!(window.notely && notely.dumpClip)) return;
@@ -3539,6 +3569,8 @@ const Board = (() => {
       setColor(c, final) { S.prefs.pens[penKind].c = c; save(); const d = $('[data-tool="pen"] .cdot', toolsEl); if (d) d.style.background = c; if (final) refreshTools(); },
       changed(partial) { propSig = ''; refreshTools(); if (!partial) { Studio.sync(); renderProps(); } } });
     mountMods();
+    // « Récupérer depuis Miro » on an empty frame (0.2.80)
+    host.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('.ph-miro')) { e.stopPropagation(); e.preventDefault(); if (miroToken()) { toast('Récupération des images Miro…'); miroFill(); } else miroSetup(miroFill); } }, true);
     host.addEventListener('pointerdown', onDown);
     host.addEventListener('mousedown', e => { if (fxPicking) e.preventDefault(); });
     host.addEventListener('dblclick', onDbl);

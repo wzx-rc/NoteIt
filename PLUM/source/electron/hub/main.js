@@ -110,6 +110,41 @@ ipcMain.handle('dump-clip', async (e, d) => {
     return { ok: true, name };
   } catch (err) { return { ok: false, error: String(err) }; }
 });
+// Miro pictures (0.2.80): the REST API with the user's own token (boards:read). The token only goes to api.miro.com;
+// the picture itself comes from the signed address Miro answers with.
+async function miroApi(url, token) {
+  const doFetch = net && net.fetch ? net.fetch.bind(net) : fetch;
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+  try {
+    const r = await doFetch(url, { signal: ctl.signal, credentials: 'omit', headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+    const text = await r.text(); let json = null; try { json = JSON.parse(text); } catch (err) {}
+    return { status: r.status, json };
+  } finally { clearTimeout(timer); }
+}
+const MIRO_OK = u => { try { const h = new URL(u).hostname; return h === 'api.miro.com'; } catch (err) { return false; } };
+ipcMain.handle('miro-check', async (e, token) => {
+  if (typeof token !== 'string' || !/^[\w.\-~+/=]{10,4096}$/.test(token)) return { ok: false, error: 'format' };
+  try { const r = await miroApi('https://api.miro.com/v1/oauth-token', token); return r.status === 200 ? { ok: true, user: r.json && r.json.user && r.json.user.name || '', team: r.json && r.json.team && r.json.team.name || '' } : { ok: false, status: r.status }; }
+  catch (err) { return { ok: false, error: String((err && err.message) || err) }; }
+});
+ipcMain.handle('miro-image', async (e, req) => {
+  const { board, item, token } = req || {};
+  if (typeof board !== 'string' || typeof item !== 'string' || !/^\d{6,30}$/.test(item) || typeof token !== 'string' || token.length > 4096) return { ok: false, error: 'args' };
+  try {
+    const a = await miroApi(`https://api.miro.com/v2/boards/${encodeURIComponent(board)}/images/${item}`, token);
+    if (a.status !== 200) return { ok: false, status: a.status, step: 'item' };
+    let iu = a.json && a.json.data && a.json.data.imageUrl; if (!iu || !MIRO_OK(iu)) return { ok: false, step: 'url' };
+    const u = new URL(iu); u.searchParams.set('format', 'original'); u.searchParams.set('redirect', 'false');
+    const b = await miroApi(u.href, token);
+    const dl = b.json && b.json.url; if (b.status !== 200 || !dl || !/^https:\/\//.test(dl)) return { ok: false, status: b.status, step: 'resource' };
+    const doFetch = net && net.fetch ? net.fetch.bind(net) : fetch;
+    const r = await doFetch(dl, { credentials: 'omit' });
+    const type = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!r.ok) return { ok: false, status: r.status, step: 'download' };
+    const buf = await r.arrayBuffer(); if (buf.byteLength > MAX_IMAGE) return { ok: false, error: 'size' };
+    return { ok: true, type: type.startsWith('image/') ? type : 'image/jpeg', data: new Uint8Array(buf) };
+  } catch (err) { return { ok: false, error: String((err && err.message) || err) }; }
+});
 ipcMain.handle('open-file', async e => {
   const win = BrowserWindow.fromWebContents(e.sender);
   const r = await dialog.showOpenDialog(win, { title: 'Ouvrir un dessin', properties: ['openFile'], filters: [{ name: 'Dessin PLUM', extensions: ['notely', 'json'] }] });
