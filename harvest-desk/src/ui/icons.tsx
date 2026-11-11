@@ -143,6 +143,38 @@ const ICONS: Record<string, ReactElement> = {
       <circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" />
     </g>
   ),
+  delivery: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M3 7l9-4 9 4v10l-9 4-9-4z" /><path d="M3 7l9 4 9-4M12 11v10M7.5 5l9 4" />
+    </g>
+  ),
+  ledger: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M7 4v14M3.5 14.5 7 18l3.5-3.5M17 20V6M13.5 9.5 17 6l3.5 3.5" />
+    </g>
+  ),
+  ticket: (
+    <g>
+      <path d="M3 7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a2 2 0 0 0 0-4z" fill="#f2bf45" />
+      <path d="M15 6v12" stroke="#2a1d10" strokeWidth="1.4" strokeDasharray="1.6 1.6" />
+      <path d="M8 10.5h4M8 13.5h3" stroke="#2a1d10" strokeWidth="1.4" strokeLinecap="round" />
+    </g>
+  ),
+  coins: (
+    <g>
+      <ellipse cx="12" cy="16" rx="7" ry="3" fill="#b8862a" /><rect x="5" y="11" width="14" height="5" fill="#b8862a" />
+      <ellipse cx="12" cy="11" rx="7" ry="3" fill="#f2bf45" /><ellipse cx="12" cy="11" rx="3.5" ry="1.3" fill="#ffe08a" />
+    </g>
+  ),
+  out: <path d="M12 4v14M6 12l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+  in: <path d="M12 20V6M6 12l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+  bag: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M5 8h14l-1 12H6z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" />
+    </g>
+  ),
+  pen: <path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />,
+  close: <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />,
   refresh: (
     <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />

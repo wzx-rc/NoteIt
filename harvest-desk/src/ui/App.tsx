@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { DeliveriesView } from "./components/DeliveriesView";
 import { GrowthCurve } from "./components/GrowthCurve";
+import { LedgerView } from "./components/LedgerView";
 import { Kpis } from "./components/Kpis";
 import { MineralsCard } from "./components/MineralsCard";
 import { PaybackCard } from "./components/PaybackCard";
@@ -14,7 +16,7 @@ import { bridge, useAppState } from "./useAppState";
 import type { AppState } from "../shared/types";
 
 export function App() {
-  const { state, refresh, importHistory } = useAppState();
+  const { state, refresh, importHistory, addEntry, removeEntry } = useAppState();
   const [view, setView] = useState<View>("revenue");
   const ready = !!(state.farm && state.market);
   const busy = state.status === "loading";
@@ -29,8 +31,13 @@ export function App() {
             demo={state.mode === "demo"} busy={busy} onRefresh={bridge() ? refresh : undefined} />
           <Banner state={state} onRetry={refresh} onImport={importHistory} />
           {current === "settings" ? <SettingsView state={state} onImport={importHistory} />
-            : ready ? <Dashboard state={state} />
-            : <p className="skeleton">{busy || state.status === "idle" ? "Lecture de la ferme…" : "Rien à afficher pour l'instant."}</p>}
+            : !ready ? null
+            : current === "deliveries" ? <DeliveriesView state={state} />
+            : current === "ledger" ? <LedgerView state={state} onAdd={addEntry} onRemove={removeEntry} />
+            : <Dashboard state={state} />}
+          {current !== "settings" && !ready ? (
+            <p className="skeleton">{busy || state.status === "idle" ? "Lecture de la ferme…" : "Rien à afficher pour l'instant."}</p>
+          ) : null}
         </main>
       </div>
     </div>

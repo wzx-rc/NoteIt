@@ -1,5 +1,6 @@
-import type { Farm } from "../core/farm";
+import type { Farm, Order } from "../core/farm";
 import type { Market } from "../core/engine";
+import type { LedgerEntry } from "../core/ledger";
 
 export interface Snapshot { at: number; farmActivity: Record<string, number> }
 
@@ -16,7 +17,14 @@ export interface AppState {
   market?: Market;
   /** True while the nightly dump is being read to fill the history. */
   importing?: boolean;
+  /** Every distinct delivery order seen, newest kept. */
+  orders: Order[];
+  /** FLOWER moves found between farm readings, plus the ones typed by hand. */
+  ledger: LedgerEntry[];
 }
+
+/** A move typed by hand in the ledger tab, in dollars. */
+export interface ManualEntry { at: number; usd: number; label: string }
 
 export interface Settings { apiKey: string; farmId: string; apiBase: string }
 
@@ -29,4 +37,6 @@ export interface HarvestBridge {
   saveSettings(s: Partial<Settings>): Promise<AppState>;
   onState(cb: (s: AppState) => void): () => void;
   openExternal(url: string): void;
+  addEntry(e: ManualEntry): Promise<AppState>;
+  removeEntry(id: string): Promise<AppState>;
 }

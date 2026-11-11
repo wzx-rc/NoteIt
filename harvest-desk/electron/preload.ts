@@ -13,6 +13,8 @@ const bridge: HarvestBridge = {
     return () => ipcRenderer.removeListener("state", h);
   },
   openExternal: (url) => ipcRenderer.send("open", url),
+  addEntry: (e) => ipcRenderer.invoke("ledger:add", e),
+  removeEntry: (id) => ipcRenderer.invoke("ledger:remove", id),
 };
 
 contextBridge.exposeInMainWorld("harvest", bridge);

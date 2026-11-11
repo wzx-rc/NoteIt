@@ -21,6 +21,23 @@ export interface Farm {
   henHouse?: { animals?: Record<string, Animal> };
   barn?: { animals?: Record<string, Animal> };
   pigpen?: { animals?: Record<string, Animal> };
+  // Read by the delivery and ledger tabs.
+  balance?: string | number;
+  coins?: number;
+  bank?: { withdrawnAmount?: number };
+  trades?: { soldCount?: number };
+  wardrobe?: Record<string, number>;
+  vip?: { expiresAt?: number; trialStartedAt?: number };
+  delivery?: { orders?: Order[]; fulfilledCount?: number };
+  npcs?: Record<string, { deliveryCount?: number; skippedCount?: number }>;
+}
+export interface Order {
+  id: string;
+  from: string;
+  createdAt: number;
+  readyAt?: number;
+  items: Record<string, number>;
+  reward: { sfl?: number; coins?: number; items?: Record<string, number> };
 }
 export interface Animal { type: string; experience: number; multiplier?: number }
 

@@ -1,13 +1,18 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { Market } from "../src/core/engine";
+import type { Farm, Order } from "../src/core/farm";
+import { type FarmMeta, ledgerFromMetas, metaOf, thinMetas } from "../src/core/ledger";
 import { parseMarket } from "../src/core/market";
-import type { AppState, Settings, Snapshot } from "../src/shared/types";
-import { SflClient, cleanKey, snapshotFromDump, trimActivity } from "./sfl";
+import type { AppState, ManualEntry, Settings, Snapshot } from "../src/shared/types";
+import { SflClient, cleanKey, farmFromDump, trimActivity } from "./sfl";
 
 const FARM_EVERY = 10 * 60_000;
 const MARKET_EVERY = 6 * 3_600_000;
 const KEEP_DAYS = 35;
+const HOUR = 3_600_000;
+const MAX_ORDERS = 3000;
 
 const dir = () => app.getPath("userData");
 const file = (n: string) => join(dir(), n);
@@ -29,7 +34,21 @@ function settings(): Settings {
   };
 }
 
-let state: AppState = { mode: "live", status: "idle", snapshots: readJson<Snapshot[]>("snapshots.json", []) };
+let metas = readJson<FarmMeta[]>("metas.json", []);
+let manual = readJson<(ManualEntry & { id: string })[]>("manual.json", []);
+let orders = readJson<Order[]>("orders.json", []);
+
+/** Ledger = moves found between readings + moves typed by hand. */
+function ledger() {
+  const auto = ledgerFromMetas(metas);
+  const hand = manual.map((m) => ({ id: m.id, at: m.at, kind: "manual" as const, usd: m.usd, label: m.label }));
+  return [...auto, ...hand].sort((a, b) => b.at - a.at);
+}
+
+let state: AppState = {
+  mode: "live", status: "idle", snapshots: readJson<Snapshot[]>("snapshots.json", []),
+  orders, ledger: ledger(),
+};
 let marketAt = 0;
 let win: BrowserWindow | null = null;
 
@@ -39,11 +58,26 @@ function publish(patch: Partial<AppState>) {
   return state;
 }
 
+/** Keeps one counters snapshot per hour over the last 35 days. */
 function addSnapshot(s: Snapshot) {
   const cutoff = Date.now() - KEEP_DAYS * 86_400_000;
-  const list = [...state.snapshots.filter((x) => x.at !== s.at && x.at > cutoff), s].sort((a, b) => a.at - b.at);
+  const list = [...state.snapshots.filter((x) => x.at > cutoff && Math.floor(x.at / HOUR) !== Math.floor(s.at / HOUR)), s]
+    .sort((a, b) => a.at - b.at);
   writeJson("snapshots.json", list);
   return list;
+}
+
+/** Stores what one farm reading tells: counters, ledger reading, delivery orders. */
+function record(at: number, farm: Farm & { farmActivity?: Record<string, number> }, market: Market) {
+  const snapshots = addSnapshot({ at, farmActivity: trimActivity(farm.farmActivity ?? {}) });
+  metas = thinMetas([...metas.filter((m) => m.at !== at), metaOf(farm, at, market)], Date.now());
+  writeJson("metas.json", metas);
+  const byId = new Map(orders.map((o) => [o.id, o]));
+  for (const o of farm.delivery?.orders ?? []) if (Object.keys(o.items ?? {}).length) byId.set(o.id, o);
+  orders = [...byId.values()].sort((a, b) => b.createdAt - a.createdAt).slice(0, MAX_ORDERS);
+  writeJson("orders.json", orders);
+  state.snapshots = snapshots;
+  return { snapshots, orders, ledger: ledger() };
 }
 
 let running: Promise<AppState> | null = null;
@@ -56,8 +90,7 @@ function refresh(): Promise<AppState> {
     try {
       const client = new SflClient(s.apiBase, s.apiKey);
       const res = await client.farm(s.farmId);
-      const snapshots = addSnapshot({ at: Date.now(), farmActivity: trimActivity(res.farm.farmActivity ?? {}) });
-      let market = state.market ?? readJson("market.json", undefined);
+      let market: Market | undefined = state.market ?? readJson<Market | undefined>("market.json", undefined);
       if (!market || Date.now() - marketAt > MARKET_EVERY) {
         market = parseMarket(await client.marketplace());
         marketAt = Date.now();
@@ -65,7 +98,7 @@ function refresh(): Promise<AppState> {
       }
       return publish({
         status: "ready", farm: res.farm, farmId: Number(res.id), username: res.farm.username,
-        fetchedAt: new Date().toISOString(), snapshots, market,
+        fetchedAt: new Date().toISOString(), market, ...record(Date.now(), res.farm, market),
       });
     } catch (e) {
       return publish({ status: "error", error: (e as Error).message });
@@ -76,21 +109,23 @@ function refresh(): Promise<AppState> {
   return running;
 }
 
-/** Fills the history from the oldest and newest nightly dumps (kept 7 days by the game). */
+/**
+ * Fills the history from the nightly dumps the game keeps (7 days), one day at a time.
+ * Each dump is about 800 MB: it is streamed and only this farm's row is kept.
+ */
 async function importHistory(): Promise<AppState> {
   const s = settings();
   if (!s.apiKey || !s.farmId) return publish({ status: "needs-setup" });
+  if (!state.market) return publish({ error: "Actualise la ferme une fois avant de remplir l'historique." });
   publish({ importing: true, error: undefined });
   try {
     const list = (await new SflClient(s.apiBase, s.apiKey).dumps()).data
       .map((d) => d.filename).filter((f) => f.endsWith("/active.jsonl.gz")).sort();
-    const picks = [...new Set([list[0], list[list.length - 1]])].filter(Boolean);
-    let snapshots = state.snapshots;
-    for (const f of picks) {
-      const snap = await snapshotFromDump(f, s.farmId);
-      if (snap) { state.snapshots = snapshots = addSnapshot(snap); }
+    for (const f of list) {
+      const row = await farmFromDump(f, s.farmId);
+      if (row) publish(record(row.at, row.farm, state.market));
     }
-    return publish({ importing: false, snapshots });
+    return publish({ importing: false });
   } catch (e) {
     return publish({ importing: false, error: (e as Error).message });
   }
@@ -122,12 +157,23 @@ app.whenReady().then(() => {
     writeJson("settings.json", next);
     return refresh();
   });
+  ipcMain.handle("ledger:add", (_e, m: ManualEntry) => {
+    if (!m || !Number.isFinite(m.usd) || !Number.isFinite(m.at) || typeof m.label !== "string") return state;
+    manual = [...manual, { id: `m-${Date.now()}`, at: m.at, usd: m.usd, label: m.label.slice(0, 120) }];
+    writeJson("manual.json", manual);
+    return publish({ ledger: ledger() });
+  });
+  ipcMain.handle("ledger:remove", (_e, id: string) => {
+    manual = manual.filter((m) => m.id !== id);
+    writeJson("manual.json", manual);
+    return publish({ ledger: ledger() });
+  });
   ipcMain.on("open", (_e, url: string) => { if (/^https:\/\//.test(url)) shell.openExternal(url); });
 
   createWindow();
   refresh().then((s) => {
     const span = s.snapshots.length > 1 ? s.snapshots[s.snapshots.length - 1].at - s.snapshots[0].at : 0;
-    if (s.status === "ready" && span < 86_400_000) importHistory();
+    if (s.status === "ready" && span < 2 * 86_400_000) importHistory();
   });
   setInterval(refresh, FARM_EVERY);
 });

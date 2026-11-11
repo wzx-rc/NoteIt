@@ -16,3 +16,12 @@ const FR: Record<string, string> = {
 export const frCrop = (name: string) => FR[name] ?? name;
 
 export const MONTH = 30.4;
+
+/** "pumpkin' pete" → "Pumpkin' Pete". */
+export const npcName = (n: string) => n.replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+
+/** Short list of an order's items: "5 Crimstone, 25 Iron, 8 000 coins". */
+export const itemList = (items: Record<string, number>) =>
+  Object.entries(items).map(([k, n]) => `${nf(n)} ${k}`).join(", ");
+
+export const dayLabel = (t: number) => new Date(t).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });

@@ -1,0 +1,163 @@
+{
+ "tickets": {
+  "pumpkin' pete": 1,
+  "bert": 2,
+  "miranda": 2,
+  "finley": 2,
+  "raven": 4,
+  "finn": 5,
+  "timmy": 5,
+  "cornwell": 3,
+  "tywin": 10,
+  "jester": 4,
+  "pharaoh": 6
+ },
+ "boosts": {
+  "Solar Flare": [
+   "Cow Scratcher",
+   "Cow Scratcher",
+   "Cow Scratcher"
+  ],
+  "Dawn Breaker": [
+   "Cow Scratcher",
+   "Cow Scratcher",
+   "Cow Scratcher"
+  ],
+  "Witches' Eve": [
+   "Cow Scratcher",
+   "Cow Scratcher",
+   "Cow Scratcher"
+  ],
+  "Catch the Kraken": [
+   "Cow Scratcher",
+   "Cow Scratcher",
+   "Cow Scratcher"
+  ],
+  "Spring Blossom": [
+   "Cow Scratcher",
+   "Cow Scratcher",
+   "Cow Scratcher"
+  ],
+  "Clash of Factions": [
+   "Cow Scratcher",
+   "Cow Scratcher",
+   "Cow Scratcher"
+  ],
+  "Pharaoh's Treasure": [
+   "Cow Scratcher",
+   "Cow Scratcher",
+   "Cow Scratcher"
+  ],
+  "Bull Run": [
+   "Cowboy Hat",
+   "Cowboy Shirt",
+   "Cowboy Trouser"
+  ],
+  "Winds of Change": [
+   "Acorn Hat",
+   "Igloo",
+   "Hammock"
+  ],
+  "Great Bloom": [
+   "Flower Mask",
+   "Love Charm Shirt",
+   "Heart Air Balloon"
+  ],
+  "Better Together": [
+   "Garbage Bin Hat",
+   "Raccoon Onesie",
+   "Recycle Shirt"
+  ],
+  "Paw Prints": [
+   "Pet Specialist Hat",
+   "Pet Specialist Pants",
+   "Pet Specialist Shirt"
+  ],
+  "Crabs and Traps": [
+   "Fish Hook Hat",
+   "Fish Hook Vest",
+   "Fish Hook Waders"
+  ],
+  "Salt Awakening": [
+   "Spa Hat",
+   "Spa Robe",
+   "Spa Slippers"
+  ],
+  "Ascension Age": [
+   "Swamp Lily Hat",
+   "Swamp Armor",
+   "Swamp Pants"
+  ],
+  "Cave Dwellers": [
+   "Duende Shoes",
+   "Duende Pants",
+   "Duende Shirt"
+  ]
+ },
+ "chapters": {
+  "Solar Flare": {
+   "start": "2023-01-01T00:00:00.000Z",
+   "end": "2023-05-01T00:00:00.000Z"
+  },
+  "Dawn Breaker": {
+   "start": "2023-05-01T00:00:00.000Z",
+   "end": "2023-08-01T00:00:00.000Z"
+  },
+  "Witches' Eve": {
+   "start": "2023-08-01T00:00:00.000Z",
+   "end": "2023-11-01T00:00:00.000Z"
+  },
+  "Catch the Kraken": {
+   "start": "2023-11-01T00:00:00.000Z",
+   "end": "2024-02-01T00:00:00.000Z"
+  },
+  "Spring Blossom": {
+   "start": "2024-02-01T00:00:00.000Z",
+   "end": "2024-05-01T00:00:00.000Z"
+  },
+  "Clash of Factions": {
+   "start": "2024-05-01T00:00:00.000Z",
+   "end": "2024-08-01T00:00:00.000Z"
+  },
+  "Pharaoh's Treasure": {
+   "start": "2024-08-01T00:00:00.000Z",
+   "end": "2024-11-01T00:00:00.000Z"
+  },
+  "Bull Run": {
+   "start": "2024-11-01T00:00:00.000Z",
+   "end": "2025-02-03T00:00:00.000Z"
+  },
+  "Winds of Change": {
+   "start": "2025-02-03T00:00:00.000Z",
+   "end": "2025-05-01T00:00:00.000Z"
+  },
+  "Great Bloom": {
+   "start": "2025-05-01T00:00:00.000Z",
+   "end": "2025-08-04T00:00:00.000Z"
+  },
+  "Better Together": {
+   "start": "2025-08-04T00:00:00.000Z",
+   "end": "2025-11-03T00:00:00.000Z"
+  },
+  "Paw Prints": {
+   "start": "2025-11-03T00:00:00.000Z",
+   "end": "2026-02-02T00:00:00.000Z"
+  },
+  "Crabs and Traps": {
+   "start": "2026-02-02T00:00:00.000Z",
+   "end": "2026-05-04T00:00:00.000Z"
+  },
+  "Salt Awakening": {
+   "start": "2026-05-04T00:00:00.000Z",
+   "end": "2026-08-03T00:00:00.000Z"
+  },
+  "Ascension Age": {
+   "start": "2026-08-03T00:00:00.000Z",
+   "end": "2026-11-02T00:00:00.000Z"
+  },
+  "Cave Dwellers": {
+   "start": "2026-11-02T00:00:00.000Z",
+   "end": "2027-02-01T00:00:00.000Z"
+  }
+ }
+}

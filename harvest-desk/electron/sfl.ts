@@ -1,7 +1,6 @@
 import { Readable } from "node:stream";
 import { createGunzip } from "node:zlib";
 import { createInterface } from "node:readline";
-import type { Snapshot } from "../src/shared/types";
 
 /**
  * Sunflower Land Community API client. Runs only in the Electron main process,
@@ -48,9 +47,9 @@ export function trimActivity(fa: Record<string, number>): Record<string, number>
 
 /**
  * Reads one nightly dump (≈ 800 MB compressed, streamed, nothing saved to disk)
- * and returns this farm's counters at the time of the dump.
+ * and returns this farm's row: its state and the time of its last action.
  */
-export async function snapshotFromDump(file: string, farmId: string): Promise<Snapshot | null> {
+export async function farmFromDump(file: string, farmId: string): Promise<{ at: number; farm: any } | null> {
   const res = await fetch(`https://community.sunflower-land.com/${file}`);
   if (!res.ok || !res.body) throw new Error(`Dump ${file} indisponible (${res.status}).`);
   const lines = createInterface({ input: Readable.fromWeb(res.body as any).pipe(createGunzip()), crlfDelay: Infinity });
@@ -61,7 +60,7 @@ export async function snapshotFromDump(file: string, farmId: string): Promise<Sn
     if (String(row.id) !== farmId && String(row.nftId) !== farmId) continue;
     lines.close();
     res.body.cancel().catch(() => {});
-    return { at: Number(row.lastActivity ?? Date.parse(file.slice(0, 10))), farmActivity: trimActivity(row.farm?.farmActivity ?? {}) };
+    return { at: Number(row.lastActivity ?? Date.parse(file.slice(0, 10))), farm: row.farm ?? {} };
   }
   return null;
 }
