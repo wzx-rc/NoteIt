@@ -153,14 +153,14 @@ async function importHistory(): Promise<AppState> {
 }
 
 function createWindow() {
-  nativeTheme.themeSource = "system";
+  nativeTheme.themeSource = "dark";
   const isWin = process.platform === "win32";
   win = new BrowserWindow({
     width: 1180, height: 860, minWidth: 420, minHeight: 560,
     title: "Harvest Desk", autoHideMenuBar: true,
     // Frameless with our own title bar; Windows 11 gives it Mica and rounded corners.
     frame: false, titleBarStyle: "hidden",
-    ...(isWin ? { backgroundMaterial: "mica" as const, backgroundColor: "#00000000" } : { backgroundColor: "#202020" }),
+    ...(isWin ? { backgroundMaterial: "mica" as const, backgroundColor: "#00000000" } : { backgroundColor: "#1b1416" }),
     webPreferences: { preload: join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false },
   });
   const sendWin = () => win?.webContents.send("window", { maximized: !!win?.isMaximized(), pinned: !!win?.isAlwaysOnTop() });
