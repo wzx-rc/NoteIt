@@ -24,11 +24,18 @@ const wait = (ms = LATENCY) => new Promise(r => setTimeout(r, ms));
 const hex = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => b.toString(16).padStart(2, "0")).join("");
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** Copie en mémoire : le jeu reste jouable si le stockage du navigateur est bloqué. */
+const memory = new Map<string, string>();
 function read<T>(k: string): T | null {
-  try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : null; } catch { return null; }
+  let v: string | null = null;
+  try { v = localStorage.getItem(k); } catch { /* stockage indisponible */ }
+  v ??= memory.get(k) ?? null;
+  return v ? (JSON.parse(v) as T) : null;
 }
 function write(k: string, v: unknown) {
-  try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* quota ou mode privé */ }
+  const s = JSON.stringify(v);
+  memory.set(k, s);
+  try { localStorage.setItem(k, s); } catch { /* quota ou mode privé */ }
 }
 
 export class SaveRejected extends Error {
@@ -121,6 +128,7 @@ export const sim = {
   },
 
   reset() {
+    memory.clear();
     try { localStorage.removeItem(SERVER_KEY); localStorage.removeItem(CHAIN_KEY); } catch { /* ignore */ }
   },
 };
