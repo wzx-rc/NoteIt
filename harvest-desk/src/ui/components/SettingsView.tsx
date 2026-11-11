@@ -56,8 +56,18 @@ export function SettingsView({ state, onImport }: Props) {
               {saving ? "Connexion…" : "Enregistrer et actualiser"}
             </button>
             {saved && state.status === "ready" ? <span className="ok" role="status">Connecté à la ferme {state.farmId}.</span> : null}
+            {saved && state.status === "error" ? <span className="bad" role="alert">{state.error}</span> : null}
+            {saved && state.status === "needs-setup" ? <span className="bad" role="alert">Clé ou numéro de ferme manquant.</span> : null}
           </div>
         </form>
+      </section>
+
+      <section className="card" aria-labelledby="h-log">
+        <h2 id="h-log">Journal</h2>
+        <p className="hint">Les erreurs et plantages sont notés dans un fichier sur ce PC (sans la clé API). En cas de souci, ouvre-le ou demande à Claude de le lire.</p>
+        <div className="actions">
+          <button className="btn" onClick={() => b?.openLogs()} disabled={!b}>Ouvrir le dossier du journal</button>
+        </div>
       </section>
 
       <section className="card" aria-labelledby="h-hist">

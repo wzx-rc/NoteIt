@@ -24,7 +24,7 @@ Il faut Node.js 20 ou plus. Sous PowerShell, si `npm` est refusé (« l'exécuti
 ```bash
 npm install
 npm start          # construit puis ouvre l'app
-npm run dist       # crée un .exe portable dans release/
+npm run dist       # crée l'installateur Windows dans release/ (Harvest Desk Setup x.y.z.exe)
 ```
 
 Au premier lancement, l'app ouvre les réglages. Colle ta clé API Community (dans le jeu : Réglages, puis API Community, VIP actif et niveau 50 requis) et ton numéro de ferme. Les chevrons `< >` autour de la clé sont retirés tout seuls.

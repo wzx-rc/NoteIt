@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppState, HarvestBridge } from "../src/shared/types";
+import type { AppState, HarvestBridge, WindowInfo } from "../src/shared/types";
 
 const bridge: HarvestBridge = {
   getState: () => ipcRenderer.invoke("state:get"),
@@ -15,6 +15,15 @@ const bridge: HarvestBridge = {
   openExternal: (url) => ipcRenderer.send("open", url),
   addEntry: (e) => ipcRenderer.invoke("ledger:add", e),
   removeEntry: (id) => ipcRenderer.invoke("ledger:remove", id),
+  log: (level, where, message) => ipcRenderer.send("log", level, where, message),
+  openLogs: () => ipcRenderer.invoke("log:open"),
+  windowAction: (action) => ipcRenderer.send("window", action),
+  onWindow: (cb) => {
+    const h = (_e: unknown, w: WindowInfo) => cb(w);
+    ipcRenderer.on("window", h);
+    return () => ipcRenderer.removeListener("window", h);
+  },
+  platform: process.platform,
 };
 
 contextBridge.exposeInMainWorld("harvest", bridge);

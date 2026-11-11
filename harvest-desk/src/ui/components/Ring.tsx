@@ -11,11 +11,11 @@ export function Ring({ values, total, base, scale }: { values: Record<CategoryKe
   return (
     <div className="ring">
       <svg viewBox="0 0 120 120" aria-hidden="true">
-        <circle cx="60" cy="60" r={R} fill="none" stroke="var(--raise)" strokeWidth="13" />
+        <circle cx="60" cy="60" r={R} fill="none" stroke="var(--raise)" strokeWidth="7" />
         {CATS.map((c) => {
           const len = (Math.max(values[c.key], 0) / scale) * C;
           const el = (
-            <circle key={c.key} cx="60" cy="60" r={R} fill="none" stroke={c.color} strokeWidth="13"
+            <circle key={c.key} cx="60" cy="60" r={R} fill="none" stroke={c.color} strokeWidth="7"
               strokeDasharray={`${Math.max(len - GAP, 0)} ${C}`} strokeDashoffset={-off} />
           );
           off += len;

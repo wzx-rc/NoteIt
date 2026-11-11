@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DeliveriesView } from "./components/DeliveriesView";
 import { GrowthCurve } from "./components/GrowthCurve";
 import { LedgerView } from "./components/LedgerView";
@@ -6,11 +6,12 @@ import { MarketView } from "./components/MarketView";
 import { Kpis } from "./components/Kpis";
 import { MineralsCard } from "./components/MineralsCard";
 import { PaybackCard } from "./components/PaybackCard";
-import { Rail, type View } from "./components/Rail";
+import { Rail, viewLabel, type View } from "./components/Rail";
 import { RevenueCard } from "./components/RevenueCard";
 import { SettingsView } from "./components/SettingsView";
 import { Shortcuts } from "./components/Shortcuts";
 import { Simulator } from "./components/Simulator";
+import { TitleBar } from "./components/TitleBar";
 import { TopBar } from "./components/TopBar";
 import { buildModel, useScenario, type Model } from "./model";
 import { bridge, useAppState } from "./useAppState";
@@ -18,17 +19,23 @@ import type { AppState } from "../shared/types";
 
 export function App() {
   const { state, refresh, importHistory, addEntry, removeEntry } = useAppState();
-  const [view, setView] = useState<View>("revenue");
+  const [view, setView] = useState<View>(() => (location.hash.slice(1) as View) || "revenue");
+  useEffect(() => {
+    const onHash = () => { if (location.hash.length > 1) setView(location.hash.slice(1) as View); };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   const ready = !!(state.farm && state.market);
   const busy = state.status === "loading";
   const current: View = state.status === "needs-setup" ? "settings" : view;
 
   return (
     <div className="page">
+      <TitleBar />
       <div className="app">
         <Rail view={current} onView={setView} />
         <main className="main">
-          <TopBar username={state.username} farmId={state.farmId} flowerUsd={state.market?.flowerUsd}
+          <TopBar title={viewLabel(current)} username={state.username} farmId={state.farmId} flowerUsd={state.market?.flowerUsd}
             demo={state.mode === "demo"} busy={busy} fetchedAt={state.fetchedAt} onRefresh={() => refresh(true)} />
           <Banner state={state} onRetry={() => refresh(true)} onImport={importHistory} />
           {current === "settings" ? <SettingsView state={state} onImport={importHistory} />

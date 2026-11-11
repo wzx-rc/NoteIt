@@ -13,13 +13,15 @@ function ago(iso?: string) {
   return new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-export function TopBar({ username, farmId, flowerUsd, demo, busy, fetchedAt, onRefresh }: Props) {
+export function TopBar({ title, username, farmId, flowerUsd, demo, busy, fetchedAt, onRefresh }: Props & { title?: string }) {
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
   return (
     <div className="top">
-      <h1>Harvest Desk</h1>
-      {farmId ? <span className="farm">Ferme de {username || "?"}, n° {farmId}</span> : null}
+      <div className="heading">
+        <h1>{title || "Harvest Desk"}</h1>
+        {farmId ? <span className="farm">Ferme de {username || "?"}, n° {farmId}</span> : null}
+      </div>
       {demo ? <span className="demo">Données d'exemple</span> : null}
       <span className="spacer" />
       {flowerUsd ? <span className="ticker"><Icon name="flower" size={16} />1 FLOWER = {fmt(flowerUsd, 3)} $</span> : null}
@@ -27,7 +29,7 @@ export function TopBar({ username, farmId, flowerUsd, demo, busy, fetchedAt, onR
         <span className="update">
           <button className="btn primary big" aria-busy={busy} disabled={busy} onClick={onRefresh}
             title="Relit ta ferme et les prix du marketplace, puis recalcule tout">
-            <Icon name="refresh" size={18} />{busy ? "Mise à jour…" : "Mettre à jour"}
+            <Icon name="refresh" size={16} />{busy ? "Mise à jour…" : "Mettre à jour"}
           </button>
           <span className="dim small">{busy ? "ferme et prix du marché" : `Données ${ago(fetchedAt)}`}</span>
         </span>

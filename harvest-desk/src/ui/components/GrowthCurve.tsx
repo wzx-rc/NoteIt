@@ -38,13 +38,13 @@ export function GrowthCurve({ base, total, cost }: { base: number; total: number
         ))}
         {months.map((m) => <text key={m} x={x(m)} y={H - 10} textAnchor="middle">{m === 0 ? "auj." : `M${m}`}</text>)}
         <path d={`${path(baseLine)} L${x(12)},${y(0)} L${x(0)},${y(0)}Z`} fill="var(--sky)" opacity=".08" />
-        <path d={path(baseLine)} fill="none" stroke="var(--sky)" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d={path(baseLine)} fill="none" stroke="var(--sky)" strokeWidth="1.75" strokeLinejoin="round" />
         {baseLine.map((v, m) => (m ? <circle key={m} cx={x(m)} cy={y(v)} r="2.6" fill="var(--sky)" /> : null))}
         <circle cx={x(12)} cy={y(baseLine[12])} r="4.5" fill="var(--sky)" />
         <text x={x(12) - 8} y={y(baseLine[12]) + (on && optAbove ? 18 : -10)} textAnchor="end" style={{ fill: "var(--text)", fontWeight: 600, fontSize: 12 }}>{nf(baseLine[12])} $</text>
         {on ? (
           <>
-            <path d={path(optLine)} fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinejoin="round" />
+            <path d={path(optLine)} fill="none" stroke="var(--gold)" strokeWidth="1.75" strokeLinejoin="round" />
             {optLine.map((v, m) => <circle key={m} cx={x(m)} cy={y(v)} r="2.6" fill="var(--gold)" />)}
             <circle cx={x(12)} cy={y(optLine[12])} r="4.5" fill="var(--gold)" />
             <text x={x(12) - 8} y={y(optLine[12]) + (optAbove ? -10 : 18)} textAnchor="end" style={{ fill: "var(--gold)", fontWeight: 600, fontSize: 12 }}>{nf(optLine[12])} $</text>

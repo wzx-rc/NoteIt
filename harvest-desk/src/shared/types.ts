@@ -40,4 +40,14 @@ export interface HarvestBridge {
   openExternal(url: string): void;
   addEntry(e: ManualEntry): Promise<AppState>;
   removeEntry(id: string): Promise<AppState>;
+  /** Writes a renderer error to the crash journal. */
+  log(level: "warn" | "error", where: string, message: string): void;
+  /** Opens the folder that holds the crash journal. */
+  openLogs(): Promise<string>;
+  /** Custom title bar buttons. */
+  windowAction(action: "minimize" | "maximize" | "close" | "pin"): void;
+  onWindow(cb: (w: WindowInfo) => void): () => void;
+  platform: string;
 }
+
+export interface WindowInfo { maximized: boolean; pinned: boolean }

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme, shell } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Market } from "../src/core/engine";
@@ -7,6 +7,11 @@ import { type FarmMeta, ledgerFromMetas, metaOf, thinMetas } from "../src/core/l
 import { parseMarket } from "../src/core/market";
 import type { AppState, ManualEntry, Settings, Snapshot } from "../src/shared/types";
 import { SflClient, cleanKey, farmFromDump, trimActivity } from "./sfl";
+import { installCrashHandlers, log, logDir, setSecrets } from "./log";
+
+// Same data folder for `npm start` and the installed app (the installer may rename the app).
+app.setPath("userData", join(app.getPath("appData"), "harvest-desk"));
+installCrashHandlers();
 
 const FARM_EVERY = 10 * 60_000;
 const MARKET_EVERY = 6 * 3_600_000;
@@ -27,11 +32,13 @@ function writeJson(n: string, v: unknown) {
 /** Settings live in the user's app data folder. The env variables are a fallback for developers. */
 function settings(): Settings {
   const s = readJson<Partial<Settings>>("settings.json", {});
-  return {
+  const out = {
     apiKey: cleanKey(s.apiKey || process.env.SFL_API_KEY || ""),
-    farmId: s.farmId || process.env.SFL_FARM_ID || "",
-    apiBase: s.apiBase || process.env.SFL_API_BASE || "https://api.sunflower-land.com",
+    farmId: String(s.farmId || process.env.SFL_FARM_ID || "").trim(),
+    apiBase: (s.apiBase || process.env.SFL_API_BASE || "https://api.sunflower-land.com").trim().replace(/\/+$/, ""),
   };
+  setSecrets([out.apiKey]);
+  return out;
 }
 
 let metas = readJson<FarmMeta[]>("metas.json", []);
@@ -81,12 +88,26 @@ function record(at: number, farm: Farm & { farmActivity?: Record<string, number>
 }
 
 let running: Promise<AppState> | null = null;
-/** `full` also re-reads the marketplace prices, which are otherwise kept 6 hours. */
+/**
+ * `full` also re-reads the marketplace prices, which are otherwise kept 6 hours.
+ * `running` is cleared after the promise is stored: when the job ends without awaiting
+ * (no key yet), clearing it inside the job would run first and leave a stale promise forever.
+ */
 function refresh(full = false): Promise<AppState> {
   if (running) return full ? running.then(() => refresh(true)) : running;
-  running = (async () => {
+  const job = refreshNow(full);
+  running = job;
+  job.finally(() => { if (running === job) running = null; });
+  return job;
+}
+
+async function refreshNow(full: boolean): Promise<AppState> {
+  {
     const s = settings();
-    if (!s.apiKey || !s.farmId) return publish({ status: "needs-setup" });
+    if (!s.apiKey || !s.farmId) {
+      log("info", "refresh", `needs setup (key: ${s.apiKey ? "yes" : "no"}, farm: ${s.farmId || "none"})`);
+      return publish({ status: "needs-setup" });
+    }
     publish({ status: "loading", error: undefined });
     try {
       const client = new SflClient(s.apiBase, s.apiKey);
@@ -102,12 +123,10 @@ function refresh(full = false): Promise<AppState> {
         fetchedAt: new Date().toISOString(), market, ...record(Date.now(), res.farm, market),
       });
     } catch (e) {
+      log("error", "refresh", e);
       return publish({ status: "error", error: (e as Error).message });
-    } finally {
-      running = null;
     }
-  })();
-  return running;
+  }
 }
 
 /**
@@ -128,16 +147,32 @@ async function importHistory(): Promise<AppState> {
     }
     return publish({ importing: false });
   } catch (e) {
+    log("error", "importHistory", e);
     return publish({ importing: false, error: (e as Error).message });
   }
 }
 
 function createWindow() {
+  nativeTheme.themeSource = "system";
+  const isWin = process.platform === "win32";
   win = new BrowserWindow({
-    width: 1200, height: 940, minWidth: 420, minHeight: 600,
-    backgroundColor: "#120d0f", title: "Harvest Desk", autoHideMenuBar: true,
+    width: 1180, height: 860, minWidth: 420, minHeight: 560,
+    title: "Harvest Desk", autoHideMenuBar: true,
+    // Frameless with our own title bar; Windows 11 gives it Mica and rounded corners.
+    frame: false, titleBarStyle: "hidden",
+    ...(isWin ? { backgroundMaterial: "mica" as const, backgroundColor: "#00000000" } : { backgroundColor: "#202020" }),
     webPreferences: { preload: join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false },
   });
+  const sendWin = () => win?.webContents.send("window", { maximized: !!win?.isMaximized(), pinned: !!win?.isAlwaysOnTop() });
+  win.on("maximize", sendWin);
+  win.on("unmaximize", sendWin);
+  win.on("always-on-top-changed", sendWin);
+  win.webContents.on("did-finish-load", sendWin);
+  win.webContents.on("console-message", (_e, level, message, line, source) => {
+    if (level >= 3) log("error", "renderer console", `${message} (${source}:${line})`);
+  });
+  win.webContents.on("did-fail-load", (_e, code, desc, url) => log("error", "did-fail-load", code, desc, url));
+  win.on("unresponsive", () => log("warn", "window", "unresponsive"));
   win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: "deny" }; });
   if (process.env.VITE_DEV_SERVER_URL) win.loadURL(process.env.VITE_DEV_SERVER_URL);
   else win.loadFile(join(__dirname, "../dist/index.html"));
@@ -156,7 +191,20 @@ app.whenReady().then(() => {
     const next = { ...cur, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined && v !== "")) };
     if (next.apiKey) next.apiKey = cleanKey(next.apiKey);
     writeJson("settings.json", next);
-    return refresh();
+    log("info", "settings:save", `key ${patch.apiKey ? "replaced" : "kept"}, farm ${next.farmId ?? "none"}`);
+    return refresh(true);
+  });
+  ipcMain.on("log", (_e, level: "warn" | "error", where: string, msg: string) => {
+    log(level === "warn" ? "warn" : "error", `renderer ${String(where).slice(0, 60)}`, String(msg).slice(0, 4000));
+  });
+  ipcMain.handle("log:open", () => shell.openPath(logDir()));
+  ipcMain.on("window", (e, action: string) => {
+    const w = BrowserWindow.fromWebContents(e.sender);
+    if (!w) return;
+    if (action === "minimize") w.minimize();
+    else if (action === "maximize") w.isMaximized() ? w.unmaximize() : w.maximize();
+    else if (action === "close") w.close();
+    else if (action === "pin") w.setAlwaysOnTop(!w.isAlwaysOnTop(), "floating");
   });
   ipcMain.handle("ledger:add", (_e, m: ManualEntry) => {
     if (!m || !Number.isFinite(m.usd) || !Number.isFinite(m.at) || typeof m.label !== "string") return state;
@@ -172,12 +220,33 @@ app.whenReady().then(() => {
   ipcMain.on("open", (_e, url: string) => { if (/^https:\/\//.test(url)) shell.openExternal(url); });
 
   createWindow();
+  if (process.env.HARVEST_SHOTS) { void shots(process.env.HARVEST_SHOTS); return; }
   refresh().then((s) => {
     const span = s.snapshots.length > 1 ? s.snapshots[s.snapshots.length - 1].at - s.snapshots[0].at : 0;
     if (s.status === "ready" && span < 2 * 86_400_000) importHistory();
   });
   setInterval(() => refresh(), FARM_EVERY);
 });
+
+/** Dev helper: HARVEST_SHOTS=<folder> saves one PNG per view with the real farm, then quits. */
+async function shots(out: string) {
+  const s = await refresh();
+  log("info", "shots", `status ${s.status}`);
+  mkdirSync(out, { recursive: true });
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 60 && state.status !== "ready"; i++) await wait(1000);
+  win!.webContents.setBackgroundThrottling(false);
+  win!.setAlwaysOnTop(true);
+  win!.show(); win!.focus();
+  for (const v of ["revenue", "market", "deliveries", "ledger", "settings"]) {
+    await win!.webContents.executeJavaScript(`location.hash = ${JSON.stringify(v)}`);
+    await wait(v === "market" ? 7000 : 3000);
+    win!.webContents.invalidate();
+    await wait(500);
+    writeFileSync(join(out, `${v}.png`), (await win!.webContents.capturePage()).toPNG());
+  }
+  app.quit();
+}
 
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

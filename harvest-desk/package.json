@@ -10,7 +10,7 @@
     "postinstall": "node scripts/ensure-electron.mjs",
     "start": "npm run build && node scripts/ensure-electron.mjs && electron .",
     "test": "vitest run",
-    "dist": "npm run build && electron-builder --win portable"
+    "dist": "npm run build && electron-builder --win nsis"
   },
   "license": "UNLICENSED",
   "dependencies": {
@@ -33,7 +33,7 @@
   },
   "private": true,
   "build": {
-    "appId": "local.harvestdesk",
+    "appId": "com.wzx.harvestdesk",
     "productName": "Harvest Desk",
     "files": [
       "dist/**",
@@ -44,7 +44,16 @@
       "output": "release"
     },
     "win": {
-      "target": "portable"
+      "target": "nsis",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Harvest Desk"
     },
     "mac": {
       "target": "dmg"
