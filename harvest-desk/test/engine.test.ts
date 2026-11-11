@@ -25,14 +25,22 @@ describe("dailyRates", () => {
 
 describe("Engine on the example farm", () => {
   const r = new Engine(farm, rates, market).report();
-  it("matches the hand analysis (about 8.2 $ per day)", () => {
-    expect(usd(r.net)).toBeGreaterThan(7.9);
-    expect(usd(r.net)).toBeLessThan(8.5);
+  it("earns about 10.3 $ per day", () => {
+    expect(usd(r.net)).toBeGreaterThan(10);
+    expect(usd(r.net)).toBeLessThan(10.6);
   });
-  it("ranks crops first and minerals last", () => {
+  it("ranks animals first and minerals last", () => {
     const c = r.categories;
-    expect(c.crops.net).toBeGreaterThan(c.animals.net);
+    expect(c.animals.net).toBeGreaterThan(c.crops.net);
     expect(c.minerals.net).toBeLessThan(c.greenhouse.net);
+  });
+  it("feeds sheep for free with the Golden Sheep placed", () => {
+    const sheep = r.categories.animals.lines.find((l) => l.key === "Sheep")!;
+    expect(sheep.cost).toBe(0);
+    const noGolden = structuredClone(farm);
+    delete noGolden.interior!.ground!.collectibles!["Golden Sheep"];
+    const paid = new Engine(noGolden, rates, market).report().categories.animals.lines.find((l) => l.key === "Sheep")!;
+    expect(paid.cost).toBeGreaterThan(5);
   });
   it("loses money on stone because of pickaxes", () => {
     const stone = r.categories.minerals.lines.find((l) => l.key === "Stone")!;
@@ -52,6 +60,10 @@ describe("Scenarios", () => {
     expect(usd(k.gainTotal)).toBeCloseTo(2.05, 1);
     expect(k.gain.crops).toBeGreaterThan(0);
     expect(k.gain.greenhouse).toBeGreaterThan(0);
+  });
+  it("finds no gain in sheep food savings when sheep eat for free", () => {
+    expect(get("mermaid").gainTotal).toBeCloseTo(0, 6);
+    expect(get("sheepwise").gainTotal).toBeLessThanOrEqual(0);
   });
   it("gives a payback time for paid options only", () => {
     expect(get("quarry").paybackDays).toBeGreaterThan(300);

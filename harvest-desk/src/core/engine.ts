@@ -30,6 +30,8 @@ const sumCat = (key: CategoryKey, lines: Line[]): Category => ({
   net: lines.reduce((a, l) => a + l.net, 0),
 });
 
+const FREE_FEED: Record<string, string> = { Sheep: "Golden Sheep", Cow: "Golden Cow", Chicken: "Gold Egg" };
+
 export class Engine {
   readonly f: FarmView;
   constructor(farm: Farm, private rates: Rates, private market: Market, extra: Extra = {}) {
@@ -263,13 +265,15 @@ export class Engine {
     const fed = this.rate(`${type} Fed`);
     if (!herd.length || !fed) return null;
     const drops = ANIMAL_DROPS[type];
+    // feedAnimal.ts: a placed golden animal makes every feeding of its kind free.
+    const free = this.f.has(FREE_FEED[type] ?? "");
     let value = 0, food = 0;
     for (const a of herd) {
       const lvl = animalLevel(type, a.experience);
       for (const [res, table] of Object.entries(drops)) {
         value += (table[lvl] * (a.multiplier ?? 1) + this.produceBonus(res)) * this.price(res);
       }
-      food += type === "Pig" ? 0 : this.foodQty(type) * this.feedPrice(favouriteFood(lvl));
+      food += type === "Pig" || free ? 0 : this.foodQty(type) * this.feedPrice(favouriteFood(lvl));
     }
     return line(type, label, (fed * value) / herd.length, (fed * food) / herd.length);
   }
