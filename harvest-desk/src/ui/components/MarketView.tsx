@@ -3,6 +3,7 @@ import { dailyRates } from "../../core/engine";
 import { buyDeals, sellDeals, type Deal } from "../../core/marketplace";
 import type { AppState } from "../../shared/types";
 import { Icon } from "../icons";
+import { ItemImage } from "../ItemImage";
 import { MONTH, fmt, nf, usd } from "../format";
 
 const CAT_ICON: Record<string, string> = { crops: "wheat", greenhouse: "rice", minerals: "gold", animals: "sheep", wood: "pick" };
@@ -85,7 +86,7 @@ function BuyRow({ d, rank, rate }: { d: Deal; rank: number; rate: number }) {
   const months = d.price / (d.perDay * MONTH);
   return (
     <li className="move deal">
-      <span className="chip rank" data-rank={rank}><Icon name={CAT_ICON[d.cat ?? ""] ?? "flower"} size={18} /></span>
+      <span className="chip rank img" data-rank={rank}><ItemImage name={d.name} fallback={CAT_ICON[d.cat ?? ""] ?? "flower"} /></span>
       <span className="t">
         <b>{d.name}</b>
         <span>{d.note ?? (d.cat ? `bonus ${CAT_NAME[d.cat]}` : "")} · remboursé en {months < 24 ? `${fmt(months, 1)} mois` : `${fmt(months / 12, 1)} ans`}</span>
@@ -102,7 +103,7 @@ function BuyRow({ d, rank, rate }: { d: Deal; rank: number; rate: number }) {
 function SellRow({ d, rank, rate }: { d: Deal; rank: number; rate: number }) {
   return (
     <li className="move deal">
-      <span className="chip rank" data-rank={rank}><Icon name={CAT_ICON[d.cat ?? ""] ?? "bag"} size={18} /></span>
+      <span className="chip rank img" data-rank={rank}><ItemImage name={d.name} fallback={CAT_ICON[d.cat ?? ""] ?? "bag"} /></span>
       <span className="t">
         <b>{d.name}</b>
         <span>

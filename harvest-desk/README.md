@@ -63,4 +63,4 @@ npm test           # tests du moteur et du parseur de marché
 
 ## Images
 
-Les icônes sont dessinées pour l'app. Les images du jeu ne sont pas réutilisables librement (le dépôt sunflower-land n'a pas de licence pour ses médias), donc aucune n'est incluse.
+Les icônes sont dessinées pour l'app. Les images du jeu ne sont pas réutilisables librement (le dépôt sunflower-land n'a pas de licence pour ses médias), donc aucune n'est incluse dans le code. L'onglet Marketplace affiche quand même l'image de chaque NFT : elle est chargée à l'affichage depuis `sunflower-land.com/play/erc1155/images/` ou `/wearables/images/` (les images publiques des métadonnées des NFT). Sans connexion, l'icône de l'app la remplace.
