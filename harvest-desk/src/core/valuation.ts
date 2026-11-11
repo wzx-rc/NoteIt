@@ -23,13 +23,14 @@ export interface Value {
  */
 export class Valuer {
   private memo = new Map<string, Value>();
-  constructor(private market: Market) {}
+  /** `known`: prices worked out elsewhere, such as Oil from the farm's own drills. */
+  constructor(private market: Market, private known: Record<string, number> = {}) {}
 
   item(name: string, depth = 0): Value {
     const hit = this.memo.get(name);
     if (hit) return hit;
     let v: Value;
-    const price = this.market.prices[name];
+    const price = this.market.prices[name] ?? this.known[name];
     if (name === "coins") v = { flower: 1 / COINS_PER_FLOWER, estimated: false, unknown: [] };
     else if (price) v = { flower: price, estimated: false, unknown: [] };
     else if (RECIPES[name] && depth < 6) v = this.recipe(RECIPES[name]!, depth);

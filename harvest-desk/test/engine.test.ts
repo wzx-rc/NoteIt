@@ -25,14 +25,15 @@ describe("dailyRates", () => {
 
 describe("Engine on the example farm", () => {
   const r = new Engine(farm, rates, market).report();
-  it("earns about 11 $ per day (Frugal Miner, Seedy Business and Seeded Bounty counted)", () => {
-    expect(usd(r.net)).toBeGreaterThan(10.7);
-    expect(usd(r.net)).toBeLessThan(11.3);
+  it("earns about 9.6 $ per day (greenhouse without tier skills, oil counted)", () => {
+    expect(usd(r.net)).toBeGreaterThan(9.3);
+    expect(usd(r.net)).toBeLessThan(9.9);
   });
-  it("ranks animals first and minerals last", () => {
+  it("ranks animals, crops, minerals, then the greenhouse", () => {
     const c = r.categories;
     expect(c.animals.net).toBeGreaterThan(c.crops.net);
-    expect(c.minerals.net).toBeLessThan(c.greenhouse.net);
+    expect(c.crops.net).toBeGreaterThan(c.minerals.net);
+    expect(c.minerals.net).toBeGreaterThan(c.greenhouse.net);
   });
   it("feeds sheep for free with the Golden Sheep placed", () => {
     const sheep = r.categories.animals.lines.find((l) => l.key === "Sheep")!;
@@ -45,6 +46,40 @@ describe("Engine on the example farm", () => {
   it("loses money on stone because of pickaxes", () => {
     const stone = r.categories.minerals.lines.find((l) => l.key === "Stone")!;
     expect(stone.net).toBeLessThan(0);
+  });
+});
+
+describe("Crop yield rules from the game code", () => {
+  const e = new Engine(farm, rates, market);
+  it("gives Old Farmer and Acre Farm to plot crops only, not to greenhouse rice", () => {
+    // Rice: 1 × 1.9 (Green Amulet) × 1.2 (Scarecrow) + 0.25 (wings), nothing from the advanced crop skills.
+    expect(e.cropYield("Rice", false)).toBeCloseTo(2.53, 2);
+    const noAcre = new Engine(farm, rates, market, { removeSkills: ["Acre Farm", "Old Farmer"] });
+    expect(noAcre.greenhouseYield("Rice")).toBeCloseTo(e.greenhouseYield("Rice"), 6);
+    expect(noAcre.cropYield("Wheat")).toBeLessThan(e.cropYield("Wheat") - 1.9);
+  });
+  it("counts Hoot on rice (32 h) but not on olives (44 h)", () => {
+    const hoot = new Engine(farm, rates, market, { collectibles: ["Hoot"] });
+    expect(hoot.cropYield("Rice", false) - e.cropYield("Rice", false)).toBeCloseTo(0.5, 6);
+    expect(hoot.cropYield("Olive", false)).toBeCloseTo(e.cropYield("Olive", false), 6);
+  });
+  it("grows grapes with the fruit rules: no scarecrow or amulet multiplier", () => {
+    // 1 + 0.25 (wings) + 0.4 (Greenhouse Gamble 2) + 0.1 (Glass Room 1)
+    expect(e.greenhouseYield("Grape")).toBeCloseTo(1.75, 6);
+  });
+  it("adds Sprout Mix on every fertilised plot and Laurie on the 9 plots below her", () => {
+    expect(e.fertilisedShare()).toBe(1);
+    expect(e.aoeBonus("Laurie the Chuckle Crow", "Laurie's Gains")).toBeCloseTo((9 / 81) * 0.2, 6);
+    expect(e.aoeBonus("Scary Mike", "Horror Mike")).toBeCloseTo((9 / 81) * 0.2, 6);
+    expect(e.cropYield("Wheat") - e.cropYield("Wheat", false)).toBeCloseTo(0.3 + 0.2 + 0.2 / 9, 6);
+  });
+  it("prices oil from the drill and charges the greenhouse and the crop machine", () => {
+    // (100 coins + 20 Wood + 9 Iron + 20 Wool) / (10 + 20/3 + 1 Oil Extraction)
+    expect(e.oilPrice()).toBeCloseTo(0.1297, 3);
+    expect(e.greenhouseOil("Rice")).toBe(1.5); // (4 − 1 Slick Saver) × 0.5 Rice Shirt
+    expect(e.machineOilPerHour()).toBeCloseTo(1.4 * 0.6, 6);
+    const oil = e.crops().lines.find((l) => l.key === "machine-oil")!;
+    expect(oil.cost).toBeCloseTo(24 * 0.84 * e.oilPrice(), 6);
   });
 });
 

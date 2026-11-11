@@ -77,14 +77,51 @@ export const GREENHOUSE: Record<string, { seconds: number; seed: number }> = {
 
 export const WINTER_CROPS = ["Potato", "Cabbage", "Beetroot", "Cauliflower", "Parsnip", "Onion", "Turnip", "Wheat", "Kale"];
 
-export const cropTier = (crop: string): "basic" | "medium" | "advanced" => {
-  const s = CROPS[crop]?.seconds ?? GREENHOUSE[crop]?.seconds ?? 0;
+/** types/crops.ts → isBasicCrop / isMediumCrop / isAdvancedCrop: plot crops only, greenhouse crops have no tier. */
+export const cropTier = (crop: string): "basic" | "medium" | "advanced" | null => {
+  const s = CROPS[crop]?.seconds;
+  if (s === undefined) return null;
   if (s <= CROPS.Pumpkin.seconds) return "basic";
   if (s >= CROPS.Eggplant.seconds) return "advanced";
   return "medium";
 };
-export const isOvernight = (crop: string) =>
-  (CROPS[crop]?.seconds ?? GREENHOUSE[crop]?.seconds ?? 0) >= 86400;
+/** types/crops.ts → isOvernightCrop: plot crops from Radish up, greenhouse crops between 24 and 36 h. */
+export const isOvernight = (crop: string) => {
+  if (CROPS[crop]) return CROPS[crop].seconds >= CROPS.Radish.seconds;
+  const s = GREENHOUSE[crop]?.seconds ?? 0;
+  return s >= 24 * 3600 && s <= 36 * 3600;
+};
+
+/** Greenhouse fruits use getFruitYield, not getCropYieldAmount (harvestGreenHouse.ts). */
+export const GREENHOUSE_FRUITS = ["Grape"];
+
+/**
+ * Oil (drillOilReserve.ts, types/tools.ts, plantGreenhouse.ts, supplyCropMachine.ts).
+ * Every third drill of a reserve gives 20 more oil.
+ */
+export const OIL = {
+  drop: 10 + 20 / 3,
+  drillCoins: 100,
+  /** Oil Rig swaps the 10 Leather for Wool. */
+  drill: { Wood: 20, Iron: 9 },
+  drillWool: [20, 15, 10],
+  greenhouse: { Grape: 3, Rice: 4, Olive: 6 } as Record<string, number>,
+  extraction: [1, 1.5, 2],
+  slickSaver: [1, 1.5, 2],
+  greasyPlants: { yield: [1, 1.5, 2], oil: [2, 3, 4] },
+  rapidRig: [0.4, 0.5, 0.6],
+  cropProcessor: [0.1, 0.15, 0.2],
+  oilGadget: [0.1, 0.15, 0.2],
+  efficiencyModule: [0.3, 0.4, 0.5],
+};
+
+/** collisionDetection.ts → getAOEExtent: Horror Mike / Laurie's Gains widen the 3×3 area below the item. */
+export const AOE_RANKS = [
+  { xLeft: 3, xRight: 3, depth: 7 },
+  { xLeft: 4, xRight: 3, depth: 8 },
+  { xLeft: 4, xRight: 4, depth: 9 },
+];
+export const AOE_YIELD = [0.1, 0.15, 0.2];
 
 /** types/tools.ts: coins + ingredients per tool. */
 export const TOOLS: Record<string, { coins: number; items: Record<string, number> }> = {

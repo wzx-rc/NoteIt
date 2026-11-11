@@ -13,11 +13,12 @@ const YIELD_COLLECTIBLES = [
   "Pharaoh Gnome", "Quarry", "Radiant Ray", "Rice Panda", "Rich Chicken", "Rock Golem", "Rocky the Mole", "Scarecrow",
   "Sheaf of Plenty", "Spa Cow", "Squid Chicken", "Stone Beetle", "Toxic Tuft", "Tunnel Mole", "Undead Rooster",
   "Golden Sheep", "Golden Cow", "Gold Egg",
+  "Knowledge Crab", "Vinny", "Grape Granny", "Ladybug Cow", "Knight Chicken", "Battle Fish",
 ];
 const YIELD_WEARABLES = [
   "Black Sheep Onesie", "Cattlegrim", "Chicken Suit", "Cowbell Necklace", "Crimstone Armor", "Crimstone Hammer", "Frozen Heart",
   "Green Amulet", "Infernal Bullwhip", "Infernal Pitchfork", "Merino Jumper", "Milk Apron", "Non La Hat", "Olive Royalty Shirt",
-  "Olive Shield", "Rice Shirt", "Sickle", "White Sheep Onesie",
+  "Olive Shield", "Rice Shirt", "Sickle", "White Sheep Onesie", "Grape Pants", "Antique Dress", "Oil Can", "Oil Overalls", "Oil Gallon",
 ];
 
 /**
@@ -31,7 +32,8 @@ const SPEED: Record<string, { m: number; on: Target; wearable?: boolean; note: s
   "Farm Dog": { m: 0.75, on: { cat: "animals", line: "Sheep" }, note: "moutons −25 % de sommeil" },
   "Dream Scarf": { m: 0.8, on: { cat: "animals", line: "Sheep" }, wearable: true, note: "moutons −20 % de sommeil" },
   Mammoth: { m: 0.75, on: { cat: "animals", line: "Cow" }, note: "vaches −25 % de sommeil" },
-  "Pickaxe Shark": { m: 0.85, on: { cat: "minerals", line: "Gold" }, wearable: true, note: "or −15 % de repousse" },
+  // mineGold.ts: 10 % of rocks come back instantly, the others 15 % faster → 0.9 × 0.85.
+  "Pickaxe Shark": { m: 0.9 * 0.85, on: { cat: "minerals", line: "Gold" }, wearable: true, note: "or −15 % de repousse, 1 fois sur 10 instantané" },
   "Lunar Calendar": { m: 0.9, on: { cat: "crops" }, note: "cultures −10 % de pousse" },
 };
 
@@ -118,7 +120,9 @@ export function buyDeals(farm: Farm, rates: Rates, market: Market): Deal[] {
  */
 export function sellDeals(farm: Farm, rates: Rates, market: Market): Deal[] {
   const base = new Engine(farm, rates, market).report();
-  const known = new Set([...YIELD_COLLECTIBLES, ...YIELD_WEARABLES, ...Object.keys(SPEED), "Foreman Beaver", "Barn Blueprint", "Nancy", "Tin Turtle", "Emerald Turtle"]);
+  const known = new Set([...YIELD_COLLECTIBLES, ...YIELD_WEARABLES, ...Object.keys(SPEED), "Foreman Beaver", "Barn Blueprint", "Nancy", "Tin Turtle", "Emerald Turtle",
+    // Area boosts: the engine reads where they stand, so they only count when selling.
+    "Scary Mike", "Laurie the Chuckle Crow"]);
   const owned = new Map<string, number>();
   for (const [k, v] of Object.entries(farm.inventory ?? {})) if (PLACEABLE.has(k) && Number(v) >= 1) owned.set(k, Math.floor(Number(v)));
   for (const [k, v] of Object.entries(farm.wardrobe ?? {})) if (v >= 1) owned.set(k, (owned.get(k) ?? 0) + v);

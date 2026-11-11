@@ -40,7 +40,7 @@ export class SflClient {
 export function trimActivity(fa: Record<string, number>): Record<string, number> {
   const out: Record<string, number> = {};
   for (const [k, v] of Object.entries(fa)) {
-    if (/(Mined|Crafted|Fed|Collected|Harvested|Planted|Seed Bought|Chopped)$/.test(k)) out[k] = v;
+    if (/(Mined|Crafted|Fed|Collected|Harvested|Planted|Seed Bought|Chopped|Fertilised)$/.test(k)) out[k] = v;
   }
   return out;
 }

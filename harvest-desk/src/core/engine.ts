@@ -1,6 +1,6 @@
 import {
   COINS_PER_FLOWER, CROPS, DIET_SKILLS, FEED_RECIPES, FOOD_QTY, GREENHOUSE, TOOLS, WINTER_CROPS,
-  ANIMAL_DROPS, cropTier, favouriteFood, isOvernight,
+  ANIMAL_DROPS, AOE_RANKS, AOE_YIELD, GREENHOUSE_FRUITS, OIL, cropTier, favouriteFood, isOvernight,
 } from "./gameData";
 import { Extra, Farm, FarmView, animalLevel, animals } from "./farm";
 
@@ -54,25 +54,55 @@ export class Engine {
 
     if (f.wears("Infernal Pitchfork")) amount += 3;
     if (f.faction && f.wears(f.faction.wings)) amount += 0.25;
-    if (WINTER_CROPS.includes(crop) && f.season === "winter" && f.wears("Frozen Heart")) amount += 1;
+    if (WINTER_CROPS.includes(crop) && CROPS[crop] && f.season === "winter" && f.wears("Frozen Heart")) amount += 1;
     if (isOvernight(crop) && f.has("Hoot")) amount += 0.5;
     if (crop === "Wheat" && f.wears("Sickle")) amount += 2;
     if (crop === "Kale" && f.has("Giant Kale")) amount += 2;
     if (crop === "Barley" && f.has("Sheaf of Plenty")) amount += 2;
     if (crop === "Yam" && f.has("Giant Yam")) amount += 0.5;
 
+    const tier = cropTier(crop);
     if (plot) {
       const plots = Object.values(f.raw.crops ?? {});
       const swarms = plots.reduce((a, p) => a + (p.beeSwarm?.count ?? 0), 0) / Math.max(plots.length, 1);
       amount += swarms * (0.2 + f.rank("Pollen Power Up"));
+      // Sprout Mix (or Sproutroot Surprise) on the plot: +0.2, +0.2 more with Knowledge Crab.
+      amount += this.fertilisedShare() * (0.2 + (f.has("Knowledge Crab") ? 0.2 : 0));
+      // Scary Mike (medium crops) and Laurie (advanced crops) boost the plots in their area.
+      if (tier === "medium") amount += this.aoeBonus("Scary Mike", "Horror Mike");
+      if (tier === "advanced") amount += this.aoeBonus("Laurie the Chuckle Crow", "Laurie's Gains");
     }
 
-    const tier = cropTier(crop);
+    // Tier skills only exist for plot crops: greenhouse crops are neither basic, medium nor advanced.
     if (tier === "basic") amount += f.rank("Young Farmer");
     if (tier === "medium") amount += f.rank("Experienced Farmer");
     if (tier === "advanced") amount += f.rank("Old Farmer");
-    amount += tier === "advanced" ? f.buff("Acre Farm") - f.debuff("Hectare Farm") : f.buff("Hectare Farm") - f.debuff("Acre Farm");
+    if (tier === "advanced") amount += f.buff("Acre Farm") - f.debuff("Hectare Farm");
+    if (tier === "basic" || tier === "medium") amount += f.buff("Hectare Farm") - f.debuff("Acre Farm");
     return amount;
+  }
+
+  /** Share of plot harvests that had Sprout Mix: measured from "Crop Fertilised", else what the plots carry now. */
+  fertilisedShare(): number {
+    const planted = Object.keys(CROPS).reduce((a, c) => a + this.rate(`${c} Planted`), 0);
+    const measured = planted > 0 ? this.rate("Crop Fertilised") / planted : NaN;
+    // A ratio above 1 means the older snapshot did not keep the counter: fall back to the plots.
+    if (measured >= 0 && measured <= 1.05 && this.rate("Crop Fertilised") > 0) return Math.min(1, measured);
+    const plots = Object.values(this.f.raw.crops ?? {});
+    if (!plots.length) return 0;
+    return plots.filter((p) => ["Sprout Mix", "Sproutroot Surprise"].includes(p.fertiliser?.name ?? "")).length / plots.length;
+  }
+
+  /** Average bonus per plot harvest from a scarecrow-type item: share of plots in its area × its bonus. */
+  aoeBonus(item: string, skill: string): number {
+    const at = this.f.raw.collectibles?.[item]?.find((c) => c.coordinates)?.coordinates;
+    const plots = Object.values(this.f.raw.crops ?? {});
+    if (!at || !plots.length) return 0;
+    const lvl = Math.min(this.f.skill(skill), 3);
+    const e = lvl ? AOE_RANKS[lvl - 1] : { xLeft: 1, xRight: 1, depth: 3 };
+    const inside = plots.filter((p) => p.x !== undefined && p.y !== undefined
+      && p.x >= at.x - e.xLeft && p.x <= at.x + e.xRight && p.y <= at.y - 1 && p.y >= at.y - e.depth).length;
+    return (inside / plots.length) * (0.2 + (lvl ? AOE_YIELD[lvl - 1] : 0));
   }
 
   seedCost(crop: string): number {
@@ -82,6 +112,7 @@ export class Engine {
 
   crops(): Category {
     const lines: Line[] = [];
+    let machineSeeds = 0;
     for (const crop of Object.keys(CROPS)) {
       const harvested = this.rate(`${crop} Harvested`);
       if (!harvested) continue;
@@ -90,7 +121,10 @@ export class Engine {
       const machine = harvested - plots;
       const qty = plots * this.cropYield(crop) + machine * this.cropYield(crop, false);
       lines.push(line(crop, crop, qty * this.price(crop), harvested * this.seedCost(crop), qty));
+      machineSeeds += machine;
     }
+    // The crop machine burns oil around the clock while it has seeds to grow.
+    if (machineSeeds > 0) lines.push(line("machine-oil", "Huile de la Crop Machine", 0, 24 * this.machineOilPerHour() * this.oilPrice()));
     return sumCat("crops", lines.sort((a, b) => b.net - a.net));
   }
 
@@ -98,7 +132,17 @@ export class Engine {
 
   greenhouseYield(crop: string): number {
     const f = this.f;
-    let amount = this.cropYield(crop, false);
+    let amount: number;
+    if (GREENHOUSE_FRUITS.includes(crop)) {
+      // Grape goes through getFruitYield: only the faction wings and grape items apply.
+      amount = 1;
+      if (f.faction && f.wears(f.faction.wings)) amount += 0.25;
+      if (f.has("Vinny")) amount += 0.25;
+      if (f.has("Grape Granny")) amount += 1;
+      if (f.wears("Grape Pants")) amount += 0.2;
+    } else {
+      amount = this.cropYield(crop, false);
+    }
     if (crop === "Rice") {
       if (f.wears("Non La Hat")) amount += 1;
       if (f.has("Rice Panda")) amount += 0.25;
@@ -111,11 +155,46 @@ export class Engine {
     const gamble = f.skill("Greenhouse Gamble");
     if (gamble) amount += [0.3, 0.4, 0.5][Math.min(gamble, 3) - 1];
     if (f.has("Pharaoh Gnome")) amount += 2;
+    if (crop === "Grape" && f.wears("Antique Dress")) amount += 0.1 * 10;
     const glass = f.skill("Glass Room");
     if (glass) amount += [0.1, 0.15, 0.2][Math.min(glass, 3) - 1];
     const bounty = f.skill("Seeded Bounty");
     if (bounty) amount += [0.5, 0.75, 1][Math.min(bounty, 3) - 1];
+    const greasy = f.skill("Greasy Plants");
+    if (greasy) amount += OIL.greasyPlants.yield[Math.min(greasy, 3) - 1];
     return amount;
+  }
+
+  /** FLOWER per oil: an Oil Drill (coins, Wood, Iron, Wool or Leather) divided by the oil it brings up. */
+  oilPrice(): number {
+    const f = this.f;
+    const rig = Math.min(f.skill("Oil Rig"), 3);
+    const items: Record<string, number> = { ...OIL.drill, ...(rig ? { Wool: OIL.drillWool[rig - 1] } : { Leather: 10 }) };
+    const drill = this.coins(OIL.drillCoins) + Object.entries(items).reduce((a, [k, n]) => a + n * this.price(k), 0);
+    const ext = Math.min(f.skill("Oil Extraction"), 3);
+    const drop = OIL.drop + (ext ? OIL.extraction[ext - 1] : 0)
+      + (f.wears("Oil Can") ? 2 : 0) + (f.wears("Oil Overalls") ? 10 : 0) + (f.wears("Oil Gallon") ? 5 : 0)
+      + (f.has("Ladybug Cow") ? 1 : 0) + (f.has("Knight Chicken") ? 0.1 : 0) + (f.has("Battle Fish") ? 0.05 : 0);
+    return drill / drop;
+  }
+
+  /** Oil per greenhouse plant (plantGreenhouse.ts → getOilUsage). */
+  greenhouseOil(crop: string): number {
+    const f = this.f;
+    let use = OIL.greenhouse[crop] ?? 0;
+    const greasy = Math.min(f.skill("Greasy Plants"), 3);
+    if (greasy) use *= OIL.greasyPlants.oil[greasy - 1];
+    const slick = Math.min(f.skill("Slick Saver"), 3);
+    if (slick) use -= OIL.slickSaver[slick - 1];
+    if (crop === "Rice" && f.wears("Rice Shirt")) use *= 0.5;
+    return Math.max(0, use);
+  }
+
+  /** Crop machine oil per hour (supplyCropMachine.ts → OIL_PER_HOUR_CONSUMPTION). */
+  machineOilPerHour(): number {
+    const r = (n: string, t: number[]) => { const l = Math.min(this.f.skill(n), 3); return l ? t[l - 1] : 0; };
+    return (1 + r("Crop Processor Unit", OIL.cropProcessor) + r("Rapid Rig", OIL.rapidRig))
+      * (1 - r("Oil Gadget", OIL.oilGadget) - r("Efficiency Extension Module", OIL.efficiencyModule));
   }
 
   greenhouse(): Category {
@@ -127,7 +206,8 @@ export class Engine {
       // Seedy Business makes greenhouse seeds cheaper; Seeded Bounty takes one more seed per pot.
       const seedy = this.f.skill("Seedy Business");
       const seeds = (this.f.skill("Seeded Bounty") ? 2 : 1) * (seedy ? [0.85, 0.8, 0.75][Math.min(seedy, 3) - 1] : 1);
-      lines.push(line(crop, crop, qty * this.price(crop), n * seeds * this.seedCost(crop), qty));
+      const oil = n * this.greenhouseOil(crop) * this.oilPrice();
+      lines.push(line(crop, crop, qty * this.price(crop), n * seeds * this.seedCost(crop) + oil, qty));
     }
     return sumCat("greenhouse", lines);
   }

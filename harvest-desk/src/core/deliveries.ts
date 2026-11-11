@@ -3,6 +3,7 @@ import type { Farm, Order } from "./farm";
 import { FarmView } from "./farm";
 import type { Market } from "./engine";
 import { Valuer } from "./valuation";
+import { Engine } from "./engine";
 import { COINS_PER_FLOWER } from "./gameData";
 
 const TICKETS = chapters.tickets as Record<string, number>;
@@ -79,7 +80,8 @@ const kindOf = (o: Order): NpcKind => (TICKETS[o.from] ? "tickets" : o.reward?.s
 /** Averages every order seen per NPC. */
 export function summarizeDeliveries(orders: Order[], farm: Farm, market: Market, now: number): { chapter: Chapter | null; npcs: NpcSummary[] } {
   const chapter = currentChapter(now);
-  const valuer = new Valuer(market);
+  // Oil is not on the marketplace: price it like the farm makes it, with Oil Drills.
+  const valuer = new Valuer(market, { Oil: new Engine(farm, {}, market).oilPrice() });
   const pending = new Map((farm.delivery?.orders ?? []).map((o) => [o.from, o]));
   const by = new Map<string, Order[]>();
   for (const o of orders) {

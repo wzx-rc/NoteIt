@@ -53,4 +53,8 @@ describe("summarizeDeliveries", () => {
     expect(betty.samples).toBeGreaterThan(3);
     expect(betty.cost).toBeGreaterThan(0);
   });
+  it("prices the Oil asked by an NPC from the farm's own Oil Drills", () => {
+    const pharaoh = s.npcs.find((n) => n.npc === "pharaoh")!;
+    expect(pharaoh.unknown).not.toContain("Oil");
+  });
 });
