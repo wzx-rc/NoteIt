@@ -427,11 +427,11 @@ const Board = (() => {
         if (boxes.length > 1 && !dragging && !editing) h += `<button class="ovl-arr" data-arr="1" title="Ranger, aligner, répartir" style="left:${b.x + 20}px;top:${a.y + (tidy ? 14 : -20)}px">${icon('arrange')}</button>`;
       }
     }
-    ovl.innerHTML = h;
+    if (h || ovl.firstChild) ovl.innerHTML = h;   // 0.3.4: an empty overlay is not rewritten at each frame of a pan
     renderQuick(list, dragging);
     renderProps();
     uiInspSync();
-    $('.zv', zoomEl).textContent = Math.round(view.k * uz() * 100) + ' %';
+    { const zt = Math.round(view.k * uz() * 100) + ' %', zv = $('.zv', zoomEl); if (zv.textContent !== zt) zv.textContent = zt; }
   }
 
   /* a selected mind map idea: "+" buttons to add an idea under it (on its outer side; both sides for the centre) and
@@ -2279,20 +2279,55 @@ const Board = (() => {
   let uzNow = 1;
   const viewOut = () => { const z = uz(); return { x: Math.round(view.x * z), y: Math.round(view.y * z), k: +(view.k * z).toFixed(4), r: +view.r.toFixed(2), z: 1 }; };
   function uiScaled() { const z = uz(), f = uzNow / z; if (!mounted || f === 1) { uzNow = z; return; } uzNow = z; view.k = clamp(view.k * f, MINK, MAXK); view.x *= f; view.y *= f; viewChanged(); }
+  /* 0.3.4 (big boards, iPad): a move of the view only writes the two transforms; the rest (frame titles, paper dots,
+     handles, zoom %) is done once per frame. --iz used to be set on the whole world: every item had its style recomputed
+     at each finger move, which was most of the lag when turning a big board. While the view moves (.vmove: pan, pinch,
+     turn, wheel) nothing inside the world is repainted. On the iPad (.gpu) the world and the stage are then compositor
+     layers, so Safari moves and turns them without repainting the items, and paints them sharp again at rest
+     (Chromium on the PC is faster without them). */
+  let vRaf = 0, vLast = 0, vmT = 0, izS = '';
   function viewChanged() {
     drawn++;
     world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`;
-    if (stage) { stage.style.transform = view.r ? `rotate(${view.r}deg)` : ''; wrap.classList.toggle('turned', !!view.r); }
-    world.style.setProperty('--iz', (1 / view.k).toFixed(4));
-    let g = 24 * view.k; while (g < 12) g *= 4; while (g > 96) g /= 4;
-    host.style.backgroundSize = `${g}px ${g}px`; host.style.backgroundPosition = `${view.x}px ${view.y}px`;
-    // turned: the paper's dots turn with the stage, on a layer three times the board's size so no corner shows bare
-    if (bgrid) { if (view.r) { const r = hostRect(); if (bgrid._bg !== host.className) { bgrid._bg = host.className; host.style.backgroundImage = ''; bgrid.style.backgroundImage = getComputedStyle(host).backgroundImage; } host.style.backgroundImage = 'none'; bgrid.hidden = false; bgrid.style.backgroundSize = `${g}px ${g}px`; bgrid.style.backgroundPosition = `${view.x + r.width}px ${view.y + r.height}px`; } else if (!bgrid.hidden) { bgrid.hidden = true; host.style.backgroundImage = ''; bgrid._bg = ''; } }
-    renderOverlay();
+    if (stage) stage.style.transform = view.r ? `rotate(${view.r}deg)` : '';
+    const now = performance.now();
+    if (viewGesture() || now - vLast < 260) { if (!host.classList.contains('vmove')) host.classList.add('vmove'); clearTimeout(vmT); vmT = setTimeout(vmEnd, 240); }
+    vLast = now;
+    if (!vRaf) vRaf = requestAnimationFrame(viewFrame);
     clearTimeout(viewT); viewT = setTimeout(() => { if (D) { D.view = viewOut(); save(); }
       // zoomed in past what textured strokes were rasterised for: draw them again, sharp (0.2.24, iPad)
       if (view.k > inkZoom * 1.15 || view.k < inkZoom / 2) { setInkZoom(view.k); let n = 0; for (const it of items) if (it.k === 'ink' && it.b) { const nd = nodes.get(it.id); if (nd) { nd._sig = ''; nd._it = null; n++; } } if (n) schedule(); }
     }, 300);
+  }
+  const modp = (a, m) => ((a % m) + m) % m;
+  const viewGesture = () => !!(op && (op.kind === 'pinch' || op.kind === 'pan' || op.kind === 'rot'));
+  function vmEnd() {
+    if (!host) return; if (viewGesture()) { vmT = setTimeout(vmEnd, 240); return; }
+    host.classList.remove('vmove'); if (!vRaf && mounted) vRaf = requestAnimationFrame(viewFrame);
+  }
+  function viewFrame() {
+    vRaf = 0; if (!mounted) return;
+    if (stage) wrap.classList.toggle('turned', !!view.r);
+    const moving = host.classList.contains('vmove'), paper = bgrid && (view.r || host.classList.contains('gpu'));
+    const iz = clamp(1 / view.k, 1, 6).toFixed(3); if (!moving && (iz !== izS || framesL._iz !== iz)) { izS = framesL._iz = iz; framesL.style.setProperty('--iz', iz); }
+    let g = 24 * view.k; while (g < 12) g *= 4; while (g > 96) g /= 4;
+    if (!paper) { host.style.backgroundSize = `${g}px ${g}px`; host.style.backgroundPosition = `${view.x}px ${view.y}px`; }
+    // turned: the paper's dots turn with the stage, on a square layer that covers the board's diagonal; it follows the view
+    // by a small transform (less than one dot step), so it is never repainted while the board pans or turns
+    if (bgrid) { if (paper) {
+      const r = hostRect(), key = (host.className.match(/\bbg-\S+/) || [''])[0] + '|' + document.documentElement.dataset.skin + '|' + theme();
+      if (bgrid._bg !== key) { bgrid._bg = key; host.style.backgroundImage = ''; bgrid.style.backgroundImage = getComputedStyle(host).backgroundImage; }
+      host.style.backgroundImage = 'none'; bgrid.hidden = false;
+      // the layer is drawn with dots of g0 and scaled to g: while the view moves it is repainted only when the zoom has
+      // changed by a third (the layer is large enough to still cover the board at 0.7 of its size)
+      if (!bgrid._g || !moving || g / bgrid._g < .72 || g / bgrid._g > 1.4) { if (bgrid._g !== g) { bgrid._g = g; bgrid.style.backgroundSize = `${g}px ${g}px`; } }
+      const sc = g / bgrid._g;
+      const Sz = Math.ceil((Math.hypot(r.width, r.height) / 2 + 100) / .7), L = Math.round(r.width / 2 - Sz), T = Math.round(r.height / 2 - Sz), geo = L + '|' + T + '|' + Sz;
+      if (bgrid._geo !== geo) { bgrid._geo = geo; Object.assign(bgrid.style, { left: L + 'px', top: T + 'px', width: 2 * Sz + 'px', height: 2 * Sz + 'px' }); }
+      // scaled about its centre, the layer's corner (where its dots start) lands at L + Sz - Sz * sc
+      bgrid.style.transform = `translate(${modp(view.x - (L + Sz - Sz * sc), g).toFixed(2)}px,${modp(view.y - (T + Sz - Sz * sc), g).toFixed(2)}px)` + (sc !== 1 ? ` scale(${sc.toFixed(4)})` : '');
+    } else if (!bgrid.hidden) { bgrid.hidden = true; host.style.backgroundImage = ''; bgrid._bg = ''; } }
+    renderOverlay();
   }
   function zoomAt(sx, sy, f) { if (view.r) { const r = hostRect(), p = unrot(sx + r.left, sy + r.top); sx = p.x; sy = p.y; } const k = clamp(view.k * f, MINK, MAXK); f = k / view.k; view.x = sx - (sx - view.x) * f; view.y = sy - (sy - view.y) * f; view.k = k; viewChanged(); }
   function zoomCenter(f) { const r = hostRect(); zoomAt(r.width / 2, r.height / 2, f); }
@@ -2515,14 +2550,15 @@ const Board = (() => {
   function startPinch() {
     const [a, b] = [...touches.values()];
     const s = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, ang: Math.atan2(b.y - a.y, b.x - a.x), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, v: { ...view } };
-    const w0 = toW(s.cx, s.cy), t0 = performance.now(); let still = true;
-    op = { kind: 'pinch', id: -1, move() { const [p, q] = [...touches.values()]; if (!q) return; const d = Math.hypot(p.x - q.x, p.y - q.y), cx = (p.x + q.x) / 2, cy = (p.y + q.y) / 2, k = clamp(s.v.k * d / s.d, MINK, MAXK);
+    const w0 = toW(s.cx, s.cy), t0 = performance.now(); let still = true, pz = 0;
+    const me = op = { kind: 'pinch', id: -1, move() { if (!pz) pz = requestAnimationFrame(() => { pz = 0; if (op === me) me.step(); }); },
+      step() { const [p, q] = [...touches.values()]; if (!q) return; const d = Math.hypot(p.x - q.x, p.y - q.y), cx = (p.x + q.x) / 2, cy = (p.y + q.y) / 2, k = clamp(s.v.k * d / s.d, MINK, MAXK);
       if (still && (Math.abs(d - s.d) > 14 || Math.hypot(cx - s.cx, cy - s.cy) > 12)) still = false;
       let r = s.v.r + (Math.atan2(q.y - p.y, q.x - p.x) - s.ang) * 180 / Math.PI; r = ((r % 360) + 540) % 360 - 180;
       const st = Math.round(r / 90) * 90; if (Math.abs(r - st) < 5) r = st; if (Math.abs(r) < .01 || Math.abs(Math.abs(r) - 360) < .01) r = 0;
       view.k = k; view.r = r === -180 ? 180 : r; const u = unrot(cx, cy); view.x = u.x - w0.x * k; view.y = u.y - w0.y * k; viewChanged(); },
       /* two fingers that tap and lift together: undo (Procreate, Concepts) */
-      up() { if (touches.size >= 2) return; op = null; if (still && performance.now() - t0 < 320) { Object.assign(view, s.v); viewChanged(); undo(); tapFlash('Annulé'); } } };
+      up() { if (touches.size >= 2) return; op = null; cancelAnimationFrame(pz); pz = 0; if (still && performance.now() - t0 < 320) { Object.assign(view, s.v); viewChanged(); undo(); tapFlash('Annulé'); } } };
   }
   let lastTap = null, touchDblAt = 0;
   function tapFlash(msg) { const f = document.createElement('div'); f.className = 'tapflash'; f.textContent = msg; wrap.append(f); setTimeout(() => f.remove(), 900); }
@@ -3509,7 +3545,7 @@ const Board = (() => {
     /* drawing never acts on a selection: a shape left selected would take the colour and size changes */
     if ((PENS[t] || t === 'eraser') && sel.size) sel.clear();
     if (!['select', 'hand', 'pick'].includes(t)) lastTool = t;
-    host.className = 'bhost bg-' + (D.bg || 'dots') + ' t-' + (PENS[t] ? 'ink' : t);
+    host.className = 'bhost bg-' + (D.bg || 'dots') + ' t-' + (PENS[t] ? 'ink' : t) + (IPAD ? ' gpu' : '') + (host.classList.contains('vmove') ? ' vmove' : '');
     const was = wrap.classList.contains('drawing'); wrap.classList.toggle('drawing', drawingTool()); wrap.classList.toggle('lite', !atelierFull());
     if (t !== 'pick') Studio.hideLoupe();
     else if (newPick && touchUI() && !altPick) tapFlash('Touchez le board pour prendre une couleur');
@@ -3610,7 +3646,7 @@ const Board = (() => {
       <div class="isl bl zoom"><button class="tl" data-a="zout" title="Dézoomer (−)" aria-label="Dézoomer">${icon('zout')}</button><button class="zv" data-a="z100" title="Revenir à 100 %">100 %</button><button class="tl" data-a="zin" title="Zoomer (+)" aria-label="Zoomer">${icon('zin')}</button></div>
       <div class="isl bl undo"><button class="tl" data-a="undo" title="Annuler (Ctrl Z)" aria-label="Annuler">${icon('undo')}</button><button class="tl" data-a="redo" title="Rétablir (Ctrl Y)" aria-label="Rétablir">${icon('redo')}</button></div>
       <div class="isl br"><button class="tl" data-a="bstyle" title="Style du board" aria-label="Style du board">${icon('styles')}</button><button class="tl snapb" data-a="snap" title="Alignement auto (aimant) : activé" aria-label="Alignement automatique" aria-pressed="true">${icon('magnet')}</button><button class="tl" data-a="fit" title="Tout voir (F ou 0)" aria-label="Tout voir">${icon('fit')}</button><button class="tl" data-a="help" title="Raccourcis (?)" aria-label="Aide">${icon('help')}</button></div></div>`;
-    wrap = container.firstElementChild; host = $('.bhost', wrap); world = $('.world', host);
+    wrap = container.firstElementChild; host = $('.bhost', wrap); world = $('.world', host); host.classList.toggle('gpu', IPAD);
     [framesL, edges, itemsL, edgesTop, labelsL] = world.children; ovl = $('.ovl', host); liveCv = $('.blive', host); stage = $('.bstage', host); bgrid = $('.bgrid', host); meas = $('.measure', host);
     // mind maps are laid out from the measured size of their words: again once the fonts are in
     setTimeout(() => { if (mounted && D === doc) planAutoRefresh(); }, 1200);

@@ -3323,3 +3323,9 @@ html[data-focus] #tbar .tb-f .tbf-l, html[data-focus] #tbar .tb-f [data-f="exit"
 /* 0.3.3: on the iPad the project cover is a low band: the name and buttons fill it, no empty strip above them */
 html:not([data-pc]) .pp2-hero.img { height: 128px; }
 html:not([data-pc]) .pp2-hero.img img { object-position: center 40%; }
+
+/* 0.3.4: on the iPad, while the view moves, the world and the stage are compositor layers: Safari pans and turns them
+   without repainting the board; at rest they are painted sharp at the new zoom (see viewChanged). The paper dots always
+   live on their own layer there. */
+.bhost.gpu.vmove .world, .bhost.gpu.vmove .bstage, .bhost.gpu .bgrid { will-change: transform; }
+.bgrid { transform-origin: 50% 50%; }
