@@ -19,7 +19,7 @@ Petite app PC qui montre ce que ta ferme Sunflower Land rapporte par jour, par m
 
 ## Installer et lancer
 
-Il faut Node.js 20 ou plus.
+Il faut Node.js 20 ou plus. Sous PowerShell, si `npm` est refusé (« l'exécution de scripts est désactivée »), tape `npm.cmd` à la place. Si l'installation d'Electron s'arrête à mi-chemin, `npm install` et `npm start` le finissent depuis le cache (`scripts/ensure-electron.mjs`).
 
 ```bash
 npm install
