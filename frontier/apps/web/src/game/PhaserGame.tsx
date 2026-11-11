@@ -15,8 +15,7 @@ export function PhaserGame({ state, onClick }: { state: GameState; onClick: (t: 
     const game = new Phaser.Game({
       type: new URLSearchParams(location.search).get("renderer") === "canvas" ? Phaser.CANVAS : Phaser.AUTO,
       parent: host.current!,
-      pixelArt: true,
-      roundPixels: true,
+      antialias: true,
       backgroundColor: "#06080d",
       scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
       scene: [ColonyScene],

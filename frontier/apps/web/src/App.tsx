@@ -124,11 +124,10 @@ export default function App() {
   // Aide automatique si le joueur est bloqué
   useEffect(() => { if (state && needsAid(state)) { play({ type: "aid.claimed" }); toast("Aide du Consortium : 3 graines et 2 charges offertes.", "good"); } }, [state, play, toast]);
 
-  const frame = { ["--frame" as string]: `url(${ASSET_URL["ui-frame"]})` };
 
   if (phase !== "game" || !state) {
     return (
-      <div className="splash" style={frame}>
+      <div className="splash">
         <div className="card frame">
           <img className="hero" src={ASSET_URL.hq} alt="" />
           <h1>FRONTIER</h1>
@@ -163,7 +162,7 @@ export default function App() {
   const P = { s: state, play, close };
 
   return (
-    <div style={frame}>
+    <div>
       <PhaserGame state={state} onClick={onClick} />
 
       <div className="hud-top">

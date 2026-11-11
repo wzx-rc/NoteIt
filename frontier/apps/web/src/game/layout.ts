@@ -12,16 +12,17 @@ export const PLACES = {
 } as const;
 
 export const BED_POS: Record<string, { x: number; y: number }> = {
-  "1": { x: 110, y: 380 }, "2": { x: 186, y: 380 }, "3": { x: 262, y: 380 },
+  "1": { x: 104, y: 412 }, "2": { x: 180, y: 412 }, "3": { x: 256, y: 412 },
   "4": { x: 760, y: 190 }, "5": { x: 836, y: 190 }, "6": { x: 760, y: 260 },
 };
 
 export const NODE_POS: Record<string, { x: number; y: number }> = {
-  "1": { x: 600, y: 110 }, "2": { x: 650, y: 210 }, "3": { x: 560, y: 250 },
+  "1": { x: 610, y: 100 }, "2": { x: 670, y: 196 }, "3": { x: 596, y: 270 },
   "4": { x: 790, y: 390 }, "5": { x: 850, y: 310 }, "6": { x: 770, y: 480 },
 };
 
-/** Forme du terrain en tuiles : île principale et zone d'extension (ellipses). */
-const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) => ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 < 1;
-export const onMain = (x: number, y: number) => inEllipse(x, y, 11.5, 9.8, 12.6, 9.2);
-export const onExpansion = (x: number, y: number) => inEllipse(x, y, 25.5, 12.2, 5.8, 7.6);
+/** Forme du terrain en pixels du monde : île principale et zone d'extension (ellipses). */
+export const ISLAND = {
+  main: { cx: 368, cy: 314, rx: 403, ry: 294 },
+  expansion: { cx: 816, cy: 390, rx: 186, ry: 243 },
+} as const;
