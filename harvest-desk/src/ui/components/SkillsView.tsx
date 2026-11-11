@@ -148,7 +148,7 @@ export function SkillsView({ state }: { state: AppState }) {
               {shardRows.map((x) => (
                 <li key={x.v.def.name + x.rank}>
                   <span className="dot" style={{ background: x.v.how === "none" ? "var(--dim)" : x.gain >= 3 ? "var(--sheep)" : x.gain >= 1.2 ? "var(--gold)" : "var(--loss)" }} />
-                  <span className="t"><b>{x.v.def.name} rang {x.rank}</b><span>{x.v.def.tier} éclat{x.v.def.tier > 1 ? "s" : ""}</span></span>
+                  <span className="t"><b>{x.v.def.name} rang {x.rank}</b>{" "}<span>{x.v.def.tier} éclat{x.v.def.tier > 1 ? "s" : ""}</span></span>
                   <span className="n">{x.v.how === "none" ? "non chiffré" : `${signed(x.gain)} $/mois par éclat`}</span>
                 </li>
               ))}
@@ -160,7 +160,7 @@ export function SkillsView({ state }: { state: AppState }) {
               {bestFree.map((x) => (
                 <li key={x.v.def.name + x.rank}>
                   <span className="dot" style={{ background: "var(--sheep)" }} />
-                  <span className="t"><b>{x.v.def.name} rang {x.rank}</b><span>{x.v.def.tier} éclat{x.v.def.tier > 1 ? "s" : ""}</span></span>
+                  <span className="t"><b>{x.v.def.name} rang {x.rank}</b>{" "}<span>{x.v.def.tier} éclat{x.v.def.tier > 1 ? "s" : ""}</span></span>
                   <span className="n">{signed(x.gain)} $/mois par éclat</span>
                 </li>
               ))}
