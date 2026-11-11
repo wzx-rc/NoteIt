@@ -1,6 +1,6 @@
 # Frontier : prototype de jeu web
 
-Jeu de colonie spatiale en pixel art, construit sur la même architecture que Sunflower Land. Tout tourne dans le navigateur : il n'y a pas encore de serveur, et la blockchain est simulée.
+Jeu de colonie spatiale au style peint vu du dessus (kit Recraft), construit sur la même architecture que Sunflower Land. Tout tourne dans le navigateur : il n'y a pas encore de serveur, et la blockchain est simulée.
 
 ## Lancer le jeu
 
