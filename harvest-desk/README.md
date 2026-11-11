@@ -8,6 +8,7 @@ Petite app PC qui montre ce que ta ferme Sunflower Land rapporte par jour, par m
 - Calcule le revenu net de chaque catégorie (crops, animaux, serre, minerais) à partir de tes vrais compteurs d'activité sur les 7 derniers jours, des bonus de ta ferme et des prix du marché.
 - Simule les options que tu n'as pas encore, avec leur gain par jour, leur prix plancher et le temps pour les rembourser.
 - Trace les gains cumulés sur 12 mois, achats déduits.
+- **Marketplace** : les 5 NFT à acheter qui se remboursent le plus vite sur ta ferme (prix, gain en $ par mois) et, à côté, les 5 que tu possèdes à vendre : ceux sans effet sur tes revenus, ou ceux qui rapportent peu pour leur prix.
 - **Livraisons** : coût moyen de chaque livraison à tickets de la saison en cours, le prix d'un ticket chez chaque personnage, et le total pour toute la saison ou pour les livraisons que tu coches. Montre aussi ce que rapportent les livraisons payées en coins ou en FLOWER.
 - **Entrées et sorties** : historique en $ des FLOWER qui entrent et sortent (retraits, achats, ventes, livraisons, dépenses en jeu), plus ce que tu ajoutes à la main (FLOWER acheté par carte, etc.).
 

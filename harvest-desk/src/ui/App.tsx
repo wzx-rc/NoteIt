@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { DeliveriesView } from "./components/DeliveriesView";
 import { GrowthCurve } from "./components/GrowthCurve";
 import { LedgerView } from "./components/LedgerView";
+import { MarketView } from "./components/MarketView";
 import { Kpis } from "./components/Kpis";
 import { MineralsCard } from "./components/MineralsCard";
 import { PaybackCard } from "./components/PaybackCard";
@@ -32,6 +33,7 @@ export function App() {
           <Banner state={state} onRetry={refresh} onImport={importHistory} />
           {current === "settings" ? <SettingsView state={state} onImport={importHistory} />
             : !ready ? null
+            : current === "market" ? <MarketView state={state} />
             : current === "deliveries" ? <DeliveriesView state={state} />
             : current === "ledger" ? <LedgerView state={state} onAdd={addEntry} onRemove={removeEntry} />
             : <Dashboard state={state} />}

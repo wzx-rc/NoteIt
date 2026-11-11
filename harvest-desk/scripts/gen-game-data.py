@@ -65,7 +65,11 @@ chapters = {}
 for m in re.finditer(r'"([^"]+)": \{\s*startDate: new Date\("([^"]+)"\),(?:.*?\n)*?\s*endDate: new Date\("([^"]+)"\)', chap):
     chapters[m.group(1)] = {"start": m.group(2), "end": m.group(3)}
 
+craft = (game / "types/craftables.ts").read_text()
+dims = craft.split("export const COLLECTIBLES_DIMENSIONS")[1].split("\n};")[0]
+placeable = sorted({(a or b) for a, b in re.findall(r'^  (?:"([^"]+)"|(\w+)):', dims, re.M)})
+
 json.dump({"recipes": recipes, "fish": fish}, open(out / "recipes.json", "w"), separators=(",", ":"))
-json.dump({"collectibles": ids, "wearables": wids}, open(out / "ids.json", "w"), separators=(",", ":"))
+json.dump({"collectibles": ids, "wearables": wids, "placeable": placeable}, open(out / "ids.json", "w"), separators=(",", ":"))
 json.dump({"tickets": tickets, "boosts": boosts, "chapters": chapters}, open(out / "chapters.json", "w"), indent=1)
 print(len(recipes), "recipes,", len(fish), "fish,", len(ids), "ids,", len(wids), "wearables,", len(chapters), "chapters")
