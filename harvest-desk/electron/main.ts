@@ -141,10 +141,17 @@ async function importHistory(): Promise<AppState> {
   try {
     const list = (await new SflClient(s.apiBase, s.apiKey).dumps()).data
       .map((d) => d.filename).filter((f) => f.endsWith("/active.jsonl.gz")).sort();
+    // The index can list a dump that has already expired (403): skip it, keep the others.
+    let found = 0;
     for (const f of list) {
-      const row = await farmFromDump(f, s.farmId);
-      if (row) publish(record(row.at, row.farm, state.market));
+      try {
+        const row = await farmFromDump(f, s.farmId);
+        if (row) { found++; publish(record(row.at, row.farm, state.market)); }
+      } catch (e) {
+        log("warn", "importHistory", `${f} ignoré : ${(e as Error).message}`);
+      }
     }
+    if (!found) return publish({ importing: false, error: "Aucune sauvegarde du jeu n'a pu être lue. L'historique se remplira avec les relevés de l'app, un toutes les 10 minutes." });
     return publish({ importing: false });
   } catch (e) {
     log("error", "importHistory", e);
@@ -158,6 +165,7 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1180, height: 860, minWidth: 420, minHeight: 560,
     title: "Harvest Desk", autoHideMenuBar: true,
+    icon: join(__dirname, "../dist/icon.png"),
     // Frameless with our own title bar; Windows 11 gives it Mica and rounded corners.
     frame: false, titleBarStyle: "hidden",
     ...(isWin ? { backgroundMaterial: "mica" as const, backgroundColor: "#00000000" } : { backgroundColor: "#1b1416" }),
