@@ -93,16 +93,18 @@ skills = []
 for i in range(1, len(sk_parts), 3):
     name, body = sk_parts[i] or sk_parts[i + 1], sk_parts[i + 2]
     g = lambda rx: (re.search(rx, body) or [None, None])[1]
-    up = re.search(r'maxLevel: (\d+),\s*effect: \{ kind: "(\w+)"(.*?)\}', body, re.S)
-    ranks = None
-    if up:
-        arr = re.search(r'\[([-\d., ]+)\]', up.group(3))
-        if arr: ranks = [float(x) for x in arr.group(1).split(",") if x.strip()]
+    # upgrade: { maxLevel, effect: { kind, <first rank array> } }, written on one line or several.
+    ub = re.search(r'upgrade: \{(.*?)\n    \},', body, re.S)
+    up_body = ub.group(1) if ub else ""
+    max_level = int((re.search(r'maxLevel: (\d+)', up_body) or [0, 1])[1])
+    kind = (re.search(r'kind: "(\w+)"', up_body) or [None, None])[1]
+    arr = re.search(r'\[([-\d., \n]+)\]', up_body)
+    ranks = [float(x) for x in arr.group(1).split(",") if x.strip()] if arr else None
     keys = re.findall(r'translate\("([^"]+)"', body)
     skills.append({
         "name": name, "tree": g(r'tree: "([^"]+)"'), "tier": int(g(r'tier: (\d)') or 1),
-        "points": int(g(r'points: (\d+)') or 1), "maxLevel": int(up.group(1)) if up else 1,
-        "kind": up.group(2) if up else None, "ranks": ranks,
+        "points": int(g(r'points: (\d+)') or 1), "maxLevel": max_level,
+        "kind": kind, "ranks": ranks,
         "power": "power: true" in body, "disabled": "disabled: true" in body,
         "buff": dico.get(keys[0]) if keys else None, "debuff": dico.get(keys[1]) if len(keys) > 1 else None,
     })

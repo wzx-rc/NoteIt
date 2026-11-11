@@ -78,7 +78,7 @@ export function TicketGoal({ farm, now, npcs, rate }: { farm: Farm; now: number;
           return (
             <li key={p.id}>
               <span className="dot" style={{ background: p.color }} />
-              <span className="t"><b>{p.label}</b>{s ? <span>{s.detail}</span> : <span>le nombre du jeu, à corriger dans la case</span>}</span>
+              <span className="t"><b>{p.label}</b>{" "}{s ? <span>{s.detail}</span> : <span>le nombre du jeu, à corriger dans la case</span>}</span>
               <span className="n">{p.id === "owned" ? "" : "+"}{nf(p.total)}</span>
             </li>
           );

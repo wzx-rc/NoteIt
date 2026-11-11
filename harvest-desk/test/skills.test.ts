@@ -50,12 +50,20 @@ describe("skill tree", () => {
       }
     }
   });
+  it("respects the shard budget", () => {
+    const plan = bestTree(values, 400, {}, 0);
+    expect(Object.values(plan.ranks).every((r) => r <= 1)).toBe(true);
+  });
   it("spends the free points and proposes a better tree after a reset", () => {
     const a = analyseSkills(farm, rates, market);
     expect(a.earned).toBe(249);
-    expect(a.used).toBe(225);
+    // Rank-ups included: Acre Farm 3, Golden Touch 3… leave no point free.
+    expect(a.used).toBe(249);
+    // 12 crystals mined, 3 shards each, all in rank-ups.
+    expect(a.shards).toMatchObject({ mined: 36, spent: 36, held: 0 });
+    expect(a.proposed.shards).toBeLessThanOrEqual(36);
     expect(a.topUp.points).toBeLessThanOrEqual(a.earned);
-    expect(a.topUp.value).toBeGreaterThan(a.current.value);
+    expect(a.topUp.value).toBeGreaterThanOrEqual(a.current.value);
     expect(a.proposed.value).toBeGreaterThanOrEqual(a.topUp.value - 1e-9);
     // Stone loses money on this farm: the reset drops Speed Miner.
     expect(a.proposed.ranks["Speed Miner"] ?? 0).toBe(0);

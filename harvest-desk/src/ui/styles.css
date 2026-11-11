@@ -365,3 +365,4 @@ html:not(.desktop) .main{min-height:100vh}
 .sources .t span{color:var(--faint);font-size:12px}
 .sources .n{font-variant-numeric:tabular-nums;font-weight:600}
 @media (max-width:620px){.goal{grid-template-columns:minmax(0,1fr)}}
+.sub{font-family:var(--display);font-size:14px;font-weight:600;margin:14px 0 0;color:var(--dim)}

@@ -203,7 +203,8 @@ export class Engine {
     const t = TOOLS[tool];
     let crafted = this.rate(`${tool} Crafted`);
     if (tool === "Pickaxe" && this.f.has("Quarry")) crafted = 0; // stone needs no pickaxe at all
-    const frugal = tool.endsWith("Pickaxe") && this.f.skill("Frugal Miner") ? 0.8 : 1;
+    const fm = this.f.skill("Frugal Miner");
+    const frugal = tool.endsWith("Pickaxe") && fm ? [0.8, 0.7, 0.6][Math.min(fm, 3) - 1] : 1;
     const unit = this.coins(t.coins * frugal) + Object.entries(t.items).reduce((a, [i, q]) => a + q * this.price(i), 0);
     return crafted * unit;
   }

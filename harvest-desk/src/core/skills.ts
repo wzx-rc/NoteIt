@@ -28,6 +28,11 @@ const DEF = new Map(SKILL_DEFS.map((d) => [d.name, d]));
 
 /** Points for each rank above 1, by the skill's tier (getSkillUpgradeCost). */
 export const UPGRADE_POINTS: Record<number, number> = { 1: 1, 2: 3, 3: 6 };
+/** Each rank above 1 also costs Ascension Shards, as many as the skill's tier. A reset gives them back. */
+export const shardsOf = (ranks: Record<string, number>) =>
+  Object.entries(ranks).reduce((a, [n, r]) => a + (DEF.get(n) && r > 1 ? DEF.get(n)!.tier * (r - 1) : 0), 0);
+/** Shards one Ascension Crystal gives (mineAscensionCrystal.ts). */
+export const SHARDS_PER_CRYSTAL = 3;
 
 /** Skills the revenue engine models directly: valued by running it with and without them. */
 const ENGINE_SKILLS = new Set<string>([
@@ -178,6 +183,7 @@ const tierNeeded = (d: SkillDef, toRank: number) => (toRank <= 1 ? d.tier : Math
 export interface Plan {
   ranks: Record<string, number>;
   points: number;
+  shards: number;
   /** FLOWER per day from the skills the app can put a number on. */
   value: number;
 }
@@ -189,13 +195,14 @@ const valueAt = (v: SkillValue, rank: number) => (rank > 0 ? v.value[rank - 1] :
  * best FLOWER per point. A move is a skill or a rank-up, plus the cheapest skills of the same
  * tree needed to open its tier. Moves that lose money are never bought.
  */
-export function bestTree(values: SkillValue[], budget: number, keep: Record<string, number> = {}): Plan {
+export function bestTree(values: SkillValue[], budget: number, keep: Record<string, number> = {}, shardBudget = Infinity): Plan {
   const byName = new Map(values.map((v) => [v.def.name, v]));
   const ranks: Record<string, number> = { ...keep };
   let points = pointsOf(ranks);
+  let shards = shardsOf(ranks);
 
   for (let guard = 0; guard < 500; guard++) {
-    let best: { gain: number; cost: number; add: Record<string, number> } | null = null;
+    let best: { gain: number; cost: number; add: Record<string, number>; sh: number } | null = null;
     for (const v of values) {
       if (v.how === "none" || v.def.power) continue;
       const r = ranks[v.def.name] ?? 0;
@@ -203,6 +210,8 @@ export function bestTree(values: SkillValue[], budget: number, keep: Record<stri
       const gain0 = valueAt(v, r + 1) - valueAt(v, r);
       if (gain0 <= 1e-6) continue;
       const add: Record<string, number> = { [v.def.name]: r + 1 };
+      const sh = r === 0 ? 0 : v.def.tier;
+      if (shards + sh > shardBudget) continue;
       let cost = r === 0 ? v.def.points : UPGRADE_POINTS[v.def.tier];
       let gain = gain0;
       // Open the tier with the best-value cheap skills of the same tree.
@@ -219,14 +228,15 @@ export function bestTree(values: SkillValue[], budget: number, keep: Record<stri
         cost += fill.def.points; gain += valueAt(fill, 1);
       }
       if (!ok || points + cost > budget || gain <= 1e-6) continue;
-      if (!best || gain / cost > best.gain / best.cost) best = { gain, cost, add };
+      if (!best || gain / cost > best.gain / best.cost) best = { gain, cost, add, sh };
     }
     if (!best) break;
     Object.assign(ranks, best.add);
     points += best.cost;
+    shards += best.sh;
   }
   const value = Object.entries(ranks).reduce((a, [n, r]) => a + (byName.get(n) ? valueAt(byName.get(n)!, r) : 0), 0);
-  return { ranks, points, value };
+  return { ranks, points, shards, value };
 }
 
 export interface SkillAnalysis {
@@ -239,6 +249,8 @@ export interface SkillAnalysis {
   /** Best use of the points not spent yet, without a reset. */
   topUp: Plan;
   reset: { freeAt: number; gems: number };
+  /** Ascension Shards: mined (3 per crystal), spent on ranks now, and left if the game reports them. */
+  shards: { mined: number; spent: number; held: number; known: boolean };
 }
 
 const DAY = 86_400_000;
@@ -254,12 +266,17 @@ export function analyseSkills(farm: Farm, rates: Rates, market: Market): SkillAn
     Object.entries(ranks).reduce((a, [n, r]) => a + (byName.get(n) ? valueAt(byName.get(n)!, r) : 0), 0);
   // Skills the app cannot put a number on (fishing, cooking, crop machine…) stay as they are.
   const keep = Object.fromEntries(Object.entries(owned).filter(([n]) => byName.get(n)?.how === "none" || DEF.get(n)?.power));
-  const proposed = bestTree(values, Math.max(earned, used), keep);
-  const topUp = bestTree(values, Math.max(earned, used), owned);
+  const spent = shardsOf(owned);
+  const mined = (farm.farmActivity?.["Ascension Crystal Mined"] ?? 0) * SHARDS_PER_CRYSTAL;
+  const inv = farm.inventory?.["Ascension Shard"];
+  // The Community API leaves the shard count out: assume mined minus spent.
+  const held = inv !== undefined ? Number(inv) : Math.max(0, mined - spent);
+  const proposed = bestTree(values, Math.max(earned, used), keep, held + spent);
+  const topUp = bestTree(values, Math.max(earned, used), owned, held + spent);
   const b = farm.bumpkin ?? {};
   return {
-    values, earned, used,
-    current: { ranks: owned, points: used, value: valueOf(owned) },
+    values, earned, used, shards: { mined, spent, held, known: inv !== undefined },
+    current: { ranks: owned, points: used, shards: spent, value: valueOf(owned) },
     proposed, topUp,
     reset: { freeAt: (b.previousFreeSkillResetAt ?? 0) + 180 * DAY, gems: 200 * 2 ** (b.paidSkillResets ?? 0) },
   };

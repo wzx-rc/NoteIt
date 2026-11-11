@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { dailyRates } from "../../core/engine";
-import { analyseSkills, pointsOf, type Plan, type SkillValue } from "../../core/skills";
+import { analyseSkills, pointsOf, shardsOf, type Plan, type SkillValue } from "../../core/skills";
 import type { AppState } from "../../shared/types";
 import { Icon } from "../icons";
 import { MONTH, fmt, signed, usd } from "../format";
@@ -14,7 +14,7 @@ const TREE_FR: Record<string, string> = {
 const tree = (t: string) => TREE_FR[t] ?? t;
 const DAY = 86_400_000;
 
-interface Move { v: SkillValue; from: number; to: number; points: number; gain: number }
+interface Move { v: SkillValue; from: number; to: number; points: number; shards: number; gain: number }
 
 const at = (v: SkillValue, r: number) => (r > 0 ? v.value[r - 1] : 0);
 
@@ -25,7 +25,7 @@ function movesTo(values: SkillValue[], from: Record<string, number>, plan: Plan)
     .filter((n) => (from[n] ?? 0) !== (plan.ranks[n] ?? 0) && by.has(n))
     .map((n) => {
       const v = by.get(n)!, a = from[n] ?? 0, b = plan.ranks[n] ?? 0;
-      return { v, from: a, to: b, points: pointsOf({ [n]: b }) - pointsOf({ [n]: a }), gain: at(v, b) - at(v, a) };
+      return { v, from: a, to: b, points: pointsOf({ [n]: b }) - pointsOf({ [n]: a }), shards: shardsOf({ [n]: b }) - shardsOf({ [n]: a }), gain: at(v, b) - at(v, a) };
     })
     .sort((x, y) => y.gain - x.gain);
 }
@@ -35,7 +35,7 @@ export function SkillsView({ state }: { state: AppState }) {
   const farm = state.farm!, market = state.market!;
   const rate = market.flowerUsd;
   const a = useMemo(() => analyseSkills(farm, dailyRates(state.snapshots).rates, market), [farm, market, state.snapshots]);
-  const [mode, setMode] = useState<"topup" | "reset">("topup");
+  const [mode, setMode] = useState<"topup" | "reset">(() => (a.topUp.value - a.current.value > 0.01 ? "topup" : "reset"));
   const now = state.fetchedAt ? Date.parse(state.fetchedAt) : Date.now();
   const free = Math.max(0, a.earned - a.used);
   const m = (f: number) => f * MONTH * rate;
@@ -49,11 +49,20 @@ export function SkillsView({ state }: { state: AppState }) {
   const plan = mode === "topup" ? a.topUp : a.proposed;
   const unvalued = a.values.filter((v) => v.how === "none" && v.current > 0).length;
 
+  const waitLoss = m(resetExtra) * (daysLeft / 30.4);
   const verdict = freeReset
-    ? `Ton reset gratuit est disponible : l'arbre idéal rapporte ${usd(m(resetExtra))} de plus par mois que de seulement dépenser tes points libres.`
+    ? `Ton reset gratuit est disponible : l'arbre idéal rapporte ${usd(m(resetExtra))} de plus par mois.`
     : m(resetExtra) < 3
-      ? `Pas la peine de payer ${a.reset.gems} gems : le reset ne rapporte que ${usd(m(resetExtra))} de plus par mois que tes points libres. Attends le reset gratuit du ${freeDate}.`
-      : `Le reset rapporte ${usd(m(resetExtra))} de plus par mois que tes points libres. Gratuit le ${freeDate} (dans ${daysLeft} jours), sinon ${a.reset.gems} gems.`;
+      ? `Pas la peine de payer ${a.reset.gems} gems : le reset ne rapporte que ${usd(m(resetExtra))} de plus par mois. Attends le reset gratuit du ${freeDate}.`
+      : `Le reset rapporte ${usd(m(resetExtra))} de plus par mois. Attendre le reset gratuit du ${freeDate} (dans ${daysLeft} jours) te coûte environ ${usd(waitLoss)} : si ${a.reset.gems} gems valent moins que ça, paie le reset.`;
+
+  // Where the Ascension Shards went: each rank-up owned, by gain per shard.
+  const shardRows = a.values.flatMap((v) => [...Array(Math.max(0, v.current - 1))].map((_, i) => ({ v, rank: i + 2, gain: m(v.value[i + 1] - v.value[i]) / v.def.tier })))
+    .sort((x, y) => y.gain - x.gain);
+  const bestFree = a.values.flatMap((v) => [...Array(Math.max(0, v.def.maxLevel - Math.max(1, v.current)))].map((_, i) => {
+    const r = Math.max(1, v.current) + i + 1;
+    return { v, rank: r, gain: m(v.value[r - 1] - v.value[r - 2]) / v.def.tier };
+  })).filter((x) => x.v.how !== "none" && !x.v.def.power && x.gain > 0.01).sort((x, y) => y.gain - x.gain).slice(0, 5);
 
   // Board: valued skills, grouped by tree, only the trees where something earns or is owned.
   const board = useMemo(() => {
@@ -68,7 +77,7 @@ export function SkillsView({ state }: { state: AppState }) {
         <div className="kpi">
           <div className="l">Points de skill</div>
           <div className="v">{a.used} <small className="unit dim">/ {a.earned}</small></div>
-          <div className="d">{free ? `${free} point${free > 1 ? "s" : ""} pas encore dépensé${free > 1 ? "s" : ""}` : "tout est dépensé"}</div>
+          <div className="d">{free ? `${free} point${free > 1 ? "s" : ""} libre${free > 1 ? "s" : ""}` : "tout est dépensé"} · {a.shards.spent} éclats d'ascension dans les rangs</div>
         </div>
         <div className="kpi">
           <div className="l">Avec tes points libres, sans reset</div>
@@ -126,6 +135,41 @@ export function SkillsView({ state }: { state: AppState }) {
         </section>
       </div>
 
+      <section className="card" aria-labelledby="h-shards">
+        <h2 id="h-shards">Tes éclats d'ascension</h2>
+        <p className="hint">
+          Chaque rang au-dessus de 1 coûte des éclats (1, 2 ou 3 selon le palier) en plus des points ; un cristal en donne 3, un reset les rend.
+          {a.shards.known ? ` Il t'en reste ${a.shards.held}.` : ` ${a.shards.mined / 3} cristaux minés = ${a.shards.mined} éclats, ${a.shards.spent} placés : il ne t'en reste sans doute plus.`}
+        </p>
+        <div className="grid even">
+          <div>
+            <h3 className="sub">Où ils sont</h3>
+            <ul className="sources">
+              {shardRows.map((x) => (
+                <li key={x.v.def.name + x.rank}>
+                  <span className="dot" style={{ background: x.v.how === "none" ? "var(--dim)" : x.gain >= 3 ? "var(--sheep)" : x.gain >= 1.2 ? "var(--gold)" : "var(--loss)" }} />
+                  <span className="t"><b>{x.v.def.name} rang {x.rank}</b><span>{x.v.def.tier} éclat{x.v.def.tier > 1 ? "s" : ""}</span></span>
+                  <span className="n">{x.v.how === "none" ? "non chiffré" : `${signed(x.gain)} $/mois par éclat`}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="sub">Où ils rapporteraient le plus</h3>
+            <ul className="sources">
+              {bestFree.map((x) => (
+                <li key={x.v.def.name + x.rank}>
+                  <span className="dot" style={{ background: "var(--sheep)" }} />
+                  <span className="t"><b>{x.v.def.name} rang {x.rank}</b><span>{x.v.def.tier} éclat{x.v.def.tier > 1 ? "s" : ""}</span></span>
+                  <span className="n">{signed(x.gain)} $/mois par éclat</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <p className="foot">Vert : bon placement. Rouge : rapporte peu par éclat, à déplacer au prochain reset. Gris : effet que l'app ne chiffre pas (bois, cuisine, ventes…), à juger toi-même.</p>
+      </section>
+
       <section className="card" aria-labelledby="h-board">
         <h2 id="h-board">Tableau des skills</h2>
         <p className="hint">Chaque skill qui touche tes revenus, avec son gain par rang sur ta ferme. ● ton rang actuel, ◆ le rang conseillé ({mode === "topup" ? "sans reset" : "après reset"}).</p>
@@ -140,7 +184,7 @@ export function SkillsView({ state }: { state: AppState }) {
       </section>
 
       <p className="foot">
-        Points : un par niveau, ascensions comprises. Prix d'un rang en plus : 1, 3 ou 6 points selon le palier du skill, et chaque rang demande le palier suivant ouvert dans l'arbre.
+        Points : un par niveau, ascensions comprises. Prix d'un rang en plus : 1, 3 ou 6 points et 1, 2 ou 3 éclats selon le palier du skill, et chaque rang demande le palier suivant ouvert dans l'arbre.
         Un reset rend tous les points ; il est gratuit tous les 180 jours, sinon 200 gems, puis le double à chaque fois. Gains au rythme mesuré de ta ferme, coins comptés 320 pour 1 FLOWER.
       </p>
     </>
@@ -150,7 +194,7 @@ export function SkillsView({ state }: { state: AppState }) {
 function MoveRow({ mv, rate }: { mv: Move; rate: number }) {
   const { v, from, to, points, gain } = mv;
   const what = to === 0 ? "à retirer" : from === 0 ? (v.def.maxLevel > 1 ? `à prendre, rang ${to}` : "à prendre") : `rang ${from} → ${to}`;
-  const pts = points > 0 ? `${points} point${points > 1 ? "s" : ""}` : `rend ${-points} point${points < -1 ? "s" : ""}`;
+  const pts = (points >= 0 ? `${points} pt${points > 1 ? "s" : ""}` : `rend ${-points} pts`) + (mv.shards ? (mv.shards > 0 ? ` · ${mv.shards} éclat${mv.shards > 1 ? "s" : ""}` : ` · rend ${-mv.shards} éclat${mv.shards < -1 ? "s" : ""}`) : "");
   const g = gain * MONTH * rate;
   return (
     <li className="move deal">
