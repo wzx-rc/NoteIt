@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { summarizeDeliveries, type NpcSummary } from "../../core/deliveries";
 import { TicketGoal } from "./TicketGoal";
 import type { AppState } from "../../shared/types";
 import { Icon } from "../icons";
 import { fmt, itemList, nf, npcName, signed, usd } from "../format";
+import { usePersisted } from "../usePersisted";
 
 const DAY = 86_400_000;
 
@@ -15,7 +16,7 @@ export function DeliveriesView({ state }: { state: AppState }) {
   const rate = market.flowerUsd;
   const ticketNpcs = npcs.filter((n) => n.kind === "tickets" && n.tickets > 0).sort((a, b) => a.cost / a.tickets - b.cost / b.tickets);
   const paid = npcs.filter((n) => n.kind !== "tickets").sort((a, b) => (b.reward - b.cost) - (a.reward - a.cost));
-  const [off, setOff] = useState<Set<string>>(new Set());
+  const [off, setOff] = usePersisted<Set<string>>("deliveries.off", () => new Set<string>());
   const chosen = ticketNpcs.filter((n) => !off.has(n.npc));
   const toggle = (npc: string) => setOff((s) => { const n = new Set(s); n.has(npc) ? n.delete(npc) : n.add(npc); return n; });
   const avgPerTicket = ticketNpcs.reduce((a, n) => a + n.cost, 0) / Math.max(1, ticketNpcs.reduce((a, n) => a + n.tickets, 0));

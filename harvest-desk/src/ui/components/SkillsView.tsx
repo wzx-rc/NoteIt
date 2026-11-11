@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { dailyRates } from "../../core/engine";
 import { analyseSkills, pointsOf, shardsOf, type Plan, type SkillValue } from "../../core/skills";
 import type { AppState } from "../../shared/types";
 import { Icon } from "../icons";
 import { MONTH, fmt, signed, usd } from "../format";
+import { usePersisted } from "../usePersisted";
 
 const CAT_ICON: Record<string, string> = { crops: "wheat", greenhouse: "rice", minerals: "gold", animals: "sheep" };
 const TREE_FR: Record<string, string> = {
@@ -35,7 +36,7 @@ export function SkillsView({ state }: { state: AppState }) {
   const farm = state.farm!, market = state.market!;
   const rate = market.flowerUsd;
   const a = useMemo(() => analyseSkills(farm, dailyRates(state.snapshots).rates, market), [farm, market, state.snapshots]);
-  const [mode, setMode] = useState<"topup" | "reset">(() => (a.topUp.value - a.current.value > 0.01 ? "topup" : "reset"));
+  const [mode, setMode] = usePersisted<"topup" | "reset">("skills.mode", () => (a.topUp.value - a.current.value > 0.01 ? "topup" : "reset"));
   const now = state.fetchedAt ? Date.parse(state.fetchedAt) : Date.now();
   const free = Math.max(0, a.earned - a.used);
   const m = (f: number) => f * MONTH * rate;

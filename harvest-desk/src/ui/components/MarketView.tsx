@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { dailyRates } from "../../core/engine";
 import { buyDeals, sellDeals, type Deal } from "../../core/marketplace";
 import type { AppState } from "../../shared/types";
 import { Icon } from "../icons";
 import { ItemImage } from "../ItemImage";
 import { MONTH, fmt, nf, usd } from "../format";
+import { usePersisted } from "../usePersisted";
 
 const CAT_ICON: Record<string, string> = { crops: "wheat", greenhouse: "rice", minerals: "gold", animals: "sheep", wood: "pick" };
 const CAT_NAME: Record<string, string> = { crops: "crops", greenhouse: "serre", minerals: "minerais", animals: "animaux", wood: "bois" };
@@ -17,8 +18,8 @@ export function MarketView({ state }: { state: AppState }) {
     const { rates } = dailyRates(state.snapshots);
     return { buy: buyDeals(farm, rates, market), sell: sellDeals(farm, rates, market) };
   }, [farm, market, state.snapshots]);
-  const [moreBuy, setMoreBuy] = useState(false);
-  const [sellMode, setSellMode] = useState<"free" | "weak">("free");
+  const [moreBuy, setMoreBuy] = usePersisted("market.more", false);
+  const [sellMode, setSellMode] = usePersisted<"free" | "weak">("market.sell", "free");
   const free = sell.filter((d) => d.perDay < 1e-6);
   const weak = sell.filter((d) => d.perDay >= 1e-6);
   const sellList = (sellMode === "free" ? free : weak).slice(0, 5);

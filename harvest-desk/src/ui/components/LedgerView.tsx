@@ -3,6 +3,7 @@ import type { EntryKind, LedgerEntry } from "../../core/ledger";
 import type { AppState, ManualEntry } from "../../shared/types";
 import { Icon } from "../icons";
 import { dayLabel, fmt, nf } from "../format";
+import { usePersisted } from "../usePersisted";
 
 const DAY = 86_400_000;
 const PERIODS = [
@@ -25,7 +26,7 @@ const money = (v: number) => (v < 0 ? "−" : "+") + (Math.abs(v) >= 100 ? nf(Ma
 
 /** FLOWER coming in and going out, in dollars, found between farm readings or typed by hand. */
 export function LedgerView({ state, onAdd, onRemove }: { state: AppState; onAdd: (e: ManualEntry) => void; onRemove: (id: string) => void }) {
-  const [period, setPeriod] = useState<(typeof PERIODS)[number]["k"]>("30");
+  const [period, setPeriod] = usePersisted<(typeof PERIODS)[number]["k"]>("ledger.period", "30");
   const now = state.fetchedAt ? Date.parse(state.fetchedAt) : Date.now();
   const days = PERIODS.find((p) => p.k === period)!.days;
   const list = useMemo(() => state.ledger.filter((e) => now - e.at <= days * DAY), [state.ledger, now, days]);
@@ -91,7 +92,7 @@ function AddEntry({ onAdd }: { onAdd: (e: ManualEntry) => void }) {
   const [date, setDate] = useState(today);
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
-  const [dir, setDir] = useState<"in" | "out">("out");
+  const [dir, setDir] = usePersisted<"in" | "out">("ledger.dir", "out");
   const value = Number(amount.replace(",", "."));
   const ok = label.trim() && Number.isFinite(value) && value > 0;
   const submit = (ev: React.FormEvent) => {

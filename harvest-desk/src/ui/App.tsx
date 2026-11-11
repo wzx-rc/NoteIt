@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { DeliveriesView } from "./components/DeliveriesView";
 import { GrowthCurve } from "./components/GrowthCurve";
 import { LedgerView } from "./components/LedgerView";
@@ -17,12 +17,14 @@ import { TopBar } from "./components/TopBar";
 import { buildModel, useScenario, type Model } from "./model";
 import { bridge, useAppState } from "./useAppState";
 import type { AppState } from "../shared/types";
+import { usePersisted } from "./usePersisted";
 
 export function App() {
   const { state, refresh, importHistory, addEntry, removeEntry } = useAppState();
-  const [view, setView] = useState<View>(() => (location.hash.slice(1) as View) || "revenue");
+  const [view, setView] = usePersisted<View>("view", () => (location.hash.slice(1) as View) || "revenue");
   useEffect(() => {
     const onHash = () => { if (location.hash.length > 1) setView(location.hash.slice(1) as View); };
+    onHash();
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
@@ -78,7 +80,7 @@ function Banner({ state, onRetry, onImport }: { state: AppState; onRetry: () => 
 function Dashboard({ state }: { state: AppState }) {
   const farm = state.farm!, market = state.market!, snaps = state.snapshots;
   const model = useMemo<Model>(() => buildModel(farm, snaps, market), [farm, snaps, market]);
-  const [on, setOn] = useState<Set<string>>(new Set());
+  const [on, setOn] = usePersisted<Set<string>>("simulator", () => new Set<string>());
   const toggle = (id: string) => setOn((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const sc = useScenario(farm, snaps, market, model, on);
   const baseTotal = model.base.net * model.usd;
