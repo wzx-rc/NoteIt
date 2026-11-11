@@ -1,0 +1,61 @@
+import { describe, expect, it } from "vitest";
+import fixture from "../src/demo/fixture.json";
+import { Engine, dailyRates } from "../src/core/engine";
+import { evaluate } from "../src/core/scenarios";
+import type { Farm } from "../src/core/farm";
+import type { Market } from "../src/core/engine";
+
+const farm = fixture.farm as unknown as Farm;
+const market = fixture.market as Market;
+const { rates, days } = dailyRates(fixture.snapshots);
+const usd = (flower: number) => flower * market.flowerUsd;
+
+describe("dailyRates", () => {
+  it("averages counters over the snapshot span", () => {
+    expect(days).toBeGreaterThan(6.5);
+    expect(days).toBeLessThan(7.5);
+    const a = { at: 0, farmActivity: { "Wheat Harvested": 10, "Sheep Fed": 4 } };
+    const b = { at: 2 * 86_400_000, farmActivity: { "Wheat Harvested": 30, "Sheep Fed": 4 } };
+    expect(dailyRates([a, b])).toEqual({ rates: { "Wheat Harvested": 10 }, days: 2 });
+  });
+  it("returns nothing with a single snapshot", () => {
+    expect(dailyRates([fixture.snapshots[0]])).toEqual({ rates: {}, days: 0 });
+  });
+});
+
+describe("Engine on the example farm", () => {
+  const r = new Engine(farm, rates, market).report();
+  it("matches the hand analysis (about 8.2 $ per day)", () => {
+    expect(usd(r.net)).toBeGreaterThan(7.9);
+    expect(usd(r.net)).toBeLessThan(8.5);
+  });
+  it("ranks crops first and minerals last", () => {
+    const c = r.categories;
+    expect(c.crops.net).toBeGreaterThan(c.animals.net);
+    expect(c.minerals.net).toBeLessThan(c.greenhouse.net);
+  });
+  it("loses money on stone because of pickaxes", () => {
+    const stone = r.categories.minerals.lines.find((l) => l.key === "Stone")!;
+    expect(stone.net).toBeLessThan(0);
+  });
+});
+
+describe("Scenarios", () => {
+  const { results } = evaluate(farm, rates, market);
+  const get = (id: string) => results.find((x) => x.option.id === id)!;
+  it("Quarry makes stone pickaxes free (about +2.4 $ per day)", () => {
+    expect(usd(get("quarry").gainTotal)).toBeCloseTo(2.38, 1);
+    expect(Object.keys(get("quarry").gain)).toEqual(["minerals"]);
+  });
+  it("Kuebiko frees seeds for crops and greenhouse", () => {
+    const k = get("kuebiko");
+    expect(usd(k.gainTotal)).toBeCloseTo(2.05, 1);
+    expect(k.gain.crops).toBeGreaterThan(0);
+    expect(k.gain.greenhouse).toBeGreaterThan(0);
+  });
+  it("gives a payback time for paid options only", () => {
+    expect(get("quarry").paybackDays).toBeGreaterThan(300);
+    expect(get("sheepwise").cost).toBe(0);
+    expect(get("sheepwise").paybackDays).toBeNull();
+  });
+});

@@ -1,0 +1,55 @@
+{
+  "name": "harvest-desk",
+  "version": "0.1.0",
+  "description": "Revenus et simulateur pour une ferme Sunflower Land (outil perso, non officiel)",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "web": "vite",
+    "build": "tsc --noEmit && vite build && node scripts/build-electron.mjs",
+    "start": "npm run build && electron .",
+    "test": "vitest run",
+    "dist": "npm run build && electron-builder --win portable"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@fontsource/bricolage-grotesque": "^5.1.0",
+    "@fontsource/instrument-sans": "^5.1.0",
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  },
+  "private": true,
+  "build": {
+    "appId": "local.harvestdesk",
+    "productName": "Harvest Desk",
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "portable"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
