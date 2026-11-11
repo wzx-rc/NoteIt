@@ -47,3 +47,12 @@ describe("without", () => {
     expect(farm.interior?.ground?.collectibles?.["Golden Sheep"]).toBeDefined();
   });
 });
+
+describe("Tin Turtle", () => {
+  const tt = sellDeals(farm, rates, market).find((d) => d.name === "Tin Turtle")!;
+  it("counts the stone from the 8 rocks around it", () => {
+    expect(tt.unknownEffect).toBe(false);
+    expect(tt.perDay).toBeGreaterThan(0.1);
+    expect(tt.perDay).toBeLessThan(0.5);
+  });
+});

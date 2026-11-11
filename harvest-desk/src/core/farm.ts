@@ -13,9 +13,9 @@ export interface Farm {
   faction?: { name?: string };
   island?: { type?: string };
   season?: { season?: string };
-  stones?: Record<string, { name?: string; tier?: number; multiplier?: number }>;
-  iron?: Record<string, { name?: string; tier?: number; multiplier?: number }>;
-  gold?: Record<string, { name?: string; tier?: number; multiplier?: number }>;
+  stones?: Record<string, { name?: string; tier?: number; multiplier?: number; x?: number; y?: number }>;
+  iron?: Record<string, { name?: string; tier?: number; multiplier?: number; x?: number; y?: number }>;
+  gold?: Record<string, { name?: string; tier?: number; multiplier?: number; x?: number; y?: number }>;
   crimstones?: Record<string, { minesLeft?: number }>;
   crops?: Record<string, { beeSwarm?: { count?: number } }>;
   henHouse?: { animals?: Record<string, Animal> };

@@ -118,7 +118,7 @@ export function buyDeals(farm: Farm, rates: Rates, market: Market): Deal[] {
  */
 export function sellDeals(farm: Farm, rates: Rates, market: Market): Deal[] {
   const base = new Engine(farm, rates, market).report();
-  const known = new Set([...YIELD_COLLECTIBLES, ...YIELD_WEARABLES, ...Object.keys(SPEED), "Foreman Beaver", "Barn Blueprint", "Nancy"]);
+  const known = new Set([...YIELD_COLLECTIBLES, ...YIELD_WEARABLES, ...Object.keys(SPEED), "Foreman Beaver", "Barn Blueprint", "Nancy", "Tin Turtle", "Emerald Turtle"]);
   const owned = new Map<string, number>();
   for (const [k, v] of Object.entries(farm.inventory ?? {})) if (PLACEABLE.has(k) && Number(v) >= 1) owned.set(k, Math.floor(Number(v)));
   for (const [k, v] of Object.entries(farm.wardrobe ?? {})) if (v >= 1) owned.set(k, (owned.get(k) ?? 0) + v);

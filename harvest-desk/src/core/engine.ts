@@ -142,12 +142,31 @@ export class Engine {
     return (f.faction && f.wears(f.faction.secondaryTool) ? 0.25 : 0) + (f.pastVolcano ? 0.1 : 0);
   }
 
+  /**
+   * Tin and Emerald Turtles add to the rocks on the 8 tiles around them (stoneMine.ts,
+   * collisionDetection.ts). Spread over all rocks, weighted by each rock's multiplier.
+   */
+  private turtle(name: string, rocks: Record<string, { x?: number; y?: number; multiplier?: number }> | undefined, bonus: number): number {
+    const at = this.f.raw.collectibles?.[name]?.[0]?.coordinates;
+    if (!at || !rocks) return 0;
+    let near = 0, all = 0;
+    for (const r of Object.values(rocks)) {
+      const w = r.multiplier ?? 1;
+      all += w;
+      if (r.x === undefined || r.y === undefined) continue;
+      const dx = r.x - at.x, dy = r.y - at.y;
+      if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx || dy)) near += w;
+    }
+    return all ? bonus * near / all : 0;
+  }
+
   stoneYield(): number {
     const f = this.f;
     return 1 + 0.2 /* 20 % native crit */
       + (f.has("Rock Golem") ? 0.2 : 0) + (f.inventory("Prospector") ? 0.2 : 0)
       + (f.has("Tunnel Mole") ? 0.25 : 0) + (f.has("Stone Beetle") ? 0.1 : 0)
       + f.rank("Rock'N'Roll") + f.buff("Rocky Favor") - f.debuff("Ferrous Favor")
+      + this.turtle("Tin Turtle", this.f.raw.stones, 0.1) + this.turtle("Emerald Turtle", this.f.raw.stones, 0.5)
       + this.shieldAndVolcano();
   }
   ironYield(): number {
@@ -156,6 +175,7 @@ export class Engine {
       + (f.has("Rocky the Mole") ? 0.25 : 0) + (f.has("Radiant Ray") ? 0.1 : 0)
       + (f.has("Iron Idol") ? 1 : 0) + (f.has("Iron Beetle") ? 0.1 : 0)
       + f.rank("Iron Bumpkin") - f.debuff("Rocky Favor") + f.buff("Ferrous Favor")
+      + this.turtle("Emerald Turtle", this.f.raw.iron, 0.5)
       + this.shieldAndVolcano();
   }
   goldYield(): number {
@@ -163,6 +183,7 @@ export class Engine {
     return 1 + 0.2
       + (f.inventory("Gold Rush") ? 0.5 : 0) + f.rank("Golden Touch")
       + (f.has("Nugget") ? 0.25 : 0) + (f.has("Gilded Swordfish") ? 0.1 : 0) + (f.has("Gold Beetle") ? 0.1 : 0)
+      + this.turtle("Emerald Turtle", this.f.raw.gold, 0.5)
       + this.shieldAndVolcano();
   }
   /** Average per mine, a crimstone rock giving 5 mines with the bonus on the last one. */
