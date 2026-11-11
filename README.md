@@ -33,3 +33,7 @@ Désactivé par défaut : à activer dans Réglages, Assistant IA (il faut un co
 - La clé est rangée dans le trousseau iOS (`Keychain.swift`). Les requêtes partent du code natif (`AIProvider.swift`), la page ne revoit jamais la clé.
 - La dictée utilise la reconnaissance vocale d'iOS en français (`SpeechInput.swift`). iPadOS demande l'accès au micro et à la reconnaissance vocale la première fois.
 - Le code est prévu pour ajouter Claude plus tard : un fournisseur de plus dans `PROVIDERS` (index.html) et dans `AIProvider.all`.
+
+## Frontier (prototype de jeu)
+
+Le dossier `frontier/` contient un prototype de jeu web de colonie spatiale (React, Phaser, XState), avec un wallet et un token simulés. Voir `frontier/README.md`.
