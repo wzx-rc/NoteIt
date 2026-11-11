@@ -11,7 +11,7 @@ export function Simulator({ results, on, toggle, rate }: { results: OptionResult
       <div className="sim">
         {results.length === 0 ? <p className="empty">Ta ferme a déjà toutes les options suivies.</p> : null}
         {results.map(({ option: o, gainTotal, cost }) => {
-          const free = !o.nft;
+          const free = !o.nft && !o.price;
           return (
             <button key={o.id} className="toggle" aria-pressed={on.has(o.id)} onClick={() => toggle(o.id)}>
               <span className="sw" aria-hidden="true" />
@@ -22,7 +22,7 @@ export function Simulator({ results, on, toggle, rate }: { results: OptionResult
               </span>
               <span className="g">
                 <b>+{fmt(gainTotal * rate)} $</b>
-                <span>{free ? "par jour" : cost ? usd(cost * rate) : "prix inconnu"}</span>
+                <span>{free ? "par jour" : o.price ? o.price : cost ? usd(cost * rate) : "prix inconnu"}</span>
               </span>
             </button>
           );

@@ -8,10 +8,10 @@ export interface Farm {
   home?: { collectibles?: Record<string, Placed[]> };
   interior?: { ground?: { collectibles?: Record<string, Placed[]> }; level_one?: { collectibles?: Record<string, Placed[]> } };
   petHouse?: { pets?: Record<string, Placed[]> };
-  bumpkin?: { skills?: Record<string, number>; equipped?: Record<string, string> };
+  bumpkin?: { skills?: Record<string, number>; equipped?: Record<string, string>; experience?: number; previousFreeSkillResetAt?: number; paidSkillResets?: number };
   farmHands?: { bumpkins?: Record<string, { equipped?: Record<string, string> }> };
   faction?: { name?: string };
-  island?: { type?: string };
+  island?: { type?: string; ascensionLevel?: number };
   season?: { season?: string };
   stones?: Record<string, { name?: string; tier?: number; multiplier?: number; x?: number; y?: number }>;
   iron?: Record<string, { name?: string; tier?: number; multiplier?: number; x?: number; y?: number }>;
@@ -29,7 +29,12 @@ export interface Farm {
   wardrobe?: Record<string, number>;
   vip?: { expiresAt?: number; trialStartedAt?: number };
   delivery?: { orders?: Order[]; fulfilledCount?: number };
-  npcs?: Record<string, { deliveryCount?: number; skippedCount?: number }>;
+  npcs?: Record<string, { deliveryCount?: number; skippedCount?: number; deliveryCompletedAt?: number }>;
+  // Read by the chapter ticket plan.
+  bounties?: { requests?: { id: string; name: string; items?: Record<string, number>; coins?: number }[]; completed?: { id: string; soldAt?: number }[]; bonusClaimedAt?: number };
+  choreBoard?: { chores?: Record<string, { name?: string; reward?: { items?: Record<string, number> }; startedAt?: number; completedAt?: number }> };
+  calendar?: { dates?: { name: string; date: string }[] };
+  farmActivity?: Record<string, number>;
 }
 export interface Order {
   id: string;
@@ -62,6 +67,11 @@ export class FarmView {
   }
 
   /** Worn by the bumpkin or any farm hand (isWearableActive). */
+  /** In the wardrobe, worn or not. */
+  owns(name: string): boolean {
+    return (this.farm.wardrobe?.[name] ?? 0) > 0;
+  }
+
   wears(name: string): boolean {
     if (this.extra.wearables?.includes(name)) return true;
     const sets = [this.farm.bumpkin?.equipped, ...Object.values(this.farm.farmHands?.bumpkins ?? {}).map((b) => b.equipped)];

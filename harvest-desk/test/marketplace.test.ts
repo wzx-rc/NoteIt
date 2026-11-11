@@ -18,7 +18,7 @@ describe("buyDeals", () => {
   it("ranks by payback and keeps Quarry's gain", () => {
     const pay = buy.map((d) => d.price / d.perDay);
     expect([...pay].sort((a, b) => a - b)).toEqual(pay);
-    expect(buy.find((d) => d.name === "Quarry")!.perDay * market.flowerUsd).toBeCloseTo(2.36, 1);
+    expect(buy.find((d) => d.name === "Quarry")!.perDay * market.flowerUsd).toBeCloseTo(2.07, 1);
   });
 });
 

@@ -25,9 +25,9 @@ describe("dailyRates", () => {
 
 describe("Engine on the example farm", () => {
   const r = new Engine(farm, rates, market).report();
-  it("earns about 10.3 $ per day", () => {
-    expect(usd(r.net)).toBeGreaterThan(10);
-    expect(usd(r.net)).toBeLessThan(10.6);
+  it("earns about 11 $ per day (Frugal Miner, Seedy Business and Seeded Bounty counted)", () => {
+    expect(usd(r.net)).toBeGreaterThan(10.7);
+    expect(usd(r.net)).toBeLessThan(11.3);
   });
   it("ranks animals first and minerals last", () => {
     const c = r.categories;
@@ -51,13 +51,13 @@ describe("Engine on the example farm", () => {
 describe("Scenarios", () => {
   const { results } = evaluate(farm, rates, market);
   const get = (id: string) => results.find((x) => x.option.id === id)!;
-  it("Quarry makes stone pickaxes free (about +2.4 $ per day)", () => {
-    expect(usd(get("quarry").gainTotal)).toBeCloseTo(2.38, 1);
+  it("Quarry makes stone pickaxes free (about +2.1 $ per day, Frugal Miner already cuts them 20 %)", () => {
+    expect(usd(get("quarry").gainTotal)).toBeCloseTo(2.07, 1);
     expect(Object.keys(get("quarry").gain)).toEqual(["minerals"]);
   });
   it("Kuebiko frees seeds for crops and greenhouse", () => {
     const k = get("kuebiko");
-    expect(usd(k.gainTotal)).toBeCloseTo(2.05, 1);
+    expect(usd(k.gainTotal)).toBeCloseTo(1.86, 1);
     expect(k.gain.crops).toBeGreaterThan(0);
     expect(k.gain.greenhouse).toBeGreaterThan(0);
   });

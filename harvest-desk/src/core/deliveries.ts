@@ -10,13 +10,37 @@ const BOOSTS = chapters.boosts as Record<string, string[]>;
 const CHAPTERS = chapters.chapters as Record<string, { start: string; end: string }>;
 const WEEK = 7 * 86_400_000;
 
-export interface Chapter { name: string; start: number; end: number; weeks: number; weeksLeft: number }
+const DAY = 86_400_000;
+
+export interface Chapter {
+  name: string; start: number; end: number; weeks: number; weeksLeft: number;
+  /** Ticket deliveries are frozen from the chapter start to its month's second Monday (getChapterHolidayPeriod). */
+  ticketsFrom: number;
+  /** Days with ticket deliveries, in the whole chapter and from today on (today included). */
+  ticketDays: number; ticketDaysLeft: number;
+}
+
+/** Midnight UTC of the day holding `t`. */
+export const utcDay = (t: number) => Math.floor(t / DAY) * DAY;
+
+function secondMonday(start: number): number {
+  const d = new Date(start);
+  const first = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+  const toMonday = (1 - new Date(first).getUTCDay() + 7) % 7;
+  return first + (toMonday + 7) * DAY;
+}
 
 export function currentChapter(now: number): Chapter | null {
   for (const [name, c] of Object.entries(CHAPTERS)) {
     const start = Date.parse(c.start), end = Date.parse(c.end);
     if (now >= start && now < end) {
-      return { name, start, end, weeks: Math.round((end - start) / WEEK), weeksLeft: Math.max(0, Math.ceil((end - now) / WEEK)) };
+      const ticketsFrom = Math.max(start, secondMonday(start));
+      return {
+        name, start, end, weeks: Math.round((end - start) / WEEK), weeksLeft: Math.max(0, Math.ceil((end - now) / WEEK)),
+        ticketsFrom,
+        ticketDays: Math.round((end - ticketsFrom) / DAY),
+        ticketDaysLeft: Math.max(0, Math.round((end - Math.max(utcDay(now), ticketsFrom)) / DAY)),
+      };
     }
   }
   return null;

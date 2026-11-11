@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { summarizeDeliveries, type NpcSummary } from "../../core/deliveries";
+import { TicketGoal } from "./TicketGoal";
 import type { AppState } from "../../shared/types";
 import { Icon } from "../icons";
 import { fmt, itemList, nf, npcName, signed, usd } from "../format";
@@ -19,9 +20,10 @@ export function DeliveriesView({ state }: { state: AppState }) {
   const toggle = (npc: string) => setOff((s) => { const n = new Set(s); n.has(npc) ? n.delete(npc) : n.add(npc); return n; });
   const avgPerTicket = ticketNpcs.reduce((a, n) => a + n.cost, 0) / Math.max(1, ticketNpcs.reduce((a, n) => a + n.tickets, 0));
 
-  const weekCost = chosen.reduce((a, n) => a + n.cost, 0);
-  const weekTickets = chosen.reduce((a, n) => a + n.tickets, 0);
-  const weeks = chapter?.weeks ?? 13, left = chapter?.weeksLeft ?? weeks;
+  // One ticket delivery per NPC and per day, frozen from the chapter start to the second Monday.
+  const dayCost = chosen.reduce((a, n) => a + n.cost, 0);
+  const dayTickets = chosen.reduce((a, n) => a + n.tickets, 0);
+  const days = chapter?.ticketDays ?? 84, left = chapter?.ticketDaysLeft ?? days;
   const samples = state.orders.length;
   const since = state.orders.length ? Math.min(...state.orders.map((o) => o.createdAt)) : now;
   const unknown = [...new Set(npcs.flatMap((n) => n.unknown))];
@@ -32,24 +34,24 @@ export function DeliveriesView({ state }: { state: AppState }) {
         <div className="kpi">
           <div className="l">Saison en cours</div>
           <div className="v">{chapter?.name ?? "Hors saison"}</div>
-          <div className="d dim">{chapter ? `${left} semaine${left > 1 ? "s" : ""} restante${left > 1 ? "s" : ""} sur ${weeks}` : ""}</div>
+          <div className="d dim">{chapter ? `${left} jour${left > 1 ? "s" : ""} de livraisons restant${left > 1 ? "s" : ""} sur ${days}` : ""}</div>
         </div>
         <div className="kpi">
           <div className="l">Toute la saison, ta sélection</div>
-          <div className="v gold">{usd(weekCost * weeks * rate)}</div>
-          <div className="d dim">{nf(weekCost * weeks)} FLOWER pour {nf(weekTickets * weeks)} tickets</div>
+          <div className="v gold">{usd(dayCost * days * rate)}</div>
+          <div className="d dim">{nf(dayCost * days)} FLOWER pour {nf(dayTickets * days)} tickets, hors doubles</div>
         </div>
         <div className="kpi">
           <div className="l">D'ici la fin de la saison</div>
-          <div className="v">{usd(weekCost * left * rate)}</div>
-          <div className="d dim">{usd(weekCost * rate)} par semaine, {nf(weekTickets)} tickets</div>
+          <div className="v">{usd(dayCost * left * rate)}</div>
+          <div className="d dim">{usd(dayCost * rate)} par jour, {nf(dayTickets)} tickets</div>
         </div>
       </div>
 
       <div className="grid">
         <section className="card" aria-labelledby="h-tix">
           <h2 id="h-tix">Livraisons à tickets</h2>
-          <p className="hint">Une par personnage et par semaine. Coût moyen des objets demandés, au prix du marché d'aujourd'hui. Coche celles que tu fais.</p>
+          <p className="hint">Une par personnage et par jour. Coût moyen des objets demandés, au prix du marché d'aujourd'hui. Coche celles que tu fais.</p>
           <div className="seg" role="group" aria-label="Sélection rapide">
             <button className="btn" onClick={() => setOff(new Set())}>Toutes</button>
             <button className="btn" onClick={() => setOff(new Set(ticketNpcs.filter((n) => n.cost / n.tickets > avgPerTicket).map((n) => n.npc)))}>Les moins chères par ticket</button>
@@ -64,7 +66,7 @@ export function DeliveriesView({ state }: { state: AppState }) {
         <section className="card stat" aria-labelledby="h-pt">
           <h2 id="h-pt">Prix d'un ticket</h2>
           <p className="hint">Ce que coûte un ticket chez chaque personnage. Moyenne de toutes les livraisons à tickets : {fmt(avgPerTicket * rate, 3)} $.</p>
-          <div className="big">{weekTickets ? fmt((weekCost / weekTickets) * rate, 3) : "0"} $ <small className="unit">par ticket, ta sélection</small></div>
+          <div className="big">{dayTickets ? fmt((dayCost / dayTickets) * rate, 3) : "0"} $ <small className="unit">par ticket, ta sélection</small></div>
           <div className="bars">
             {ticketNpcs.map((n) => {
               const per = n.cost / n.tickets;
@@ -80,6 +82,8 @@ export function DeliveriesView({ state }: { state: AppState }) {
           </div>
         </section>
       </div>
+
+      <TicketGoal farm={farm} now={now} npcs={ticketNpcs} rate={rate} />
 
       <section className="card stat" aria-labelledby="h-paid">
         <h2 id="h-paid">Livraisons payées</h2>
@@ -106,7 +110,7 @@ export function DeliveriesView({ state }: { state: AppState }) {
       <p className="foot">
         Moyenne sur {samples} commandes vues depuis le {new Date(since).toLocaleDateString("fr-FR")}
         {now - since < 21 * DAY ? ", la moyenne s'affine au fil des semaines" : ""}. Poissons et prises de casiers estimés au coût d'une canne ou d'un casier.
-        {unknown.length ? ` Sans prix, comptés 0 : ${unknown.join(", ")}.` : ""} Une * signale un coût en partie estimé. Hors événement double livraison.
+        {unknown.length ? ` Sans prix, comptés 0 : ${unknown.join(", ")}.` : ""} Une * signale un coût en partie estimé. Les jours de double livraison doublent les tickets sans coûter plus.
       </p>
     </>
   );

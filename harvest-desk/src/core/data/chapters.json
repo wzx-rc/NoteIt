@@ -159,5 +159,46 @@
    "start": "2026-11-02T00:00:00.000Z",
    "end": "2027-02-01T00:00:00.000Z"
   }
+ },
+ "ticketName": {
+  "Solar Flare": "Solar Flare Ticket",
+  "Dawn Breaker": "Dawn Breaker Ticket",
+  "Witches' Eve": "Crow Feather",
+  "Catch the Kraken": "Mermaid Scale",
+  "Spring Blossom": "Tulip Bulb",
+  "Clash of Factions": "Scroll",
+  "Pharaoh's Treasure": "Amber Fossil",
+  "Bull Run": "Horseshoe",
+  "Winds of Change": "Timeshard",
+  "Great Bloom": "Geniseed",
+  "Better Together": "Bracelet",
+  "Paw Prints": "Pet Cookie",
+  "Crabs and Traps": "Floater",
+  "Salt Awakening": "Salt Rock",
+  "Ascension Age": "Shiny Feather",
+  "Cave Dwellers": "Duende Cap"
+ },
+ "bountyBonus": 100,
+ "track": {
+  "Paw Prints": {
+   "free": 0,
+   "premium": 0
+  },
+  "Crabs and Traps": {
+   "free": 0,
+   "premium": 0
+  },
+  "Salt Awakening": {
+   "free": 130,
+   "premium": 160
+  },
+  "Ascension Age": {
+   "free": 130,
+   "premium": 160
+  },
+  "Cave Dwellers": {
+   "free": 180,
+   "premium": 180
+  }
  }
 }

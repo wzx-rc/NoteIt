@@ -113,6 +113,8 @@ export class Engine {
     if (f.has("Pharaoh Gnome")) amount += 2;
     const glass = f.skill("Glass Room");
     if (glass) amount += [0.1, 0.15, 0.2][Math.min(glass, 3) - 1];
+    const bounty = f.skill("Seeded Bounty");
+    if (bounty) amount += [0.5, 0.75, 1][Math.min(bounty, 3) - 1];
     return amount;
   }
 
@@ -122,7 +124,10 @@ export class Engine {
       const n = this.rate(`${crop} Harvested`);
       if (!n) continue;
       const qty = n * this.greenhouseYield(crop);
-      lines.push(line(crop, crop, qty * this.price(crop), n * this.seedCost(crop), qty));
+      // Seedy Business makes greenhouse seeds cheaper; Seeded Bounty takes one more seed per pot.
+      const seedy = this.f.skill("Seedy Business");
+      const seeds = (this.f.skill("Seeded Bounty") ? 2 : 1) * (seedy ? [0.85, 0.8, 0.75][Math.min(seedy, 3) - 1] : 1);
+      lines.push(line(crop, crop, qty * this.price(crop), n * seeds * this.seedCost(crop), qty));
     }
     return sumCat("greenhouse", lines);
   }
@@ -198,7 +203,8 @@ export class Engine {
     const t = TOOLS[tool];
     let crafted = this.rate(`${tool} Crafted`);
     if (tool === "Pickaxe" && this.f.has("Quarry")) crafted = 0; // stone needs no pickaxe at all
-    const unit = this.coins(t.coins) + Object.entries(t.items).reduce((a, [i, q]) => a + q * this.price(i), 0);
+    const frugal = tool.endsWith("Pickaxe") && this.f.skill("Frugal Miner") ? 0.8 : 1;
+    const unit = this.coins(t.coins * frugal) + Object.entries(t.items).reduce((a, [i, q]) => a + q * this.price(i), 0);
     return crafted * unit;
   }
 

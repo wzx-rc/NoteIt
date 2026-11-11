@@ -148,6 +148,12 @@ const ICONS: Record<string, ReactElement> = {
       <path d="M3 7l9-4 9 4v10l-9 4-9-4z" /><path d="M3 7l9 4 9-4M12 11v10M7.5 5l9 4" />
     </g>
   ),
+  skills: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+      <circle cx="12" cy="5" r="2.2" /><circle cx="6" cy="18.5" r="2.2" /><circle cx="18" cy="18.5" r="2.2" />
+      <path d="M12 7.2v4.3M12 11.5 6.8 16.4M12 11.5l5.2 4.9" />
+    </g>
+  ),
   ledger: (
     <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
       <path d="M7 4v14M3.5 14.5 7 18l3.5-3.5M17 20V6M13.5 9.5 17 6l3.5 3.5" />

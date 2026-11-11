@@ -8,6 +8,7 @@ import { MineralsCard } from "./components/MineralsCard";
 import { PaybackCard } from "./components/PaybackCard";
 import { Rail, viewLabel, type View } from "./components/Rail";
 import { RevenueCard } from "./components/RevenueCard";
+import { SkillsView } from "./components/SkillsView";
 import { SettingsView } from "./components/SettingsView";
 import { Shortcuts } from "./components/Shortcuts";
 import { Simulator } from "./components/Simulator";
@@ -42,6 +43,7 @@ export function App() {
             : !ready ? null
             : current === "market" ? <MarketView state={state} />
             : current === "deliveries" ? <DeliveriesView state={state} />
+            : current === "skills" ? <SkillsView state={state} />
             : current === "ledger" ? <LedgerView state={state} onAdd={addEntry} onRemove={removeEntry} />
             : <Dashboard state={state} />}
           {current !== "settings" && !ready ? (
