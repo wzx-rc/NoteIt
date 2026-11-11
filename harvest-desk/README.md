@@ -4,7 +4,7 @@ Petite app PC qui montre ce que ta ferme Sunflower Land rapporte par jour, par m
 
 ## Ce que fait l'app
 
-- Lit ta ferme toutes les 10 minutes avec l'API Community, et les prix du marketplace toutes les 6 heures.
+- Lit ta ferme toutes les 10 minutes avec l'API Community, et les prix du marketplace toutes les 6 heures. Le bouton « Mettre à jour » en haut relit tout de suite la ferme et les prix, puis recalcule tous les onglets.
 - Calcule le revenu net de chaque catégorie (crops, animaux, serre, minerais) à partir de tes vrais compteurs d'activité sur les 7 derniers jours, des bonus de ta ferme et des prix du marché.
 - Simule les options que tu n'as pas encore, avec leur gain par jour, leur prix plancher et le temps pour les rembourser.
 - Trace les gains cumulés sur 12 mois, achats déduits.

@@ -3,7 +3,7 @@ import type { AppState, HarvestBridge } from "../src/shared/types";
 
 const bridge: HarvestBridge = {
   getState: () => ipcRenderer.invoke("state:get"),
-  refresh: () => ipcRenderer.invoke("state:refresh"),
+  refresh: (full?: boolean) => ipcRenderer.invoke("state:refresh", full),
   importHistory: () => ipcRenderer.invoke("history:import"),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   saveSettings: (s) => ipcRenderer.invoke("settings:save", s),

@@ -81,8 +81,9 @@ function record(at: number, farm: Farm & { farmActivity?: Record<string, number>
 }
 
 let running: Promise<AppState> | null = null;
-function refresh(): Promise<AppState> {
-  if (running) return running;
+/** `full` also re-reads the marketplace prices, which are otherwise kept 6 hours. */
+function refresh(full = false): Promise<AppState> {
+  if (running) return full ? running.then(() => refresh(true)) : running;
   running = (async () => {
     const s = settings();
     if (!s.apiKey || !s.farmId) return publish({ status: "needs-setup" });
@@ -91,7 +92,7 @@ function refresh(): Promise<AppState> {
       const client = new SflClient(s.apiBase, s.apiKey);
       const res = await client.farm(s.farmId);
       let market: Market | undefined = state.market ?? readJson<Market | undefined>("market.json", undefined);
-      if (!market || Date.now() - marketAt > MARKET_EVERY) {
+      if (full || !market || Date.now() - marketAt > MARKET_EVERY) {
         market = parseMarket(await client.marketplace());
         marketAt = Date.now();
         writeJson("market.json", market);
@@ -144,7 +145,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   ipcMain.handle("state:get", () => state);
-  ipcMain.handle("state:refresh", () => refresh());
+  ipcMain.handle("state:refresh", (_e, full?: boolean) => refresh(!!full));
   ipcMain.handle("history:import", () => importHistory());
   ipcMain.handle("settings:get", () => {
     const { apiKey, ...rest } = settings();
@@ -175,7 +176,7 @@ app.whenReady().then(() => {
     const span = s.snapshots.length > 1 ? s.snapshots[s.snapshots.length - 1].at - s.snapshots[0].at : 0;
     if (s.status === "ready" && span < 2 * 86_400_000) importHistory();
   });
-  setInterval(refresh, FARM_EVERY);
+  setInterval(() => refresh(), FARM_EVERY);
 });
 
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });

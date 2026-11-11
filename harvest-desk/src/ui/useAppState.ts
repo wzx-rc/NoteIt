@@ -25,7 +25,11 @@ export function useAppState() {
     return b.onState(setState);
   }, []);
 
-  const refresh = useCallback(() => { bridge()?.refresh().then(setState); }, []);
+  const refresh = useCallback((full = false) => {
+    const b = bridge();
+    if (!b) { setState((s) => ({ ...s, status: "loading" })); demoState().then(setState); return; }
+    b.refresh(full).then(setState);
+  }, []);
   const importHistory = useCallback(() => { bridge()?.importHistory().then(setState); }, []);
   /** In the demo, hand-typed moves live in memory only. */
   const addEntry = useCallback((e: ManualEntry) => {

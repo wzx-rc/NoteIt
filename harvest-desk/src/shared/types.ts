@@ -31,7 +31,8 @@ export interface Settings { apiKey: string; farmId: string; apiBase: string }
 /** What the preload script exposes on window.harvest. */
 export interface HarvestBridge {
   getState(): Promise<AppState>;
-  refresh(): Promise<AppState>;
+  /** Re-reads the farm; with `full`, the marketplace prices too. */
+  refresh(full?: boolean): Promise<AppState>;
   importHistory(): Promise<AppState>;
   getSettings(): Promise<Omit<Settings, "apiKey"> & { hasKey: boolean }>;
   saveSettings(s: Partial<Settings>): Promise<AppState>;

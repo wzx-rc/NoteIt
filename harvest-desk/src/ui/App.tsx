@@ -29,8 +29,8 @@ export function App() {
         <Rail view={current} onView={setView} />
         <main className="main">
           <TopBar username={state.username} farmId={state.farmId} flowerUsd={state.market?.flowerUsd}
-            demo={state.mode === "demo"} busy={busy} onRefresh={bridge() ? refresh : undefined} />
-          <Banner state={state} onRetry={refresh} onImport={importHistory} />
+            demo={state.mode === "demo"} busy={busy} fetchedAt={state.fetchedAt} onRefresh={() => refresh(true)} />
+          <Banner state={state} onRetry={() => refresh(true)} onImport={importHistory} />
           {current === "settings" ? <SettingsView state={state} onImport={importHistory} />
             : !ready ? null
             : current === "market" ? <MarketView state={state} />
