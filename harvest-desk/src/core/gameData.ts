@@ -184,3 +184,16 @@ export const FACTION_ITEMS: Record<string, { secondaryTool: string; wings: strin
   goblins: { secondaryTool: "Goblin Shield", wings: "Goblin Quiver" },
   nightshades: { secondaryTool: "Nightshade Shield", wings: "Nightshade Quiver" },
 };
+
+/** types/fruits.ts → FRUIT_SEEDS: seed price in coins, keyed by fruit. */
+export const FRUITS: Record<string, { seed: string; price: number }> = {
+  Tomato: { seed: "Tomato Seed", price: 5 },
+  Lemon: { seed: "Lemon Seed", price: 15 },
+  Blueberry: { seed: "Blueberry Seed", price: 30 },
+  Orange: { seed: "Orange Seed", price: 50 },
+  Apple: { seed: "Apple Seed", price: 70 },
+  Banana: { seed: "Banana Plant", price: 70 },
+  Celestine: { seed: "Celestine Seed", price: 300 },
+  Lunara: { seed: "Lunara Seed", price: 750 },
+  Duskberry: { seed: "Duskberry Seed", price: 1250 },
+};

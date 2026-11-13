@@ -1,6 +1,6 @@
 import {
   COINS_PER_FLOWER, CROPS, DIET_SKILLS, FEED_RECIPES, FOOD_QTY, GREENHOUSE, TOOLS, WINTER_CROPS,
-  ANIMAL_DROPS, AOE_RANKS, AOE_YIELD, GREENHOUSE_FRUITS, OIL, cropTier, favouriteFood, isOvernight,
+  ANIMAL_DROPS, AOE_RANKS, FRUITS, AOE_YIELD, GREENHOUSE_FRUITS, OIL, cropTier, favouriteFood, isOvernight,
 } from "./gameData";
 import { Extra, Farm, FarmView, animalLevel, animals } from "./farm";
 
@@ -18,7 +18,7 @@ export interface Market {
 }
 
 export interface Line { key: string; label: string; qty?: number; gross: number; cost: number; net: number }
-export type CategoryKey = "crops" | "animals" | "greenhouse" | "minerals" | "wood";
+export type CategoryKey = "crops" | "animals" | "greenhouse" | "minerals" | "wood" | "fruits";
 export interface Category { key: CategoryKey; gross: number; cost: number; net: number; lines: Line[] }
 export interface Report { categories: Record<CategoryKey, Category>; net: number; gross: number; cost: number }
 
@@ -210,6 +210,50 @@ export class Engine {
       lines.push(line(crop, crop, qty * this.price(crop), n * seeds * this.seedCost(crop) + oil, qty));
     }
     return sumCat("greenhouse", lines);
+  }
+
+  // ---------- Fruit patches (fruitHarvested.ts → getFruitYield, seedBought.ts, fruitTreeRemoved.ts) ----------
+
+  fruitYield(fruit: string): number {
+    const f = this.f;
+    const r = (n: string, t: number[]) => { const l = Math.min(f.skill(n), 3); return l ? t[l - 1] : 0; };
+    let amount = 1;
+    amount += r("Generous Orchard", [0.2, 0.3, 0.5]); // chance of +1
+    if (fruit === "Apple" && f.has("Lady Bug")) amount += 0.25;
+    if (fruit === "Blueberry" && f.has("Black Bearry")) amount += 1;
+    if (f.has("Macaw")) amount += f.skill("Loyal Macaw") ? r("Loyal Macaw", [0.2, 0.25, 0.3]) : 0.1;
+    if (f.wears("Camel Onesie")) amount += 0.1;
+    if (["Apple", "Orange", "Blueberry", "Banana"].includes(fruit) && f.wears("Fruit Picker Apron")) amount += 0.1;
+    amount += r("Fruitful Fumble", [0.1, 0.15, 0.2]);
+    if (f.faction && f.wears(f.faction.wings)) amount += 0.25;
+    if (fruit === "Banana" && f.wears("Banana Amulet")) amount += 0.5;
+    if (fruit === "Banana" && f.has("Banana Chicken")) amount += 0.1;
+    if (fruit === "Lemon" && f.has("Lemon Shark")) amount += 0.2;
+    if (fruit === "Lemon" && f.wears("Lemon Shield")) amount += 1;
+    if (fruit === "Lemon" && f.has("Reveling Lemon")) amount += 0.25;
+    if (fruit === "Tomato" && f.has("Tomato Bombard")) amount += 1;
+    const zv = Math.min(f.skill("Zesty Vibes"), 3);
+    if (zv) amount += fruit === "Tomato" || fruit === "Lemon" ? [1, 1.5, 2][zv - 1] : -[0.25, 0.4, 0.5][zv - 1];
+    return amount;
+  }
+
+  fruits(): Category {
+    const f = this.f;
+    const heaven = Math.min(f.skill("Fruity Heaven"), 3);
+    const seedMul = heaven ? [0.9, 0.85, 0.8][heaven - 1] : 1;
+    // Removing a finished tree: Fruity Woody adds wood, No Axe No Worries takes some.
+    const woody = Math.min(f.skill("Fruity Woody"), 3), noAxe = Math.min(f.skill("No Axe No Worries"), 3);
+    const woodPerRemoval = (woody ? [1, 1.25, 1.5][woody - 1] : 0) - (noAxe ? [1, 0.9, 0.8][noAxe - 1] : 0);
+    const lines: Line[] = [];
+    for (const [fruit, d] of Object.entries(FRUITS)) {
+      const n = this.rate(`${fruit} Harvested`);
+      if (!n) continue;
+      const qty = n * this.fruitYield(fruit);
+      const planted = this.rate(`${d.seed} Planted`) || this.rate(`${d.seed} Bought`);
+      const seeds = (this.rate(`${d.seed} Bought`) || planted) * this.coins(d.price * seedMul);
+      lines.push(line(fruit, fruit, qty * this.price(fruit) + planted * woodPerRemoval * this.price("Wood"), seeds, qty));
+    }
+    return sumCat("fruits", lines);
   }
 
   // ---------- Wood (events/landExpansion/chop.ts → getWoodDropAmount, getRequiredAxeAmount, getReward) ----------
@@ -444,7 +488,7 @@ export class Engine {
   }
 
   report(): Report {
-    const categories = { crops: this.crops(), animals: this.animals(), greenhouse: this.greenhouse(), minerals: this.minerals(), wood: this.wood() };
+    const categories = { crops: this.crops(), animals: this.animals(), greenhouse: this.greenhouse(), minerals: this.minerals(), wood: this.wood(), fruits: this.fruits() };
     const cats = Object.values(categories);
     return {
       categories,

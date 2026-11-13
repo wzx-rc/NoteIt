@@ -12,6 +12,7 @@ export const CATS: CatMeta[] = [
   { key: "greenhouse", name: "Serre", icon: "rice", color: "var(--glass)" },
   { key: "minerals", name: "Minerais", icon: "gold", color: "var(--ore)" },
   { key: "wood", name: "Bois", icon: "wood", color: "var(--wood)" },
+  { key: "fruits", name: "Fruits", icon: "fruit", color: "var(--fruit)" },
 ];
 
 /** Everything the dashboard shows, in $ per day. */
@@ -53,6 +54,7 @@ function subtitles(farm: Farm, r: Report, plots: number): Record<CategoryKey, st
     crops: crops.length ? `surtout le ${frCrop(crops[0].label)}${plots ? `, ${plots} parcelles` : ""}` : "aucune récolte mesurée",
     animals: ani.length ? `${herd(typeOf[ani[0].label] ?? "")} ${ani[0].label.toLowerCase()} font presque tout` : "aucun animal nourri",
     greenhouse: gh.length ? gh.join(", ") : "rien récolté",
+    fruits: top("fruits").length ? top("fruits").slice(0, 3).map((l) => l.label.toLowerCase()).join(", ") : "aucune récolte mesurée",
     wood: top("wood").length ? `${top("wood").map((l) => l.label.toLowerCase()).join(", ")}` : "aucune coupe mesurée",
     minerals: [win.length ? `${win.map((w) => (w === "or" ? "l'or" : `le ${w}`)).join(" et ")} ${win.length > 1 ? "tirent" : "tire"}` : "",
       lose.length ? `${lose.map((w) => (w === "pierre" ? "la pierre" : `le ${w}`)).join(" et ")} ${lose.length > 1 ? "perdent" : "perd"}` : ""]

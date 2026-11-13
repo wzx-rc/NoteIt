@@ -38,6 +38,7 @@ export const SHARDS_PER_CRYSTAL = 3;
 const ENGINE_SKILLS = new Set<string>([
   ...Object.keys(SKILL_RANKS), ...Object.keys(SPLIT_SKILLS),
   "Double Bale", "Bale Economy", "Glass Room", "Greenhouse Gamble", "Seeded Bounty", "Seedy Business", "Frugal Miner",
+  "Generous Orchard", "Loyal Macaw", "Fruitful Fumble", "Zesty Vibes", "Fruity Heaven", "Fruity Woody", "No Axe No Worries",
   "Tough Tree", "Lumberjack's Extra", "Money Tree", "Feller's Discount",
   "Horror Mike", "Laurie's Gains", "Greasy Plants", "Slick Saver", "Oil Extraction", "Oil Rig", "Oil Gadget", "Efficiency Extension Module",
 ]);
@@ -65,6 +66,11 @@ const SPEED: Record<string, Target> = {
   "Tree Charge": { cat: "wood" },
   // A rank % chance that the tree is back at once: average time × (1 − chance).
   "Tree Turnaround": { cat: "wood" },
+};
+/** Speed on some lines, slowdown on the others (fruitPlanted.ts: Long and Short Pickings). */
+const SPLIT_SPEED: Record<string, { cat: CategoryKey; on: (k: string) => boolean; buff: number[]; debuff: number[] }> = {
+  "Long Pickings": { cat: "fruits", on: only("Apple", "Banana"), buff: [0.75, 0.65, 0.55], debuff: [1.1, 1.125, 1.15] },
+  "Short Pickings": { cat: "fruits", on: only("Blueberry", "Orange"), buff: [0.75, 0.65, 0.55], debuff: [1.1, 1.125, 1.15] },
 };
 const CHANCE_SPEED: Record<string, number[]> = { "Tree Turnaround": [0.15, 0.25, 0.35] };
 
@@ -156,6 +162,12 @@ export function valueSkills(farm: Farm, rates: Rates, market: Market): SkillValu
       const n0 = targetNet(base, t), m0 = current ? speedAt(def, current) : 1;
       const value = levels.map((r) => n0 * m0 * (1 / speedAt(def, r) - 1));
       return { def, current, value, how: "speed" as const, cat: t.cat };
+    }
+    const sp = SPLIT_SPEED[def.name];
+    if (sp) {
+      const m = (k: string, r: number) => (r ? (sp.on(k) ? sp.buff : sp.debuff)[r - 1] : 1);
+      const value = levels.map((r) => base.categories[sp.cat].lines.reduce((a, l) => a + l.net * m(l.key, current) * (1 / m(l.key, r) - 1), 0));
+      return { def, current, value, how: "speed" as const, cat: sp.cat };
     }
     const pw = POWER[def.name];
     if (pw) {
