@@ -347,8 +347,67 @@ function taskRow(t, o = {}) {
     <button class="tb" data-edit="${t.id}" aria-label="Modifier" style="height:28px;min-width:28px;padding:0">${icon('chev', 'sm')}</button>
   </div>${open}</div>`;
 }
+/* 0.3.14: CONTAINERS, plain titles that hold tasks (with their sub-tasks) inside a space's task list. They live on the
+   space (sp.boxes = [{id, t, fold}], synced with it); a task inside one has t.box = its id. Loose tasks come first, then
+   each container in its order, then a « + Container » line. Drag a task into or out of a container. */
+const boxesOf = sp => sp ? (Array.isArray(sp.boxes) ? sp.boxes : (sp.boxes = [])) : [];
+const tboxOf = (sp, id) => boxesOf(sp).find(b => b.id === id);
+function taskListInner(open, sp, empty) {
+  const boxes = sp ? boxesOf(sp) : [], ids = new Set(boxes.map(b => b.id));
+  const rows = l => l.map(t => taskRow(t, { drag: true })).join('');
+  const loose = open.filter(t => !t.box || !ids.has(t.box));
+  const box = b => { const l = open.filter(t => t.box === b.id), n = l.length;
+    return `<section class="tbox${b.fold ? ' fold' : ''}" data-boxid="${b.id}"><div class="tbox-h">
+      <button class="tbox-f" data-boxfold="${b.id}" aria-expanded="${!b.fold}" aria-label="${b.fold ? 'Déplier' : 'Replier'}" title="${b.fold ? 'Déplier' : 'Replier'}">${icon('chev', 'sm')}</button>
+      <input class="tbox-t" data-boxname="${b.id}" value="${esc(b.t)}" aria-label="Nom du container" spellcheck="false" autocomplete="off"><small>${n || ''}</small>
+      <button class="tb" data-boxadd="${b.id}" aria-label="Ajouter une tâche dans ce container" title="Ajouter une tâche">${icon('plus', 'sm')}</button>
+      <button class="tb" data-boxmenu="${b.id}" aria-label="Options du container" title="Options">${icon('dots', 'sm')}</button></div>
+      <div class="tbox-l" data-tlist data-sp="${sp.id}" data-box="${b.id}">${b.fold ? '' : rows(l)}</div></section>`; };
+  return (rows(loose) || (boxes.length ? '' : empty || '')) + boxes.map(box).join('') + (sp ? `<button class="tbox-new" data-newbox="${sp.id}">${icon('plus', 'sm')}Container</button>` : '');
+}
+/* the container's own add line: Entrée adds and stays open for the next one, Échap closes */
+function boxAddLine(root, spId, id, rerender) {
+  const sp = spaceById(spId), b = tboxOf(sp, id), sec = root.querySelector(`.tbox[data-boxid="${id}"]`); if (!b || !sec) return;
+  if (b.fold) { b.fold = false; save(); rerender(); setTimeout(() => boxAddLine(root, spId, id, rerender), 30); return; }
+  let lab = sec.querySelector('.tbox-in');
+  if (!lab) { lab = document.createElement('label'); lab.className = 'qadd tbox-in'; lab.innerHTML = `${icon('plus')}<input placeholder="Nouvelle tâche dans ${esc(b.t)}…" autocomplete="off">`; sec.querySelector('.tbox-l').prepend(lab); }
+  const inp = lab.querySelector('input'); inp.focus();
+  inp.onkeydown = e => {
+    if (e.key === 'Escape') { lab.remove(); return; }
+    if (e.key !== 'Enter' || !inp.value.trim()) return;
+    e.preventDefault(); const t = newTask({ t: inp.value, sp: spId }); t.box = id; save();
+    smoothTasks(rerender); setTimeout(() => { const r2 = document.querySelector(`.tbox[data-boxid="${id}"]`); const host = r2 && r2.closest('[data-tlist], .tlist'); boxAddLine(host ? host.parentElement : document, spId, id, rerender); }, 40);
+  };
+  inp.onpaste = e => { const m = pasteTasks(e, inp, spId, false, id); if (m) { smoothTasks(rerender); } };
+  inp.onblur = () => setTimeout(() => { if (!inp.value.trim() && lab.isConnected && !lab.contains(document.activeElement)) lab.remove(); }, 150);
+}
 function bindTaskList(root, rerender) {
   const re = () => smoothTasks(rerender);
+  /* containers: fold, add, menu, new, rename */
+  root.addEventListener('click', e => {
+    const spOf = el => { const s = el.closest('[data-sp]'); return s && spaceById(s.dataset.sp); };
+    const nb = e.target.closest('[data-newbox]'); if (nb) { const sp = spaceById(nb.dataset.newbox); if (!sp) return; const b = { id: uid('b'), t: 'Nouveau container' }; boxesOf(sp).push(b); save(); rerender(); setTimeout(() => { const i = document.querySelector(`[data-boxname="${b.id}"]`); if (i) { i.focus(); i.select(); } }, 40); return; }
+    const fd = e.target.closest('[data-boxfold]'); if (fd) { const sec = fd.closest('.tbox'), sp = spOf(sec.querySelector('.tbox-l')), b = tboxOf(sp, fd.dataset.boxfold); if (b) { b.fold = !b.fold; save(); re(); } return; }
+    const ad = e.target.closest('[data-boxadd]'); if (ad) { const sp = spOf(ad.closest('.tbox').querySelector('.tbox-l')); if (sp) boxAddLine(root, sp.id, ad.dataset.boxadd, rerender); return; }
+    const mn = e.target.closest('[data-boxmenu]'); if (mn) {
+      const sp = spOf(mn.closest('.tbox').querySelector('.tbox-l')), L = boxesOf(sp), b = tboxOf(sp, mn.dataset.boxmenu); if (!b) return;
+      const i = L.indexOf(b), mv = d => { L.splice(i, 1); L.splice(i + d, 0, b); save(); re(); };
+      openPop(mn, [
+        { label: 'Renommer', icon: 'pencil', run: () => { const x = root.querySelector(`[data-boxname="${b.id}"]`); if (x) { x.focus(); x.select(); } } },
+        { label: 'Ajouter une tâche', icon: 'plus', run: () => boxAddLine(root, sp.id, b.id, rerender) },
+        ...(i > 0 ? [{ label: 'Monter', icon: 'up', run: () => mv(-1) }] : []),
+        ...(i < L.length - 1 ? [{ label: 'Descendre', icon: 'down', run: () => mv(1) }] : []),
+        '-',
+        { label: 'Supprimer le container (les tâches restent)', icon: 'trash', danger: true, run: () => {
+          const ins = S.tasks.filter(t => t.box === b.id); L.splice(L.indexOf(b), 1); ins.forEach(t => { delete t.box; }); save(); re();
+          toast(`Container « ${b.t} » supprimé`, { label: 'Annuler', run: () => { L.splice(Math.min(i, L.length), 0, b); ins.forEach(t => { t.box = b.id; }); save(); re(); } }); } }
+      ], { align: 'right' });
+      return;
+    }
+  });
+  root.addEventListener('input', e => { const i = e.target.closest && e.target.closest('[data-boxname]'); if (!i) return; const sp = (() => { const s = i.closest('.tbox').querySelector('[data-sp]'); return s && spaceById(s.dataset.sp); })(); const b = tboxOf(sp, i.dataset.boxname); if (b && i.value.trim()) { b.t = i.value.trim().slice(0, 120); save(); } });
+  root.addEventListener('keydown', e => { const i = e.target.closest && e.target.closest('[data-boxname]'); if (i && (e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); i.blur(); } });
+  root.addEventListener('focusout', e => { const i = e.target.closest && e.target.closest('[data-boxname]'); if (i && !i.value.trim()) { const s = i.closest('.tbox').querySelector('[data-sp]'), b = tboxOf(s && spaceById(s.dataset.sp), i.dataset.boxname); if (b) i.value = b.t; } });
   root.addEventListener('click', e => {
     const dn = e.target.closest('[data-done]'); if (dn) {
       const t = taskById(dn.dataset.done); if (!t) return;
@@ -394,6 +453,8 @@ function dropTask(el, list) {
   const t = taskById(el.dataset.tw); if (!t) return;
   const blk = list.closest('[data-sp]'), sp = blk && spaceById(blk.dataset.sp) ? blk.dataset.sp : t.sp, moved = sp !== t.sp;
   t.sp = sp;
+  const bx = list.closest('[data-box]'), bid = bx && tboxOf(spaceById(sp), bx.dataset.box) ? bx.dataset.box : '';
+  if (bid) t.box = bid; else delete t.box;
   // the new position among every open task of the space, the hidden ones (other filter) keep theirs
   const vis = [...list.children].filter(c => c.matches('.tw')).map(c => c.dataset.tw), i = vis.indexOf(t.id);
   const all = S.tasks.filter(x => x.sp === t.sp && !x.done && x !== t).sort(taskSort);
@@ -633,23 +694,30 @@ function parseTaskPaste(text) {
     const r = rows[i];
     if (!r.box) {
       // a title only when boxed lines follow it; otherwise a plain line is a task of its own
-      if (rows[i + 1] && rows[i + 1].box) { g = { t: r.t, sub: [], notes: [] }; out.push(g); } else { g = null; out.push({ t: r.t, note: '' }); }
+      if (rows[i + 1] && rows[i + 1].box) { g = { t: r.t, sub: [], notes: [], items: [] }; out.push(g); } else { g = null; out.push({ t: r.t, note: '' }); }
       continue;
     }
-    if (g) { g.sub.push([r.t, r.done]); if (r.d) g.notes.push(`• ${r.t} — ${r.d}`); }
+    if (g) { g.sub.push([r.t, r.done]); g.items.push({ t: r.t, note: r.d, done: r.done }); if (r.d) g.notes.push(`• ${r.t} — ${r.d}`); }
     else out.push({ t: r.t, note: r.d, done: r.done });
   }
   for (const x of out) if (x.sub) { x.note = x.notes.join('\n'); delete x.notes; }
   return out;
 }
-function pasteTasks(e, input, sp, star) {
+/* 0.3.14: in a space, each titled group becomes a CONTAINER holding one task per line (detail = note); in a container's
+   own add line (inBox), a group becomes one task with its lines as sub-tasks */
+function pasteTasks(e, input, sp, star, inBox) {
   const list = parseTaskPaste(e.clipboardData && e.clipboardData.getData('text/plain'));
   if (!list) return null;
   e.preventDefault();
-  const made = list.map(x => { const t = newTask({ t: x.t, sp, star: !!star, sub: x.sub, note: x.note || '' }); if (x.done) t.done = true; if (x.sub) t.open = true; return t; });
+  const spc = spaceById(sp || ctxSpace()) || spaceById(DEF_SPACE), made = []; let nb = 0;
+  const mk = (x, box) => { const t = newTask({ t: x.t, sp: spc.id, star: !!star, sub: x.sub, note: x.note || '' }); if (x.done) t.done = true; if (x.sub) t.open = true; if (box) t.box = box; made.push(t); return t; };
+  for (const x of list) {
+    if (x.items && !inBox) { const b = { id: uid('b'), t: x.t }; boxesOf(spc).push(b); nb++; x.items.forEach(it => mk(it, b.id)); }
+    else mk(x.items ? { t: x.t, sub: x.sub, note: x.note } : x, inBox);
+  }
   save(); input.value = '';
   const n = made.length, ns = made.reduce((k, t) => k + subsOf(t).length, 0);
-  toast(n === 1 && ns ? `« ${made[0].t} » ajoutée avec ${ns} sous-tâche${ns > 1 ? 's' : ''}` : `${n} tâche${n > 1 ? 's' : ''} ajoutée${n > 1 ? 's' : ''}${ns ? ` (${ns} sous-tâche${ns > 1 ? 's' : ''})` : ''}`);
+  toast(nb ? `${nb} container${nb > 1 ? 's' : ''} et ${n} tâche${n > 1 ? 's' : ''} ajoutés` : n === 1 && ns ? `« ${made[0].t} » ajoutée avec ${ns} sous-tâche${ns > 1 ? 's' : ''}` : `${n} tâche${n > 1 ? 's' : ''} ajoutée${n > 1 ? 's' : ''}${ns ? ` (${ns} sous-tâche${ns > 1 ? 's' : ''})` : ''}`);
   return made;
 }
 function bindQuickAdd(input, after) {
@@ -822,9 +890,9 @@ const allFilter = () => { const f = S.prefs.allF || (S.prefs.allF = { k: 'all', 
 function renderAllTasks(v) {
   const open = S.tasks.filter(t => !t.done), done = S.tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
   const sps = [spaceById(DEF_SPACE), ...userSpaces()].filter(Boolean);
-  const grp = sp => { const l = open.filter(t => t.sp === sp.id).sort(taskSort); if (!l.length && sp.id !== DEF_SPACE) return '';
+  const grp = sp => { const l = open.filter(t => t.sp === sp.id).sort(taskSort); if (!l.length && !boxesOf(sp).length && sp.id !== DEF_SPACE) return '';
     return `<section class="tgroup" data-sp="${sp.id}"><h3><button class="tg-h" data-go="space:${sp.id}">${sp.id === DEF_SPACE ? icon('inbox', 'sm') : `<span class="sdot" style="background:${sp.color}"></span>`}${esc(sp.name)}</button><small>${l.length || ''}</small></h3>
-      <div class="tlist tl-light">${l.map(t => taskRow(t, { drag: true })).join('') || '<div class="tempty">Rien ici. Les tâches écrites ci-dessus arrivent dans ce bloc.</div>'}</div></section>`; };
+      <div class="tlist tl-light">${taskListInner(l, sp, '<div class="tempty">Rien ici. Les tâches écrites ci-dessus arrivent dans ce bloc.</div>')}</div></section>`; };
   v.innerHTML = `<div class="page tpage" style="max-width:760px"><div class="ph"><div><h1>Tâches</h1><div class="sub">${open.length} à faire dans tous les espaces${done.length ? ` · ${done.length} terminée${done.length > 1 ? 's' : ''}` : ''}</div></div></div>
     ${quickAddBox('tAdd', 'Ajouter une tâche… (elle ira dans Non classées)', DEF_SPACE)}
     <div id="tGroups" class="tgroups">${sps.map(grp).join('')}</div>
@@ -848,7 +916,7 @@ function renderSpace(v) {
       <div class="acts"><button class="btn" data-new="note">${icon('note')}Note</button><button class="btn pri" data-new="board">${icon('board')}Board</button></div></div>
     <div class="sp-grid">
       <section class="card sp-tasks"><h2>${icon('tasks')}Tâches <span class="ct">${open.length || ''}</span><button class="more" data-go="tasks">Tout voir</button></h2>${quickAddBox('sAdd', 'Ajouter une tâche…', sp.id)}
-        <div id="sTasks" class="tl-light" data-tlist data-sp="${sp.id}">${open.map(t => taskRow(t, { drag: true })).join('') || '<div class="empty sm">Rien à faire ici pour le moment.</div>'}</div>
+        <div id="sTasks" class="tl-light" data-tlist data-sp="${sp.id}">${taskListInner(open, sp, '<div class="empty sm">Rien à faire ici pour le moment.</div>')}</div>
         ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div id="sDone">${done.map(t => taskRow(t)).join('')}</div></details>` : ''}</section>
       <section class="card sp-mood" id="spMood"><h2>${icon('image')}Moodboard <span class="ct">${nm || ''}</span><button class="more" data-go="mood">Ouvrir</button></h2>${Mood.preview(sp)}</section>
     </div>
@@ -875,7 +943,7 @@ function renderTasks(v) {
   const sp = curSpace(), open = S.tasks.filter(t => t.sp === sp.id && !t.done).sort(taskSort), done = S.tasks.filter(t => t.sp === sp.id && t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
   v.innerHTML = `<div class="page tpage" style="max-width:760px"><div class="ph"><div><h1>Tâches</h1><div class="sub">${esc(sp.name)} · ${open.length} à faire${done.length ? ` · ${done.length} terminée${done.length > 1 ? 's' : ''}` : ''}</div></div></div>
     ${quickAddBox('tAdd', 'Ajouter une tâche…', sp.id)}
-    <div class="tlist tl-light" data-tlist data-sp="${sp.id}">${open.map(t => taskRow(t, { drag: true })).join('') || '<div class="tempty">Aucune tâche. Écrivez-en une ci-dessus puis Entrée.</div>'}</div>
+    <div class="tlist tl-light" data-tlist data-sp="${sp.id}">${taskListInner(open, sp, '<div class="tempty">Aucune tâche. Écrivez-en une ci-dessus puis Entrée.</div>')}</div>
     ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div class="tlist">${done.slice(0, 80).map(t => taskRow(t)).join('')}</div></details>` : ''}
   </div>`;
   bindTaskList(v, () => go('tasks'));

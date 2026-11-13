@@ -3487,3 +3487,24 @@ body.hs-grabbing, body.hs-grabbing * { cursor: grabbing !important; user-select:
 .pp2-bc.add .pp2-bth { display: flex; align-items: center; justify-content: center; border: 1.5px dashed var(--line-2); border-radius: 12px; background: none; transition: border-color .15s, color .15s, background .15s; }
 .pp2-bc.add .pp2-bth .i { width: 22px; height: 22px; stroke-width: 1.4; margin: 0; }
 .pp2-bc.add:hover .pp2-bth { border-color: var(--ink-3); color: var(--ink); background: color-mix(in oklab, var(--sunk) 60%, transparent); transform: none; }
+
+/* 0.3.14: task CONTAINERS, a title that holds tasks */
+.tbox { margin: 10px 0 4px; }
+.tbox-h { display: flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 2px 4px; border-bottom: 1px solid var(--line); }
+.tbox-f { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink-3); cursor: pointer; flex: none; }
+.tbox-f .i { transform: rotate(90deg); transition: transform .15s; }
+.tbox.fold .tbox-f .i { transform: none; }
+.tbox-f:hover { color: var(--ink); background: var(--sunk); }
+.tbox-t { flex: 1; min-width: 0; padding: 2px 4px; border: 1px solid transparent; border-radius: 6px; background: none; color: var(--ink); font: 600 13px/1.3 var(--font-ui, inherit); letter-spacing: .02em; text-transform: uppercase; outline: none; }
+.tbox-t:hover { border-color: var(--line); }
+.tbox-t:focus { border-color: var(--line-2); text-transform: none; letter-spacing: 0; background: var(--card); }
+.tbox-h small { color: var(--ink-3); font-size: 11.5px; min-width: 14px; text-align: right; }
+.tbox-h .tb { opacity: .45; }
+.tbox-h:hover .tb, .tbox-h .tb:focus-visible { opacity: 1; }
+.tbox-l { min-height: 10px; padding: 2px 0 0 10px; }
+.tbox.fold .tbox-l { min-height: 4px; padding-top: 0; }
+.tbox-in { margin: 4px 0 2px; }
+.tbox-new { display: flex; align-items: center; gap: 6px; margin: 8px 0 2px; padding: 4px 6px; border: 0; border-radius: 7px; background: none; color: var(--ink-3); font-size: 12px; cursor: pointer; }
+.tbox-new:hover { color: var(--ink); background: var(--sunk); }
+.tbox-new .i { width: 13px; height: 13px; }
+body.sorting .tbox-l { min-height: 34px; border-radius: 8px; box-shadow: inset 0 0 0 1px dashed var(--line); }

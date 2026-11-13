@@ -178,7 +178,7 @@ function pageHead(el, d) {
   const slot = (id, html, bind) => { const old = $('#' + id, wrap); if (!old) return; const n = old.cloneNode(false); n.innerHTML = html; old.replaceWith(n); if (bind) bind(n); };
   const tasks = S.tasks.filter(t => t.sp === sp.id), open = tasks.filter(t => !t.done).sort(taskSort), done = tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
   slot('pptk', `<div class="pp2-h">${PP_GRIP}Tâches <span class="ct">${open.length || ''}</span><button class="more" data-go="tasks" data-pcur>Tout voir</button></div>${quickAddBox('pAdd', 'Ajouter une tâche…', sp.id)}
-      <div id="pTasks" class="tl-light" data-tlist data-sp="${sp.id}">${open.map(t => taskRow(t, { drag: true })).join('') || '<div class="empty sm">Rien à faire ici pour le moment.</div>'}</div>
+      <div id="pTasks" class="tl-light" data-tlist data-sp="${sp.id}">${taskListInner(open, sp, '<div class="empty sm">Rien à faire ici pour le moment.</div>')}</div>
       ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div>${done.map(t => taskRow(t)).join('')}</div></details>` : ''}`,
     n => { bindTaskList(n, refreshPageHead); bindQuickAdd($('#pAdd', n), () => { refreshTaskViews(); refreshPageHead(); }); n.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) { setCurSpace(sp.id); go(g.dataset.go); } }); });
   if (keepAdd) { const i = $('#pAdd', wrap); if (i) i.focus({ preventScroll: true }); }
