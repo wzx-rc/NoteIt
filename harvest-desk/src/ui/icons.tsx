@@ -112,6 +112,9 @@ const ICONS: Record<string, ReactElement> = {
       <path d="M8 19c2 1.5 4 1.5 6 0" stroke="#55a99d" strokeWidth="1.6" fill="none" strokeLinecap="round" />
     </g>
   ),
+  honey: (
+    <path d="M12 3l7 4v8l-7 4-7-4V7z" fill="#e8b93c" stroke="#a87a1c" strokeWidth="1.4" strokeLinejoin="round" />
+  ),
   fruit: (
     <g><circle cx="12" cy="14" r="7" fill="#d9645a" /><path d="M12 7c0-2 1-3.5 3-4" fill="none" stroke="#5f8f4e" strokeWidth="1.8" strokeLinecap="round" /></g>
   ),

@@ -38,6 +38,7 @@ export const SHARDS_PER_CRYSTAL = 3;
 const ENGINE_SKILLS = new Set<string>([
   ...Object.keys(SKILL_RANKS), ...Object.keys(SPLIT_SKILLS),
   "Double Bale", "Bale Economy", "Glass Room", "Greenhouse Gamble", "Seeded Bounty", "Seedy Business", "Frugal Miner",
+  "Sweet Bonus", "Hyper Bees",
   "Generous Orchard", "Loyal Macaw", "Fruitful Fumble", "Zesty Vibes", "Fruity Heaven", "Fruity Woody", "No Axe No Worries",
   "Tough Tree", "Lumberjack's Extra", "Money Tree", "Feller's Discount",
   "Horror Mike", "Laurie's Gains", "Greasy Plants", "Slick Saver", "Oil Extraction", "Oil Rig", "Oil Gadget", "Efficiency Extension Module",

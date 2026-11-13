@@ -18,7 +18,7 @@ export interface Market {
 }
 
 export interface Line { key: string; label: string; qty?: number; gross: number; cost: number; net: number }
-export type CategoryKey = "crops" | "animals" | "greenhouse" | "minerals" | "wood" | "fruits";
+export type CategoryKey = "crops" | "animals" | "greenhouse" | "minerals" | "wood" | "fruits" | "honey";
 export interface Category { key: CategoryKey; gross: number; cost: number; net: number; lines: Line[] }
 export interface Report { categories: Record<CategoryKey, Category>; net: number; gross: number; cost: number }
 
@@ -34,8 +34,11 @@ const FREE_FEED: Record<string, string> = { Sheep: "Golden Sheep", Cow: "Golden 
 
 export class Engine {
   readonly f: FarmView;
+  /** The farm as it is, without scenario extras: measured activity reflects it. */
+  private real: FarmView;
   constructor(farm: Farm, private rates: Rates, private market: Market, extra: Extra = {}) {
     this.f = new FarmView(farm, extra);
+    this.real = new FarmView(farm);
   }
 
   price(item: string): number { return this.market.prices[item] ?? 0; }
@@ -210,6 +213,23 @@ export class Engine {
       lines.push(line(crop, crop, qty * this.price(crop), n * seeds * this.seedCost(crop) + oil, qty));
     }
     return sumCat("greenhouse", lines);
+  }
+
+  // ---------- Honey (harvestBeehive.ts → getHoneyMultiplier, updateBeehives.ts) ----------
+
+  private honeyFactors(f: FarmView) {
+    const r = (n: string, t: number[]) => { const l = Math.min(f.skill(n), 3); return l ? t[l - 1] : 0; };
+    const mult = 1 + (f.wears("Bee Suit") ? 0.1 : 0) + (f.wears("Honeycomb Shield") ? 1 : 0) + r("Sweet Bonus", [0.1, 0.15, 0.2]) + (f.has("King of Bears") ? 0.25 : 0);
+    const speed = 1 + r("Hyper Bees", [0.1, 0.15, 0.2]);
+    return mult * speed;
+  }
+
+  honey(): Category {
+    const measured = this.rate("Honey Harvested");
+    if (!measured) return sumCat("honey", []);
+    // The measured honey already carries today's boosts: scale it by the change in multiplier and hive speed.
+    const qty = (measured * this.honeyFactors(this.f)) / this.honeyFactors(this.real);
+    return sumCat("honey", [line("Honey", "Miel", qty * this.price("Honey"), 0, qty)]);
   }
 
   // ---------- Fruit patches (fruitHarvested.ts → getFruitYield, seedBought.ts, fruitTreeRemoved.ts) ----------
@@ -488,7 +508,7 @@ export class Engine {
   }
 
   report(): Report {
-    const categories = { crops: this.crops(), animals: this.animals(), greenhouse: this.greenhouse(), minerals: this.minerals(), wood: this.wood(), fruits: this.fruits() };
+    const categories = { crops: this.crops(), animals: this.animals(), greenhouse: this.greenhouse(), minerals: this.minerals(), wood: this.wood(), fruits: this.fruits(), honey: this.honey() };
     const cats = Object.values(categories);
     return {
       categories,

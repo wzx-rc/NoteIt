@@ -13,6 +13,7 @@ export const CATS: CatMeta[] = [
   { key: "minerals", name: "Minerais", icon: "gold", color: "var(--ore)" },
   { key: "wood", name: "Bois", icon: "wood", color: "var(--wood)" },
   { key: "fruits", name: "Fruits", icon: "fruit", color: "var(--fruit)" },
+  { key: "honey", name: "Miel", icon: "honey", color: "var(--honey)" },
 ];
 
 /** Everything the dashboard shows, in $ per day. */
@@ -54,6 +55,7 @@ function subtitles(farm: Farm, r: Report, plots: number): Record<CategoryKey, st
     crops: crops.length ? `surtout le ${frCrop(crops[0].label)}${plots ? `, ${plots} parcelles` : ""}` : "aucune récolte mesurée",
     animals: ani.length ? `${herd(typeOf[ani[0].label] ?? "")} ${ani[0].label.toLowerCase()} font presque tout` : "aucun animal nourri",
     greenhouse: gh.length ? gh.join(", ") : "rien récolté",
+    honey: top("honey").length ? "ruches" : "aucun miel mesuré",
     fruits: top("fruits").length ? top("fruits").slice(0, 3).map((l) => l.label.toLowerCase()).join(", ") : "aucune récolte mesurée",
     wood: top("wood").length ? `${top("wood").map((l) => l.label.toLowerCase()).join(", ")}` : "aucune coupe mesurée",
     minerals: [win.length ? `${win.map((w) => (w === "or" ? "l'or" : `le ${w}`)).join(" et ")} ${win.length > 1 ? "tirent" : "tire"}` : "",
