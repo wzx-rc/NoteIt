@@ -112,7 +112,7 @@ export function SkillsView({ state }: { state: AppState }) {
           <p className="hint">
             {mode === "topup"
               ? `Où mettre tes ${free} points libres, sans rien retirer. Classé par gain.`
-              : "Ce que l'arbre idéal change par rapport au tien. Les skills que l'app ne sait pas chiffrer (pêche, cuisine, machines…) restent comme ils sont."}
+              : "Ce que l'arbre idéal change par rapport au tien. Les skills que l'app ne sait pas chiffrer (pêche, cuisine, grotte, vieillissement…) restent comme ils sont."}
           </p>
           <ul className="moves">
             {moves.map((mv) => <MoveRow key={mv.v.def.name} mv={mv} rate={rate} />)}
@@ -136,8 +136,8 @@ export function SkillsView({ state }: { state: AppState }) {
           </div>
           <p className="foot">
             {mode === "reset"
-              ? `L'arbre idéal part de zéro et ne garde aucun de tes skills actuels. ${Math.max(0, a.earned - a.proposed.points)} points restent libres pour les skills sans effet chiffrable (pêche, cuisine, compost, machines…), à placer comme tu veux. Les power skills (Instant Growth, Greenhouse Guru, Barnyard Rouse) comptent un cycle complet gagné à chaque recharge.`
-              : `${unvalued} de tes skills n'ont pas d'effet chiffrable sur tes revenus (pêche, cuisine, compost, machines…) : l'app les garde.`}
+              ? `L'arbre idéal part de zéro et ne garde aucun de tes skills actuels. ${Math.max(0, a.earned - a.proposed.points)} points restent libres pour les skills sans effet chiffrable (pêche, cuisine, grotte, vieillissement…), à placer comme tu veux. Les power skills (Instant Growth, Greenhouse Guru, Barnyard Rouse, Tree Blitz) comptent un cycle complet gagné à chaque recharge.`
+              : `${unvalued} de tes skills n'ont pas d'effet chiffrable sur tes revenus (pêche, cuisine, grotte, vieillissement…) : l'app les garde.`}
             {" "}Les skills de vitesse supposent que tu récoltes dès que c'est prêt.
           </p>
         </section>
