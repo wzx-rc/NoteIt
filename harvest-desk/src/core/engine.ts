@@ -122,8 +122,14 @@ export class Engine {
       // The crop machine counts seeds in "Harvested" but nothing in "Planted".
       const plots = Math.min(this.rate(`${crop} Planted`), harvested);
       const machine = harvested - plots;
-      const qty = plots * this.cropYield(crop) + machine * this.cropYield(crop, false);
-      lines.push(line(crop, crop, qty * this.price(crop), harvested * this.seedCost(crop), qty));
+      if (plots > 0) {
+        const qty = plots * this.cropYield(crop);
+        lines.push(line(crop, crop, qty * this.price(crop), plots * this.seedCost(crop), qty));
+      }
+      if (machine > 0) {
+        const qty = machine * this.cropYield(crop, false);
+        lines.push(line(`machine:${crop}`, `${crop} (Crop Machine)`, qty * this.price(crop), machine * this.seedCost(crop), qty));
+      }
       machineSeeds += machine;
     }
     // The crop machine burns oil around the clock while it has seeds to grow.

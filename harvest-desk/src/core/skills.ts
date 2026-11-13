@@ -73,6 +73,38 @@ const SPLIT_SPEED: Record<string, { cat: CategoryKey; on: (k: string) => boolean
   "Long Pickings": { cat: "fruits", on: only("Apple", "Banana"), buff: [0.75, 0.65, 0.55], debuff: [1.1, 1.125, 1.15] },
   "Short Pickings": { cat: "fruits", on: only("Blueberry", "Orange"), buff: [0.75, 0.65, 0.55], debuff: [1.1, 1.125, 1.15] },
 };
+/** Crop machine (supplyCropMachine.ts): growth multipliers, and plots that grow at once. */
+const MACHINE_SPEED: Record<string, number[]> = { "Crop Processor Unit": [0.95, 0.9, 0.85], "Rapid Rig": [0.8, 0.7, 0.6] };
+const MACHINE_PLOTS = [5, 7, 10];
+const machineNet = (r: Report) => r.categories.crops.lines.filter((l) => l.key.startsWith("machine:")).reduce((a, l) => a + l.net, 0);
+
+/**
+ * Composters (startComposter.ts, composterDetails): each extra fertiliser is worth what it adds where it goes.
+ * Sprout Mix +0.2 crop, Rapid Root half a plot harvest (2× speed), Fruitful Blend +0.1 fruit.
+ */
+const COMPOST: Record<string, { bins: string[]; add: number[] }> = {
+  "Efficient Bin": { bins: ["Compost Bin"], add: [5, 7, 9] },
+  "Turbo Charged": { bins: ["Turbo Composter"], add: [5, 7, 9] },
+  "Premium Worms": { bins: ["Premium Composter"], add: [10, 15, 20] },
+  "Composting Revamp": { bins: ["Compost Bin", "Turbo Composter", "Premium Composter"], add: [5, 8, 10] },
+};
+const COMPOST_SPEED: Record<string, number[]> = { "Swift Decomposer": [0.9, 0.875, 0.85] };
+const BIN_BASE: Record<string, number> = { "Compost Bin": 10, "Turbo Composter": 3, "Premium Composter": 10 };
+
+function fertiliserValue(farm: Farm, rates: Rates, market: Market, r: Report, bin: string): number {
+  const plotLines = r.categories.crops.lines.filter((l) => !l.key.startsWith("machine") && CROPS[l.key]);
+  const planted = plotLines.reduce((a, l) => a + Math.min(rates[`${l.key} Planted`] ?? 0, rates[`${l.key} Harvested`] ?? 0), 0);
+  if (bin === "Compost Bin") {
+    // +0.2 of the crop you grow most.
+    const main = [...plotLines].sort((a, b) => b.net - a.net)[0];
+    return main ? 0.2 * (market.prices[main.key] ?? 0) : 0;
+  }
+  if (bin === "Premium Composter") return planted ? (0.5 * plotLines.reduce((a, l) => a + l.net, 0)) / planted : 0;
+  const fruits = r.categories.fruits.lines;
+  const main = [...fruits].sort((a, b) => b.gross - a.gross)[0];
+  return main ? 0.1 * (market.prices[main.key] ?? 0) : 0;
+}
+
 const CHANCE_SPEED: Record<string, number[]> = { "Tree Turnaround": [0.15, 0.25, 0.35] };
 
 /** Time multiplier at a rank: from the rank table, or the "x0.8 …" of the description. */
@@ -109,10 +141,8 @@ function cycleValue(farm: Farm, rates: Rates, r: Report, cat: CategoryKey): numb
     const plots = Object.keys(farm.crops ?? {}).length;
     let net = 0, harvests = 0;
     for (const l of r.categories.crops.lines) {
-      const h = rate(`${l.key} Harvested`);
-      if (!h) continue;
-      const p = Math.min(rate(`${l.key} Planted`), h);
-      net += l.net * (p / h); harvests += p;
+      if (l.key.startsWith("machine")) continue;
+      net += l.net; harvests += Math.min(rate(`${l.key} Planted`), rate(`${l.key} Harvested`));
     }
     return harvests ? (net * plots) / harvests : 0;
   }
@@ -169,6 +199,33 @@ export function valueSkills(farm: Farm, rates: Rates, market: Market): SkillValu
       const m = (k: string, r: number) => (r ? (sp.on(k) ? sp.buff : sp.debuff)[r - 1] : 1);
       const value = levels.map((r) => base.categories[sp.cat].lines.reduce((a, l) => a + l.net * m(l.key, current) * (1 / m(l.key, r) - 1), 0));
       return { def, current, value, how: "speed" as const, cat: sp.cat };
+    }
+    const ms = MACHINE_SPEED[def.name];
+    if (ms) {
+      // Faster growth on the machine lines, plus the extra oil the engine already charges.
+      const none = new Engine(farm, rates, market, { removeSkills: [def.name] }).report();
+      const mn = machineNet(base), m0 = current ? ms[current - 1] : 1;
+      const value = levels.map((r) => mn * m0 * (1 / ms[r - 1] - 1) + new Engine(farm, rates, market, { skills: { [def.name]: r } }).report().net - none.net);
+      return { def, current, value, how: "speed" as const, cat: "crops" as CategoryKey };
+    }
+    if (def.name === "Field Extension Module") {
+      const cap = 10 + (current ? MACHINE_PLOTS[current - 1] : 0);
+      return { def, current, value: levels.map((r) => (machineNet(base) * MACHINE_PLOTS[r - 1]) / cap), how: "speed" as const, cat: "crops" as CategoryKey };
+    }
+    const cp = COMPOST[def.name];
+    if (cp) {
+      const value = levels.map((r) => cp.bins.reduce((a, b) => a + (rates[`${b} Collected`] ?? 0) * cp.add[r - 1] * fertiliserValue(farm, rates, market, base, b), 0));
+      return { def, current, value, how: "engine" as const, cat: "crops" as CategoryKey };
+    }
+    const cs = COMPOST_SPEED[def.name];
+    if (cs) {
+      const m0 = current ? cs[current - 1] : 1;
+      const amount = (b: string) => BIN_BASE[b] + Object.entries(COMPOST).reduce((a, [n, c]) => {
+        const l = Math.min(Math.floor(owned[n] ?? 0), 3);
+        return a + (l && c.bins.includes(b) ? c.add[l - 1] : 0);
+      }, 0);
+      const perDay = Object.keys(BIN_BASE).reduce((a, b) => a + (rates[`${b} Collected`] ?? 0) * amount(b) * fertiliserValue(farm, rates, market, base, b), 0);
+      return { def, current, value: levels.map((r) => perDay * m0 * (1 / cs[r - 1] - 1)), how: "speed" as const, cat: "crops" as CategoryKey };
     }
     const pw = POWER[def.name];
     if (pw) {
