@@ -373,6 +373,18 @@ export function bestTree(values: SkillValue[], budget: number, keep: Record<stri
     points += best.cost;
     shards += best.sh;
   }
+  // Points left once nothing earns more: spend them on skills that cost nothing in income,
+  // XP trees first (faster levels mean more points), cheapest and lowest tier first.
+  const ORDER = ["Cooking", "Fishing", "Aging", "Cave", "Bees & Flowers", "Compost", "Fruit Patch", "Machinery", "Trees", "Crops", "Greenhouse", "Animals", "Mining"];
+  for (let guard = 0; guard < 500; guard++) {
+    const pick = values
+      .filter((v) => !(ranks[v.def.name] > 0) && valueAt(v, 1) >= -1e-9 && points + v.def.points <= budget
+        && unlockedTier(ranks, v.def.tree) >= v.def.tier)
+      .sort((a, b) => (ORDER.indexOf(a.def.tree) + 99) % 99 - (ORDER.indexOf(b.def.tree) + 99) % 99 || a.def.tier - b.def.tier || a.def.points - b.def.points)[0];
+    if (!pick) break;
+    ranks[pick.def.name] = 1;
+    points += pick.def.points;
+  }
   const value = Object.entries(ranks).reduce((a, [n, r]) => a + (byName.get(n) ? valueAt(byName.get(n)!, r) : 0), 0);
   return { ranks, points, shards, value };
 }

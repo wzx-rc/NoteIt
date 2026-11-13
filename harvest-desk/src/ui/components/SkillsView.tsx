@@ -136,7 +136,7 @@ export function SkillsView({ state }: { state: AppState }) {
           </div>
           <p className="foot">
             {mode === "reset"
-              ? `L'arbre idéal part de zéro et ne garde aucun de tes skills actuels. ${Math.max(0, a.earned - a.proposed.points)} points restent libres pour les skills sans effet chiffrable (pêche, cuisine, grotte, vieillissement…), à placer comme tu veux. Les power skills (Instant Growth, Greenhouse Guru, Barnyard Rouse, Tree Blitz) comptent un cycle complet gagné à chaque recharge.`
+              ? `L'arbre idéal part de zéro et ne garde aucun de tes skills actuels. Une fois les skills rentables pris, les points qui restent vont aux skills sans effet sur tes revenus (cuisine et pêche d'abord, pour l'XP)${a.earned - a.proposed.points > 0 ? ` ; ${a.earned - a.proposed.points} points restent libres` : ""}. Les power skills (Instant Growth, Greenhouse Guru, Barnyard Rouse, Tree Blitz) comptent un cycle complet gagné à chaque recharge.`
               : `${unvalued} de tes skills n'ont pas d'effet chiffrable sur tes revenus (pêche, cuisine, grotte, vieillissement…) : l'app les garde.`}
             {" "}Les skills de vitesse supposent que tu récoltes dès que c'est prêt.
           </p>
