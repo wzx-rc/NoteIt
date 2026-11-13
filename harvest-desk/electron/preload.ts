@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppState, HarvestBridge, WindowInfo } from "../src/shared/types";
+import type { AppState, HarvestBridge, WidgetConfig, WindowInfo } from "../src/shared/types";
 
 const bridge: HarvestBridge = {
   getState: () => ipcRenderer.invoke("state:get"),
@@ -24,6 +24,13 @@ const bridge: HarvestBridge = {
     return () => ipcRenderer.removeListener("window", h);
   },
   platform: process.platform,
+  getWidget: () => ipcRenderer.invoke("widget:get"),
+  setWidget: (patch) => ipcRenderer.invoke("widget:set", patch),
+  onWidget: (cb) => {
+    const h = (_e: unknown, w: WidgetConfig) => cb(w);
+    ipcRenderer.on("widget", h);
+    return () => ipcRenderer.removeListener("widget", h);
+  },
 };
 
 contextBridge.exposeInMainWorld("harvest", bridge);

@@ -1,6 +1,7 @@
 import type { Farm, Order } from "../core/farm";
 import type { Market } from "../core/engine";
 import type { LedgerEntry } from "../core/ledger";
+import type { TimerGroup } from "../core/timers";
 
 export interface Snapshot { at: number; farmActivity: Record<string, number> }
 
@@ -28,6 +29,17 @@ export interface ManualEntry { at: number; usd: number; label: string }
 
 export interface Settings { apiKey: string; farmId: string; apiBase: string }
 
+/** What the desktop widget shows, and whether it pings when a group is fully ready. */
+export interface WidgetConfig {
+  groups: TimerGroup[];
+  /** Groups that send a system notification when everything in them is ready. */
+  notify: TimerGroup[];
+  open: boolean;
+  /** 0.4 to 1. */
+  opacity: number;
+  onTop: boolean;
+}
+
 /** What the preload script exposes on window.harvest. */
 export interface HarvestBridge {
   getState(): Promise<AppState>;
@@ -45,9 +57,12 @@ export interface HarvestBridge {
   /** Opens the folder that holds the crash journal. */
   openLogs(): Promise<string>;
   /** Custom title bar buttons. */
-  windowAction(action: "minimize" | "maximize" | "close" | "pin"): void;
+  windowAction(action: "minimize" | "maximize" | "close" | "pin" | "app"): void;
   onWindow(cb: (w: WindowInfo) => void): () => void;
   platform: string;
+  getWidget(): Promise<WidgetConfig>;
+  setWidget(patch: Partial<WidgetConfig>): Promise<WidgetConfig>;
+  onWidget(cb: (w: WidgetConfig) => void): () => void;
 }
 
 export interface WindowInfo { maximized: boolean; pinned: boolean }

@@ -9,6 +9,7 @@ import "@fontsource/instrument-sans/500.css";
 import "@fontsource/instrument-sans/600.css";
 import "./styles.css";
 import { App } from "./App";
+import { Widget } from "./widget/Widget";
 
 /** Every renderer error goes to the crash journal kept by the desktop app. */
 const report = (where: string, e: unknown) => {
@@ -42,4 +43,6 @@ class Boundary extends Component<{ children: ReactNode }, { error?: Error }> {
   }
 }
 
-createRoot(document.getElementById("root")!).render(<StrictMode><Boundary><App /></Boundary></StrictMode>);
+const isWidget = location.hash === "#widget";
+if (isWidget) document.documentElement.classList.add("widget-mode");
+createRoot(document.getElementById("root")!).render(<StrictMode><Boundary>{isWidget ? <Widget /> : <App />}</Boundary></StrictMode>);

@@ -1,17 +1,20 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, shell } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme, Notification, screen, shell } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Market } from "../src/core/engine";
 import type { Farm, Order } from "../src/core/farm";
 import { type FarmMeta, ledgerFromMetas, metaOf, thinMetas } from "../src/core/ledger";
 import { parseMarket } from "../src/core/market";
-import type { AppState, ManualEntry, Settings, Snapshot } from "../src/shared/types";
+import type { AppState, ManualEntry, Settings, Snapshot, WidgetConfig } from "../src/shared/types";
+import { farmTimers, TIMER_GROUPS, type TimerGroup } from "../src/core/timers";
 import { SflClient, cleanKey, farmFromDump, trimActivity } from "./sfl";
 import { installCrashHandlers, log, logDir, setSecrets } from "./log";
 
 // Same data folder for `npm start` and the installed app (the installer may rename the app).
 app.setPath("userData", join(app.getPath("appData"), "harvest-desk"));
 installCrashHandlers();
+// Windows shows notifications only for an app with an id (the installer's appId).
+if (process.platform === "win32") app.setAppUserModelId("com.wzx.harvestdesk");
 
 const FARM_EVERY = 10 * 60_000;
 const MARKET_EVERY = 6 * 3_600_000;
@@ -61,7 +64,7 @@ let win: BrowserWindow | null = null;
 
 function publish(patch: Partial<AppState>) {
   state = { ...state, ...patch };
-  win?.webContents.send("state", state);
+  for (const w of BrowserWindow.getAllWindows()) w.webContents.send("state", state);
   return state;
 }
 
@@ -159,6 +162,95 @@ async function importHistory(): Promise<AppState> {
   }
 }
 
+// ---------- Desktop widget ----------
+
+type WidgetFile = WidgetConfig & { bounds?: { x: number; y: number; width: number; height: number } };
+const WIDGET_DEFAULT: WidgetFile = {
+  groups: ["crops", "greenhouse", "trees", "stone", "iron", "gold", "sheep", "cooking", "power"],
+  notify: [], open: false, opacity: 0.92, onTop: false,
+};
+let widgetCfg: WidgetFile = { ...WIDGET_DEFAULT, ...readJson<Partial<WidgetFile>>("widget.json", {}) };
+let widget: BrowserWindow | null = null;
+let quitting = false;
+
+const publicWidget = (): WidgetConfig => {
+  const { bounds: _b, ...rest } = widgetCfg;
+  return rest;
+};
+
+function saveWidget(patch: Partial<WidgetFile>) {
+  widgetCfg = { ...widgetCfg, ...patch };
+  writeJson("widget.json", widgetCfg);
+}
+
+function setWidget(patch: Partial<WidgetConfig>): WidgetConfig {
+  const clean: Partial<WidgetConfig> = {};
+  const known = new Set(TIMER_GROUPS.map((g) => g.key));
+  if (Array.isArray(patch.groups)) clean.groups = patch.groups.filter((g) => known.has(g));
+  if (Array.isArray(patch.notify)) clean.notify = patch.notify.filter((g) => known.has(g));
+  if (typeof patch.opacity === "number") clean.opacity = Math.min(1, Math.max(0.4, patch.opacity));
+  if (typeof patch.onTop === "boolean") clean.onTop = patch.onTop;
+  if (typeof patch.open === "boolean") clean.open = patch.open;
+  saveWidget(clean);
+  if (clean.open === true) openWidget();
+  if (clean.open === false) widget?.close();
+  if (clean.onTop !== undefined) widget?.setAlwaysOnTop(clean.onTop, "floating");
+  for (const w of BrowserWindow.getAllWindows()) w.webContents.send("widget", publicWidget());
+  return publicWidget();
+}
+
+/** Small frameless, see-through window for the desktop. Remembers where it was left. */
+function openWidget() {
+  if (widget) { widget.showInactive(); return; }
+  const area = screen.getPrimaryDisplay().workArea;
+  const b = widgetCfg.bounds ?? { width: 300, height: 440, x: area.x + area.width - 320, y: area.y + 20 };
+  widget = new BrowserWindow({
+    ...b, minWidth: 220, minHeight: 120,
+    frame: false, transparent: true, backgroundColor: "#00000000", hasShadow: false,
+    resizable: true, maximizable: false, fullscreenable: false, skipTaskbar: true,
+    alwaysOnTop: widgetCfg.onTop, title: "Harvest Desk widget", show: false,
+    webPreferences: { preload: join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false },
+  });
+  widget.once("ready-to-show", () => widget?.showInactive());
+  let t: NodeJS.Timeout | undefined;
+  const keep = () => { clearTimeout(t); t = setTimeout(() => widget && saveWidget({ bounds: widget.getBounds() }), 400); };
+  widget.on("move", keep);
+  widget.on("resize", keep);
+  widget.on("closed", () => {
+    widget = null;
+    if (!quitting) { saveWidget({ open: false }); for (const w of BrowserWindow.getAllWindows()) w.webContents.send("widget", publicWidget()); }
+  });
+  widget.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: "deny" }; });
+  if (process.env.VITE_DEV_SERVER_URL) widget.loadURL(process.env.VITE_DEV_SERVER_URL + "#widget");
+  else widget.loadFile(join(__dirname, "../dist/index.html"), { hash: "widget" });
+  saveWidget({ open: true });
+}
+
+/** A system notification when every timer of a followed group is done. Never for what was already done at launch. */
+const notified = new Map<TimerGroup, number>();
+const startedAt = Date.now();
+function checkNotifications() {
+  if (!state.farm || !widgetCfg.notify.length || !Notification.isSupported()) return;
+  const now = Date.now();
+  const timers = farmTimers(state.farm);
+  for (const key of widgetCfg.notify) {
+    const times = timers.filter((t) => t.group === key && t.readyAt !== null).map((t) => t.readyAt!);
+    if (!times.length) continue;
+    const all = Math.max(...times);
+    if (all > now || all <= startedAt || all <= (notified.get(key) ?? 0)) continue;
+    notified.set(key, all);
+    const label = TIMER_GROUPS.find((g) => g.key === key)!.label;
+    const n = new Notification({ title: `${label} : tout est prêt`, body: `${times.length} prêt${times.length > 1 ? "s" : ""} à récolter.`, silent: false });
+    n.on("click", showMain);
+    n.show();
+  }
+}
+
+function showMain() {
+  if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+  else createWindow();
+}
+
 function createWindow() {
   nativeTheme.themeSource = "dark";
   const isWin = process.platform === "win32";
@@ -182,6 +274,7 @@ function createWindow() {
   win.webContents.on("did-fail-load", (_e, code, desc, url) => log("error", "did-fail-load", code, desc, url));
   win.on("unresponsive", () => log("warn", "window", "unresponsive"));
   win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: "deny" }; });
+  win.on("closed", () => { win = null; });
   if (process.env.VITE_DEV_SERVER_URL) win.loadURL(process.env.VITE_DEV_SERVER_URL);
   else win.loadFile(join(__dirname, "../dist/index.html"));
 }
@@ -212,8 +305,14 @@ app.whenReady().then(() => {
     if (action === "minimize") w.minimize();
     else if (action === "maximize") w.isMaximized() ? w.unmaximize() : w.maximize();
     else if (action === "close") w.close();
-    else if (action === "pin") w.setAlwaysOnTop(!w.isAlwaysOnTop(), "floating");
+    else if (action === "pin") {
+      if (w === widget) setWidget({ onTop: !w.isAlwaysOnTop() });
+      else w.setAlwaysOnTop(!w.isAlwaysOnTop(), "floating");
+    }
+    else if (action === "app") showMain();
   });
+  ipcMain.handle("widget:get", () => publicWidget());
+  ipcMain.handle("widget:set", (_e, patch: Partial<WidgetConfig>) => setWidget(patch ?? {}));
   ipcMain.handle("ledger:add", (_e, m: ManualEntry) => {
     if (!m || !Number.isFinite(m.usd) || !Number.isFinite(m.at) || typeof m.label !== "string") return state;
     manual = [...manual, { id: `m-${Date.now()}`, at: m.at, usd: m.usd, label: m.label.slice(0, 120) }];
@@ -228,6 +327,8 @@ app.whenReady().then(() => {
   ipcMain.on("open", (_e, url: string) => { if (/^https:\/\//.test(url)) shell.openExternal(url); });
 
   createWindow();
+  if (widgetCfg.open) openWidget();
+  setInterval(checkNotifications, 30_000);
   if (process.env.HARVEST_SHOTS) { void shots(process.env.HARVEST_SHOTS); return; }
   refresh().then((s) => {
     const span = s.snapshots.length > 1 ? s.snapshots[s.snapshots.length - 1].at - s.snapshots[0].at : 0;
@@ -256,5 +357,6 @@ async function shots(out: string) {
   app.quit();
 }
 
+app.on("before-quit", () => { quitting = true; });
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
