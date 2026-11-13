@@ -2275,7 +2275,7 @@ const Board = (() => {
   let viewT = 0;
   /* the interface size (Réglages > UI) zooms the whole page: the board divides its own zoom by it, so what is drawn keeps
      its size on screen. view.* stays in page px; the saved view and the % shown are in screen px (z: 1 marks it) */
-  const uz = () => { const v = +S.prefs.uiScale; return [50, 75, 85, 125].includes(v) ? v / 100 : 1; };
+  const uz = () => { const v = +S.prefs.uiScale; return [50, 75, 85, 110, 125].includes(v) ? v / 100 : 1; };
   let uzNow = 1;
   const viewOut = () => { const z = uz(); return { x: Math.round(view.x * z), y: Math.round(view.y * z), k: +(view.k * z).toFixed(4), r: +view.r.toFixed(2), z: 1 }; };
   function uiScaled() { const z = uz(), f = uzNow / z; if (!mounted || f === 1) { uzNow = z; return; } uzNow = z; view.k = clamp(view.k * f, MINK, MAXK); view.x *= f; view.y *= f; viewChanged(); }
