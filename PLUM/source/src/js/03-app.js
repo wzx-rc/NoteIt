@@ -36,8 +36,14 @@ const curSpace = () => spaceById(S.prefs.cur) || spaceById(DEF_SPACE) || S.space
 const userSpaces = () => S.spaces.filter(s => s.id !== DEF_SPACE);
 function setCurSpace(id) { if (spaceById(id) && S.prefs.cur !== id) { S.prefs.cur = id; save(); } }
 function touch(doc) { if (doc) doc.updated = Date.now(); save(); }
+/* 0.3.6: a new board is « Board 01 », « Board 02 »… numbered in its space (after the highest number there) */
+function nextBoardName(spId) {
+  let n = 0; for (const d of S.docs) if (d.type === 'board' && !d.trash && d.sp === spId) { const m = /^Board (\d+)$/.exec((d.title || '').trim()); if (m) n = Math.max(n, +m[1]); }
+  return 'Board ' + String(n + 1).padStart(2, '0');
+}
 function newDoc(type, o = {}) {
-  const d = { id: uid('d'), type, title: o.title || (type === 'note' ? 'Sans titre' : 'Nouveau board'), sp: o.sp || ctxSpace(), fav: false, trash: false, created: Date.now(), updated: Date.now() };
+  const spId = o.sp || ctxSpace();
+  const d = { id: uid('d'), type, title: o.title || (type === 'note' ? 'Sans titre' : nextBoardName(spId)), sp: spId, fav: false, trash: false, created: Date.now(), updated: Date.now() };
   if (type === 'note') { d.html = o.html || ''; d.ink = o.ink || []; d.paper = o.paper || 'plain'; }
   else { d.items = o.items || []; d.view = o.view || null; d.bg = o.bg || 'dots'; }
   S.docs.push(d); save(); return d;
@@ -625,7 +631,7 @@ function bindCreate(v) {
 function createFrom(kind) {
   if (kind === 'note' && NL.v && (R.name === 'all' || R.name === 'notes') && !nlNarrow()) { nlNew(); return; }
   if (kind === 'note') { const d = newDoc('note'); go('doc:' + d.id); setTimeout(() => Note.focusTitle(), 40); return; }
-  const d = newDoc('board', { title: 'Nouveau board' });
+  const d = newDoc('board');
   go('doc:' + d.id);
 }
 
