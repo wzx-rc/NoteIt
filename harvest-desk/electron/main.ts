@@ -312,6 +312,14 @@ app.whenReady().then(() => {
     else if (action === "app") showMain();
   });
   ipcMain.handle("widget:get", () => publicWidget());
+  ipcMain.on("widget:fit", (_e, height: number) => {
+    if (!widget || !Number.isFinite(height)) return;
+    const [w, h] = widget.getSize();
+    const area = screen.getDisplayMatching(widget.getBounds()).workArea;
+    const room = area.y + area.height - widget.getBounds().y - 8;
+    const next = Math.max(120, Math.min(Math.round(height), room));
+    if (Math.abs(next - h) > 1) widget.setSize(w, next);
+  });
   ipcMain.handle("widget:set", (_e, patch: Partial<WidgetConfig>) => setWidget(patch ?? {}));
   ipcMain.handle("ledger:add", (_e, m: ManualEntry) => {
     if (!m || !Number.isFinite(m.usd) || !Number.isFinite(m.at) || typeof m.label !== "string") return state;

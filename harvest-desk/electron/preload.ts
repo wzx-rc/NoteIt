@@ -25,6 +25,7 @@ const bridge: HarvestBridge = {
   },
   platform: process.platform,
   getWidget: () => ipcRenderer.invoke("widget:get"),
+  fitWidget: (height) => ipcRenderer.send("widget:fit", height),
   setWidget: (patch) => ipcRenderer.invoke("widget:set", patch),
   onWidget: (cb) => {
     const h = (_e: unknown, w: WidgetConfig) => cb(w);

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { countdown, farmTimers, summarize, TIMER_FAMILIES, type GroupSummary } from "../../core/timers";
 import { Icon } from "../icons";
 import { bridge, useAppState } from "../useAppState";
@@ -18,10 +18,22 @@ export function Widget() {
   const timers = useMemo(() => (state.farm ? farmTimers(state.farm) : []), [state.farm]);
   const rows = useMemo(() => sortSummaries(summarize(timers, now).filter((g) => cfg.groups.includes(g.key))), [timers, now, cfg.groups]);
   const b = bridge();
+  // The window follows the content's height, so nothing is cut and there is no empty space.
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || !b) return;
+    // Header + the list's full height (the list itself may be squeezed while the window is still short).
+    const fit = () => b.fitWidget(Array.from(el.children).reduce((a, c) => a + (c as HTMLElement).scrollHeight, 0) + 2);
+    const ro = new ResizeObserver(fit);
+    for (const c of Array.from(el.querySelectorAll(".wg-head, .wg-fam, .wg-empty"))) ro.observe(c);
+    fit();
+    return () => ro.disconnect();
+  }, [b, rows.length]);
   const read = state.fetchedAt ? Math.max(0, Math.round((now - Date.parse(state.fetchedAt)) / 60_000)) : null;
 
   return (
-    <div className="wg" style={{ ["--wg-alpha" as string]: String(cfg.opacity) }}>
+    <div className="wg wg-window" ref={box} style={{ ["--wg-alpha" as string]: String(cfg.opacity) }}>
       <header className="wg-head">
         <span className="wg-mark" aria-hidden="true"><Icon name="logo" size={11} /></span>
         <span className="wg-title">Harvest Desk</span>
@@ -56,7 +68,7 @@ export function Families({ rows, now }: { rows: GroupSummary[]; now: number }) {
     <div className="wg-list">
       {fams.map((f) => (
         <section className="wg-fam" key={f.key} aria-label={f.label}>
-          {f.rows.length > 1 || f.rows[0].label !== f.label ? <h3>{f.label}</h3> : null}
+          <h3>{f.label}</h3>
           <ul>{f.rows.map((g) => <Row key={g.key} g={g} now={now} />)}</ul>
         </section>
       ))}

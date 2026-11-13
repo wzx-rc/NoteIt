@@ -402,7 +402,9 @@ html.widget-mode #root{height:100%}
 .wg-btn:hover{background:rgba(255,236,210,.08);color:var(--text)}
 .wg-btn.on{color:var(--gold)}
 .wg-btn:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
-.wg-list{margin:0;padding:0 8px 8px;display:flex;flex-direction:column;gap:7px;overflow:auto;scrollbar-width:none}
+.wg-list{margin:0;padding:0 8px 8px;display:flex;flex-direction:column;gap:7px;overflow:auto;scrollbar-width:none;flex:1 1 auto;min-height:0}
+/* In its own window the widget sizes to its content; the window follows (and scrolls only if the screen is too short). */
+.wg.wg-window{height:auto;max-height:100vh}
 .wg-fam{background:rgba(255,236,210,.035);border:1px solid rgba(255,236,210,.06);border-radius:11px;padding:3px 2px 2px}
 .wg-fam h3{margin:3px 8px 1px;font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .wg-fam ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}

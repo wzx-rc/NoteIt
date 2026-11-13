@@ -63,6 +63,8 @@ export interface HarvestBridge {
   getWidget(): Promise<WidgetConfig>;
   setWidget(patch: Partial<WidgetConfig>): Promise<WidgetConfig>;
   onWidget(cb: (w: WidgetConfig) => void): () => void;
+  /** Asks the widget window to take this content height (capped to the screen). */
+  fitWidget(height: number): void;
 }
 
 export interface WindowInfo { maximized: boolean; pinned: boolean }
