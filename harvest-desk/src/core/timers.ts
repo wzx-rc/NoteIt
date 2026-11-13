@@ -47,6 +47,8 @@ export interface Timer {
   readyAt: number | null;
   /** Why it is idle or paused. */
   state?: "empty" | "paused" | "sick";
+  /** When it started, for progress bars. */
+  startedAt?: number;
 }
 
 export interface GroupSummary {
@@ -66,6 +68,8 @@ export interface GroupSummary {
   allAt: number | null;
   /** The main things inside, most common first: "Riz ×3". */
   what: string;
+  /** 0 to 1: how far the next one is (1 when something is ready). */
+  progress: number;
 }
 
 // ---------- Boost windows ----------
@@ -204,7 +208,7 @@ const isPlaced = (n: any) => n && (n.x !== undefined || n.coordinates !== undefi
 export function farmTimers(farm: AnyFarm): Timer[] {
   const out: Timer[] = [];
   if (!farm) return out;
-  const add = (group: TimerGroup, label: string, at: number | null, state?: Timer["state"]) => out.push({ group, label, readyAt: at, state });
+  const add = (group: TimerGroup, label: string, at: number | null, state?: Timer["state"], startedAt?: number) => out.push({ group, label, readyAt: at, state, startedAt });
 
   // Plots.
   const cropW = W.crops(farm);
@@ -213,7 +217,7 @@ export function farmTimers(farm: AnyFarm): Timer[] {
     const c = plot.crop;
     if (!c) { add("crops", "Parcelle vide", null, "empty"); continue; }
     if (c.baseDurationMs === undefined) continue;
-    add("crops", c.name, readyAt(c.plantedAt, c.baseDurationMs, [...cropW, ...fertiliserWindow(plot.fertiliser, { "Rapid Root": 2, "Sproutroot Surprise": 2 })]));
+    add("crops", c.name, readyAt(c.plantedAt, c.baseDurationMs, [...cropW, ...fertiliserWindow(plot.fertiliser, { "Rapid Root": 2, "Sproutroot Surprise": 2 })]), undefined, c.plantedAt);
   }
 
   // Greenhouse pots.
@@ -221,12 +225,12 @@ export function farmTimers(farm: AnyFarm): Timer[] {
     const p = pot.plant;
     if (!p) { add("greenhouse", "Pot vide", null, "empty"); continue; }
     if (p.baseDurationMs === undefined) continue;
-    add("greenhouse", p.name, readyAt(p.plantedAt, p.baseDurationMs, [...W.greenhouse(farm, p.name), ...fertiliserWindow(pot.fertiliser, { "Greenhouse Glow": 1.25 })]));
+    add("greenhouse", p.name, readyAt(p.plantedAt, p.baseDurationMs, [...W.greenhouse(farm, p.name), ...fertiliserWindow(pot.fertiliser, { "Greenhouse Glow": 1.25 })]), undefined, p.plantedAt);
   }
 
   // Crop machine: each pack keeps its own ready time.
   for (const m of farm.buildings?.["Crop Machine"] ?? []) {
-    for (const q of m.queue ?? []) if (q.readyAt) add("machine", q.crop, q.readyAt);
+    for (const q of m.queue ?? []) if (q.readyAt) add("machine", q.crop, q.readyAt, undefined, q.startTime);
   }
 
   // Fruit patches: a fruit regrows from its last harvest.
@@ -236,7 +240,7 @@ export function farmTimers(farm: AnyFarm): Timer[] {
     const fr = patch.fruit;
     if (!fr || !(fr.harvestsLeft > 0)) { add("fruits", "Arbre fruitier vide", null, "empty"); continue; }
     if (fr.baseDurationMs === undefined) continue;
-    add("fruits", fr.name, readyAt(fr.harvestedAt || fr.plantedAt, fr.baseDurationMs, [...fruitW, ...fertiliserWindow(patch.fertiliser, { "Turbofruit Mix": 1.25 })]));
+    add("fruits", fr.name, readyAt(fr.harvestedAt || fr.plantedAt, fr.baseDurationMs, [...fruitW, ...fertiliserWindow(patch.fertiliser, { "Turbofruit Mix": 1.25 })]), undefined, fr.harvestedAt || fr.plantedAt);
   }
 
   // Flowers.
@@ -245,14 +249,14 @@ export function farmTimers(farm: AnyFarm): Timer[] {
     const fl = bed.flower;
     if (!fl) { add("flowers", "Parterre vide", null, "empty"); continue; }
     if (fl.baseDurationMs === undefined) continue;
-    add("flowers", fl.name, readyAt(fl.plantedAt, fl.baseDurationMs, flowerW));
+    add("flowers", fl.name, readyAt(fl.plantedAt, fl.baseDurationMs, flowerW), undefined, fl.plantedAt);
   }
 
   // Trees.
   const treeW = W.trees(farm);
   for (const t of values(farm.trees)) {
     if (!isPlaced(t) || !t.wood) continue;
-    add("trees", t.name ?? "Tree", readyAt(t.wood.choppedAt, t.wood.baseDurationMs ?? 0, treeW));
+    add("trees", t.name ?? "Tree", readyAt(t.wood.choppedAt, t.wood.baseDurationMs ?? 0, treeW), undefined, t.wood.choppedAt);
   }
 
   // Rocks.
@@ -260,7 +264,7 @@ export function farmTimers(farm: AnyFarm): Timer[] {
     const ws = W.mine(farm, family);
     for (const r of values(farm[key])) {
       if (!isPlaced(r) || !r.stone) continue;
-      add(family, r.name ?? ROCK_NAME[family], readyAt(r.stone.minedAt, r.stone.baseDurationMs ?? 0, ws));
+      add(family, r.name ?? ROCK_NAME[family], readyAt(r.stone.minedAt, r.stone.baseDurationMs ?? 0, ws), undefined, r.stone.minedAt);
     }
   }
 
@@ -268,7 +272,7 @@ export function farmTimers(farm: AnyFarm): Timer[] {
   const oilW = W.oil(farm);
   for (const r of values(farm.oilReserves)) {
     if (!isPlaced(r) || !r.oil) continue;
-    add("oil", "Réserve de pétrole", readyAt(r.oil.drilledAt, r.oil.baseDurationMs ?? 0, oilW));
+    add("oil", "Réserve de pétrole", readyAt(r.oil.drilledAt, r.oil.baseDurationMs ?? 0, oilW), undefined, r.oil.drilledAt);
   }
 
   // Animals: ready when awake. A sick animal needs care first.
@@ -278,7 +282,7 @@ export function farmTimers(farm: AnyFarm): Timer[] {
       if (!group) continue;
       if (a.state === "sick") { add(group, a.type, null, "sick"); continue; }
       const work = a.baseDurationMs ?? Math.max((a.awakeAt ?? 0) - (a.asleepAt ?? 0), 0);
-      add(group, a.type, readyAt(a.asleepAt ?? 0, work, W.animal(farm, a.type)));
+      add(group, a.type, readyAt(a.asleepAt ?? 0, work, W.animal(farm, a.type)), undefined, a.asleepAt);
     }
   }
 
@@ -297,13 +301,13 @@ export function farmTimers(farm: AnyFarm): Timer[] {
       if (span * rate >= left) { at = Math.max(t, fl.attachedAt ?? t) + left / rate; break; }
       left -= span * rate; t = fl.attachedUntil;
     }
-    add("honey", "Ruche", at, at === null ? "paused" : undefined);
+    add("honey", "Ruche", at, at === null ? "paused" : undefined, at === null ? undefined : at - FULL / Math.max(0.01, hive.flowers?.[0]?.rate ?? 1));
   }
 
   // Composters.
   for (const name of ["Compost Bin", "Turbo Composter", "Premium Composter"]) {
     for (const b of farm.buildings?.[name] ?? []) {
-      if (b.producing?.readyAt) add("compost", name, b.producing.readyAt);
+      if (b.producing?.readyAt) add("compost", name, b.producing.readyAt, undefined, b.producing.startedAt);
       else add("compost", name, null, "empty");
     }
   }
@@ -312,19 +316,19 @@ export function farmTimers(farm: AnyFarm): Timer[] {
   for (const name of ["Fire Pit", "Kitchen", "Bakery", "Deli", "Smoothie Shack"]) {
     for (const b of farm.buildings?.[name] ?? []) {
       const queue = Array.isArray(b.crafting) ? b.crafting : b.crafting ? [b.crafting] : [];
-      for (const c of queue) if (c.readyAt) add("cooking", c.name, c.readyAt);
+      for (const c of queue) if (c.readyAt) add("cooking", c.name, c.readyAt, undefined, c.startedAt);
     }
   }
 
   // Aging shed racks.
   for (const rack of values(farm.agingShed?.racks)) {
-    for (const it of Array.isArray(rack) ? rack : []) if (it.readyAt) add("aging", it.recipe ?? it.name ?? "Rack", it.readyAt);
+    for (const it of Array.isArray(rack) ? rack : []) if (it.readyAt) add("aging", it.recipe ?? it.name ?? "Rack", it.readyAt, undefined, it.startedAt);
   }
 
   // Crab traps.
   for (const spot of values(farm.crabTraps?.trapSpots)) {
     const t = spot.waterTrap;
-    if (t?.readyAt) add("crabs", t.type ?? "Casier", t.readyAt);
+    if (t?.readyAt) add("crabs", t.type ?? "Casier", t.readyAt, undefined, t.placedAt);
   }
 
   // Power skills the bumpkin has.
@@ -336,7 +340,7 @@ export function farmTimers(farm: AnyFarm): Timer[] {
     const rank = Math.min(Number(skills[skill] ?? 0), 3);
     if (!rank) continue;
     const last = used[skill];
-    add("power", skill, last ? last + cds[rank - 1] * H * factor : 0);
+    add("power", skill, last ? last + cds[rank - 1] * H * factor : 0, undefined, last || undefined);
   }
 
   return out;
@@ -356,11 +360,28 @@ export function summarize(timers: Timer[], now: number): GroupSummary[] {
       empty: list.filter((t) => t.state === "empty").length,
       blocked: list.filter((t) => t.state === "paused" || t.state === "sick").length,
       nextAt: running.length ? Math.min(...running) : null,
+      progress: progressOf(list, now),
       allAt: running.length ? Math.max(...running) : null,
       what,
     };
   }).filter((g) => g.total > 0);
 }
+
+function progressOf(list: Timer[], now: number): number {
+  if (list.some((t) => t.readyAt !== null && t.readyAt <= now)) return 1;
+  const next = list.filter((t) => t.readyAt !== null && t.readyAt > now).sort((a, b) => a.readyAt! - b.readyAt!)[0];
+  if (!next || next.startedAt === undefined || next.readyAt! <= next.startedAt) return 0;
+  return Math.min(1, Math.max(0, (now - next.startedAt) / (next.readyAt! - next.startedAt)));
+}
+
+/** Families the widget groups its rows into. */
+export const TIMER_FAMILIES: { key: string; label: string; groups: TimerGroup[] }[] = [
+  { key: "crops", label: "Cultures", groups: ["crops", "greenhouse", "machine", "fruits", "flowers"] },
+  { key: "resources", label: "Ressources", groups: ["trees", "stone", "iron", "gold", "crimstone", "sunstone", "oil"] },
+  { key: "animals", label: "Animaux", groups: ["chickens", "cows", "sheep", "pigs", "honey"] },
+  { key: "workshops", label: "Ateliers", groups: ["cooking", "compost", "aging", "crabs"] },
+  { key: "power", label: "Power skills", groups: ["power"] },
+];
 
 /** "2 h 10", "35 min", "3 j 4 h". */
 export function countdown(ms: number): string {

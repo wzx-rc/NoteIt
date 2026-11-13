@@ -4,7 +4,7 @@ import type { AppState } from "../../shared/types";
 import { Icon } from "../icons";
 import { bridge } from "../useAppState";
 import { clock, GROUP_COLOR, subLine, useNow, useWidgetConfig } from "../widget/timerUi";
-import { Row, sortSummaries } from "../widget/Widget";
+import { Families, sortSummaries } from "../widget/Widget";
 
 /** Every timer of the farm, what the desktop widget shows, and which groups send a notification. */
 export function TimersView({ state }: { state: AppState }) {
@@ -36,7 +36,7 @@ export function TimersView({ state }: { state: AppState }) {
             <div className="wg-preview">
               <div className="wg" style={{ ["--wg-alpha" as string]: String(cfg.opacity) }}>
                 <header className="wg-head"><span className="wg-mark" aria-hidden="true"><Icon name="logo" size={11} /></span><span className="wg-title">Harvest Desk</span><span className="wg-sub">aperçu</span></header>
-                {shown.length ? <ul className="wg-list">{shown.map((g) => <Row key={g.key} g={g} now={now} />)}</ul>
+                {shown.length ? <Families rows={shown} now={now} />
                   : <p className="wg-empty">Coche au moins un groupe à gauche.</p>}
               </div>
             </div>

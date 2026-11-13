@@ -44,5 +44,5 @@ class Boundary extends Component<{ children: ReactNode }, { error?: Error }> {
 }
 
 const isWidget = location.hash === "#widget";
-if (isWidget) document.documentElement.classList.add("widget-mode");
+if (isWidget) { document.documentElement.classList.add("widget-mode"); document.title = "Harvest Desk widget"; }
 createRoot(document.getElementById("root")!).render(<StrictMode><Boundary>{isWidget ? <Widget /> : <App />}</Boundary></StrictMode>);

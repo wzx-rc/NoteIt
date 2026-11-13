@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { countdown, farmTimers, summarize, type GroupSummary } from "../../core/timers";
+import { countdown, farmTimers, summarize, TIMER_FAMILIES, type GroupSummary } from "../../core/timers";
 import { Icon } from "../icons";
 import { bridge, useAppState } from "../useAppState";
 import { clock, GROUP_COLOR, subLine, useNow, useWidgetConfig } from "./timerUi";
@@ -39,10 +39,27 @@ export function Widget() {
         </div>
       </header>
       {rows.length ? (
-        <ul className="wg-list">{rows.map((g) => <Row key={g.key} g={g} now={now} />)}</ul>
+        <Families rows={rows} now={now} />
       ) : (
         <p className="wg-empty">{state.farm ? "Choisis quoi suivre dans Harvest Desk, onglet Minuteurs." : "Lecture de la ferme…"}</p>
       )}
+    </div>
+  );
+}
+
+/** Rows boxed by family (cultures, ressources, animaux…), the family with the most urgent row first. */
+export function Families({ rows, now }: { rows: GroupSummary[]; now: number }) {
+  const fams = TIMER_FAMILIES.map((f) => ({ ...f, rows: rows.filter((r) => f.groups.includes(r.key)) })).filter((f) => f.rows.length);
+  const first = (f: { rows: GroupSummary[] }) => rows.indexOf(f.rows[0]);
+  fams.sort((a, b) => first(a) - first(b));
+  return (
+    <div className="wg-list">
+      {fams.map((f) => (
+        <section className="wg-fam" key={f.key} aria-label={f.label}>
+          {f.rows.length > 1 || f.rows[0].label !== f.label ? <h3>{f.label}</h3> : null}
+          <ul>{f.rows.map((g) => <Row key={g.key} g={g} now={now} />)}</ul>
+        </section>
+      ))}
     </div>
   );
 }
@@ -69,6 +86,7 @@ export function Row({ g, now }: { g: GroupSummary; now: number }) {
                 : g.ready > 0 && waiting ? `${g.empty} vide${g.empty > 1 ? "s" : ""}` : ""}
         </span>
       </span>
+      <span className="wg-bar" aria-hidden="true"><b style={{ width: `${Math.round(g.progress * 100)}%`, background: g.ready > 0 ? "var(--sheep)" : GROUP_COLOR[g.key] }} /></span>
     </li>
   );
 }

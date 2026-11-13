@@ -203,7 +203,7 @@ function setWidget(patch: Partial<WidgetConfig>): WidgetConfig {
 function openWidget() {
   if (widget) { widget.showInactive(); return; }
   const area = screen.getPrimaryDisplay().workArea;
-  const b = widgetCfg.bounds ?? { width: 300, height: 440, x: area.x + area.width - 320, y: area.y + 20 };
+  const b = widgetCfg.bounds ?? { width: 300, height: 560, x: area.x + area.width - 320, y: area.y + 20 };
   widget = new BrowserWindow({
     ...b, minWidth: 220, minHeight: 120,
     frame: false, transparent: true, backgroundColor: "#00000000", hasShadow: false,
