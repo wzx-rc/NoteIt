@@ -20,10 +20,9 @@ function ensurePages() { for (const sp of userSpaces()) ensurePage(sp); }
 const pageOf = sp => sp && sp.id !== DEF_SPACE ? ensurePage(sp) : null;
 /* the tasks a card or a PAGE shows: the starred ones of the project (open first), else the open ones */
 function mainTasks(sp, max = 99) {
-  const all = S.tasks.filter(t => t.sp === sp.id), star = all.filter(t => t.star);
-  const pick = star.length ? star : all.filter(t => !t.done);
-  const open = pick.filter(t => !t.done).sort(taskSort), done = pick.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
-  return open.concat(done).slice(0, max);
+  // 0.3.12: a finished task leaves the card (the PAGE keeps it under Terminées); the starred ones first, else any open one
+  const open = S.tasks.filter(t => t.sp === sp.id && !t.done), star = open.filter(t => t.star);
+  return (star.length ? star : open).sort(taskSort).slice(0, max);
 }
 function projStats(sp) {
   const docs = liveDocs().filter(d => d.sp === sp.id && !d.page), all = S.tasks.filter(t => t.sp === sp.id);
