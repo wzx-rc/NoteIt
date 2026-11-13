@@ -291,9 +291,9 @@ export class Engine {
     if (f.has("Woody the Beaver") || f.has("Apprentice Beaver") || f.has("Foreman Beaver")) amount *= 1.2;
     if (f.inventory("Discord Mod") > 0) amount *= 1.35;
     if (f.inventory("Lumberjack") > 0) amount *= 1.1;
-    // Tough Tree: a rank % chance (0.95 / 0.94 / 0.925) of ×3.
+    // Tough Tree: a 10 / 20 / 30 % chance of ×3.
     const tough = Math.min(f.skill("Tough Tree"), 3);
-    if (tough) amount *= 1 + 2 * ([0.95, 0.94, 0.925][tough - 1] / 100);
+    if (tough) amount *= 1 + 2 * ([10, 20, 30][tough - 1] / 100);
     const lj = Math.min(f.skill("Lumberjack's Extra"), 3);
     if (lj) amount += [0.1, 0.15, 0.2][lj - 1];
     if (f.has("Wood Nymph Wendy")) amount += 0.2;
@@ -321,8 +321,8 @@ export class Engine {
       const chops = this.rate(`${name === "Tree" ? "Basic Tree" : name} Chopped`);
       if (!chops) continue;
       const qty = chops * this.woodYield(k.mult, k.tier);
-      // Money Tree: a rank % chance (0.95 / 0.94 / 0.925) of 200 coins × the tree multiplier.
-      const coins = money ? chops * ([0.95, 0.94, 0.925][money - 1] / 100) * this.coins(200 * k.mult) : 0;
+      // Money Tree: a 1 / 2 / 3 % chance of 200 coins × the tree multiplier.
+      const coins = money ? chops * ([1, 2, 3][money - 1] / 100) * this.coins(200 * k.mult) : 0;
       const label = name === "Tree" ? "Arbres" : name === "Ancient Tree" ? "Arbres anciens" : name === "Sacred Tree" ? "Arbre sacré" : name;
       lines.push(line(name, label, qty * this.price("Wood") + coins, chops * k.mult * axe, qty));
     }

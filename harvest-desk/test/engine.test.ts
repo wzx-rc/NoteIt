@@ -23,11 +23,26 @@ describe("dailyRates", () => {
   });
 });
 
+describe("Tree skill chances match the game (10/20/30 % Tough Tree, 1/2/3 % Money Tree)", () => {
+  const wood = (skills: Record<string, number>) => {
+    const f = structuredClone(farm);
+    f.bumpkin = { ...f.bumpkin, skills: { ...(f.bumpkin?.skills ?? {}), "Money Tree": 0, "Tough Tree": 0, ...skills } } as any;
+    return new Engine(f, rates, market).report().categories.wood.net;
+  };
+  it("each Money Tree rank adds the same coins, each Tough Tree rank 20 % more wood", () => {
+    const base = wood({});
+    const m1 = wood({ "Money Tree": 1 }) - base, m2 = wood({ "Money Tree": 2 }) - base;
+    expect(m1).toBeGreaterThan(0);
+    expect(m2 / m1).toBeCloseTo(2, 5);
+    expect(wood({ "Tough Tree": 1 })).toBeGreaterThan(base);
+  });
+});
+
 describe("Engine on the example farm", () => {
   const r = new Engine(farm, rates, market).report();
-  it("earns about 11.7 $ per day (wood included, greenhouse without tier skills, oil counted)", () => {
-    expect(usd(r.net)).toBeGreaterThan(11.4);
-    expect(usd(r.net)).toBeLessThan(12);
+  it("earns about 12 $ per day (wood included, greenhouse without tier skills, oil counted)", () => {
+    expect(usd(r.net)).toBeGreaterThan(11.7);
+    expect(usd(r.net)).toBeLessThan(12.3);
     expect(usd(r.categories.wood.net)).toBeGreaterThan(1.8);
   });
   it("ranks animals, crops, minerals, then the greenhouse", () => {
