@@ -44,6 +44,7 @@ function taskAddHTML(o = {}) {
 function bindTaskAdd(box, spId, o = {}) {
   const inp = $('[data-tkin]', box), st = $('[data-tkstar]', box); if (!inp) return;
   st.onclick = e => { e.preventDefault(); st.setAttribute('aria-pressed', st.getAttribute('aria-pressed') !== 'true'); inp.focus(); };
+  inp.onpaste = e => { const m = pasteTasks(e, inp, spId, st.getAttribute('aria-pressed') === 'true'); if (m && o.added) o.added(m[m.length - 1]); };
   inp.onkeydown = e => {
     if (e.key === 'Escape') { e.preventDefault(); if (o.close) o.close(); return; }
     if (e.key !== 'Enter') return;

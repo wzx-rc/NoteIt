@@ -609,7 +609,36 @@ function refreshTaskViews() {
 function quickAddBox(id, ph, spDefault) {
   return `<label class="qadd">${icon('plus')}<input id="${id}" placeholder="${esc(ph)}" autocomplete="off" data-sp="${spDefault || ''}"></label>`;
 }
+/* 0.3.11: a list pasted into a task field (ChatGPT checklist, Markdown "- [ ]", bullets, numbers, plain lines) becomes
+   PLUM tasks. A first line without a box or bullet above boxed lines is the block's title: it becomes the task and the
+   lines its sub-tasks. Otherwise every line is a task. "[x]" lines arrive ticked. Returns the tasks made (none: normal paste). */
+const PASTE_ITEM = /^(?:[-*+•‣▪◦–—]\s+)?(?:\d{1,3}[.)]\s+)?(?:\[\s*([xX✓✔]?)\s*\]|([☐□○◯])|([☑✅✔✓■]))\s*/;
+function parseTaskPaste(text) {
+  const raw = String(text || '').replace(/\r/g, '').split('\n').map(l => l.replace(/\s+$/, '')).filter(l => l.trim());
+  if (raw.length < 2) return null;
+  const clean = s => s.replace(/^#{1,6}\s+/, '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1').replace(/^[*_]+|[*_:]+$/g, '').trim();
+  const rows = raw.map(l => {
+    const s = l.trim(), m = s.match(PASTE_ITEM), b = !m && s.match(/^(?:[-*+•‣▪◦–—]|\d{1,3}[.)])\s+/);
+    if (m && m[0]) return { t: clean(s.slice(m[0].length)), done: !!(m[1] || m[3]), box: true };
+    if (b) return { t: clean(s.slice(b[0].length)), done: false, box: true };
+    return { t: clean(s), done: false, box: false };
+  }).filter(r => r.t);
+  if (rows.length < 2) return null;
+  if (!rows[0].box && rows.slice(1).every(r => r.box)) return [{ t: rows[0].t, sub: rows.slice(1).map(r => [r.t, r.done]) }];
+  return rows.map(r => ({ t: r.t, done: r.done }));
+}
+function pasteTasks(e, input, sp, star) {
+  const list = parseTaskPaste(e.clipboardData && e.clipboardData.getData('text/plain'));
+  if (!list) return null;
+  e.preventDefault();
+  const made = list.map(x => { const t = newTask({ t: x.t, sp, star: !!star, sub: x.sub }); if (x.done) t.done = true; if (x.sub) t.open = true; return t; });
+  save(); input.value = '';
+  const n = made.length, ns = made.reduce((k, t) => k + subsOf(t).length, 0);
+  toast(ns ? `« ${made[0].t} » ajoutée avec ${ns} sous-tâche${ns > 1 ? 's' : ''}` : `${n} tâche${n > 1 ? 's' : ''} ajoutée${n > 1 ? 's' : ''}`);
+  return made;
+}
 function bindQuickAdd(input, after) {
+  input.onpaste = e => { const m = pasteTasks(e, input, input.dataset.sp || undefined); if (m && after) after(m[m.length - 1]); };
   input.onkeydown = e => {
     if (e.key !== 'Enter' || !input.value.trim()) return;
     const t = newTask({ t: input.value, sp: input.dataset.sp || undefined });
