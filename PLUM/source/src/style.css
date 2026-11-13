@@ -3450,3 +3450,9 @@ body.pp-grabbing, body.pp-grabbing * { cursor: grabbing !important; user-select:
 .hcap.hs-ph .hcap-i { background: none; border-style: dashed; color: transparent; }
 .hs-sorting { cursor: grabbing; }
 body.hs-grabbing, body.hs-grabbing * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+/* 0.3.7: the Notes list in a finer weight */
+.nl-hd h1 { font-weight: 500; letter-spacing: -.02em; }
+.nli-t { font-weight: 560; }
+.nli-k .nli-sp { font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 11.5px; }
+/* the fold tab of the sidebar sits in the top bar, clear of the page's own title */
+.sfold { top: 1px; }
