@@ -1,0 +1,12 @@
+{
+  "name": "sfl-portals",
+  "private": true,
+  "type": "module",
+  "workspaces": ["kit", "games/*"],
+  "scripts": {
+    "new": "node scripts/new-game.mjs",
+    "dev": "npm run dev -w games/pet-demo",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
