@@ -244,7 +244,7 @@ export interface SkillAnalysis {
   earned: number;
   used: number;
   current: Plan;
-  /** Best tree after a reset, keeping the skills the app cannot value at their rank. */
+  /** Best tree after a reset, built from scratch with all the points and shards. */
   proposed: Plan;
   /** Best use of the points not spent yet, without a reset. */
   topUp: Plan;
@@ -264,14 +264,13 @@ export function analyseSkills(farm: Farm, rates: Rates, market: Market): SkillAn
   const byName = new Map(values.map((v) => [v.def.name, v]));
   const valueOf = (ranks: Record<string, number>) =>
     Object.entries(ranks).reduce((a, [n, r]) => a + (byName.get(n) ? valueAt(byName.get(n)!, r) : 0), 0);
-  // Skills the app cannot put a number on (fishing, cooking, crop machine…) stay as they are.
-  const keep = Object.fromEntries(Object.entries(owned).filter(([n]) => byName.get(n)?.how === "none" || DEF.get(n)?.power));
   const spent = shardsOf(owned);
   const mined = (farm.farmActivity?.["Ascension Crystal Mined"] ?? 0) * SHARDS_PER_CRYSTAL;
   const inv = farm.inventory?.["Ascension Shard"];
   // The Community API leaves the shard count out: assume mined minus spent.
   const held = inv !== undefined ? Number(inv) : Math.max(0, mined - spent);
-  const proposed = bestTree(values, Math.max(earned, used), keep, held + spent);
+  // After a reset everything comes back: the ideal tree starts from nothing, with every point and shard.
+  const proposed = bestTree(values, Math.max(earned, used), {}, held + spent);
   const topUp = bestTree(values, Math.max(earned, used), owned, held + spent);
   const b = farm.bumpkin ?? {};
   return {

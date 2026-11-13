@@ -130,7 +130,9 @@ export function SkillsView({ state }: { state: AppState }) {
             ))}
           </div>
           <p className="foot">
-            {unvalued} de tes skills n'ont pas d'effet chiffrable sur tes revenus (pêche, cuisine, compost, machines…) : l'app les garde.
+            {mode === "reset"
+              ? `L'arbre idéal part de zéro et ne garde aucun de tes skills actuels. ${Math.max(0, a.earned - a.proposed.points)} points restent libres pour les skills sans effet chiffrable (pêche, cuisine, compost, machines…), à placer comme tu veux.`
+              : `${unvalued} de tes skills n'ont pas d'effet chiffrable sur tes revenus (pêche, cuisine, compost, machines…) : l'app les garde.`}
             Les skills de vitesse supposent que tu récoltes dès que c'est prêt.
           </p>
         </section>
