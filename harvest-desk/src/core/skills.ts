@@ -38,6 +38,7 @@ export const SHARDS_PER_CRYSTAL = 3;
 const ENGINE_SKILLS = new Set<string>([
   ...Object.keys(SKILL_RANKS), ...Object.keys(SPLIT_SKILLS),
   "Double Bale", "Bale Economy", "Glass Room", "Greenhouse Gamble", "Seeded Bounty", "Seedy Business", "Frugal Miner",
+  "Tough Tree", "Lumberjack's Extra", "Money Tree", "Feller's Discount",
   "Horror Mike", "Laurie's Gains", "Greasy Plants", "Slick Saver", "Oil Extraction", "Oil Rig", "Oil Gadget", "Efficiency Extension Module",
 ]);
 
@@ -61,10 +62,16 @@ const SPEED: Record<string, Target> = {
   "Midas Sprint": { cat: "minerals", line: only("Gold") },
   "Midas Rush": { cat: "minerals", line: only("Gold") },
   "Fireside Alchemist": { cat: "minerals", line: only("Crimstone") },
+  "Tree Charge": { cat: "wood" },
+  // A rank % chance that the tree is back at once: average time × (1 − chance).
+  "Tree Turnaround": { cat: "wood" },
 };
+const CHANCE_SPEED: Record<string, number[]> = { "Tree Turnaround": [0.15, 0.25, 0.35] };
 
 /** Time multiplier at a rank: from the rank table, or the "x0.8 …" of the description. */
 function speedAt(def: SkillDef, rank: number): number {
+  const c = CHANCE_SPEED[def.name];
+  if (c) return 1 - c[Math.min(rank, c.length) - 1];
   if (def.ranks?.length) return def.ranks[Math.min(rank, def.ranks.length) - 1];
   const m = /^x([\d.]+)/.exec(def.buff ?? "");
   return m ? Number(m[1]) : 1;
@@ -84,6 +91,7 @@ const POWER: Record<string, { cat: CategoryKey; hours: number[] }> = {
   "Instant Growth": { cat: "crops", hours: [72, 60, 48] },
   "Greenhouse Guru": { cat: "greenhouse", hours: [96, 84, 72] },
   "Barnyard Rouse": { cat: "animals", hours: [120, 96, 84] },
+  "Tree Blitz": { cat: "wood", hours: [24, 18, 12] },
 };
 
 /** FLOWER earned by one full cycle of a category: its daily net divided by cycles per day. */
@@ -105,6 +113,11 @@ function cycleValue(farm: Farm, rates: Rates, r: Report, cat: CategoryKey): numb
     const pots = Object.keys((farm as { greenhouse?: { pots?: object } }).greenhouse?.pots ?? {}).length || 4;
     const harvests = r.categories.greenhouse.lines.reduce((a, l) => a + rate(`${l.key} Harvested`), 0);
     return harvests ? (r.categories.greenhouse.net * pots) / harvests : 0;
+  }
+  if (cat === "wood") {
+    const trees = Object.keys(farm.trees ?? {}).length;
+    const chops = r.categories.wood.lines.reduce((a, l) => a + rate(`${l.key === "Tree" ? "Basic Tree" : l.key} Chopped`), 0);
+    return chops ? (r.categories.wood.net * trees) / chops : 0;
   }
   // Animals: each type's net per feeding round of the whole herd.
   return r.categories.animals.lines.reduce((a, l) => {

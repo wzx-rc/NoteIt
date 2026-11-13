@@ -17,6 +17,7 @@ export interface Farm {
   iron?: Record<string, { name?: string; tier?: number; multiplier?: number; x?: number; y?: number }>;
   gold?: Record<string, { name?: string; tier?: number; multiplier?: number; x?: number; y?: number }>;
   crimstones?: Record<string, { minesLeft?: number }>;
+  trees?: Record<string, { name?: string; multiplier?: number; tier?: number }>;
   crops?: Record<string, { x?: number; y?: number; beeSwarm?: { count?: number }; fertiliser?: { name?: string } }>;
   henHouse?: { animals?: Record<string, Animal> };
   barn?: { animals?: Record<string, Animal> };

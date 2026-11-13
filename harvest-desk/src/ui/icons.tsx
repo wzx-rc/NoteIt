@@ -112,6 +112,9 @@ const ICONS: Record<string, ReactElement> = {
       <path d="M8 19c2 1.5 4 1.5 6 0" stroke="#55a99d" strokeWidth="1.6" fill="none" strokeLinecap="round" />
     </g>
   ),
+  wood: (
+    <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-6" /><path d="M12 3 6 11h3l-4 5h14l-4-5h3z" fill="#5f8f4e" stroke="#5f8f4e" /></g>
+  ),
   lightning: <path d="M13 2L5 13.5h6L10 22l9-12h-6.2z" fill="#f2bf45" />,
   play: <path d="M8 5v14l11-7z" fill="currentColor" />,
   market: (

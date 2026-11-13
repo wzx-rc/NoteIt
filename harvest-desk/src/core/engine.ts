@@ -18,7 +18,7 @@ export interface Market {
 }
 
 export interface Line { key: string; label: string; qty?: number; gross: number; cost: number; net: number }
-export type CategoryKey = "crops" | "animals" | "greenhouse" | "minerals";
+export type CategoryKey = "crops" | "animals" | "greenhouse" | "minerals" | "wood";
 export interface Category { key: CategoryKey; gross: number; cost: number; net: number; lines: Line[] }
 export interface Report { categories: Record<CategoryKey, Category>; net: number; gross: number; cost: number }
 
@@ -212,6 +212,53 @@ export class Engine {
     return sumCat("greenhouse", lines);
   }
 
+  // ---------- Wood (events/landExpansion/chop.ts → getWoodDropAmount, getRequiredAxeAmount, getReward) ----------
+
+  /** Wood from one chop of a tree with this multiplier and tier. */
+  woodYield(mult = 1, tier = 1): number {
+    const f = this.f;
+    let amount = 1;
+    if (f.has("Woody the Beaver") || f.has("Apprentice Beaver") || f.has("Foreman Beaver")) amount *= 1.2;
+    if (f.inventory("Discord Mod") > 0) amount *= 1.35;
+    if (f.inventory("Lumberjack") > 0) amount *= 1.1;
+    // Tough Tree: a rank % chance (0.95 / 0.94 / 0.925) of ×3.
+    const tough = Math.min(f.skill("Tough Tree"), 3);
+    if (tough) amount *= 1 + 2 * ([0.95, 0.94, 0.925][tough - 1] / 100);
+    const lj = Math.min(f.skill("Lumberjack's Extra"), 3);
+    if (lj) amount += [0.1, 0.15, 0.2][lj - 1];
+    if (f.has("Wood Nymph Wendy")) amount += 0.2;
+    if (f.has("Tiki Totem")) amount += 0.1;
+    if (f.has("Squirrel")) amount += 0.1;
+    if (f.faction && f.wears(f.faction.secondaryTool)) amount += 0.25;
+    amount += 0.2; // native: 20 % chance of +1
+    amount *= mult;
+    if (tier === 2) amount += 0.5;
+    if (tier === 3) amount += 2.5;
+    return amount;
+  }
+
+  wood(): Category {
+    const f = this.f;
+    const trees = Object.values(f.raw.trees ?? {});
+    const kinds = new Map<string, { mult: number; tier: number }>();
+    for (const t of trees) if (t.name || t.multiplier) kinds.set(t.name ?? "Tree", { mult: t.multiplier ?? 1, tier: t.tier ?? 1 });
+    if (!kinds.size) kinds.set("Tree", { mult: 1, tier: 1 });
+    const money = Math.min(f.skill("Money Tree"), 3);
+    const feller = Math.min(f.skill("Feller's Discount"), 3);
+    const axe = f.has("Foreman Beaver") ? 0 : this.coins(20 * (feller ? [0.8, 0.75, 0.7][feller - 1] : 1)) * (f.inventory("Logger") > 0 ? 0.5 : 1);
+    const lines: Line[] = [];
+    for (const [name, k] of kinds) {
+      const chops = this.rate(`${name === "Tree" ? "Basic Tree" : name} Chopped`);
+      if (!chops) continue;
+      const qty = chops * this.woodYield(k.mult, k.tier);
+      // Money Tree: a rank % chance (0.95 / 0.94 / 0.925) of 200 coins × the tree multiplier.
+      const coins = money ? chops * ([0.95, 0.94, 0.925][money - 1] / 100) * this.coins(200 * k.mult) : 0;
+      const label = name === "Tree" ? "Arbres" : name === "Ancient Tree" ? "Arbres anciens" : name === "Sacred Tree" ? "Arbre sacré" : name;
+      lines.push(line(name, label, qty * this.price("Wood") + coins, chops * k.mult * axe, qty));
+    }
+    return sumCat("wood", lines);
+  }
+
   // ---------- Minerals (stoneMine.ts, ironMine.ts, mineGold.ts, mineCrimstone.ts) ----------
 
   private nodeTypes(nodes: Record<string, { name?: string; tier?: number; multiplier?: number }> | undefined, base: string) {
@@ -397,7 +444,7 @@ export class Engine {
   }
 
   report(): Report {
-    const categories = { crops: this.crops(), animals: this.animals(), greenhouse: this.greenhouse(), minerals: this.minerals() };
+    const categories = { crops: this.crops(), animals: this.animals(), greenhouse: this.greenhouse(), minerals: this.minerals(), wood: this.wood() };
     const cats = Object.values(categories);
     return {
       categories,

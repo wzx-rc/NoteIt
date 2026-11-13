@@ -25,9 +25,10 @@ describe("dailyRates", () => {
 
 describe("Engine on the example farm", () => {
   const r = new Engine(farm, rates, market).report();
-  it("earns about 9.6 $ per day (greenhouse without tier skills, oil counted)", () => {
-    expect(usd(r.net)).toBeGreaterThan(9.3);
-    expect(usd(r.net)).toBeLessThan(9.9);
+  it("earns about 11.7 $ per day (wood included, greenhouse without tier skills, oil counted)", () => {
+    expect(usd(r.net)).toBeGreaterThan(11.4);
+    expect(usd(r.net)).toBeLessThan(12);
+    expect(usd(r.categories.wood.net)).toBeGreaterThan(1.8);
   });
   it("ranks animals, crops, minerals, then the greenhouse", () => {
     const c = r.categories;
