@@ -11,6 +11,8 @@ const Note = (() => {
   const NOTE_PENS_FULL = ['natural', 'pencil', 'pen', 'fine', 'brush', 'marker', 'water', 'highlight'];
   const notePens = () => atelierFull() ? NOTE_PENS_FULL : LITE_PENS;   // the simple drawing module: three brushes (0.2.25)
   let D = null, wrap, tool, sheet, body, inkSvg, pad, liveBox, liveCv, ink, titleIn, sub, ro = null, view = null;
+  /* 0.3.5: the note can open inside a pane (the Notes list): o.scroller is then its scrolling box, o.onChange is told of each save */
+  let onChg = null, inPane = false;
   /* the page views; sheet, body, inkSvg, pad and P (the page's data) follow the page being written or drawn on */
   let PG = [], cur = null, P = null, spr = 0, spreadOn = false, fillH = 0;
   let mode = 'text', pen = 'pen', hist = [], fut = [], mounted = false, penSeen = false, drawing = null, erasing = null;
@@ -57,7 +59,7 @@ const Note = (() => {
     for (const n of $$('.nf-hid, .ng-dragging, .fsel', c)) { n.classList.remove('nf-hid', 'ng-dragging', 'fsel'); if (!n.classList.length) n.removeAttribute('class'); }
     return c.innerHTML.replace(/<br>(<\/(p|div|li|h1|h2|h3)>)/g, '$1');
   }
-  const saveBody = debounce(() => { if (!mounted) return; P.html = serialize(); touch(D); renderSub(); }, 400);
+  const saveBody = debounce(() => { if (!mounted) return; P.html = serialize(); touch(D); renderSub(); if (onChg) onChg(D); }, 400);
   function renderSub() {
     const sp = spaceById(D.sp), words = PG.reduce((n, g) => n + (g.body.innerText.match(/[\p{L}\p{N}]+/gu) || []).length, 0), strokes = PG.reduce((n, g) => n + (g.data.ink || []).length, 0), np = PG.length;
     const draws = PG.reduce((n, g) => n + $$('figure.ndraw', g.body).length, 0);
@@ -920,7 +922,7 @@ const Note = (() => {
   function layout() {
     if (!mounted) return;
     const vw = view.clientWidth, vh = view.clientHeight;
-    spreadOn = !D.page && !!theme().noteSpread && vw >= 1100 && vw > vh * 1.2;
+    spreadOn = !D.page && !inPane && !!theme().noteSpread && vw >= 1100 && vw > vh * 1.2;
     wrap.classList.toggle('spread', spreadOn);
     wrap.style.setProperty('--np', PG.length);
     const n = PG.length; spr = Math.max(0, Math.min(spr, n >> 1));
@@ -957,14 +959,14 @@ const Note = (() => {
   }
 
   /* ---------- mount ---------- */
-  function mount(v, d) {
+  function mount(v, d, o = {}) {
     D = d; hist = []; fut = []; mode = 'text'; drawing = null; erasing = null; if (!Array.isArray(D.ink)) D.ink = [];
     if (D.pages && !Array.isArray(D.pages)) delete D.pages;
     for (const p of D.pages || []) { if (!Array.isArray(p.ink)) p.ink = []; if (typeof p.html !== 'string') p.html = ''; }
     // drawings no longer in the text (deleted while typing) are dropped when the note opens
     for (const p of [D, ...(D.pages || [])]) if (p.draws) { const used = new Set([...(p.html || '').matchAll(/data-draw="([\w-]+)"/g)].map(m => m[1])); for (const id in p.draws) if (!used.has(id)) delete p.draws[id]; }
     fresh = new WeakSet(); ndSel = null; ndOp = null; clearTimeout(autoFin);
-    PG = []; cur = null; P = null; spr = 0; spreadOn = false; view = $('#view');
+    PG = []; cur = null; P = null; spr = 0; spreadOn = false; view = o.scroller || $('#view'); onChg = o.onChange || null; inPane = !!o.scroller;
     const n = 1 + (D.pages || []).length;
     v.innerHTML = `<div class="nwrap${D.page ? ' ispage' : ''}">${D.page ? PP_OPEN : ''}<div class="ntool" role="toolbar" aria-label="Mise en forme"></div>
       ${Array.from({ length: n }, (_, i) => pageHTML(i)).join('')}
@@ -991,7 +993,7 @@ const Note = (() => {
       else if (k === 'del') { const g = PG.find(g => g.el === a.closest('.sheet')); if (g) delPage(g); }
     });
 
-    titleIn.oninput = () => { D.title = titleIn.value; touch(D); const t = $('#docTitle'); if (t) t.value = D.title; $('#focusTtl').textContent = D.title; };
+    titleIn.oninput = () => { D.title = titleIn.value; touch(D); const t = $('#docTitle'); if (t) t.value = D.title; $('#focusTtl').textContent = D.title; if (onChg) onChg(D); };
     titleIn.onkeydown = e => { if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); PG[0].body.focus(); } };
     titleIn.onblur = () => { if (!titleIn.value.trim()) { D.title = 'Sans titre'; titleIn.value = D.title; touch(D); const t = $('#docTitle'); if (t) t.value = D.title; } };
     addEventListener('pointermove', onMove); addEventListener('pointerup', onUp); addEventListener('pointercancel', onCancel);
@@ -1010,7 +1012,7 @@ const Note = (() => {
     closeMM(); finalizeDrawing(); flush(); mounted = false; bubUnmount(); gutUnmount();
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onCancel);
     if (ro) ro.disconnect(); if (liveBox) liveBox.remove(); if (view) view.removeEventListener('scroll', onScroll);
-    D = null; PG = []; cur = null; P = null; view = null;
+    D = null; PG = []; cur = null; P = null; view = null; onChg = null; inPane = false;
   }
 
   return {

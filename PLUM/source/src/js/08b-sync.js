@@ -96,7 +96,7 @@ const Sync = (() => {
 
   /* ---------- pull: rows changed on the server since the cursor ---------- */
   const isoMs = s => Date.parse(String(s).replace(/(\.\d{3})\d+/, '$1'));
-  const openDocId = () => (R && R.name === 'doc') ? R.id : null;
+  const openDocId = () => (R && R.name === 'doc') ? R.id : (Note.mounted && Note.doc ? Note.doc.id : null);
   function editingNow() {
     const a = document.activeElement;
     return !!(a && a !== document.body && $('#view') && $('#view').contains(a) && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
@@ -178,6 +178,8 @@ const Sync = (() => {
       if (touchOpen || !unmountView) { go(routeStr(R), { keepFocus: true }); return; }
       renderSide(); return;
     }
+    // the Notes list with a note open beside it: only the list is drawn again (the note was not touched)
+    if (!touchOpen && Note.mounted && NL.v && unmountView) { renderSide(); nlRefresh(); return; }
     if (editingNow() || $('#modal')) { renderSide(); renderLater = true; return; }
     go(routeStr(R), { keepFocus: true });
   }

@@ -12,7 +12,11 @@ function hubState() {
   return H;
 }
 const projRecent = sp => Math.max(sp.created || 0, ...S.docs.filter(d => d.sp === sp.id && !d.trash).map(d => d.updated || 0), ...S.tasks.filter(t => t.sp === sp.id).map(t => t.created || 0));
-const hubProjects = () => userSpaces().filter(s => !hubState().off.includes(s.id)).sort((a, b) => projRecent(b) - projRecent(a));
+/* 0.3.5: the cards keep the order they were put in (S.hub.order, synced); a project never placed comes first, newest first */
+const hubProjects = () => {
+  const H = hubState(), at = new Map((Array.isArray(H.order) ? H.order : []).map((id, i) => [id, i]));
+  return userSpaces().filter(s => !H.off.includes(s.id)).sort((a, b) => { const ia = at.has(a.id), ib = at.has(b.id); if (ia && ib) return at.get(a.id) - at.get(b.id); if (ia !== ib) return ia ? 1 : -1; return projRecent(b) - projRecent(a); });
+};
 const stripHtml = h => { const t = document.createElement('div'); t.innerHTML = h || ''; return (t.textContent || '').replace(/\s+/g, ' ').trim(); };
 
 //COLOURS
@@ -482,7 +486,7 @@ function hubOptions(anchor) {
 /* ---------- events ---------- */
 function bindHub(v) {
   const root = $('.hubpage', v);
-  let dragged = 0;
+  let dragged = 0, sorting = null;
   root.addEventListener('click', e => {
     if (Date.now() - dragged < 250) { e.preventDefault(); e.stopPropagation(); return; }
     const qs = e.target.closest('[data-qs]'); if (qs) { quickStart(qs.dataset.qs, qs); return; }
@@ -510,10 +514,78 @@ function bindHub(v) {
   root.addEventListener('pointerdown', e => {
     const row = e.target.closest('.hub-row'); if (!row || e.target.closest('textarea, input') || e.pointerType !== 'mouse' || e.button !== 0 || row.scrollWidth <= row.clientWidth) return;
     const x0 = e.clientX, s0 = row.scrollLeft; let moved = false;
-    const mv = ev => { const dx = ev.clientX - x0; if (!moved && Math.abs(dx) < 6) return; if (!moved) { moved = true; row.classList.add('grabbing'); try { row.setPointerCapture(e.pointerId); } catch (er) {} } row.scrollLeft = s0 - dx; };
+    const mv = ev => { if (sorting) return; const dx = ev.clientX - x0; if (!moved && Math.abs(dx) < 6) return; if (!moved) { moved = true; row.classList.add('grabbing'); try { row.setPointerCapture(e.pointerId); } catch (er) {} } row.scrollLeft = s0 - dx; };
     const up = () => { row.removeEventListener('pointermove', mv); row.removeEventListener('pointerup', up); row.removeEventListener('pointercancel', up); row.classList.remove('grabbing'); if (moved) dragged = Date.now(); };
     row.addEventListener('pointermove', mv); row.addEventListener('pointerup', up); row.addEventListener('pointercancel', up);
   });
+  /* 0.3.5: hold a project card (or a capsule) still for a moment and it lifts: carry it, the others slide out of its
+     way, let go and it settles in the gap. The order is kept in S.hub.order. */
+  const HOLD_MS = { mouse: 260, touch: 320, pen: 320 };
+  root.addEventListener('pointerdown', e => {
+    if (sorting || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const card = e.target.closest('.pc2[data-hproj], .hcap[data-hproj]'); if (!card) return;
+    const btn = e.target.closest('button, textarea, input, a'); if (btn && btn !== card) return;
+    const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
+    const cancel = () => { clearTimeout(t); removeEventListener('pointermove', early, true); removeEventListener('pointerup', cancel, true); removeEventListener('pointercancel', cancel, true); card.classList.remove('hs-press'); };
+    const early = ev => { if (ev.pointerId === pid && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 6) cancel(); };
+    const t = setTimeout(() => { cancel(); cardSort(card, x0, y0, pid); }, HOLD_MS[e.pointerType] || 300);
+    card.classList.add('hs-press');
+    addEventListener('pointermove', early, true); addEventListener('pointerup', cancel, true); addEventListener('pointercancel', cancel, true);
+  });
+  // a finger carrying a card does not scroll the page
+  root.addEventListener('touchmove', e => { if (sorting) e.preventDefault(); }, { passive: false });
+  function cardSort(card, x0, y0, pid) {
+    const box = card.parentElement, r0 = card.getBoundingClientRect(), H = hubState();
+    if (!box || !card.isConnected) return;
+    const ghost = card.cloneNode(true); ghost.classList.add('hs-ghost'); ghost.removeAttribute('data-hproj');
+    Object.assign(ghost.style, { left: r0.left + 'px', top: r0.top + 'px', width: r0.width + 'px', height: r0.height + 'px' });
+    for (const ta of $$('textarea', ghost)) ta.tabIndex = -1;
+    document.body.append(ghost);
+    card.classList.add('hs-ph'); box.classList.add('hs-sorting'); document.body.classList.add('hs-grabbing');
+    try { getSelection().removeAllRanges(); if (document.activeElement && card.contains(document.activeElement)) document.activeElement.blur(); } catch (_) {}
+    if (navigator.vibrate) try { navigator.vibrate(8); } catch (_) {}
+    requestAnimationFrame(() => ghost.classList.add('lift'));
+    const was = box.style.position; if (getComputedStyle(box).position === 'static') box.style.position = 'relative';
+    const row = box.classList.contains('hub-row') ? box : null, start = card.nextElementSibling;
+    let px = x0, py = y0, raf = 0, end = false;
+    sorting = { card };
+    const items = () => [...box.children].filter(c => c.dataset.hproj && c !== card);
+    // reading order: the gap goes before the first card that is below the pointer, or on its line and right of it
+    function place() {
+      const bx = box.getBoundingClientRect(), cx = px - bx.left - box.clientLeft + box.scrollLeft, cy = py - bx.top - box.clientTop + box.scrollTop;
+      const list = items(), add = box.querySelector('.add');
+      let before = list.find(c => cy < c.offsetTop || (cy < c.offsetTop + c.offsetHeight && cx < c.offsetLeft + c.offsetWidth / 2)) || add || null;
+      if (before === card.nextElementSibling || (before === null && !card.nextElementSibling)) return;
+      const first = new Map(list.map(c => [c, c.getBoundingClientRect()]));
+      for (const c of list) for (const a of c.getAnimations()) a.cancel();
+      box.insertBefore(card, before);
+      if (reduceMotion()) return;
+      for (const c of list) { const a = first.get(c), b = c.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top; if (Math.abs(dx) + Math.abs(dy) > .5) c.animate([{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: 260, easing: EASE }); }
+    }
+    function tick() {
+      raf = 0; if (end) return;
+      let s = 0;
+      if (row) { const rr = row.getBoundingClientRect(), edge = 80; if (px < rr.left + edge) s = -Math.ceil((rr.left + edge - px) / 4); else if (px > rr.right - edge) s = Math.ceil((px - rr.right + edge) / 4); }
+      if (s) { const b = row.scrollLeft; row.scrollLeft += s; if (row.scrollLeft !== b) place(); raf = requestAnimationFrame(tick); }
+    }
+    const mv = ev => { if (ev.pointerId !== pid) return; ev.preventDefault(); px = ev.clientX; py = ev.clientY; ghost.style.translate = `${px - x0}px ${py - y0}px`; place(); if (!raf) raf = requestAnimationFrame(tick); };
+    const key = ev => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); box.insertBefore(card, start && start.parentNode === box ? start : box.querySelector('.add')); up({ pointerId: pid }); } };
+    const up = ev => {
+      if (ev.pointerId !== pid || end) return; end = true; cancelAnimationFrame(raf);
+      removeEventListener('pointermove', mv, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); removeEventListener('keydown', key, true);
+      dragged = Date.now() + 150;
+      const ids = [...box.children].map(c => c.dataset.hproj).filter(Boolean), rest = (Array.isArray(H.order) ? H.order : []).filter(id => !ids.includes(id) && spaceById(id));
+      const nu = ids.concat(rest);
+      if (JSON.stringify(nu) !== JSON.stringify(H.order || [])) { H.order = nu; save(); }
+      const fin = () => { ghost.remove(); card.classList.remove('hs-ph'); box.classList.remove('hs-sorting'); document.body.classList.remove('hs-grabbing'); box.style.position = was; sorting = null; if (row) hubRowEdges(row); };
+      if (reduceMotion()) { fin(); return; }
+      const b = card.getBoundingClientRect();
+      ghost.classList.add('settle'); ghost.classList.remove('lift'); ghost.style.translate = `${b.left - r0.left}px ${b.top - r0.top}px`;
+      let ok = false; const done = () => { if (ok) return; ok = true; fin(); };
+      ghost.addEventListener('transitionend', ev => { if (ev.propertyName === 'translate') done(); }); setTimeout(done, 340);
+    };
+    addEventListener('pointermove', mv, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true); addEventListener('keydown', key, true);
+  }
   /* the card's synthesis is typed in place: it is the PAGE's synthesis (saved as you type) */
   let synT = 0;
   root.addEventListener('input', e => { const ta = e.target.closest && e.target.closest('[data-hsynin]'); if (!ta) return; const sp = spaceById(ta.dataset.hsynin); const pg = sp && ensurePage(sp); if (!pg) return; if (!pagePlain(pg)) return; pg.html = ta.value.trim() ? textHtml(ta.value) : ''; clearTimeout(synT); synT = setTimeout(() => touch(pg), 300); });

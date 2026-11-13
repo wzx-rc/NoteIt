@@ -56,7 +56,7 @@ function bindShell() {
     const r = e.target.closest('[data-spi]'); if (r) { e.preventDefault(); spaceMenu(r, spaceById(r.dataset.spi)); } });
   /* drag a note or board card onto a space of the sidebar (or onto « Non classées ») to file it there */
   const DOC_T = 'application/x-plum-doc', side = $('#side');
-  document.addEventListener('dragstart', e => { const c = e.target.closest && e.target.closest('.dcard[draggable="true"]'); if (!c) return; e.dataTransfer.setData(DOC_T, c.dataset.doc); e.dataTransfer.effectAllowed = 'move'; document.documentElement.classList.add('filing'); });
+  document.addEventListener('dragstart', e => { const c = e.target.closest && e.target.closest('.dcard[draggable="true"], .nli[draggable="true"], .pp2-bc[draggable="true"]'); if (!c) return; e.dataTransfer.setData(DOC_T, c.dataset.doc); e.dataTransfer.effectAllowed = 'move'; document.documentElement.classList.add('filing'); });
   // the card may be re-rendered before its dragend, so the drop also ends the filing state
   const endFiling = () => { document.documentElement.classList.remove('filing'); $$('.spdrop-on').forEach(x => x.classList.remove('spdrop-on')); };
   document.addEventListener('dragend', endFiling); addEventListener('drop', endFiling); addEventListener('pointerdown', endFiling);

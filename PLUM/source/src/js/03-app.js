@@ -30,7 +30,7 @@ function ensureDefaultSpace(st) {
   return st;
 }
 /* the pages that cover every space: there, what is created goes to « Non classées » (or to the space picked in the filter) */
-const GLOBAL_ROUTES = ['hub', 'all', 'todo', 'favs', 'trash', 'search'];
+const GLOBAL_ROUTES = ['hub', 'all', 'allboards', 'todo', 'favs', 'trash', 'search'];
 const isGlobal = () => GLOBAL_ROUTES.includes(R.name);
 const curSpace = () => spaceById(S.prefs.cur) || spaceById(DEF_SPACE) || S.spaces[0];
 const userSpaces = () => S.spaces.filter(s => s.id !== DEF_SPACE);
@@ -66,6 +66,7 @@ function setTaskDone(t, v) { t.done = v; t.doneAt = v ? Date.now() : 0; save(); 
 function ctxSpace() {
   if (R.name === 'doc') { const d = docById(R.id); if (d && spaceById(d.sp)) return d.sp; }
   if (R.name === 'all') { const f = allFilter(); return spaceById(f.sp) ? f.sp : DEF_SPACE; }
+  if (R.name === 'allboards') { const f = boardFilter(); return spaceById(f.sp) ? f.sp : DEF_SPACE; }
   if (isGlobal()) return DEF_SPACE;
   return curSpace().id;
 }
@@ -169,10 +170,12 @@ function go(route, opts = {}) {
   renderSide(); renderTop();
   switch (R.name) {
     case 'welcome': renderWelcome(v); break;
-    case 'notes': case 'boards': case 'favs': case 'trash': renderDocList(v, R.name); break;
+    case 'notes': renderNotes(v, curSpace().id); break;
+    case 'boards': case 'favs': case 'trash': renderDocList(v, R.name); break;
+    case 'allboards': renderBoards(v); break;
     case 'tasks': renderTasks(v); break;
     case 'hub': renderHub(v); break;
-    case 'all': renderAll(v); break;
+    case 'all': renderNotes(v, ''); break;
     case 'todo': renderAllTasks(v); break;
     case 'mood': renderMood(v); break;
     case 'search': renderSearch(v); break;
@@ -193,15 +196,15 @@ function openDoc(v, d) {
 /* ================= sidebar =================
    0.2.14, Evernote-like: a « Nouvelle note » button on top, the pages that cover everything (Toutes les notes, Tâches,
    Non classées, Favoris), then the spaces like notebooks: the open one shows its sections and its pages. */
-const NAV = [['hub', 'layout', 'HUB'], ['all', 'notes', 'Toutes les notes'], ['todo', 'tasks', 'Tâches'], ['space:' + 'default', 'inbox', 'Non classées'], ['favs', 'star', 'Favoris']];
+const NAV = [['hub', 'layout', 'HUB'], ['all', 'notes', 'Notes'], ['allboards', 'board', 'Boards'], ['todo', 'tasks', 'Tâches'], ['space:' + 'default', 'inbox', 'Non classées'], ['favs', 'star', 'Favoris']];
 const SP_NAV = [['tasks', 'tasks', 'Tâches'], ['notes', 'note', 'Notes'], ['boards', 'board', 'Boards'], ['mood', 'image', 'Moodboard']];
 const NAV2 = [['trash', 'trash', 'Corbeille']];
 function renderSide() {
   const sp = curSpace(), ld = liveDocs(), mine = ld.filter(d => d.sp === sp.id);
   const cd = R.name === 'doc' ? docById(R.id) : null, cur = cd ? '' : R.name === 'space' ? 'space:' + R.id : R.name;
   const inSp = !isGlobal() && R.name !== 'welcome', open = inSp ? sp : null;
-  const count = { all: ld.length, todo: S.tasks.filter(t => !t.done).length, ['space:' + DEF_SPACE]: ld.filter(d => d.sp === DEF_SPACE).length + S.tasks.filter(t => t.sp === DEF_SPACE && !t.done).length,
-    tasks: S.tasks.filter(t => t.sp === sp.id && !t.done).length, notes: mine.filter(d => d.type === 'note').length, boards: mine.filter(d => d.type === 'board').length, mood: (sp.media || []).length, favs: ld.filter(d => d.fav).length, trash: S.docs.filter(d => d.trash).length };
+  const count = { all: ld.filter(d => d.type === 'note' && !isPage(d)).length, allboards: ld.filter(d => d.type === 'board').length, todo: S.tasks.filter(t => !t.done).length, ['space:' + DEF_SPACE]: ld.filter(d => d.sp === DEF_SPACE).length + S.tasks.filter(t => t.sp === DEF_SPACE && !t.done).length,
+    tasks: S.tasks.filter(t => t.sp === sp.id && !t.done).length, notes: mine.filter(d => d.type === 'note' && !isPage(d)).length, boards: mine.filter(d => d.type === 'board').length, mood: (sp.media || []).length, favs: ld.filter(d => d.fav).length, trash: S.docs.filter(d => d.trash).length };
   // « Non classées » shows no sections in the sidebar: its home has everything, its row stays lit on its pages
   const row = ([k, ic, l]) => `<button class="nv" title="${l}" data-go="${k}"${cur === k || (k === 'space:' + DEF_SPACE && open && open.id === DEF_SPACE) ? ' aria-current="page"' : ''}${k === 'space:' + DEF_SPACE ? ` data-spdrop="${DEF_SPACE}"` : ''}>${icon(ic)}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>`;
   $('#nav').innerHTML = NAV.map(row).join('');
@@ -209,11 +212,14 @@ function renderSide() {
   const n = s => ld.filter(d => d.sp === s.id).length + S.tasks.filter(t => t.sp === s.id && !t.done).length;
   const spRow = s => {
     const on = open && open.id === s.id;
-    let h = `<div class="spi${on ? ' open' : ''}" data-spi="${s.id}"><button class="nv sprow" title="${esc(s.name)}" data-go="space:${s.id}" data-spdrop="${s.id}"${R.name === 'space' && R.id === s.id ? ' aria-current="page"' : ''}${on ? ' aria-expanded="true"' : ''}><span class="dot" style="background:${s.color}"><b class="dl">${esc((s.name.trim()[0] || '?').toUpperCase())}</b></span><span class="spt">${esc(s.name)}</span><span class="ct">${n(s) || ''}</span></button><button class="spm-more spx" data-spmore="${s.id}" aria-label="Options de ${esc(s.name)}" title="Options">${icon('dots', 'sm')}</button></div>`;
+    let h = `<div class="spi${on ? ' open' : ''}" data-spi="${s.id}"><button class="nv sprow" title="${esc(s.name)}" data-go="space:${s.id}" data-spdrop="${s.id}"${(R.name === 'space' && R.id === s.id) || (cd && isPage(cd) && cd.sp === s.id) ? ' aria-current="page"' : ''}${on ? ' aria-expanded="true"' : ''}><span class="dot" style="background:${s.color}"><b class="dl">${esc((s.name.trim()[0] || '?').toUpperCase())}</b></span><span class="spt">${esc(s.name)}</span><span class="ct">${n(s) || ''}</span></button><button class="spm-more spx" data-spmore="${s.id}" aria-label="Options de ${esc(s.name)}" title="Options">${icon('dots', 'sm')}</button></div>`;
     if (on) {
-      const sub = SP_NAV.map(([k, ic, l]) => `<button class="nv sub" data-go="${k}"${cur === k ? ' aria-current="page"' : ''}>${icon(ic, 'sm')}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>`).join('');
-      const pages = mine.slice().sort((a, b) => a.created - b.created);
-      h += `<div class="spsub">${sub}<div class="nav" id="pages">${pages.map(d => `<button class="nv pg" data-go="doc:${d.id}"${cd && cd.id === d.id ? ' aria-current="page"' : ''}>${icon(d.type === 'board' ? 'board' : 'note', 'sm')}<span class="pt">${esc(d.title)}</span></button>`).join('')}</div></div>`;
+      // 0.3.5: the notes under « Notes », the boards under « Boards »; the PAGE is the space's own row
+      const kids = { notes: mine.filter(d => d.type === 'note' && !isPage(d)), boards: mine.filter(d => d.type === 'board') };
+      const pg = d => `<button class="nv pg" data-go="doc:${d.id}"${cd && cd.id === d.id ? ' aria-current="page"' : ''}>${icon(d.type === 'board' ? 'board' : 'note', 'sm')}<span class="pt">${esc(d.title)}</span></button>`;
+      const sub = SP_NAV.map(([k, ic, l]) => { const ls = (kids[k] || []).slice().sort((a, b) => a.created - b.created);
+        return `<button class="nv sub" data-go="${k}"${cur === k ? ' aria-current="page"' : ''}>${icon(ic, 'sm')}<span>${l}</span><span class="ct">${count[k] || ''}</span></button>${ls.length ? `<div class="nav pgs" data-pgs="${k}">${ls.map(pg).join('')}</div>` : ''}`; }).join('');
+      h += `<div class="spsub">${sub}</div>`;
     }
     return h;
   };
@@ -262,7 +268,7 @@ function renderTop() {
   const menu = `<button class="tb menu-btn" id="navBtn" aria-label="Menu">${icon('menu')}</button>`;
   const aiBtn = !S.prefs.aiOn ? '' : `<button class="tb ai" id="aiBtn" aria-pressed="${!$('#ai').hidden}" title="Assistant IA (Ctrl J)">${icon('spark')}<span class="lbl">Assistant</span></button>`;
   let crumbs = '', acts = '';
-  const titles = { notes: 'Notes', boards: 'Boards', tasks: 'Tâches', mood: 'Moodboard', favs: 'Favoris', trash: 'Corbeille', search: 'Recherche', all: 'Toutes les notes', todo: 'Toutes les tâches' };
+  const titles = { notes: 'Notes', boards: 'Boards', tasks: 'Tâches', mood: 'Moodboard', favs: 'Favoris', trash: 'Corbeille', search: 'Recherche', all: 'Notes', allboards: 'Boards', todo: 'Toutes les tâches' };
   // the moodboard of the space opens as a drawer from every page (Ctrl M)
   const moodBtn = R.name === 'mood' || R.name === 'welcome' || isGlobal() ? '' : `<button class="tb" id="moodBtn" aria-pressed="${Mood.isOpen()}" title="Moodboard de l’espace (Ctrl M)">${icon('image')}<span class="lbl">Moodboard</span></button>`;
   const spCrumb = sp => `<button class="sp" data-go="space:${sp.id}"><span class="sdot" style="background:${sp.color}"></span>${esc(sp.name)}</button><span>/</span>`;
@@ -270,10 +276,12 @@ function renderTop() {
     // the space of the page, as a button to file it elsewhere (or nowhere)
     const sp = spaceById(d.sp) || spaceById(DEF_SPACE), def = sp.id === DEF_SPACE;
     // 0.2.81: the arrow (file elsewhere) comes first, the project name goes back to the project page
-    crumbs = def || isPage(d)
+    // 0.3.5: on a project's PAGE the crumb is the project itself (no « name / name »)
+    if (isPage(d)) crumbs = `<span class="sp"><span class="sdot" style="background:${sp.color}"></span></span><span class="cur">${esc(sp.name)}</span>`;
+    else crumbs = def
       ? `<button class="sp spfile${def ? ' none' : ''}" id="docSp" aria-haspopup="menu" title="${def ? 'Ranger dans un espace' : esc(sp.name)}">${def ? icon('inbox', 'sm') : `<span class="sdot" style="background:${sp.color}"></span>`}<span>${def ? 'Ranger…' : esc(sp.name)}</span>${def ? icon('chevd', 'sm') : ''}</button><span>/</span>`
       : `<button class="sp spmv" id="docSp" aria-haspopup="menu" title="Changer d’espace">${icon('chevd', 'sm')}</button><button class="sp spfile" data-go="space:${sp.id}" title="Ouvrir la page du projet"><span class="sdot" style="background:${sp.color}"></span><span>${esc(sp.name)}</span></button><span>/</span>`;
-    crumbs += `<input class="cur" id="docTitle" value="${esc(d.title)}" aria-label="Titre">`;
+    if (!isPage(d)) crumbs += `<input class="cur" id="docTitle" value="${esc(d.title)}" aria-label="Titre">`;
     acts = `<button class="tb" id="favBtn" aria-pressed="${d.fav}" title="Favori">${icon('star')}</button>${moodBtn}
       <button class="tb" id="focusBtn" title="Mode focus (Ctrl .)">${icon('focus')}<span class="lbl">Focus</span></button>${aiBtn}
       <button class="tb" id="docMore" aria-label="Plus d'actions">${icon('dots')}</button>`;
@@ -293,13 +301,15 @@ function renderTop() {
   t.hidden = R.name === 'hub' && innerWidth >= 700;
   if (d) {
     const ti = $('#docTitle');
-    ti.oninput = () => { d.title = ti.value; touch(d); $('#focusTtl').textContent = d.title; if (R.name === 'doc' && d.type === 'note') Note.syncTitle(); };
-    ti.onkeydown = e => { if (e.key === 'Enter') ti.blur(); };
-    ti.onblur = () => { if (!ti.value.trim()) { d.title = 'Sans titre'; ti.value = d.title; touch(d); } };
+    if (ti) {
+      ti.oninput = () => { d.title = ti.value; touch(d); $('#focusTtl').textContent = d.title; if (R.name === 'doc' && d.type === 'note') Note.syncTitle(); };
+      ti.onkeydown = e => { if (e.key === 'Enter') ti.blur(); };
+      ti.onblur = () => { if (!ti.value.trim()) { d.title = 'Sans titre'; ti.value = d.title; touch(d); } };
+    }
     $('#favBtn').onclick = () => { d.fav = !d.fav; touch(d); $('#favBtn').setAttribute('aria-pressed', d.fav); renderSide(); toast(d.fav ? 'Ajouté aux favoris' : 'Retiré des favoris'); };
     $('#focusBtn').onclick = () => setFocus(true);
     $('#docMore').onclick = e => docMenu(e.currentTarget, d);
-    $('#docSp').onclick = e => isPage(d) ? go('space:' + d.sp) : fileMenu(e.currentTarget, d);
+    const ds = $('#docSp'); if (ds) ds.onclick = e => fileMenu(e.currentTarget, d);
   }
   const sm = $('#spMore'); if (sm) sm.onclick = e => spaceMenu(e.currentTarget, spaceById(R.id));
   const mb = $('#moodBtn'); if (mb) mb.onclick = () => Mood.toggle();
@@ -311,7 +321,7 @@ function docMenu(anchor, d) {
     ...(isPage(d) ? [] : [{ label: 'Ranger dans…', icon: 'folder', run: () => fileMenu($('#docSp') || anchor, d) }]),
     { label: 'Dupliquer', icon: 'dup', run: () => { const c = JSON.parse(JSON.stringify(d)); c.id = uid('d'); c.title = d.title + ' (copie)'; c.created = c.updated = Date.now(); c.fav = false; S.docs.push(c); save(); go('doc:' + c.id); toast('Copie créée'); } },
     { label: 'Exporter en fichier', icon: 'download', run: () => exportJSON({ docs: [d] }, `${d.title || 'document'}.json`) },
-    ...(isPage(d) ? [] : [{ label: 'Mettre à la corbeille', icon: 'trash', danger: true, run: () => { d.trash = true; touch(d); go(d.sp === DEF_SPACE ? 'all' : d.type === 'board' ? 'boards' : 'notes'); toast('Mis à la corbeille', { label: 'Annuler', run: () => { d.trash = false; touch(d); go('doc:' + d.id); } }); } }])
+    ...(isPage(d) ? [] : [{ label: 'Mettre à la corbeille', icon: 'trash', danger: true, run: () => { d.trash = true; touch(d); go(d.sp === DEF_SPACE ? (d.type === 'board' ? 'allboards' : 'all') : d.type === 'board' ? 'boards' : 'notes'); toast('Mis à la corbeille', { label: 'Annuler', run: () => { d.trash = false; touch(d); go('doc:' + d.id); } }); } }])
   ], { align: 'right' });
 }
 
@@ -613,6 +623,7 @@ function bindCreate(v) {
   ], { above: true, align: 'right' });
 }
 function createFrom(kind) {
+  if (kind === 'note' && NL.v && (R.name === 'all' || R.name === 'notes') && !nlNarrow()) { nlNew(); return; }
   if (kind === 'note') { const d = newDoc('note'); go('doc:' + d.id); setTimeout(() => Note.focusTitle(), 40); return; }
   const d = newDoc('board', { title: 'Nouveau board' });
   go('doc:' + d.id);
@@ -649,7 +660,7 @@ const CardMM = (() => {
     { dir: 4, label: 'Supprimer', icon: 'trash', danger: true, run: () => trashDoc(d) }];
   function bind(v) {
     v.addEventListener('pointerdown', e => {
-      const c = e.target.closest('.dcard[data-doc]'); if (!c || e.target.closest('.fav,.dsp,.trashacts')) return;
+      const c = e.target.closest('.dcard[data-doc], .nli[data-doc], .pp2-bc[data-doc]'); if (!c || e.target.closest('.fav,.dsp,.trashacts')) return;
       const d = docById(c.dataset.doc); if (!d || d.trash) return;
       if (e.button === 2) { e.preventDefault(); open(e, d, c, true); return; }
       if (e.button !== 0) return;
@@ -660,7 +671,7 @@ const CardMM = (() => {
         off: () => { removeEventListener('pointermove', mv, true); removeEventListener('pointerup', cancelHold, true); removeEventListener('pointercancel', cancelHold, true); removeEventListener('dragstart', cancelHold, true); } };
       addEventListener('pointermove', mv, true); addEventListener('pointerup', cancelHold, true); addEventListener('pointercancel', cancelHold, true); addEventListener('dragstart', cancelHold, true);
     });
-    v.addEventListener('contextmenu', e => { if (e.target.closest('.dcard[data-doc]')) e.preventDefault(); });
+    v.addEventListener('contextmenu', e => { if (e.target.closest('.dcard[data-doc], .nli[data-doc], .pp2-bc[data-doc]')) e.preventDefault(); });
     v.addEventListener('click', e => { if (eatClick) { eatClick = false; e.preventDefault(); e.stopPropagation(); } }, true);
   }
   function cancelHold() { if (!hold) return; clearTimeout(hold.t); hold.off(); hold = null; }
@@ -757,27 +768,6 @@ function renderDocList(v, kind) {
 }
 /* every note and board, whatever its space (Evernote's « Notes »): filters by kind and by space, kept in S.prefs.allF */
 const allFilter = () => { const f = S.prefs.allF || (S.prefs.allF = { k: 'all', sp: '' }); if (f.sp && !spaceById(f.sp)) f.sp = ''; return f; };
-function renderAll(v) {
-  const f = allFilter(), ld = liveDocs();
-  const list = ld.filter(d => (f.k === 'all' || d.type === f.k) && (!f.sp || d.sp === f.sp)).sort((a, b) => b.updated - a.updated);
-  const nIn = id => ld.filter(d => d.sp === id).length;
-  const chip = (attr, val, cur, label, extra = '') => `<button class="chip fchip" ${attr}="${val}" aria-pressed="${cur === val}">${extra}${label}</button>`;
-  const spChips = [chip('data-fsp', '', f.sp, 'Tous les espaces'), chip('data-fsp', DEF_SPACE, f.sp, `${DEF_NAME} <small>${nIn(DEF_SPACE) || ''}</small>`, icon('inbox', 'sm')),
-    ...userSpaces().map(s => chip('data-fsp', s.id, f.sp, `${esc(s.name)} <small>${nIn(s.id) || ''}</small>`, `<span class="sdot" style="background:${s.color}"></span>`))].join('');
-  const where = f.sp ? spaceById(f.sp).name : '';
-  v.innerHTML = `<div class="page allpage"><div class="ph"><div><h1>Toutes les notes</h1><div class="sub">${list.length ? `${list.length} page${list.length > 1 ? 's' : ''}` : 'Rien pour l’instant'}${where ? ` dans ${esc(where)}` : ', tous espaces confondus'}. Glissez une carte sur un espace de la barre latérale pour la ranger.</div></div><div class="acts">
-      <button class="btn" data-new="board">${icon('board')}Nouveau board</button><button class="btn pri" data-new="note">${icon('note')}Nouvelle note</button></div></div>
-    <div class="fbar"><div class="seg fkind">${[['all', 'Tout'], ['note', 'Notes'], ['board', 'Boards']].map(([k, l]) => `<button data-fk="${k}" aria-pressed="${f.k === k}">${l}</button>`).join('')}</div><div class="fsps">${spChips}</div></div>
-    <div class="docs"><button class="newcard" data-new="note">${icon('plus', 'lg')}Nouvelle note</button>${list.map(d => docCard(d, { where: true })).join('')}</div>
-    ${!list.length && (f.sp || f.k !== 'all') ? '<div class="empty">Aucune page avec ces filtres.</div>' : ''}
-  </div><button class="fab" id="fab" aria-label="Créer">${icon('plus')}</button>`;
-  bindDocCards(v); bindCreate(v);
-  $('.fbar', v).onclick = e => {
-    const k = e.target.closest('[data-fk]'), sp = e.target.closest('[data-fsp]');
-    if (k) f.k = k.dataset.fk; else if (sp) f.sp = sp.dataset.fsp; else return;
-    save(); go('all');
-  };
-}
 /* every open task, one block per space (« Non classées » first); drag a task into another block to move it */
 function renderAllTasks(v) {
   const open = S.tasks.filter(t => !t.done), done = S.tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
@@ -812,8 +802,10 @@ function renderSpace(v) {
         ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div id="sDone">${done.map(t => taskRow(t)).join('')}</div></details>` : ''}</section>
       <section class="card sp-mood" id="spMood"><h2>${icon('image')}Moodboard <span class="ct">${nm || ''}</span><button class="more" data-go="mood">Ouvrir</button></h2>${Mood.preview(sp)}</section>
     </div>
-    <section class="sp-docs"><h2 class="sp-h">Boards et notes</h2>
-      <div class="docs"><button class="newcard" data-new="board">${icon('plus', 'lg')}Nouveau board</button><button class="newcard" data-new="note">${icon('plus', 'lg')}Nouvelle note</button>${docs.map(docCard).join('')}</div></section>
+    <section class="sp-docs"><h2 class="sp-h">Boards</h2>
+      <div class="docs"><button class="newcard" data-new="board">${icon('plus', 'lg')}Nouveau board</button>${docs.filter(d => d.type === 'board').map(docCard).join('')}</div></section>
+    <section class="sp-docs"><h2 class="sp-h">Notes</h2>
+      <div class="docs"><button class="newcard" data-new="note">${icon('plus', 'lg')}Nouvelle note</button>${docs.filter(d => d.type === 'note' && !isPage(d)).map(docCard).join('')}</div></section>
   </div><button class="fab" id="fab" aria-label="Créer">${icon('plus')}</button>`;
   bindDocCards(v); bindCreate(v); bindTaskList($('.sp-tasks', v), () => go(R));
   bindQuickAdd($('#sAdd'), () => go(R));

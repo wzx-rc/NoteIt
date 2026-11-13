@@ -63,8 +63,74 @@ function quickTaskPop(anchor, spId) {
    Head (Espace, name, counts, + Note / + Board / + Tâche, cover on the right), then a grid: the Quick Note (the PAGE's
    own text, whose first lines are the card's synthesis) and the Tâches module on the left, the Moodboard on the right,
    then Boards et notes. The note editor itself is mounted by Note inside .pp2-qn; this fills the other slots. */
-const PP_OPEN = '<section class="ppage" id="ppage"></section><div class="pp2-grid"><section class="pp2-mod pp2-qn"><div class="pp2-h">Quick Note</div>';
-const PP_CLOSE = '</section><section class="pp2-mod pp2-tk" id="pptk"></section><aside class="pp2-mod pp2-mood" id="ppmood"></aside></div><section class="pp2-docs sp-docs" id="ppdocs"></section>';
+/* 0.3.5: the modules (Quick Note, Tâches, Notes, Moodboard, Boards) sit in two lanes; each has a grip in its head to
+   carry it elsewhere on the page. Their places are kept in S.prefs.ppLay = { l: [...], r: [...] } (the same for every project). */
+const PP_GRIP = `<button class="pp2-grip" data-ppgrip title="Déplacer le module" aria-label="Déplacer le module">${icon('grip', 'sm')}</button>`;
+const PP_OPEN = `<section class="ppage" id="ppage"></section><div class="pp2-grid"><div class="pp2-lane" data-pplane="l"><section class="pp2-mod pp2-qn" data-ppm="qn"><div class="pp2-h">${PP_GRIP}Quick Note</div>`;
+const PP_CLOSE = '</section><section class="pp2-mod pp2-tk" data-ppm="tk" id="pptk"></section><section class="pp2-mod pp2-nt" data-ppm="nt" id="ppnotes"></section></div><div class="pp2-lane" data-pplane="r"><aside class="pp2-mod pp2-mood" data-ppm="mood" id="ppmood"></aside><section class="pp2-mod pp2-bd" data-ppm="bd" id="ppboards"></section></div></div>';
+const PP_DEF = { l: ['qn', 'tk', 'nt'], r: ['mood', 'bd'] };
+function ppLay() {
+  const L = S.prefs.ppLay || {}, seen = new Set(), all = [...PP_DEF.l, ...PP_DEF.r], out = { l: [], r: [] };
+  for (const k of ['l', 'r']) for (const id of Array.isArray(L[k]) ? L[k] : []) if (all.includes(id) && !seen.has(id)) { seen.add(id); out[k].push(id); }
+  for (const k of ['l', 'r']) for (const id of PP_DEF[k]) if (!seen.has(id)) { seen.add(id); out[k].push(id); }
+  return out;
+}
+/* the modules go to their saved places once per opening of the page (the slots keep their place when refreshed) */
+function ppArrange(grid) {
+  if (!grid || grid.dataset.arr) return; grid.dataset.arr = '1';
+  const lay = ppLay();
+  for (const k of ['l', 'r']) { const lane = $(`[data-pplane="${k}"]`, grid); for (const id of lay[k]) { const m = $(`[data-ppm="${id}"]`, grid); if (m) lane.append(m); } }
+  grid.addEventListener('pointerdown', e => { const g = e.target.closest('[data-ppgrip]'); if (!g || e.button) return; const m = g.closest('[data-ppm]'); if (m) { e.preventDefault(); ppDrag(e, m, grid); } });
+}
+/* carry a module by its grip: it lifts and follows the pointer, a dashed gap shows where it will land, the other
+   modules slide out of the way; let go and it settles into the gap */
+function ppDrag(e, mod, grid) {
+  const view = $('#view'), pid = e.pointerId, r0 = mod.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY;
+  const ph = document.createElement('div'); ph.className = 'pp2-ph'; ph.style.height = r0.height + 'px';
+  mod.before(ph);
+  const H = Math.min(r0.height, 260);
+  Object.assign(mod.style, { position: 'fixed', left: r0.left + 'px', top: r0.top + 'px', width: r0.width + 'px', height: H + 'px', margin: '0', zIndex: 80 });
+  mod.classList.add('pp2-drag'); grid.classList.add('ppdragging'); document.body.classList.add('pp-grabbing');
+  try { getSelection().removeAllRanges(); } catch (_) {}
+  requestAnimationFrame(() => mod.classList.add('lift'));
+  let px = x0, py = y0, raf = 0, done = false;
+  const mods = () => $$('[data-ppm]', grid).filter(m => m !== mod);
+  function place() {
+    const lanes = $$('[data-pplane]', grid);
+    let lane = lanes[0], best = 1e9;
+    for (const l of lanes) { const r = l.getBoundingClientRect(), dx = Math.max(r.left - px, 0, px - r.right), dy = Math.max(r.top - py, 0, py - r.bottom), d = Math.hypot(dx, dy); if (d < best) { best = d; lane = l; } }
+    const before = [...lane.children].find(c => c !== ph && c !== mod && c.dataset.ppm && (() => { const r = c.getBoundingClientRect(); return py < r.top + r.height / 2; })()) || null;
+    if (ph.parentNode === lane && ph.nextElementSibling === before) return;
+    if (!before && ph.parentNode === lane && !ph.nextElementSibling) return;
+    const others = mods(), was = new Map(others.map(m => [m, m.getBoundingClientRect().top]));
+    for (const m of others) for (const a of m.getAnimations()) a.cancel();
+    if (before) lane.insertBefore(ph, before); else lane.append(ph);
+    if (!reduceMotion()) for (const m of others) { const d = was.get(m) - m.getBoundingClientRect().top; if (Math.abs(d) > .5) m.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: 220, easing: EASE }); }
+  }
+  function tick() {
+    raf = 0; if (done) return;
+    const vr = view.getBoundingClientRect(), edge = 70;
+    let sp = 0; if (py < vr.top + edge) sp = -Math.ceil((vr.top + edge - py) / 5); else if (py > vr.bottom - edge) sp = Math.ceil((py - vr.bottom + edge) / 5);
+    if (sp) { view.scrollTop += sp; place(); raf = requestAnimationFrame(tick); }
+  }
+  const mv = ev => { if (ev.pointerId !== pid) return; ev.preventDefault(); px = ev.clientX; py = ev.clientY; mod.style.translate = `${px - x0}px ${py - y0}px`; place(); if (!raf) raf = requestAnimationFrame(tick); };
+  const up = ev => {
+    if (ev.pointerId !== pid || done) return; done = true; cancelAnimationFrame(raf);
+    removeEventListener('pointermove', mv, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
+    const pr = ph.getBoundingClientRect();
+    const fin = () => {
+      ph.replaceWith(mod); mod.classList.remove('pp2-drag', 'lift', 'settle'); grid.classList.remove('ppdragging'); document.body.classList.remove('pp-grabbing');
+      for (const k of ['position', 'left', 'top', 'width', 'height', 'margin', 'zIndex', 'translate']) mod.style[k] = '';
+      S.prefs.ppLay = { l: $$('[data-pplane="l"] > [data-ppm]', grid).map(m => m.dataset.ppm), r: $$('[data-pplane="r"] > [data-ppm]', grid).map(m => m.dataset.ppm) }; save();
+    };
+    if (reduceMotion()) { fin(); return; }
+    mod.classList.add('settle'); mod.classList.remove('lift');
+    mod.style.translate = `${pr.left - r0.left}px ${pr.top - r0.top}px`;
+    let ok = false; const end = () => { if (ok) return; ok = true; fin(); };
+    mod.addEventListener('transitionend', ev => { if (ev.target === mod && ev.propertyName === 'translate') end(); }); setTimeout(end, 320);
+  };
+  addEventListener('pointermove', mv, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+}
 /* the Quick Note as plain text (the card shows it and can edit it while the note is plain paragraphs) */
 const pageText = d => { const t = document.createElement('div'); t.innerHTML = (d && d.html || '').replace(/<\/(p|div|h\d|li)>|<br\s*\/?>/gi, '\n'); return (t.textContent || '').replace(/ /g, ' ').replace(/\n{3,}/g, '\n\n').trim(); };
 const pagePlain = d => !/<(?!\/?(p|br|div|span)\b)[a-z]/i.test(d && d.html || '');
@@ -92,12 +158,13 @@ function pageHead(el, d) {
   if (!el || !d) return;
   const sp = spaceById(d.sp); if (!sp) { el.innerHTML = ''; return; }
   const pal = projPal(sp.color), wrap = el.parentNode;
+  ppArrange($('.pp2-grid', wrap));
   wrap.style.cssText = `--pc1:${pal.c1};--pc2:${pal.c2};--pc3:${pal.c3}`;
   const keepT = document.activeElement && document.activeElement.id === 'ppTitle', keepAdd = document.activeElement && document.activeElement.id === 'pAdd';
   el.innerHTML = pageHeadHTML(d);
   const ti = $('#ppTitle', el);
   ti.onkeydown = e => { if (e.key === 'Enter') ti.blur(); if (e.key === 'Escape') { ti.value = sp.name; ti.blur(); } };
-  ti.oninput = () => { const n = ti.value.trim(); if (n) { sp.name = n.slice(0, 60); d.title = sp.name; save(); renderSide(); } };
+  ti.oninput = () => { const n = ti.value.trim(); if (n) { sp.name = n.slice(0, 60); d.title = sp.name; save(); renderSide(); const c = $('#top .crumbs .cur'); if (c) c.textContent = sp.name; } };
   ti.onblur = () => { if (!ti.value.trim()) ti.value = sp.name; };
   if (keepT) ti.focus();
   ppCovFit(el); if (!el._covRO && window.ResizeObserver) { el._covRO = new ResizeObserver(() => ppCovFit(el)); el._covRO.observe(el); }
@@ -108,17 +175,24 @@ function pageHead(el, d) {
   /* the other slots are rebuilt as new elements so their listeners are bound once */
   const slot = (id, html, bind) => { const old = $('#' + id, wrap); if (!old) return; const n = old.cloneNode(false); n.innerHTML = html; old.replaceWith(n); if (bind) bind(n); };
   const tasks = S.tasks.filter(t => t.sp === sp.id), open = tasks.filter(t => !t.done).sort(taskSort), done = tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
-  slot('pptk', `<div class="pp2-h">Tâches <span class="ct">${open.length || ''}</span><button class="more" data-go="tasks" data-pcur>Tout voir</button></div>${quickAddBox('pAdd', 'Ajouter une tâche…', sp.id)}
+  slot('pptk', `<div class="pp2-h">${PP_GRIP}Tâches <span class="ct">${open.length || ''}</span><button class="more" data-go="tasks" data-pcur>Tout voir</button></div>${quickAddBox('pAdd', 'Ajouter une tâche…', sp.id)}
       <div id="pTasks" class="tl-light" data-tlist data-sp="${sp.id}">${open.map(t => taskRow(t, { drag: true })).join('') || '<div class="empty sm">Rien à faire ici pour le moment.</div>'}</div>
       ${done.length ? `<details class="donegrp"><summary>${icon('chev', 'sm')}Terminées (${done.length})</summary><div>${done.map(t => taskRow(t)).join('')}</div></details>` : ''}`,
     n => { bindTaskList(n, refreshPageHead); bindQuickAdd($('#pAdd', n), () => { refreshTaskViews(); refreshPageHead(); }); n.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) { setCurSpace(sp.id); go(g.dataset.go); } }); });
   if (keepAdd) { const i = $('#pAdd', wrap); if (i) i.focus({ preventScroll: true }); }
   { const lk = (sp.media || []).filter(m => m.type === 'link' && !m.pv); if (lk.length && typeof moodUnfurl === 'function') setTimeout(() => moodUnfurl(lk, refreshPageHead), 300); }
-  slot('ppmood', `<div class="pp2-h">Moodboard <span class="ct">${(sp.media || []).length || ''}</span></div>${Mood.preview(sp)}${(sp.media || []).length ? `<button class="pp2-mopen" data-pmood>${icon('plus', 'sm')}Ouvrir</button>` : ''}`,
+  slot('ppmood', `<div class="pp2-h">${PP_GRIP}Moodboard <span class="ct">${(sp.media || []).length || ''}</span></div>${Mood.preview(sp)}${(sp.media || []).length ? `<button class="pp2-mopen" data-pmood>${icon('plus', 'sm')}Ouvrir</button>` : ''}`,
     n => { const mo = $('.pp2-mopen', n), wl = $('.mwall', n); if (mo && wl) wl.append(mo); Mood.bindPreview(n, sp); n.addEventListener('click', e => { if (e.target.closest('[data-pmood]')) { setCurSpace(sp.id); Mood.toggle(); } }); });
+  /* 0.3.5: Notes and Boards, each in its own module (the Notes in the list's lines, the Boards as small cards) */
   const docs = liveDocs().filter(x => x.sp === sp.id && !x.page).sort((a, b) => b.updated - a.updated);
-  slot('ppdocs', `<h2 class="sp-h">Boards et notes</h2><div class="docs"><button class="newcard" data-pnew="board">${icon('plus', 'lg')}Nouveau board</button><button class="newcard" data-pnew="note">${icon('plus', 'lg')}Nouvelle note</button>${docs.map(x => docCard(x)).join('')}</div>`,
-    n => { bindDocCards(n); n.addEventListener('click', e => { const nw = e.target.closest('[data-pnew]'); if (nw) createIn(nw.dataset.pnew, sp.id); }); });
+  const nts = docs.filter(x => x.type === 'note'), bds = docs.filter(x => x.type === 'board'), NMAX = 6, BMAX = 6;
+  const bindMod = n => { bindDocCards(n); n.addEventListener('click', e => { const it = e.target.closest('[data-nl]'); if (it) { go('doc:' + it.dataset.nl); return; } const nw = e.target.closest('[data-pnew]'); if (nw) createIn(nw.dataset.pnew, sp.id); }); };
+  slot('ppnotes', `<div class="pp2-h">${PP_GRIP}Notes <span class="ct">${nts.length || ''}</span><button class="more" data-go="notes">Tout voir</button></div>
+      <div class="pp2-nl">${nts.slice(0, NMAX).map(x => nlItem(x)).join('') || '<div class="empty sm">Aucune note dans ce projet.</div>'}</div>
+      <button class="pp2-new" data-pnew="note">${icon('plus', 'sm')}Nouvelle note</button>${nts.length > NMAX ? `<button class="pp2-all" data-go="notes">Voir les ${nts.length} notes</button>` : ''}`, bindMod);
+  slot('ppboards', `<div class="pp2-h">${PP_GRIP}Boards <span class="ct">${bds.length || ''}</span><button class="more" data-go="boards">Tout voir</button></div>
+      <div class="pp2-bgrid">${bds.slice(0, BMAX).map(x => `<button class="pp2-bc" data-open="${x.id}" data-doc="${x.id}" draggable="true" title="${esc(x.title)}"><span class="pp2-bth">${Thumbs.svg(x)}</span><b>${esc(x.title)}</b><small>${ago(x.updated)}</small></button>`).join('')}<button class="pp2-bc add" data-pnew="board"><span class="pp2-bth">${icon('plus', 'lg')}</span><b>Nouveau board</b></button></div>
+      ${bds.length > BMAX ? `<button class="pp2-all" data-go="boards">Voir les ${bds.length} boards</button>` : ''}`, bindMod);
 }
 /* refresh the PAGE head when tasks change elsewhere */
 function refreshPageHead() { const el = $('#ppage'); if (el && Note.mounted && isPage(Note.doc)) pageHead(el, Note.doc); }
