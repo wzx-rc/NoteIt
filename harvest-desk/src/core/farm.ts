@@ -28,6 +28,9 @@ export interface Farm {
   bank?: { withdrawnAmount?: number };
   trades?: { soldCount?: number };
   wardrobe?: Record<string, number>;
+  // Read by the farm value tab.
+  buds?: Record<string, { type?: string; stem?: string; aura?: string; coordinates?: unknown }>;
+  pets?: { nfts?: Record<string, { name?: string }> };
   vip?: { expiresAt?: number; trialStartedAt?: number };
   delivery?: { orders?: Order[]; fulfilledCount?: number };
   npcs?: Record<string, { deliveryCount?: number; skippedCount?: number; deliveryCompletedAt?: number }>;

@@ -1,9 +1,10 @@
 import { Icon } from "../icons";
 
-export type View = "revenue" | "market" | "deliveries" | "skills" | "ledger" | "settings";
+export type View = "revenue" | "value" | "market" | "deliveries" | "skills" | "ledger" | "settings";
 
 export const VIEWS: { v: View; label: string; icon: string }[] = [
   { v: "revenue", label: "Revenus", icon: "revenue" },
+  { v: "value", label: "Valeur de la ferme", icon: "coins" },
   { v: "market", label: "Marketplace", icon: "market" },
   { v: "deliveries", label: "Livraisons", icon: "delivery" },
   { v: "skills", label: "Skills", icon: "skills" },

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { DeliveriesView } from "./components/DeliveriesView";
+import { FarmValueView } from "./components/FarmValueView";
 import { GrowthCurve } from "./components/GrowthCurve";
 import { LedgerView } from "./components/LedgerView";
 import { MarketView } from "./components/MarketView";
@@ -43,6 +44,7 @@ export function App() {
           <Banner state={state} onRetry={() => refresh(true)} onImport={importHistory} />
           {current === "settings" ? <SettingsView state={state} onImport={importHistory} />
             : !ready ? null
+            : current === "value" ? <FarmValueView state={state} />
             : current === "market" ? <MarketView state={state} />
             : current === "deliveries" ? <DeliveriesView state={state} />
             : current === "skills" ? <SkillsView state={state} />

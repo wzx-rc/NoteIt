@@ -15,7 +15,14 @@ export interface Market {
   prices: Record<string, number>;
   /** Floor price per NFT, in FLOWER. */
   nftFloors: Record<string, number>;
+  /** Latest sale of each wearable, in FLOWER (collectibles are in `prices`). */
+  wearableSales?: Record<string, number>;
+  /** Buds and pet NFTs by token id: floor, latest sale and best offer, in FLOWER. */
+  buds?: Record<string, TokenQuote>;
+  pets?: Record<string, TokenQuote>;
 }
+
+export interface TokenQuote { floor?: number; sale?: number; offer?: number }
 
 export interface Line { key: string; label: string; qty?: number; gross: number; cost: number; net: number }
 export type CategoryKey = "crops" | "animals" | "greenhouse" | "minerals" | "wood" | "fruits" | "honey";

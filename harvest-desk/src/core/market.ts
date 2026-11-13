@@ -1,7 +1,7 @@
 import ids from "./data/ids.json";
-import type { Market } from "./engine";
+import type { Market, TokenQuote } from "./engine";
 
-interface ItemReport { latestSale?: number; floor?: number }
+interface ItemReport { latestSale?: number; floor?: number; bestOffer?: number }
 interface MarketplaceActivity { data: { flowerPrice: number; reports: Record<string, { items: Record<string, ItemReport> }> } }
 
 /**
@@ -22,9 +22,17 @@ export function parseMarket(json: MarketplaceActivity): Market {
     if (p) prices[name] = p;
     if (r.floor) nftFloors[name] = r.floor;
   }
+  const wearableSales: Record<string, number> = {};
   for (const [name, id] of Object.entries(ids.wearables)) {
-    const f = items[`wearables-${id}`]?.floor;
-    if (f) nftFloors[name] = f;
+    const r = items[`wearables-${id}`];
+    if (r?.floor) nftFloors[name] = r.floor;
+    if (r?.latestSale) wearableSales[name] = r.latestSale;
   }
-  return { flowerUsd: json.data.flowerPrice, date, prices, nftFloors };
+  const buds: Record<string, TokenQuote> = {}, pets: Record<string, TokenQuote> = {};
+  for (const [key, r] of Object.entries(items)) {
+    const m = /^(buds|pets)-(\d+)$/.exec(key);
+    if (!m) continue;
+    (m[1] === "buds" ? buds : pets)[m[2]] = { floor: r.floor, sale: r.latestSale, offer: r.bestOffer };
+  }
+  return { flowerUsd: json.data.flowerPrice, date, prices, nftFloors, wearableSales, buds, pets };
 }
