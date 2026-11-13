@@ -142,6 +142,7 @@ function pageHeadHTML(d) {
   const cov = sp.cover && Assets.url(sp.cover), st = projStats(sp), open = S.tasks.filter(t => t.sp === sp.id && !t.done).length, nm = (sp.media || []).length;
   const meta = [plural(open, 'tâche') + ' à faire', st.nB ? plural(st.nB, 'board') : '', st.nN ? plural(st.nN, 'note') : '', nm ? plural(nm, 'élément') + ' au moodboard' : ''].filter(Boolean).join(' · ');
   return `<div class="pp-hero pp2-hero${cov ? ' img' : ''}">${cov ? `<img src="${cov}" alt="" draggable="false">` : ''}
+      <button class="pp2-covbtn" data-pcov title="${cov ? 'Changer la couverture' : 'Ajouter une couverture'}" aria-label="${cov ? 'Changer la couverture' : 'Ajouter une couverture'}">${icon('image', 'sm')}</button>
       <div class="pp2-id"><div class="sp-kick"><button class="sdot pp2-col" data-pcol style="background:${sp.color}" title="Changer la couleur du projet" aria-label="Couleur du projet"></button>Espace</div>
         <input class="sp-title" id="ppTitle" value="${esc(sp.name)}" aria-label="Nom du projet" spellcheck="false">
         <div class="pp2-sub"><span>${meta}</span><span class="pp-acts"><button data-pnew="note" title="Nouvelle note dans ${esc(sp.name)}">${icon('note', 'sm')}<span>+ Note</span></button><button data-pnew="board" title="Nouveau board dans ${esc(sp.name)}">${icon('board', 'sm')}<span>+ Board</span></button><button class="pri" data-pnew="task">${icon('tasks', 'sm')}<span>+ Tâche</span></button></span></div></div>
@@ -170,6 +171,7 @@ function pageHead(el, d) {
   ppCovFit(el); if (!el._covRO && window.ResizeObserver) { el._covRO = new ResizeObserver(() => ppCovFit(el)); el._covRO.observe(el); }
   el.onclick = e => {
     const pc = e.target.closest('[data-pcol]'); if (pc) { projColor(pc, sp, () => pageHead(el, d)); return; }
+    const cv = e.target.closest('[data-pcov]'); if (cv) { openPop(cv, [{ head: 'Couverture du projet' }, ...projCoverItems(sp, () => pageHead(el, d))], { align: 'right' }); return; }
     const nw = e.target.closest('[data-pnew]'); if (nw) { if (nw.dataset.pnew === 'task') { const i = $('#pAdd'); if (i) { i.scrollIntoView({ block: 'center', behavior: 'smooth' }); i.focus({ preventScroll: true }); } } else createIn(nw.dataset.pnew, sp.id); return; }
   };
   /* the other slots are rebuilt as new elements so their listeners are bound once */

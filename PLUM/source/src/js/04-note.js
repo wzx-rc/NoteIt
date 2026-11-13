@@ -19,7 +19,21 @@ const Note = (() => {
   /* drawings in the text: strokes of the current drawing session, the pause timer of a stylus in text mode, the picked drawing, a move or resize */
   let fresh = new WeakSet(), autoFin = 0, ndSel = null, ndOp = null, fSel = null;
   /* 0.2.81: a picture, a link card or a file in the text is picked with a click and goes with Suppr / Retour arrière */
-  function fPick(f) { if (fSel && fSel !== f) fSel.classList.remove('fsel'); fSel = f || null; if (f) f.classList.add('fsel'); }
+  function fPick(f) {
+    if (fSel && fSel !== f) { fSel.classList.remove('fsel'); for (const h of $$('.fi-h', fSel)) h.remove(); }
+    fSel = f || null; if (!f) return; f.classList.add('fsel');
+    // 0.3.10: a picked picture gets a corner handle to make it smaller or bigger (its width is kept as % of the text column)
+    if (f.matches('figure:not(.nlink):not(.ndraw)') && $('img', f) && !$('.fi-h', f)) f.insertAdjacentHTML('beforeend', '<i class="fi-h" data-fih="1" title="Redimensionner"></i>');
+  }
+  /* resizing a picture by its corner handle */
+  function fiResize(g, f, e) {
+    use(g); saveBody.flush(); P.html = serialize(); pushSnap(P);
+    const x0 = e.clientX, w0 = f.getBoundingClientRect().width, bw = g.body.getBoundingClientRect().width || 1, pid = e.pointerId;
+    f.classList.add('fi-sizing');
+    const mv = ev => { if (ev.pointerId !== pid) return; const w = clamp(w0 + ev.clientX - x0, Math.min(60, bw), bw); f.style.width = w >= bw - 2 ? '' : (w / bw * 100).toFixed(2) + '%'; };
+    const up = ev => { if (ev.pointerId !== pid) return; removeEventListener('pointermove', mv, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); f.classList.remove('fi-sizing'); if (!f.getAttribute('style')) f.removeAttribute('style'); P.html = serialize(); touch(D); renderSub(); };
+    addEventListener('pointermove', mv, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+  }
   function fDelete(g) {
     const f = fSel; if (!f || !f.isConnected) { fSel = null; return; }
     use(g); saveBody.flush(); P.html = serialize(); pushSnap(P);
@@ -56,7 +70,8 @@ const Note = (() => {
     const c = body.cloneNode(true);
     for (const im of $$('img[data-asset]', c)) im.removeAttribute('src');
     for (const f of $$('figure.ndraw', c)) { f.innerHTML = ''; f.classList.remove('sel', 'dragging'); f.style.transform = ''; }
-    for (const n of $$('.nf-hid, .ng-dragging, .fsel', c)) { n.classList.remove('nf-hid', 'ng-dragging', 'fsel'); if (!n.classList.length) n.removeAttribute('class'); }
+    for (const h of $$('.fi-h', c)) h.remove();
+    for (const n of $$('.nf-hid, .ng-dragging, .fsel, .fi-sizing', c)) { n.classList.remove('nf-hid', 'ng-dragging', 'fsel', 'fi-sizing'); if (!n.classList.length) n.removeAttribute('class'); }
     return c.innerHTML.replace(/<br>(<\/(p|div|li|h1|h2|h3)>)/g, '$1');
   }
   const saveBody = debounce(() => { if (!mounted) return; P.html = serialize(); touch(D); renderSub(); if (onChg) onChg(D); }, 400);
@@ -877,6 +892,7 @@ const Note = (() => {
       if (mode === 'text' && e.pointerType === 'mouse' && e.button === 2) { const s = getSelection(); if (s.rangeCount && !s.isCollapsed && b.contains(s.anchorNode) && s.toString().trim()) { e.preventDefault(); use(g); openMM(e); } return; }
       if (mode !== 'text' || (e.pointerType === 'mouse' && e.button > 0)) return;
       const fp = e.target.closest('figure:not(.ndraw), .nfile');
+      if (fp && b.contains(fp) && e.target.closest('[data-fih]')) { e.preventDefault(); fiResize(g, fp, e); return; }
       if (fp && b.contains(fp)) { if (ndSel) ndPick(null); use(g); fPick(fp); b.focus({ preventScroll: true }); getSelection().removeAllRanges(); e.preventDefault(); return; }
       if (fSel) fPick(null);
       const f = e.target.closest('figure.ndraw'); if (!f) { if (ndSel) ndPick(null); return; }

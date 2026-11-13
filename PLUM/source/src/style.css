@@ -3098,16 +3098,30 @@ html[data-pc] .hub2-row > .pc2 { width: max(220px, calc((100% - 5 * 14px) / 5.2)
 .skins .skin-c[aria-pressed="true"] { border-color: var(--accent) !important; border-width: 2px; box-shadow: 0 0 0 3px var(--accent-soft, transparent) !important; }
 .skins .skin-c[aria-pressed="true"]::after { content: "✓ Thème actuel"; position: absolute; top: 14px; right: 14px; z-index: 1; padding: 3px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent, #fff); font: 600 10.5px/1.3 var(--font-ui, inherit); letter-spacing: 0; box-shadow: 0 1px 4px rgb(0 0 0 / .25); pointer-events: none; }
 /* 0.2.67: the card's synthesis is a text field typed in place; a + line under the main tasks */
-textarea.pc2-syn { display: block !important; resize: none; margin: 0; font: 400 12px/1.4 var(--font-ui, inherit); color: var(--ink); outline: none; cursor: text; }
-textarea.pc2-syn::placeholder { color: var(--ink-3); font-style: italic; }
-textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1) 70%, var(--card)) !important; box-shadow: 0 0 0 3px color-mix(in oklab, var(--pc1) 18%, transparent); }
+.pc2-syn.pc2-ed { display: block !important; resize: none; margin: 0; font: 400 12px/1.4 var(--font-ui, inherit); color: var(--ink); outline: none; cursor: text; }
+.pc2-syn.pc2-ed:empty::before { content: attr(data-ph); color: var(--ink-3); font-style: italic; pointer-events: none; }
+/* 0.3.10: the card's synthesis is the Quick Note itself, with its fonts and colours, at card size; it scrolls when longer */
+.pc2-syn.pc2-ed { overflow: hidden auto !important; overflow-wrap: anywhere; scrollbar-width: thin; }
+.pc2-syn.pc2-ed > :first-child { margin-top: 0 !important; }
+.pc2-syn.pc2-ed :is(p, div, h1, h2, h3, h4, ul, ol, blockquote) { margin: 0 0 2px; padding-top: 0; padding-bottom: 0; font-size: inherit; line-height: inherit; }
+.pc2-syn.pc2-ed :is(h1, h2, h3) { font-weight: 600; }
+.pc2-syn.pc2-ed p { display: block; -webkit-line-clamp: none; white-space: normal; overflow: visible; }
+.pc2-syn.pc2-ed [style*="font-size"] { font-size: inherit !important; }
+.pc2-syn.pc2-ed :is(ul, ol) { padding-left: 18px; }
+.pc2-syn.pc2-ed :is(figure, img, svg, canvas, .ndraw) { display: none !important; }
+.pc2-syn.pc2-ed font[size] { font-size: inherit; }
+.pc2-syn.pc2-ed font[face="pf-ui"] { font-family: var(--font-ui); }
+.pc2-syn.pc2-ed font[face="pf-serif"] { font-family: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif; font-size: 1.12em; }
+.pc2-syn.pc2-ed font[face="pf-mono"] { font-family: var(--font-mono); font-size: .92em; }
+.pc2-syn.pc2-ed font[face="pf-hand"] { font-family: var(--font-hand); font-size: 1.3em; line-height: 1.2; }
+.pc2-syn.pc2-ed:focus { border-color: color-mix(in oklab, var(--pc1) 70%, var(--card)) !important; box-shadow: 0 0 0 3px color-mix(in oklab, var(--pc1) 18%, transparent); }
 .pc2-tkplus { display: flex !important; align-items: center; gap: 8px; min-height: 26px; width: 100%; padding: 0 2px !important; border: 0; background: none; color: var(--ink-3) !important; font-size: 12.5px; cursor: pointer; text-align: left; flex: none; }
 .pc2-tkplus:hover { color: var(--ink) !important; }
 .pc2-tkplus .i { width: 15px; height: 15px; }
 /* 0.2.69: fine, quiet outlines on the card's text fields (like the Créer bar): 1 px line, the project colour only as a hint on focus */
-textarea.pc2-syn { border: 1px solid var(--line) !important; border-radius: 10px !important; background: color-mix(in oklab, var(--pc1, var(--accent)) 5%, var(--card)) !important; box-shadow: none !important; }
-textarea.pc2-syn:hover { border-color: var(--line-2) !important; }
-textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--accent)) 45%, var(--line-2)) !important; box-shadow: none !important; }
+.pc2-syn.pc2-ed { border: 1px solid var(--line) !important; border-radius: 10px !important; background: color-mix(in oklab, var(--pc1, var(--accent)) 5%, var(--card)) !important; box-shadow: none !important; }
+.pc2-syn.pc2-ed:hover { border-color: var(--line-2) !important; }
+.pc2-syn.pc2-ed:focus { border-color: color-mix(in oklab, var(--pc1, var(--accent)) 45%, var(--line-2)) !important; box-shadow: none !important; }
 .tkadd { box-shadow: inset 0 0 0 1px var(--line); background: var(--card); }
 .tkadd:focus-within { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pc1, var(--accent)) 45%, var(--line-2)); }
 .tkadd-o { border-width: 1.3px; border-color: var(--ink-3); }
@@ -3116,7 +3130,12 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 /* ================= 0.2.70: the project page = PAGE + space home in one (user mockup) ================= */
 .nwrap.ispage { padding: 0 28px 120px; }
 .nwrap.ispage .ppage { width: min(1440px, 100%); margin-top: 18px; gap: 0; }
-.pp2-hero { height: 222px; border-radius: 20px; background: none; }
+.pp2-hero { height: 150px; border-radius: 20px; background: none; } /* 0.3.10: lower head (was 222 px), more room for the modules */
+/* 0.3.10: a discreet button in the head's corner sets or changes the project's cover */
+.pp2-covbtn { position: absolute; z-index: 2; top: 10px; right: 10px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: color-mix(in oklab, var(--card) 70%, transparent); color: var(--ink-2); opacity: .35; cursor: pointer; transition: opacity .15s, background .15s; backdrop-filter: blur(6px); }
+.pp2-hero:hover .pp2-covbtn { opacity: .85; }
+.pp2-covbtn:hover, .pp2-covbtn:focus-visible { opacity: 1 !important; background: var(--card); color: var(--ink); }
+.pp2-covbtn .i { width: 15px; height: 15px; }
 .pp2-hero::after { display: none; }
 .pp2-hero.img img { position: absolute; right: 0; top: 0; width: 60%; height: 100%; object-fit: cover; -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); mask-image: linear-gradient(90deg, transparent, #000 45%); border-radius: 0 20px 20px 0; }
 .pp2-id { position: absolute; z-index: 1; left: 0; right: 0; bottom: 22px; padding: 0 2px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
@@ -3125,7 +3144,8 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 .pp2-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; font-size: 13.5px; color: var(--ink-3); }
 .pp2-sub .pp-acts { position: static; display: inline-flex; gap: 4px; }
 .pp2-sub .pp-acts button { height: 26px; padding: 0 9px; gap: 5px; border-radius: 7px; font-size: 11.5px !important; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
-.pp2-sub .pp-acts button.pri { background: var(--pc1); box-shadow: none; }
+.pp2-sub .pp-acts button.pri { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1px var(--pc1); } /* 0.3.10: the project colour as a fine outline, not a fill */
+.pp2-sub .pp-acts button.pri .i { color: var(--pc1); }
 .pp2-sub .pp-acts .i { width: 13px; height: 13px; }
 /* when a theme paints a landscape behind the head (no cover), the text sits on its calm left side with some room */
 .pp-hero.pp2-hero:not(.img) .pp2-id { left: 26px; }
@@ -3159,8 +3179,8 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 .pp2-qn .ntool { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .pp2-qn .nbody { min-height: 220px !important; }
 /* 0.2.71: in the Sommet layouts the card's synthesis is bare text; a fine border shows while typing in it */
-:is([data-skin="sommet"], [data-skin="minsom"], [data-skin="briques"]) .pc2-body textarea.pc2-syn { padding: 4px 7px !important; margin: 2px -8px 0; width: calc(100% + 16px); min-height: 66px; max-height: 66px; border: 1px solid transparent !important; border-radius: 7px !important; transition: border-color .12s; }
-:is([data-skin="sommet"], [data-skin="minsom"], [data-skin="briques"]) .pc2-body textarea.pc2-syn:focus { border-color: var(--line-2) !important; }
+:is([data-skin="sommet"], [data-skin="minsom"], [data-skin="briques"]) .pc2-body .pc2-syn.pc2-ed { padding: 4px 7px !important; margin: 2px -8px 0; width: calc(100% + 16px); min-height: 66px; max-height: 66px; border: 1px solid transparent !important; border-radius: 7px !important; transition: border-color .12s; }
+:is([data-skin="sommet"], [data-skin="minsom"], [data-skin="briques"]) .pc2-body .pc2-syn.pc2-ed:focus { border-color: var(--line-2) !important; }
 /* 0.2.72: finer module titles, "+ Ouvrir" as a dashed tile under the moodboard, the note bar on the left, the cover ends on the buttons' line */
 .pp2-h { font: 400 12px/1 var(--font-ui, inherit); letter-spacing: .14em; color: var(--ink-3); }
 .pp2-h .ct { font-weight: 400; }
@@ -3267,6 +3287,11 @@ textarea.pc2-syn:focus { border-color: color-mix(in oklab, var(--pc1, var(--acce
 
 /* 0.2.81: a picked picture / link card / file in a note (Suppr removes it) */
 .nbody figure.fsel, .nbody .nfile.fsel { outline: 2px solid var(--accent, #6aa0ff); outline-offset: 3px; border-radius: 6px; }
+/* 0.3.10: a picture's corner handle; a resized picture keeps its width as a % of the text column */
+.nbody figure:not(.nlink):not(.ndraw) { position: relative; max-width: 100%; }
+.nbody figure[style*="width"]:not(.nlink):not(.ndraw) img { width: 100%; height: auto; }
+.nbody .fi-h { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 4px; background: var(--paper, #fff); border: 1.5px solid var(--accent, #6aa0ff); cursor: nwse-resize; touch-action: none; z-index: 2; }
+.nbody figure.fi-sizing { cursor: nwse-resize; user-select: none; }
 
 /* 0.2.84: a folder on the board (from the moodboard) */
 .it.card-it.dir { gap: 12px; }

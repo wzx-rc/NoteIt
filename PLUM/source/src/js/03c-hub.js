@@ -318,12 +318,15 @@ function hubNoteOut(spId) {
    cover + letter tile + name, then the PAGE's Synthèse (fixed 5 lines) and its main tasks (fixed 5 rows), so every card
    has the same height. Bottom: + note, + board, + tâche (typed right in the card), progress, ↗ opens the PAGE. */
 const PC_ROWS = 5;
+/* 0.3.10: the card shows the Quick Note as it is written (font, colour, bold, lists) and edits it in place. Drawings and
+   pictures stay in the note, hidden in the card; an empty first line is dropped so the text starts at the top. */
+const cardSynHtml = pg => { const h = (pg && pg.html || '').trim(); return /\S/.test(pageText(pg)) || /<(figure|img)\b/i.test(h) ? h : ''; };
 function projCard(sp, o = {}) {
   const pal = projPal(sp.color), pg = pageOf(sp), st = projStats(sp), cov = sp.cover && Assets.url(sp.cover);
   const when = Math.max(projRecent(sp), pg ? pg.updated || 0 : 0);
   const meta = [plural(st.nN, 'note'), plural(st.nB, 'board'), plural(st.nT, 'tâche')].join(' · ');
   const ini = esc(((sp.name || '?').trim()[0] || '?').toUpperCase());
-  const syn = pg ? pageText(pg) : '', synRO = pg && !pagePlain(pg);
+  const syn = pg ? cardSynHtml(pg) : '';
   const tks = mainTasks(sp, PC_ROWS - 1);
   const row = t => `<button class="pc2-tk${t.done ? ' done' : ''}" data-htk="${t.id}" role="checkbox" aria-checked="${t.done}"><i class="pc2-bx">${icon('check', 'sm')}</i><span>${esc(t.t)}</span></button>`;
   const btn = (k, ic, l) => `<button class="pc2-b" data-hnew="${k}" data-sp="${sp.id}" title="${l}" aria-label="${l}">${icon(ic)}<i>+</i></button>`;
@@ -332,7 +335,7 @@ function projCard(sp, o = {}) {
       <button class="pc2-menu" data-hmenu="${sp.id}" aria-label="Options de ${esc(sp.name)}">${icon('dots', 'sm')}</button>
       <div class="pc2-id"><span class="pc2-tile">${ini}</span><div><b>${esc(sp.name)}</b><small>${meta} · ${ago(when)}</small></div></div></div>
     <div class="pc2-body">
-      <textarea class="pc2-syn" data-hsynin="${sp.id}"${synRO ? ' readonly title="La Quick Note contient de la mise en forme : modifie-la sur la page du projet"' : ''} placeholder="Écrire la synthèse du projet…" aria-label="Synthèse de ${esc(sp.name)}" spellcheck="false">${esc(syn)}</textarea>
+      <div class="pc2-syn pc2-ed" contenteditable="true" data-hsynin="${sp.id}" data-ph="Écrire la synthèse du projet…" role="textbox" aria-multiline="true" aria-label="Synthèse de ${esc(sp.name)}" spellcheck="false">${syn}</div>
       <div class="pc2-tks">${tks.map(row).join('')}${o.adding ? taskAddHTML({ cls: 'pc2-add', ph: 'Nouvelle tâche' }) : `<button class="pc2-tkplus" data-hnew="task" data-sp="${sp.id}" title="Ajouter une tâche principale" aria-label="Ajouter une tâche principale">${icon('plus', 'sm')}${tks.length ? '' : '<span>Ajouter une tâche principale</span>'}</button>`}</div>
     </div>
     <div class="pc2-foot">${btn('note', 'note', 'Nouvelle note dans ce projet')}${btn('board', 'board', 'Nouveau board dans ce projet')}${btn('task', 'tasks', 'Nouvelle tâche dans ce projet')}
@@ -439,15 +442,22 @@ function renderHubMods() {
 }
 /* the fade at an edge shows there is more to scroll */
 function hubRowEdges(r) { const w = r.parentElement; w.classList.toggle('more-r', r.scrollLeft + r.clientWidth < r.scrollWidth - 4); w.classList.toggle('more-l', r.scrollLeft > 4); }
+/* the project's cover: a file, a picture of its moodboard, or none (HUB card menu and the PAGE head's button) */
+function projCoverItems(sp, after) {
+  const imgs = spaceMedia(sp.id).filter(x => x.asset && (x.type === 'image' || /^image\//.test(x.mime || '')) && Assets.has(x.asset)).slice(0, 8);
+  const set = id => { if (id) sp.cover = id; else delete sp.cover; save(); after(); };
+  const pickFile = () => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = async () => { const f = i.files[0]; if (!f) return; try { const im = await importImage(f, 1600); set(im.id); } catch (e) { toast('Image illisible'); } }; i.click(); };
+  return [
+    { label: sp.cover ? 'Couverture : changer l’image…' : 'Couverture : choisir une image…', icon: 'image', run: pickFile },
+    ...imgs.map(x => ({ label: 'Couverture du moodboard', icon: 'image', small: x.name || '', run: () => set(x.asset) })),
+    ...(sp.cover ? [{ label: 'Retirer la couverture', icon: 'x', run: () => set(null) }] : [])
+  ];
+}
 function projMenu(anchor, sp) {
   if (!sp) return;
-  const imgs = spaceMedia(sp.id).filter(x => x.asset && (x.type === 'image' || /^image\//.test(x.mime || '')) && Assets.has(x.asset)).slice(0, 8);
-  const pickFile = () => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = async () => { const f = i.files[0]; if (!f) return; try { const im = await importImage(f, 1600); sp.cover = im.id; save(); renderHubMods(); } catch (e) { toast('Image illisible'); } }; i.click(); };
   openPop(anchor, [
     { label: 'Ouvrir le projet', icon: 'folder', run: () => go('space:' + sp.id) },
-    { label: 'Couverture : choisir une image…', icon: 'image', run: pickFile },
-    ...imgs.map(x => ({ label: 'Couverture du moodboard', icon: 'image', small: x.name || '', run: () => { sp.cover = x.asset; save(); renderHubMods(); } })),
-    ...(sp.cover ? [{ label: 'Retirer la couverture', icon: 'x', run: () => { delete sp.cover; save(); renderHubMods(); } }] : []),
+    ...projCoverItems(sp, renderHubMods),
     { label: 'Couleur principale…', icon: 'palette', run: () => projColor(anchor, sp) },
     '-',
     { label: 'Masquer du HUB', icon: 'x', danger: true, run: () => { const H = hubState(); H.off.push(sp.id); save(); renderHubMods(); toast(`${sp.name} masqué du HUB`, { label: 'Annuler', run: () => { H.off = H.off.filter(x => x !== sp.id); save(); renderHubMods(); } }); } }
@@ -524,7 +534,7 @@ function bindHub(v) {
   root.addEventListener('pointerdown', e => {
     if (sorting || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const card = e.target.closest('.pc2[data-hproj], .hcap[data-hproj]'); if (!card) return;
-    const btn = e.target.closest('button, textarea, input, a'); if (btn && btn !== card) return;
+    const btn = e.target.closest('button, textarea, input, a, [contenteditable="true"]'); if (btn && btn !== card) return;
     const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
     const cancel = () => { clearTimeout(t); removeEventListener('pointermove', early, true); removeEventListener('pointerup', cancel, true); removeEventListener('pointercancel', cancel, true); card.classList.remove('hs-press'); };
     const early = ev => { if (ev.pointerId === pid && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 6) cancel(); };
@@ -539,7 +549,7 @@ function bindHub(v) {
     if (!box || !card.isConnected) return;
     const ghost = card.cloneNode(true); ghost.classList.add('hs-ghost'); ghost.removeAttribute('data-hproj');
     Object.assign(ghost.style, { left: r0.left + 'px', top: r0.top + 'px', width: r0.width + 'px', height: r0.height + 'px' });
-    for (const ta of $$('textarea', ghost)) ta.tabIndex = -1;
+    for (const ta of $$('textarea, [contenteditable]', ghost)) { ta.tabIndex = -1; ta.contentEditable = 'false'; }
     document.body.append(ghost);
     card.classList.add('hs-ph'); box.classList.add('hs-sorting'); document.body.classList.add('hs-grabbing');
     try { getSelection().removeAllRanges(); if (document.activeElement && card.contains(document.activeElement)) document.activeElement.blur(); } catch (_) {}
@@ -588,7 +598,9 @@ function bindHub(v) {
   }
   /* the card's synthesis is typed in place: it is the PAGE's synthesis (saved as you type) */
   let synT = 0;
-  root.addEventListener('input', e => { const ta = e.target.closest && e.target.closest('[data-hsynin]'); if (!ta) return; const sp = spaceById(ta.dataset.hsynin); const pg = sp && ensurePage(sp); if (!pg) return; if (!pagePlain(pg)) return; pg.html = ta.value.trim() ? textHtml(ta.value) : ''; clearTimeout(synT); synT = setTimeout(() => touch(pg), 300); });
+  root.addEventListener('input', e => { const ta = e.target.closest && e.target.closest('[data-hsynin]'); if (!ta) return; const sp = spaceById(ta.dataset.hsynin); const pg = sp && ensurePage(sp); if (!pg) return; const h = ta.innerHTML; pg.html = /\S/.test(ta.textContent) || /<(figure|img)\b/i.test(h) ? h : ''; clearTimeout(synT); synT = setTimeout(() => touch(pg), 300); });
+  /* pasted text arrives without its outside styling */
+  root.addEventListener('paste', e => { const ta = e.target.closest && e.target.closest('[data-hsynin]'); if (!ta) return; e.preventDefault(); const t = (e.clipboardData && e.clipboardData.getData('text/plain')) || ''; document.execCommand('insertText', false, t); });
   root.addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.matches && e.target.matches('[data-hsynin]')) e.target.blur(); });
   root.addEventListener('scroll', e => { if (e.target.classList && e.target.classList.contains('hub-row')) { hubRowEdges(e.target); if (e.target.closest('#hubProj')) hubScroll = e.target.scrollLeft; } }, true);
   root.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('.hub-row') && !e.target.closest('[data-hmi]')) e.preventDefault(); });
