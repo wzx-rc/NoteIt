@@ -141,7 +141,7 @@ const Board = (() => {
       case 'doc': { const d = docById(it.doc) || {}; return `D${d.title}|${d.updated}|${d.trash}`; }
       case 'sheet': return `g${it.w}|${it.h}|${it.cols}|${it.rows}|${it.fs}|${it.title}|${JSON.stringify(it.cells)}|${JSON.stringify(it.cw || 0)}|${JSON.stringify(it.rh || 0)}|${theme()}`;
       case 'plan': return `P${Math.round(it.w)}|${Math.round(it.h)}|${it.fs}|${it.v}|${it.dim || 0}|${it.d0}|${it.d1}|${it.h0}|${it.h1}|${(it.we || []).join('')}|${it.ck || 0}|${JSON.stringify(it.cols || 0)}|${it.title}|${ymd(new Date())}|${new Date().getHours()}|${theme()}`;
-      case 'todo': return `o${it.w}|${it.c}|${it.font}|${it.fs}|${it.noprog || ''}${it.hidedone || ''}${it.den || ''}|${it.title}|${it.tasks.map(id => { const t = taskById(id); return t ? `${t.id}:${t.done ? 1 : 0}:${t.t}` : ''; }).join('§')}|${theme()}`;
+      case 'todo': return `o${it.w}|${it.c}|${it.font}|${it.fs}|${it.ttc || ''}|${it.nt ? 1 : ''}|${it.noprog || ''}${it.hidedone || ''}${it.den || ''}|${it.title}|${it.tasks.map(id => { const t = taskById(id); return t ? `${t.id}:${t.done ? 1 : 0}:${t.t}` : ''; }).join('§')}|${theme()}`;
     }
     return it.k;
   }
@@ -263,7 +263,7 @@ const Board = (() => {
         const ts = it.tasks.map(id => taskById(id)).filter(Boolean), nd = ts.filter(t => t.done).length;
         const shown = it.hidedone ? ts.filter(t => !t.done) : ts;
         const rows = shown.map(t => `<div class="trw${t.done ? ' done' : ''}" data-task="${t.id}"><button class="tck" data-tck="${t.id}" role="checkbox" aria-checked="${t.done}" aria-label="Terminer"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4L18 8"/></svg></button><span class="ttx" data-sub="${t.id}">${esc(t.t) || '&nbsp;'}</span></div>`).join('');
-        n.innerHTML = `<div class="tin" style="font-family:${fontCSS(it)};font-size:${it.fs}px"><div class="thd"><div class="ttl" data-sub="title">${esc(it.title) || '&nbsp;'}</div>${ts.length && !it.noprog ? `<span class="tcnt">${nd}/${ts.length}</span>` : ''}</div>${ts.length && !it.noprog ? `<div class="tbar"><i style="width:${Math.round(nd / ts.length * 100)}%"></i></div>` : ''}<div class="trows">${rows}</div><button class="tadd" data-tadd="1">${icon('plus', 'sm')}<span>Ajouter une tâche</span></button></div>`;
+        n.innerHTML = `<div class="tin" style="font-family:${fontCSS(it)};font-size:${it.fs}px"><div class="thd${it.nt ? ' nt' : ''}">${it.nt ? '' : `<div class="ttl" data-sub="title"${it.ttc ? ` style="color:${it.ttc}"` : ''}>${esc(it.title) || '&nbsp;'}</div>`}${ts.length && !it.noprog ? `<span class="tcnt">${nd}/${ts.length}</span>` : ''}</div>${ts.length && !it.noprog ? `<div class="tbar"><i style="width:${Math.round(nd / ts.length * 100)}%"></i></div>` : ''}<div class="trows">${rows}</div><button class="tadd" data-tadd="1">${icon('plus', 'sm')}<span>Ajouter une tâche</span></button></div>`;
         measureTodo(n, it); break;
       }
     }
@@ -498,6 +498,7 @@ const Board = (() => {
     /* colours */
     const cols = [];
     if (only('frame')) cols.push(qsw('ftc', list[0].tc, 'Couleur du titre du cadre'), qsw('ffc', list[0].fc, 'Fond du cadre'));
+    if (only('todo') && list[0] && !list[0].nt) cols.push(qsw('ttc', list[0].ttc, 'Couleur du titre de la liste'));
     else if (only('mind')) cols.push(qsw('sc', val('sc', null, 'mind'), 'Couleur de la branche'));
     else if (only('note', 'todo')) cols.push(qsw('fc', td ? (T === 'note' ? noteColor : '#FFFFFF') : val('fc', null, 'note', 'todo'), 'Couleur'));
     else {
@@ -580,6 +581,7 @@ const Board = (() => {
   function ctxColor(prop, btn) {
     if (prop === 'pen') { Colors.open(btn, { value: penPref(penKind).c, onPick: (c, final) => { if (!c) return; S.prefs.pens[penKind].c = c; save(); const d = $('[data-tool="pen"] .cdot', toolsEl); if (d) d.style.background = c; if (final) { refreshTools(); propSig = ''; renderProps(); Studio.sync(); } } }); return; }
     const list = selItems(), notes = list.length ? list.every(i => i.k === 'note' || i.k === 'todo') : tool === 'note' || tool === 'todo';
+    if (prop === 'ttc') { const f = list.find(i => i.k === 'todo'); Colors.open(btn, { value: f && f.ttc || '#1E1E1E', none: true, onPick: (v, final) => { setProp('ttc', v, !final); if (final) qSig = ''; } }); return; }
     if (prop === 'ftc' || prop === 'ffc') { const f = list.find(i => i.k === 'frame'); Colors.open(btn, { value: f && f[prop === 'ftc' ? 'tc' : 'fc'] || (prop === 'ftc' ? '#1E1E1E' : '#FFFFFF'), none: true, onPick: (v, final) => { setProp(prop, v, !final); if (final) qSig = ''; } }); return; }
     const it = list.find(i => (prop === 'fc' ? ['shape', 'note', 'todo'] : SC_KINDS).includes(i.k));
     const cur = it ? propValue(it, prop) : prop === 'fc' ? (tool === 'note' ? noteColor : BD().fc) : tool === 'conn' || tool === 'line' ? BD().csc : BD().sc;
@@ -892,6 +894,8 @@ const Board = (() => {
     if (one && one.k === 'image') out.push(sec('Image', seg('frm', one.frm || 'shadow', [['shadow', 'Ombre'], ['polaroid', 'Polaroïd'], ['square', 'Carré'], ['none', 'Simple']]) + (one.frm !== 'polaroid' ? slide('rad', 'Arrondi', Math.round(imgRad(one)), 0, Math.round(Math.min(one.w, one.h) / 2), 1, 'px') : '') + btnRow([['cap', 'text', 'Légende'], Assets.has(one.asset) ? ['view', 'focus', 'Voir en grand'] : null, one.href ? ['src', 'ext', isInsta(one.href) ? 'Voir sur Instagram' : 'Page d’origine'] : null].filter(Boolean))));
     if (one && one.k === 'shape' && (one.sh === 'rect' || one.sh === 'round')) out.push(sec('Angles', seg('corner', shapeRad(one.sh, one.w, one.h, one.rad) > 0 ? 'round' : 'sharp', [['sharp', icon('rect'), 'Vifs'], ['round', icon('round'), 'Arrondis']], 'ic')), radSlide(list));
     if (list.length && list.every(i => i.k === 'todo')) { const f = first();
+      out.push(sec('Titre de la liste', seg('ttitle', !f.nt, [[true, 'Affiché'], [false, 'Masqué']])));
+      if (!f.nt) out.push(sec('Couleur du titre', Colors.row(themeColors('stroke', STROKE_COLORS), f.ttc, 'ttc', { none: true })));
       out.push(sec('Liste', `<div class="pp-hint" style="margin:0 0 6px">Progression</div>` + seg('tprog', !f.noprog, [[true, 'Affichée'], [false, 'Masquée']])
         + `<div class="pp-hint" style="margin:10px 0 6px">Tâches terminées</div>` + seg('thide', !!f.hidedone, [[false, 'Visibles'], [true, 'Masquées']])
         + `<div class="pp-hint" style="margin:10px 0 6px">Espacement</div>` + seg('tden', f.den || '', [['c', 'Serré'], ['', 'Normal'], ['a', 'Aéré']])
@@ -978,6 +982,8 @@ const Board = (() => {
       case 'rad': return it.k === 'shape' && (it.sh === 'rect' || it.sh === 'round') ? { sh: 'rect', rad: Math.max(0, Math.round(+v)) } : it.k === 'image' && it.frm !== 'polaroid' ? { rad: Math.max(0, Math.round(+v)) } : null;
       case 'frm': return it.k === 'image' ? { frm: v, rad: undefined } : null;
       case 'ftc': return it.k === 'frame' ? { tc: v || undefined } : null;
+      case 'ttc': return it.k === 'todo' ? { ttc: v || undefined } : null;
+      case 'ttitle': return it.k === 'todo' ? { nt: v === false || v === 'false' ? 1 : undefined } : null;
       case 'ffc': return it.k === 'frame' ? { fc: v || undefined } : null;
       case 'ftitle': return it.k === 'frame' ? { nt: v === false || v === 'false' ? true : undefined } : null;
       case 'tfs': return it.k === 'frame' ? { tfs: clamp(+v, 0, 3) } : null;
@@ -1230,6 +1236,7 @@ const Board = (() => {
     if (it.lock) { toast('Élément verrouillé'); return; }
     if (editing && (editing !== id || editSub !== (sub || null))) finishEdit();
     render();
+    if (it.k === 'todo' && (!sub || sub === 'title') && it.nt) { sub = it.tasks.find(x => taskById(x)); if (!sub) { todoAddRow(id, -1); return; } }
     if (it.k === 'todo' && !sub) sub = 'title';
     if (it.k === 'sheet' && !sub) sub = sheetAt.get(id) || 'A1';
     const el = editEl(it, sub); if (!el) return;
@@ -1259,7 +1266,12 @@ const Board = (() => {
     };
     const mySub = sub || null;
     el.onblur = () => setTimeout(() => { if (editing === id && editSub === mySub && el.isConnected && document.activeElement !== el) finishEdit(); }, 0);
-    el.onpaste = ev => { ev.stopPropagation(); };
+    el.onpaste = ev => {
+      ev.stopPropagation();
+      // 0.3.15: several lines pasted into a list: each line becomes a task, under the row being typed (or at the top)
+      const c0 = byId.get(id), txt = ev.clipboardData && ev.clipboardData.getData('text/plain');
+      if (c0 && c0.k === 'todo' && txt && /\n/.test(txt.trim())) { ev.preventDefault(); todoPaste(id, sub, txt); }
+    };
     schedule();
   }
   /* Enter adds a row under the current one, Backspace on an empty row removes it */
@@ -1268,6 +1280,21 @@ const Board = (() => {
     if (ev.key === 'Backspace' && sub !== 'title' && !el.textContent.trim()) { ev.preventDefault(); const i = it.tasks.indexOf(sub); finishEdit(); const cur = byId.get(it.id); if (!cur) return; const prev = cur.tasks[Math.max(0, i - 1)]; if (prev && i > 0) startEdit(cur.id, null, prev); else startEdit(cur.id, null, 'title'); return; }
     if (ev.key === 'ArrowUp' && sub !== 'title') { const i = it.tasks.indexOf(sub); ev.preventDefault(); finishEdit(); const cur = byId.get(it.id); if (cur) startEdit(cur.id, null, i > 0 ? cur.tasks[i - 1] : 'title'); return; }
     if (ev.key === 'ArrowDown') { const i = sub === 'title' ? -1 : it.tasks.indexOf(sub); if (i < it.tasks.length - 1) { ev.preventDefault(); finishEdit(); const cur = byId.get(it.id); if (cur) startEdit(cur.id, null, cur.tasks[i + 1]); } return; }
+  }
+  function todoPaste(id, sub, txt) {
+    const lines = txt.replace(/\r/g, '').split('\n').map(l => { const s = l.trim(), m = s.match(PASTE_ITEM), b = !m && s.match(/^(?:[-*+•‣▪◦–—]|\d{1,3}[.)])\s+/);
+      return m && m[0] ? { t: s.slice(m[0].length).trim(), done: !!(m[1] || m[3]) } : { t: (b ? s.slice(b[0].length) : s).replace(/\*\*(.+?)\*\*/g, '$1').trim(), done: false }; }).filter(x => x.t);
+    if (!lines.length) return;
+    finishEdit();
+    const it = byId.get(id); if (!it) return;
+    const tasks = it.tasks.filter(x => taskById(x)); let at = sub && sub !== 'title' ? tasks.indexOf(sub) : -1;
+    // the row being typed, still empty, takes the first line
+    const cur = at >= 0 && taskById(tasks[at]); let i0 = 0;
+    if (cur && !cur.t.trim()) { cur.t = lines[0].t; cur.done = lines[0].done; i0 = 1; }
+    const made = lines.slice(i0).map(x => { const t = { id: uid('t'), t: x.t, sp: it.sp || D.sp, due: '', time: '', done: x.done, star: false, note: '', created: Date.now() }; S.tasks.push(t); return t.id; });
+    tasks.splice(at + 1, 0, ...made); save();
+    commit(replace(items, it, { tasks })); render();
+    toast(`${lines.length} tâche${lines.length > 1 ? 's' : ''} ajoutée${lines.length > 1 ? 's' : ''}`);
   }
   function todoAddRow(id, after) {
     const it = byId.get(id); if (!it) return;
