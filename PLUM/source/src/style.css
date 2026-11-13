@@ -3516,3 +3516,26 @@ body.sorting .tbox-l { min-height: 34px; border-radius: 8px; box-shadow: inset 0
 .txt .ol { padding-left: 1.5em; position: relative; }
 .txt .ol::before { content: attr(data-n); position: absolute; left: 0; width: 1.25em; text-align: right; opacity: .75; font-variant-numeric: tabular-nums; }
 .txt .sepl { height: .6em; margin: 0 0 .1em; border-bottom: 1px solid currentColor; opacity: .3; }
+
+/* 0.3.17: list buttons in the selection bar */
+.qls { display: inline-flex; gap: 2px; }
+.qls button { min-width: 30px; height: 30px; padding: 0 6px; display: grid; place-items: center; }
+.qls .qnum { font: 600 12.5px/1 var(--font-ui, inherit); }
+
+/* 0.3.17: board selection handles half their old size with the mouse (the grab area stays as big) */
+@media (pointer: fine) {
+  .hdl::after { content: ''; position: absolute; inset: -6px; }
+  .hdl { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 2px; border-width: 1.3px; }
+  .hdl.e, .hdl.w { width: 5px; height: 11px; margin: -5.5px 0 0 -2.5px; border-radius: 3px; }
+  .hdl.n, .hdl.s { width: 11px; height: 5px; margin: -2.5px 0 0 -5.5px; border-radius: 3px; }
+  .hdl.ep { width: 8px; height: 8px; margin: -4px 0 0 -4px; }
+  .hdl.pt { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; }
+  .hdl.add { width: 6px; height: 6px; margin: -3px 0 0 -3px; }
+  .hdl.cdot { width: 6px; height: 6px; margin: -3px 0 0 -3px; }
+  .hdl.rot { width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; }
+  .hdl.rot .i { width: 9px; height: 9px; }
+  .hdl.tidy { width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 5px; grid-template-columns: 3px 3px; gap: 2px; }
+  .hdl.tidy i { width: 3px; height: 3px; }
+  .hdl.crad { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-top-width: 1.8px; border-right-width: 1.8px; }
+  .hdl.crad::after { display: none; }
+}

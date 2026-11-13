@@ -514,6 +514,9 @@ const Board = (() => {
     if (only('conn')) st.push(qbtn('heads', td ? icon(T === 'conn' && tool === 'line' ? 'line' : (bd.route === 'elbow' ? 'elbow' : bd.route === 'straight' ? 'line' : 'conn')) : headIcon(val('h1', 'arrow', 'conn')), td ? 'Tracé des flèches' : 'Pointes et tracé'));
     if (has('note', 'text', 'shape', 'todo')) st.push(qbtn('text', `<span class="qaa" style="font-family:${fontOf(td ? bd.font || HAND : (first('note', 'text', 'shape', 'todo') || {}).font || HAND)}">Aa</span>`, 'Texte : police, taille, alignement'));
     if (one && one.k === 'image') st.push(qbtn('frm', icon('image'), 'Cadre de l’image'));
+    // 0.3.17: bullets / numbers right on the bar (click again to remove)
+    if (!td && list.length && list.every(i => i.k === 'text' || i.k === 'note')) { const ls = list[0].ls || '';
+      st.push(`<div class="seg sm qls"><button data-qa="ls-ul" aria-pressed="${ls === 'ul'}" title="Puces" aria-label="Puces">${icon('list')}</button><button data-qa="ls-ol" aria-pressed="${ls === 'ol'}" title="Numéros" aria-label="Numéros"><span class="qnum">1.</span></button></div>`); }
     if (st.length) g.push(st.join(''));
     if (td && T === 'text') g.push(qact('multitext', 'multitext', 'MultiText : écrire plusieurs blocs de texte avec la même mise en forme', 'MultiText'));
     if (upKind()) g.push(upBtn());
@@ -1050,6 +1053,7 @@ const Board = (() => {
   }
   function action(a, btn) {
     const list = selItems();
+    if (a === 'ls-ul' || a === 'ls-ol') { const v = a.slice(3); setProp('ls', (list[0] && list[0].ls) === v ? '' : v); qSig = ''; return; }
     if (a.startsWith('uif-')) { if (list[0] && list[0].ui) uiSetFid(list[0], a.slice(4)); return; }
     if (a.startsWith('uil-')) { if (list[0] && list[0].k === 'uic' && list[0].t === 'box') uiSetLay(list[0], a.slice(4)); return; }
     if (a.startsWith('uiwrap-')) { uiWrap(a.slice(7)); return; }
