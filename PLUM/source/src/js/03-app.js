@@ -352,6 +352,14 @@ function taskRow(t, o = {}) {
    each container in its order, then a « + Container » line. Drag a task into or out of a container. */
 const boxesOf = sp => sp ? (Array.isArray(sp.boxes) ? sp.boxes : (sp.boxes = [])) : [];
 const tboxOf = (sp, id) => boxesOf(sp).find(b => b.id === id);
+/* a container made from a board list (b.todo = the list's id): a task put into it joins that list on its board too */
+function linkBoxTask(sp, boxId, t) {
+  const b = tboxOf(sp, boxId); if (!b || !b.todo || !t) return;
+  for (const d of S.docs) { if (d.type !== 'board' || !Array.isArray(d.items)) continue;
+    const i = d.items.findIndex(x => x.id === b.todo); if (i < 0) continue;
+    const it = d.items[i]; if (!it.tasks.includes(t.id)) { d.items = d.items.slice(); d.items[i] = Object.assign({}, it, { tasks: it.tasks.concat(t.id) }); touch(d); }
+    return; }
+}
 function taskListInner(open, sp, empty) {
   const boxes = sp ? boxesOf(sp) : [], ids = new Set(boxes.map(b => b.id));
   const rows = l => l.map(t => taskRow(t, { drag: true })).join('');
@@ -375,7 +383,7 @@ function boxAddLine(root, spId, id, rerender) {
   inp.onkeydown = e => {
     if (e.key === 'Escape') { lab.remove(); return; }
     if (e.key !== 'Enter' || !inp.value.trim()) return;
-    e.preventDefault(); const t = newTask({ t: inp.value, sp: spId }); t.box = id; save();
+    e.preventDefault(); const t = newTask({ t: inp.value, sp: spId }); t.box = id; linkBoxTask(spaceById(spId), id, t); save();
     smoothTasks(rerender); setTimeout(() => { const r2 = document.querySelector(`.tbox[data-boxid="${id}"]`); const host = r2 && r2.closest('[data-tlist], .tlist'); boxAddLine(host ? host.parentElement : document, spId, id, rerender); }, 40);
   };
   inp.onpaste = e => { const m = pasteTasks(e, inp, spId, false, id); if (m) { smoothTasks(rerender); } };
@@ -454,7 +462,7 @@ function dropTask(el, list) {
   const blk = list.closest('[data-sp]'), sp = blk && spaceById(blk.dataset.sp) ? blk.dataset.sp : t.sp, moved = sp !== t.sp;
   t.sp = sp;
   const bx = list.closest('[data-box]'), bid = bx && tboxOf(spaceById(sp), bx.dataset.box) ? bx.dataset.box : '';
-  if (bid) t.box = bid; else delete t.box;
+  if (bid) { t.box = bid; linkBoxTask(spaceById(sp), bid, t); } else delete t.box;
   // the new position among every open task of the space, the hidden ones (other filter) keep theirs
   const vis = [...list.children].filter(c => c.matches('.tw')).map(c => c.dataset.tw), i = vis.indexOf(t.id);
   const all = S.tasks.filter(x => x.sp === t.sp && !x.done && x !== t).sort(taskSort);
@@ -710,7 +718,7 @@ function pasteTasks(e, input, sp, star, inBox) {
   if (!list) return null;
   e.preventDefault();
   const spc = spaceById(sp || ctxSpace()) || spaceById(DEF_SPACE), made = []; let nb = 0;
-  const mk = (x, box) => { const t = newTask({ t: x.t, sp: spc.id, star: !!star, sub: x.sub, note: x.note || '' }); if (x.done) t.done = true; if (x.sub) t.open = true; if (box) t.box = box; made.push(t); return t; };
+  const mk = (x, box) => { const t = newTask({ t: x.t, sp: spc.id, star: !!star, sub: x.sub, note: x.note || '' }); if (x.done) t.done = true; if (x.sub) t.open = true; if (box) { t.box = box; linkBoxTask(spc, box, t); } made.push(t); return t; };
   for (const x of list) {
     if (x.items && !inBox) { const b = { id: uid('b'), t: x.t }; boxesOf(spc).push(b); nb++; x.items.forEach(it => mk(it, b.id)); }
     else mk(x.items ? { t: x.t, sub: x.sub, note: x.note } : x, inBox);

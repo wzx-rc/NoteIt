@@ -440,13 +440,17 @@ function connBox(c, byId) { const g = connGeom(c, byId); const xs = g.pts.map(p 
 
 /* ---------- text: light markup for notes, shapes and labels ----------
    "# Titre", "- puce", "[ ] à faire", "[x] fait" */
-function fmtText(txt) {
-  const lines = String(txt ?? '').split('\n');
+/* 0.3.16: ls = 'ul' puts a bullet, 'ol' a number before every written line (a "---" line is a separator: no mark, and
+   the numbers start again after it) */
+function fmtText(txt, ls) {
+  const lines = String(txt ?? '').split('\n'); let n = 0;
   return lines.map((l, i) => {
     let m;
     if ((m = l.match(/^\s*\[( |x|X)\]\s?(.*)$/))) return `<div class="ck${m[1] !== ' ' ? ' on' : ''}" data-line="${i}"><i></i><span>${esc(m[2]) || '&nbsp;'}</span></div>`;
-    if ((m = l.match(/^\s*[-•*]\s+(.*)$/))) return `<div class="bl">${esc(m[1])}</div>`;
+    if (ls && /^\s*[-–—_]{3,}\s*$/.test(l)) { n = 0; return `<div class="sepl"></div>`; }
+    if ((m = l.match(/^\s*[-•*]\s+(.*)$/))) return ls === 'ol' ? `<div class="ol" data-n="${++n}.">${esc(m[1])}</div>` : `<div class="bl">${esc(m[1])}</div>`;
     if ((m = l.match(/^#\s+(.*)$/))) return `<div class="hd">${esc(m[1])}</div>`;
+    if (ls && l.trim()) return ls === 'ol' ? `<div class="ol" data-n="${++n}.">${esc(l)}</div>` : `<div class="bl">${esc(l)}</div>`;
     return `<div>${esc(l) || '<br>'}</div>`;
   }).join('');
 }

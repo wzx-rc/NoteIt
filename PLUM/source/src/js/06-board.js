@@ -125,8 +125,8 @@ const Board = (() => {
   const fontCSS = it => fontOf(it.font);
   function sigOf(it) {
     switch (it.k) {
-      case 'note': return `n${it.w}|${it.h}|${it.c}|${it.fs}|${it.font}|${it.al}|${it.txt}|${skin()}`;
-      case 'text': return `t${it.fw ? it.w : ''}|${it.fs}|${it.font}|${it.color}|${it.bold}|${it.ital}|${it.al}|${it.txt}|${theme()}`;
+      case 'note': return `n${it.w}|${it.h}|${it.c}|${it.fs}|${it.font}|${it.al}|${it.ls || ''}|${it.txt}|${skin()}`;
+      case 'text': return `t${it.fw ? it.w : ''}|${it.fs}|${it.font}|${it.color}|${it.bold}|${it.ital}|${it.al}|${it.ls || ''}|${it.txt}|${theme()}`;
       case 'shape': return `s${it.w}|${it.h}|${it.sh}|${it.rad}|${it.fo}|${it.so}|${it.sc}|${it.fc}|${it.sw}|${it.sty}|${it.dash}|${it.fill}|${it.txt}|${it.fs}|${it.font}|${it.color}|${theme()}`;
       case 'image': return `i${it.asset}|${it.frm}|${it.cap}|${it.rad}|${Assets.has(it.asset)}`;
       case 'file': return `f${it.asset}|${it.name}|${it.mime}`;
@@ -160,11 +160,11 @@ const Board = (() => {
     switch (it.k) {
       case 'note':
         n.className = 'it note'; s.background = it.c; s.setProperty('--tc', it.c);
-        n.innerHTML = `<div class="txt l-${it.al || 'left'}" style="font-family:${fontCSS(it)}">${fmtText(it.txt)}</div>`;
+        n.innerHTML = `<div class="txt l-${it.al || 'left'}" style="font-family:${fontCSS(it)}">${fmtText(it.txt, it.ls)}</div>`;
         fitNote(n, it); break;
       case 'text':
         n.className = 'it text' + (it.fw ? '' : ' auto');
-        n.innerHTML = `<div class="txt l-${it.al || 'left'}" style="font:${it.ital ? 'italic ' : ''}${it.bold ? 700 : 500} ${it.fs}px/1.12 ${fontCSS(it)};color:${textColor(it.color, (it.font || HAND) === HAND)};text-align:${it.al || 'left'}">${fmtText(it.txt) || '<div><br></div>'}</div>`;
+        n.innerHTML = `<div class="txt l-${it.al || 'left'}" style="font:${it.ital ? 'italic ' : ''}${it.bold ? 700 : 500} ${it.fs}px/1.12 ${fontCSS(it)};color:${textColor(it.color, (it.font || HAND) === HAND)};text-align:${it.al || 'left'}">${fmtText(it.txt, it.ls) || '<div><br></div>'}</div>`;
         measureText(n, it); break;
       case 'shape':
         n.className = 'it shape';
@@ -606,6 +606,7 @@ const Board = (() => {
       if (!td) {
         h += sec('Taille', seg('fs', fsLevel(f), [[0, 'S'], [1, 'M'], [2, 'L'], [3, 'XL']]));
         if (c.has('note', 'text')) h += sec('Alignement', seg('al', (c.first('note', 'text') || {}).al || 'left', [['left', icon('al-l'), 'À gauche'], ['center', icon('al-c'), 'Centré'], ['right', icon('al-r'), 'À droite']], 'ic'));
+        if (c.has('note', 'text')) h += sec('Liste', seg('ls', (c.first('note', 'text') || {}).ls || '', [['', 'Aucune'], ['ul', '• Puces'], ['ol', '1. Numéros']]));
         if (c.only('text')) h += sec('Style', `<div class="qrow">${seg('bold', !!f.bold, [[false, 'Normal'], [true, '<b>Gras</b>']])}${seg('ital', !!f.ital, [[false, 'Droit'], [true, '<i>Italique</i>']])}</div>`);
       }
     }
@@ -890,6 +891,7 @@ const Board = (() => {
     if (want.font) { const f = td ? bd.font : (first().font || HAND); out.push(sec('Police', seg('font', f, [[HAND, '<span style="font-family:var(--font-hand);font-size:17px">Aa</span>', 'Manuscrite'], [SANS, '<span>Aa</span>', 'Normale'], [MONO, '<span style="font-family:var(--font-mono);font-size:12px">Aa</span>', 'Code']], 'ic'))); }
     if (want.fs) out.push(sec('Taille du texte', seg('fs', fsLevel(first(has('text') ? 'text' : undefined) || first()), [[0, 'S'], [1, 'M'], [2, 'L'], [3, 'XL']])));
     if (want.al) out.push(sec('Alignement', seg('al', first().al || 'left', [['left', icon('al-l'), 'À gauche'], ['center', icon('al-c'), 'Centré'], ['right', icon('al-r'), 'À droite']], 'ic')));
+    if (list.length && list.every(i => i.k === 'text' || i.k === 'note')) out.push(sec('Liste', seg('ls', first().ls || '', [['', 'Aucune'], ['ul', '• Puces'], ['ol', '1. Numéros']])));
     if (want.bold) out.push(sec('Graisse', seg('bold', one ? !!one.bold : false, [[false, 'Normal'], [true, '<b>Gras</b>']])));
     if (one && one.k === 'image') out.push(sec('Image', seg('frm', one.frm || 'shadow', [['shadow', 'Ombre'], ['polaroid', 'Polaroïd'], ['square', 'Carré'], ['none', 'Simple']]) + (one.frm !== 'polaroid' ? slide('rad', 'Arrondi', Math.round(imgRad(one)), 0, Math.round(Math.min(one.w, one.h) / 2), 1, 'px') : '') + btnRow([['cap', 'text', 'Légende'], Assets.has(one.asset) ? ['view', 'focus', 'Voir en grand'] : null, one.href ? ['src', 'ext', isInsta(one.href) ? 'Voir sur Instagram' : 'Page d’origine'] : null].filter(Boolean))));
     if (one && one.k === 'shape' && (one.sh === 'rect' || one.sh === 'round')) out.push(sec('Angles', seg('corner', shapeRad(one.sh, one.w, one.h, one.rad) > 0 ? 'round' : 'sharp', [['sharp', icon('rect'), 'Vifs'], ['round', icon('round'), 'Arrondis']], 'ic')), radSlide(list));
@@ -976,6 +978,7 @@ const Board = (() => {
       case 'fs': { const T = FS_TABLE[it.k]; return T ? { fs: T[clamp(+v, 0, 3)] } : null; }
       case 'al': return it.k === 'note' || it.k === 'text' ? { al: v } : null;
       case 'bold': return it.k === 'text' ? { bold: v === true || v === 'true' } : null;
+      case 'ls': return it.k === 'text' || it.k === 'note' ? { ls: v || undefined } : null;
       case 'ital': return it.k === 'text' ? { ital: v === true || v === 'true' } : null;
       case 'op': return { op: +v >= 1 ? undefined : +v };
       case 'fo': case 'so': return it.k === 'shape' ? { [prop]: +v >= 1 ? undefined : +v } : null;
@@ -1281,6 +1284,15 @@ const Board = (() => {
     if (ev.key === 'ArrowUp' && sub !== 'title') { const i = it.tasks.indexOf(sub); ev.preventDefault(); finishEdit(); const cur = byId.get(it.id); if (cur) startEdit(cur.id, null, i > 0 ? cur.tasks[i - 1] : 'title'); return; }
     if (ev.key === 'ArrowDown') { const i = sub === 'title' ? -1 : it.tasks.indexOf(sub); if (i < it.tasks.length - 1) { ev.preventDefault(); finishEdit(); const cur = byId.get(it.id); if (cur) startEdit(cur.id, null, cur.tasks[i + 1]); } return; }
   }
+  /* 0.3.16: a board list is also a CONTAINER of the space's tasks (same title), so its tasks show grouped in Tâches */
+  function syncTodoBox(it) {
+    const sp = spaceById(D && D.sp); if (!sp || !it || it.k !== 'todo') return;
+    const L = boxesOf(sp); let b = L.find(x => x.todo === it.id), ch = false;
+    if (!b) { b = { id: uid('b'), t: it.title || 'À faire', todo: it.id }; L.push(b); ch = true; }
+    else if (b.t !== (it.title || 'À faire')) { b.t = it.title || 'À faire'; ch = true; }
+    for (const id of it.tasks) { const t = taskById(id); if (t && t.sp === sp.id && t.box !== b.id) { t.box = b.id; ch = true; } }
+    if (ch) save();
+  }
   function todoPaste(id, sub, txt) {
     const lines = txt.replace(/\r/g, '').split('\n').map(l => { const s = l.trim(), m = s.match(PASTE_ITEM), b = !m && s.match(/^(?:[-*+•‣▪◦–—]|\d{1,3}[.)])\s+/);
       return m && m[0] ? { t: s.slice(m[0].length).trim(), done: !!(m[1] || m[3]) } : { t: (b ? s.slice(b[0].length) : s).replace(/\*\*(.+?)\*\*/g, '$1').trim(), done: false }; }).filter(x => x.t);
@@ -1293,7 +1305,7 @@ const Board = (() => {
     if (cur && !cur.t.trim()) { cur.t = lines[0].t; cur.done = lines[0].done; i0 = 1; }
     const made = lines.slice(i0).map(x => { const t = { id: uid('t'), t: x.t, sp: it.sp || D.sp, due: '', time: '', done: x.done, star: false, note: '', created: Date.now() }; S.tasks.push(t); return t.id; });
     tasks.splice(at + 1, 0, ...made); save();
-    commit(replace(items, it, { tasks })); render();
+    commit(replace(items, it, { tasks })); render(); syncTodoBox(byId.get(id));
     toast(`${lines.length} tâche${lines.length > 1 ? 's' : ''} ajoutée${lines.length > 1 ? 's' : ''}`);
   }
   function todoAddRow(id, after) {
@@ -1301,7 +1313,7 @@ const Board = (() => {
     const t = { id: uid('t'), t: '', sp: it.sp || D.sp, due: '', time: '', done: false, star: false, note: '', created: Date.now() };
     S.tasks.push(t);
     const tasks = it.tasks.slice(); tasks.splice(after + 1, 0, t.id);
-    commit(replace(items, it, { tasks })); render(); startEdit(id, null, t.id);
+    commit(replace(items, it, { tasks })); render(); syncTodoBox(byId.get(id)); startEdit(id, null, t.id);
   }
   /* keys while a cell is typed in: Enter / Tab keep it and select the next cell (Shift: back), the arrows up and down too; a new row comes when Enter leaves the last one */
   let sheetTab = null;
@@ -1633,7 +1645,7 @@ const Board = (() => {
     getSelection().removeAllRanges();
     const before = editStart.id === id ? editStart.items : undefined;
     if (it.k === 'todo') {
-      if (sub === 'title') { const v = raw.trim() || 'À faire'; if (v !== it.title) commit(replace(items, it, { title: v }), { before }); else schedule(); return; }
+      if (sub === 'title') { const v = raw.trim() || 'À faire'; if (v !== it.title) { commit(replace(items, it, { title: v }), { before }); syncTodoBox(byId.get(id)); } else schedule(); return; }
       const t = taskById(sub);
       if (!t) { schedule(); return; }
       if (!raw.trim()) { const i = S.tasks.indexOf(t); if (i >= 0) S.tasks.splice(i, 1); save(); commit(replace(items, it, { tasks: it.tasks.filter(x => x !== sub) }), { before }); renderSide(); return; }
@@ -3663,6 +3675,7 @@ const Board = (() => {
     inkSess = null;
     if (!noteColor || noteColor === SCHEME_BASE[14]) noteColor = schemeHex(SCHEME_DEF.note);
     D = doc; items = (doc.items || []).slice(); reindex(); hist = []; fut = []; sel = new Set(); editing = null; editSub = null; op = null; nodes.clear(); fitCache.clear(); propSig = ''; qSig = ''; propsTab = 'style';
+    for (const it of items) if (it.k === 'todo') syncTodoBox(it);
     const open = S.prefs.props == null ? innerWidth >= 1100 : !!S.prefs.props;
     container.innerHTML = `<div class="bwrap${open ? ' props-open' : ''}" style="position:absolute;inset:0">
       <div class="bhost bg-${doc.bg || 'dots'}" tabindex="-1" aria-label="Board ${esc(doc.title)}"><div class="bstage"><div class="bgrid" hidden></div><div class="world"><div class="layer"></div><svg class="edges"></svg><div class="layer"></div><svg class="edges"></svg><div class="layer"></div></div><div class="ovl"></div></div><canvas class="blive"></canvas><div class="measure it"></div></div>
