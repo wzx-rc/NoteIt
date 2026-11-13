@@ -57,7 +57,7 @@ function subtitles(farm: Farm, r: Report, plots: number): Record<CategoryKey, st
     fruits: top("fruits").length ? top("fruits").slice(0, 3).map((l) => l.label.toLowerCase()).join(", ") : "aucune récolte mesurée",
     wood: top("wood").length ? `${top("wood").map((l) => l.label.toLowerCase()).join(", ")}` : "aucune coupe mesurée",
     minerals: [win.length ? `${win.map((w) => (w === "or" ? "l'or" : `le ${w}`)).join(" et ")} ${win.length > 1 ? "tirent" : "tire"}` : "",
-      lose.length ? `${lose.map((w) => (w === "pierre" ? "la pierre" : `le ${w}`)).join(" et ")} ${lose.length > 1 ? "perdent" : "perd"}` : ""]
+      lose.length ? `${lose.map((w) => (w === "pierre" ? "la pierre" : w === "or" ? "l'or" : `le ${w}`)).join(" et ")} ${lose.length > 1 ? "perdent" : "perd"}` : ""]
       .filter(Boolean).join(", ") || "aucun minage mesuré",
   };
 }
