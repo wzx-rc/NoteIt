@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { dailyRates } from "../../core/engine";
-import { analyseSkills, pointsOf, shardsOf, type Plan, type SkillValue } from "../../core/skills";
+import { analyseSkills, pointsOf, shardsOf, tierProgress, type Plan, type SkillValue } from "../../core/skills";
 import type { AppState } from "../../shared/types";
 import { Icon } from "../icons";
 import { MONTH, fmt, signed, usd } from "../format";
@@ -65,12 +65,17 @@ export function SkillsView({ state }: { state: AppState }) {
     return { v, rank: r, gain: m(v.value[r - 1] - v.value[r - 2]) / v.def.tier };
   })).filter((x) => x.v.how !== "none" && !x.v.def.power && x.gain > 0.01).sort((x, y) => y.gain - x.gain).slice(0, 5);
 
-  // Board: valued skills, grouped by tree, only the trees where something earns or is owned.
+  // Board: every skill, trees and skills in the game's order, split by tier like the in-game book.
   const board = useMemo(() => {
-    const rows = a.values.filter((v) => v.how !== "none" && (v.current > 0 || (plan.ranks[v.def.name] ?? 0) > 0 || v.value.some((x) => Math.abs(x) > 0.01)));
-    const trees = [...new Set(rows.map((v) => v.def.tree))];
-    return trees.map((t) => ({ tree: t, rows: rows.filter((v) => v.def.tree === t).sort((x, y) => x.def.tier - y.def.tier || Math.max(...y.value) - Math.max(...x.value)) }));
+    const trees = [...new Set(a.values.map((v) => v.def.tree))];
+    return trees.map((t) => {
+      const rows = a.values.filter((v) => v.def.tree === t);
+      const gain = rows.reduce((x, v) => x + at(v, plan.ranks[v.def.name] ?? 0), 0);
+      return { tree: t, gain, tiers: [1, 2, 3].map((tier) => rows.filter((v) => v.def.tier === tier)).filter((r) => r.length) };
+    });
   }, [a, plan]);
+  const [boardTree, setBoardTree] = usePersisted<string>("skills.tree", () => board[0]?.tree ?? "");
+  const shown = board.find((g) => g.tree === boardTree) ?? board[0];
 
   return (
     <>
@@ -175,15 +180,32 @@ export function SkillsView({ state }: { state: AppState }) {
 
       <section className="card" aria-labelledby="h-board">
         <h2 id="h-board">Tableau des skills</h2>
-        <p className="hint">Chaque skill qui touche tes revenus, avec son gain par rang sur ta ferme. ● ton rang actuel, ◆ le rang conseillé ({mode === "topup" ? "sans reset" : "après reset"}).</p>
-        <div className="skt">
+        <p className="hint">Les skills dans l'ordre du jeu, par palier. ● ton rang actuel, ◆ le rang conseillé ({mode === "topup" ? "sans reset" : "après reset"}), ⚡ power skill. Les montants sont le gain par mois à chaque rang.</p>
+        <div className="seg skt-tabs" role="tablist" aria-label="Arbre">
           {board.map((g) => (
-            <div key={g.tree} className="skt-tree">
-              <h3>{tree(g.tree)}</h3>
-              {g.rows.map((v) => <BoardRow key={v.def.name} v={v} target={plan.ranks[v.def.name] ?? 0} rate={rate} />)}
-            </div>
+            <button key={g.tree} className="btn" role="tab" aria-selected={g.tree === shown?.tree} aria-pressed={g.tree === shown?.tree} onClick={() => setBoardTree(g.tree)}>
+              {tree(g.tree)}{g.gain * MONTH * rate > 0.5 ? <small className="pos"> {usd(g.gain * MONTH * rate)}</small> : null}
+            </button>
           ))}
         </div>
+        {shown && (() => {
+          const now = tierProgress(a.current.ranks, shown.tree), aim = tierProgress(plan.ranks, shown.tree);
+          return shown.tiers.map((rows) => {
+            const tier = rows[0].def.tier;
+            const need = tier === 2 ? now.t2 : tier === 3 ? now.t3 : 0;
+            return (
+              <div key={tier} className="skt-tier">
+                <h3>
+                  <span className={"tier-badge" + (tier > 1 && now.spent < need ? " locked" : "")}>Palier {tier}</span>
+                  {tier > 1 && <span className="dim small">Points pour débloquer : {Math.min(now.spent, need)}/{need}{aim.spent !== now.spent ? ` · avec le conseil : ${Math.min(aim.spent, need)}/${need}` : ""}</span>}
+                </h3>
+                <div className="skt-grid">
+                  {rows.map((v) => <SkillTile key={v.def.name} v={v} target={plan.ranks[v.def.name] ?? 0} rate={rate} />)}
+                </div>
+              </div>
+            );
+          });
+        })()}
       </section>
 
       <p className="foot">
@@ -214,20 +236,27 @@ function MoveRow({ mv, rate }: { mv: Move; rate: number }) {
   );
 }
 
-function BoardRow({ v, target, rate }: { v: SkillValue; target: number; rate: number }) {
-  const best = target > 0 ? v.value[target - 1] : v.current > 0 ? v.value[v.current - 1] : Math.max(...v.value);
-  const g = best * MONTH * rate;
+function SkillTile({ v, target, rate }: { v: SkillValue; target: number; rate: number }) {
+  const owned = v.current > 0, aimed = target > 0;
+  const g = at(v, target || v.current) * MONTH * rate;
   return (
-    <div className="skt-row">
-      <span className="skt-name"><b>{v.def.name}</b><span className="dim small">palier {v.def.tier} · {v.def.points} pt{v.def.points > 1 ? "s" : ""}</span></span>
-      <span className="skt-ranks" aria-label={`Rang ${v.current} sur ${v.def.maxLevel}, conseillé ${target}`}>
-        {v.value.map((x, i) => (
-          <span key={i} className={"pip" + (i < v.current ? " own" : "") + (i < target ? " aim" : "")} title={`Rang ${i + 1} : ${signed(x * MONTH * rate)} $/mois`}>
-            {fmt(x * MONTH * rate, Math.abs(x * MONTH * rate) < 10 ? 1 : 0)}
-          </span>
-        ))}
+    <div className={"skt-tile" + (owned ? " own" : "") + (aimed ? " aim" : "")} title={[v.def.buff, v.def.debuff].filter(Boolean).join(" · ")}>
+      <span className="skt-name">
+        <b>{v.def.power ? "⚡ " : ""}{v.def.name}</b>
+        <span className="dim small">{v.def.points} pt{v.def.points > 1 ? "s" : ""}{owned ? ` · ● rang ${v.current}` : ""}{aimed ? ` · ◆ rang ${target}` : ""}</span>
       </span>
-      <span className={"n " + (g < -0.005 ? "neg" : g > 0.005 ? "pos" : "dim")}>{signed(g)} $</span>
+      {v.how === "none"
+        ? <span className="dim small">non chiffré</span>
+        : (
+          <span className="skt-ranks" aria-label={`Rang ${v.current} sur ${v.def.maxLevel}, conseillé ${target}`}>
+            {v.value.map((x, i) => (
+              <span key={i} className={"pip" + (i < v.current ? " own" : "") + (i < target ? " aim" : "")} title={`Rang ${i + 1} : ${signed(x * MONTH * rate)} $/mois`}>
+                {fmt(x * MONTH * rate, Math.abs(x * MONTH * rate) < 10 ? 1 : 0)}
+              </span>
+            ))}
+          </span>
+        )}
+      {v.how !== "none" && (owned || aimed) ? <span className={"n " + (g < -0.005 ? "neg" : g > 0.005 ? "pos" : "dim")}>{signed(g)} $</span> : null}
     </div>
   );
 }

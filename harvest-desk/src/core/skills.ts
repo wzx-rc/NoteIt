@@ -38,6 +38,7 @@ export const SHARDS_PER_CRYSTAL = 3;
 const ENGINE_SKILLS = new Set<string>([
   ...Object.keys(SKILL_RANKS), ...Object.keys(SPLIT_SKILLS),
   "Double Bale", "Bale Economy", "Glass Room", "Greenhouse Gamble", "Seeded Bounty", "Seedy Business", "Frugal Miner",
+  "Horror Mike", "Laurie's Gains", "Greasy Plants", "Slick Saver", "Oil Extraction", "Oil Rig", "Oil Gadget", "Efficiency Extension Module",
 ]);
 
 /**
@@ -205,6 +206,17 @@ for (const tree of new Set(SKILL_DEFS.map((d) => d.tree))) {
   const t1 = SKILL_DEFS.filter((d) => d.tree === tree && d.tier === 1).map((d) => d.points).sort((a, b) => a - b);
   const sum = (x: number[]) => x.reduce((a, b) => a + b, 0);
   THRESHOLDS.set(tree, [sum(t1.slice(0, Math.ceil(t1.length / 2))), sum(t1) + 1]);
+}
+
+/** Base points spent in a tree's tier 1 and 2 skills, and the totals that open tiers 2 and 3. */
+export function tierProgress(ranks: Record<string, number>, tree: string): { spent: number; t2: number; t3: number } {
+  let spent = 0;
+  for (const [n, r] of Object.entries(ranks)) {
+    const d = DEF.get(n);
+    if (d && r > 0 && d.tree === tree && d.tier !== 3) spent += d.points;
+  }
+  const [t2, t3] = THRESHOLDS.get(tree) ?? [0, 0];
+  return { spent, t2, t3 };
 }
 
 /** Highest tier open in a tree: base points spent on its tier 1 and 2 skills (getUnlockedTierForTree). */
