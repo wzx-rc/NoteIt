@@ -1,6 +1,6 @@
 import data from "./data/skills.json";
 import { Engine, type CategoryKey, type Market, type Rates, type Report } from "./engine";
-import type { Farm } from "./farm";
+import { animals, type Farm } from "./farm";
 import { CROPS, cropTier, SKILL_RANKS, SPLIT_SKILLS } from "./gameData";
 
 /**
@@ -74,7 +74,45 @@ function targetNet(r: Report, t: Target): number {
   return t.line ? c.lines.filter((l) => t.line!(l.key)).reduce((a, l) => a + l.net, 0) : c.net;
 }
 
-export type How = "engine" | "speed" | "none";
+/**
+ * Power skills that finish a whole cycle at once (skillUsed.ts): one extra harvest of every
+ * plot, pot or animal per cooldown, assuming you use it as soon as it is back.
+ * Cooldowns in hours per rank (types/bumpkinSkills.ts).
+ */
+const POWER: Record<string, { cat: CategoryKey; hours: number[] }> = {
+  "Instant Growth": { cat: "crops", hours: [72, 60, 48] },
+  "Greenhouse Guru": { cat: "greenhouse", hours: [96, 84, 72] },
+  "Barnyard Rouse": { cat: "animals", hours: [120, 96, 84] },
+};
+
+/** FLOWER earned by one full cycle of a category: its daily net divided by cycles per day. */
+function cycleValue(farm: Farm, rates: Rates, r: Report, cat: CategoryKey): number {
+  const rate = (k: string) => rates[k] ?? 0;
+  if (cat === "crops") {
+    // Plots only: the crop machine is not touched by Instant Growth.
+    const plots = Object.keys(farm.crops ?? {}).length;
+    let net = 0, harvests = 0;
+    for (const l of r.categories.crops.lines) {
+      const h = rate(`${l.key} Harvested`);
+      if (!h) continue;
+      const p = Math.min(rate(`${l.key} Planted`), h);
+      net += l.net * (p / h); harvests += p;
+    }
+    return harvests ? (net * plots) / harvests : 0;
+  }
+  if (cat === "greenhouse") {
+    const pots = Object.keys((farm as { greenhouse?: { pots?: object } }).greenhouse?.pots ?? {}).length || 4;
+    const harvests = r.categories.greenhouse.lines.reduce((a, l) => a + rate(`${l.key} Harvested`), 0);
+    return harvests ? (r.categories.greenhouse.net * pots) / harvests : 0;
+  }
+  // Animals: each type's net per feeding round of the whole herd.
+  return r.categories.animals.lines.reduce((a, l) => {
+    const fed = rate(`${l.key} Fed`), herd = animals(farm, l.key).length;
+    return a + (fed ? (l.net * herd) / fed : 0);
+  }, 0);
+}
+
+export type How = "engine" | "speed" | "power" | "none";
 export interface SkillValue {
   def: SkillDef;
   /** Rank owned now, 0 when not learnt. */
@@ -104,6 +142,11 @@ export function valueSkills(farm: Farm, rates: Rates, market: Market): SkillValu
       const n0 = targetNet(base, t), m0 = current ? speedAt(def, current) : 1;
       const value = levels.map((r) => n0 * m0 * (1 / speedAt(def, r) - 1));
       return { def, current, value, how: "speed" as const, cat: t.cat };
+    }
+    const pw = POWER[def.name];
+    if (pw) {
+      const cycle = cycleValue(farm, rates, base, pw.cat);
+      return { def, current, value: levels.map((r) => (cycle * 24) / pw.hours[r - 1]), how: "power" as const, cat: pw.cat };
     }
     return { def, current, value: levels.map(() => 0), how: "none" as const, cat: null };
   });
@@ -204,7 +247,7 @@ export function bestTree(values: SkillValue[], budget: number, keep: Record<stri
   for (let guard = 0; guard < 500; guard++) {
     let best: { gain: number; cost: number; add: Record<string, number>; sh: number } | null = null;
     for (const v of values) {
-      if (v.how === "none" || v.def.power) continue;
+      if (v.how === "none") continue;
       const r = ranks[v.def.name] ?? 0;
       if (r >= v.def.maxLevel) continue;
       const gain0 = valueAt(v, r + 1) - valueAt(v, r);
