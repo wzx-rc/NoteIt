@@ -491,7 +491,7 @@ function refreshTask(t, pop) {
     tmp.innerHTML = taskRow(t, { space: !!tw.dataset.showsp, drag: !!tw.dataset.drag });
     const nw = tmp.firstElementChild; if (ed) nw.append(ed);
     tw.replaceWith(nw);
-    if (pop !== undefined) { const b = nw.querySelector(`.tsubs [data-subck="${pop}"] .cb`); if (b) b.classList.add('pop'); }
+    if (pop !== undefined) { const b = nw.querySelector(`.tsubs [data-subck="${pop}"] .cb`); if (b) b.classList.add('cbpop'); }
   }
   const ed = $(`.tedit[data-for="${t.id}"]`); if (ed) { renderSubEditor(ed, t, pop); renderTaskImages(ed, t); }
   renderSide();
@@ -501,7 +501,7 @@ function renderSubEditor(ed, t, pop) {
   const was = $('.pbar i', box), w0 = was ? was.style.width : '0%';
   box.innerHTML = `<div class="tchk-h">Sous-tâches${subs.length ? `<span>${done}/${subs.length}</span>` : ''}</div>
     ${subs.length ? `<div class="pbar"><i style="width:${w0}"></i></div>` : ''}
-    ${subs.map((x, k) => `<div class="tchk-r${x[1] ? ' on' : ''}" data-k="${k}"><button class="cb sm${k === pop ? ' pop' : ''}" role="checkbox" aria-checked="${x[1]}" aria-label="Cocher" data-sk="${k}">${icon('check')}</button><input type="text" value="${esc(x[0])}" data-sn="${k}" aria-label="Sous-tâche"><button class="tb sm" data-sx="${k}" aria-label="Supprimer la sous-tâche" title="Supprimer">${icon('x', 'sm')}</button></div>`).join('')}
+    ${subs.map((x, k) => `<div class="tchk-r${x[1] ? ' on' : ''}" data-k="${k}"><button class="cb sm${k === pop ? ' cbpop' : ''}" role="checkbox" aria-checked="${x[1]}" aria-label="Cocher" data-sk="${k}">${icon('check')}</button><input type="text" value="${esc(x[0])}" data-sn="${k}" aria-label="Sous-tâche"><button class="tb sm" data-sx="${k}" aria-label="Supprimer la sous-tâche" title="Supprimer">${icon('x', 'sm')}</button></div>`).join('')}
     <label class="tchk-add">${icon('plus', 'sm')}<input type="text" data-sadd placeholder="Ajouter une sous-tâche" aria-label="Ajouter une sous-tâche" autocomplete="off"></label>`;
   // the bar grows from where it was
   const bar = $('.pbar i', box); if (bar) { void bar.offsetWidth; bar.style.width = pct + '%'; }

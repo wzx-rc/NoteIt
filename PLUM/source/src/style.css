@@ -301,7 +301,7 @@ body.sorting, body.sorting * { cursor: grabbing !important; user-select: none !i
 .tw.completing { animation: tDone .3s ease forwards; pointer-events: none; }
 .tw.completing .tt { text-decoration: line-through; color: var(--ink-3); }
 .tw.completing .cb { background: var(--accent); border-color: var(--accent); color: #fff; }
-.cb.pop, .tw.completing > .trow > .cb { animation: cbPop .28s cubic-bezier(.3,1.6,.5,1); }
+.cb.cbpop, .tw.completing > .trow > .cb { animation: cbPop .28s cubic-bezier(.3,1.6,.5,1); }
 .tedit { animation: tIn .2s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes tIn { from { opacity: 0; transform: translateY(-5px); } }
 @keyframes tDone { 55% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(10px); } }
