@@ -148,9 +148,15 @@ const Note = (() => {
   function syncMarkers(root = body) {
     if (!root) return;
     for (const li of $$('li', root)) {
-      const f = [...li.querySelectorAll('font[color]')].find(x => x.textContent.trim()), txt = li.textContent.trim();
-      let c = f && li.textContent.trim().startsWith(f.textContent.trim()) ? f.getAttribute('color') : '';
-      if (!txt) { const prev = li.previousElementSibling; c = (prev && prev.style.color) || ''; const ff = li.querySelector('font[color]'); if (ff) c = ff.getAttribute('color'); }
+      const txt = li.textContent.trim();
+      // 0.3.22: the marker (bullet or number) takes the colour its text starts with, however that colour was set (font, span style, class)
+      let c = '';
+      if (txt) {
+        li.style.removeProperty('color');
+        const w = document.createTreeWalker(li, NodeFilter.SHOW_TEXT); let tn = null;
+        while (w.nextNode()) { const n = w.currentNode; if (!n.data.trim()) continue; const own = n.parentElement && n.parentElement.closest('li'); if (own === li) { tn = n; break; } }
+        if (tn && tn.parentElement !== li) { const a = getComputedStyle(tn.parentElement).color, base = getComputedStyle(li).color; if (a !== base) c = a; }
+      } else { const prev = li.previousElementSibling; c = (prev && prev.style.color) || ''; const ff = li.querySelector('font[color]'); if (ff) c = ff.getAttribute('color'); }
       if (c) li.style.color = c; else li.style.removeProperty('color');
       // 0.2.77: the marker takes the size its text starts with
       const z = [...li.querySelectorAll('[style*="font-size"]')].find(x => x.closest('li') === li && x.textContent.trim()), zt = z && txt.startsWith(z.textContent.trim().slice(0, 12)) ? z.style.fontSize : '';
