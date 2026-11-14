@@ -53,3 +53,12 @@ describe("widget order", () => {
     expect(sortSummaries(rows, { order: "custom", groupOrder: ["iron", "trees", "stone"] }).map((r) => r.key)).toEqual(["iron", "trees", "stone"]);
   });
 });
+
+import { valueSkills } from "../src/core/skills";
+describe("Betty's Friend", () => {
+  it("is worth 30/45/60 % of Betty's order coins a day while you deliver to her", () => {
+    const farm: any = { npcs: { betty: { deliveryCompletedAt: 1000 } }, delivery: { orders: [{ id: "1", from: "betty", createdAt: 0, items: {}, reward: { coins: 320 } }] } };
+    const v = valueSkills(farm, {}, { flowerUsd: 0.1, date: "", prices: {}, nftFloors: {} }).find((x) => x.def.name === "Betty's Friend")!;
+    expect(v.value.map((x) => +x.toFixed(2))).toEqual([0.3, 0.45, 0.6]);
+  });
+});

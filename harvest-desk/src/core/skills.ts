@@ -1,7 +1,7 @@
 import data from "./data/skills.json";
 import { Engine, type CategoryKey, type Market, type Rates, type Report } from "./engine";
 import { animals, type Farm } from "./farm";
-import { CROPS, cropTier, SKILL_RANKS, SPLIT_SKILLS } from "./gameData";
+import { COINS_PER_FLOWER, CROPS, cropTier, SKILL_RANKS, SPLIT_SKILLS } from "./gameData";
 
 /**
  * Skill tree analysis: what each skill brings on this farm, and the best tree for the points.
@@ -226,6 +226,16 @@ export function valueSkills(farm: Farm, rates: Rates, market: Market): SkillValu
       }, 0);
       const perDay = Object.keys(BIN_BASE).reduce((a, b) => a + (rates[`${b} Collected`] ?? 0) * amount(b) * fertiliserValue(farm, rates, market, base, b), 0);
       return { def, current, value: levels.map((r) => perDay * m0 * (1 / cs[r - 1] - 1)), how: "speed" as const, cat: "crops" as CategoryKey };
+    }
+    if (def.name === "Betty's Friend") {
+      // +30/45/60 % coins on Betty's deliveries. Counted at one delivery a day (one per NPC per day at most)
+      // while you still deliver to her, at the coins of her current order.
+      const betty = farm.npcs?.betty;
+      const last = Math.max(0, ...Object.values(farm.npcs ?? {}).map((n) => n.deliveryCompletedAt ?? 0));
+      const active = !!betty?.deliveryCompletedAt && last - betty.deliveryCompletedAt < 7 * 86_400_000;
+      const coins = (farm.delivery?.orders ?? []).find((o) => o.from === "betty")?.reward.coins ?? 0;
+      const ranks = [0.3, 0.45, 0.6];
+      return { def, current, value: levels.map((r) => (active ? (coins * ranks[r - 1]) / COINS_PER_FLOWER : 0)), how: "engine" as const, cat: "crops" as CategoryKey };
     }
     const pw = POWER[def.name];
     if (pw) {
