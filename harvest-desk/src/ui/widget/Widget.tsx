@@ -94,7 +94,7 @@ export function Row({ g, now }: { g: GroupSummary; now: number }) {
   const done = g.ready > 0 && g.nextAt === null;
   const waiting = g.empty + g.blocked;
   return (
-    <li className={"wg-row" + (g.ready > 0 ? " is-ready" : "")}>
+    <li className={"wg-row" + (g.ready > 0 ? " is-ready" : g.nextAt !== null ? " is-running" : "")}>
       <span className="wg-ic" style={{ color: GROUP_COLOR[g.key] }}><Icon name={g.icon} size={15} /></span>
       <span className="wg-name">
         <b>{g.label}</b>

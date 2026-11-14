@@ -424,6 +424,11 @@ html.widget-mode #root{height:100%}
   background:color-mix(in srgb,var(--sheep) 24%,transparent);color:#a9d68e}
 .wg-pill.warn{background:color-mix(in srgb,var(--honey) 22%,transparent);color:var(--honey)}
 .wg-row.is-ready .wg-name b{color:#cfe8bf}
+.wg-row{transition:opacity .3s,box-shadow .3s,background .3s}
+.wg-row.is-running{opacity:.5}
+.wg-row.is-running:hover{opacity:.85}
+.wg-row.is-ready{background:rgba(207,232,191,.06);box-shadow:inset 0 0 0 1px rgba(207,232,191,.28),0 0 10px rgba(207,232,191,.08)}
+.wg-row.is-ready .wg-bar b{opacity:1}
 .wg-empty{margin:6px 14px 14px;color:var(--faint);font-size:12px}
 /* Minuteurs tab */
 .follow{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px;align-items:stretch}
