@@ -42,6 +42,7 @@ const Sync = (() => {
     h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
     return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36) + '.' + s.length.toString(36);
   }
+  const devId = () => { let v = ''; try { v = localStorage.getItem('plum.devid') || ''; if (!v) { v = uid('dv'); localStorage.setItem('plum.devid', v); } } catch (e) { v = 'dv-mem'; } return v; };
   const split = k => { const i = k.indexOf(':'); return [k.slice(0, i), k.slice(i + 1)]; };
   const payload = (kind, o) => { if (kind !== 'doc' || !('view' in o)) return o; const { view, ...rest } = o; return rest; };
   function entities() {
@@ -51,6 +52,10 @@ const Sync = (() => {
     for (const t of S.tasks) m.set('task:' + t.id, t);
     m.set('meta:order', { spaces: S.spaces.map(s => s.id), docs: S.docs.map(d => d.id), tasks: S.tasks.map(t => t.id), taskOrder: S.prefs.taskOrder || [] });
     if (S.hub) m.set('meta:hub', S.hub);
+    /* 0.3.24: the colours of the PC (light / dark, tint, accent) reach the iPhone. Each PC writes its own row (meta:look.<device>);
+       the rows of the other devices are kept as received, so this device never deletes nor rewrites them */
+    for (const [id, x] of Object.entries(S.prefs.looksIn || {})) if (id !== devId()) m.set('meta:look.' + id, x.data);
+    if (DESKTOP) { const sk = S.prefs.skin; m.set('meta:look.' + devId(), { theme: S.prefs.theme || 'auto', skin: sk, look: (S.prefs.look && S.prefs.look[sk]) || {} }); }
     return m;
   }
   /* what changed on this device since the last agreement with the cloud */
@@ -150,6 +155,13 @@ const Sync = (() => {
     const [kind, id] = split(k);
     snap[k] = r.deleted ? { h: '', t: r.updated_at, del: true } : { h: rh, t: r.updated_at };
     delete dirty[k];
+    if (kind === 'meta' && id.startsWith('look.')) {
+      const dev = id.slice(5); if (dev === devId()) return;
+      const L = S.prefs.looksIn || (S.prefs.looksIn = {});
+      if (r.deleted || !r.data) delete L[dev]; else L[dev] = { data: r.data, t: Number(r.updated_at) || Date.now() };
+      if (PHONE) Phone.pcLook();
+      return;
+    }
     if (kind === 'meta') { if (id === 'order' && r.data && !r.deleted) order(r.data); if (id === 'hub' && r.data && !r.deleted) { S.hub = r.data; if (R.name === 'hub') renderHubMods(); } return; }
     const arr = kind === 'space' ? S.spaces : kind === 'doc' ? S.docs : kind === 'task' ? S.tasks : null;
     if (!arr) return;

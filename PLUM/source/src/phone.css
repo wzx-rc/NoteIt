@@ -284,3 +284,13 @@ html[data-phone] .ph-nhost .nbody figure { max-width: 100% !important; }
 .ph-ver { margin: 26px 20px 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
 
 @media (prefers-reduced-motion: reduce) { .ph-main, .ph-scr, .ph-sheet, .ph-tabbar, .ph-fab, .ph-fmt { transition: none !important; } .ph-task.ticking { animation: none; } }
+
+/* « Couleurs du PC » switch in Réglages */
+.ph-tg { display: flex; align-items: center; gap: 12px; width: calc(100% - 40px); margin: 4px 20px 6px; padding: 12px 14px !important; border-radius: 14px; background: var(--sunk) !important; text-align: left; }
+.ph-tg span { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.ph-tg b { font-weight: 600; font-size: 15.5px; }
+.ph-tg small { font-size: 12.5px; color: var(--ink-3); }
+.ph-tg i { flex: none; width: 50px; height: 30px; border-radius: 15px; background: var(--line-2); position: relative; transition: background .2s; }
+.ph-tg i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 26px; height: 26px; border-radius: 13px; background: #fff; box-shadow: 0 2px 4px rgb(0 0 0 / .2); transition: transform .2s; }
+.ph-tg[aria-pressed="true"] i { background: var(--accent); }
+.ph-tg[aria-pressed="true"] i::after { transform: translateX(20px); }

@@ -36,9 +36,25 @@ const Phone = (() => {
     addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); else if (!stack.length) render(); });
     window.__nh = { S: () => S, Sync, Assets, Phone: api, save, applyTheme, newTask, createSpace };
+    pcLook(true);
     tab = TABS.some(t => t[0] === P().tab) ? P().tab : 'notes';
     setTab(tab); statusBar();
     try { await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1200))]); } catch (e) {}
+  }
+  /* the PC's colours (Réglages of the Windows app: Système / Clair / Sombre, tint, accent), received by the sync.
+     Minimal and Minimal Sommet share their tints and accents, so they are taken as they are; from another theme only the
+     mode and a hand-picked accent. Changing them on the phone stops following the PC until « Couleurs du PC » is on again. */
+  function pcLook(quiet) {
+    if (P().pc === false) return;
+    const all = Object.values(S.prefs.looksIn || {}).filter(x => x && x.data); if (!all.length) return;
+    const x = all.sort((a, b) => b.t - a.t)[0], d = x.data, lk = d.look || {};
+    const same = d.skin === 'minimal' || d.skin === 'minsom';
+    const mine = same ? JSON.parse(JSON.stringify(lk)) : (/^#[0-9a-f]{6}$/i.test(lk.accent || '') ? { accent: lk.accent } : {});
+    const look = S.prefs.look || (S.prefs.look = {});
+    if (JSON.stringify(look.minimal || {}) === JSON.stringify(mine) && S.prefs.theme === (d.theme || 'auto')) return;
+    look.minimal = mine; S.prefs.theme = ['auto', 'light', 'dark'].includes(d.theme) ? d.theme : 'auto';
+    save(); applyTheme(); statusBar();
+    if (!quiet && sheetEl && $('.ph-set', sheetEl.el)) settings();
   }
   /* the status bar of the shell follows light / dark */
   function statusBar() { try { window.webkit.messageHandlers.hubUI.postMessage({ bar: isDarkTheme() ? 'light' : 'dark', bg: getComputedStyle(document.body).backgroundColor }); } catch (e) {} }
@@ -382,14 +398,17 @@ const Phone = (() => {
     const th = THEMES.minimal, look = themeLook('minimal', S.prefs), mode = S.prefs.theme || 'auto';
     const acc = (th.accents || []), curA = look.accent || (acc[0] && acc[0].value);
     const sh = sheet({ title: 'Réglages', cls: 'tall', html: `<div class="ph-set">
+      ${Object.keys(S.prefs.looksIn || {}).length ? `<button class="ph-tg" data-pc aria-pressed="${P().pc !== false}"><span><b>Couleurs du PC</b><small>Mode, teinte et accent repris de PLUM sur le PC</small></span><i></i></button>` : ''}
       <h4>Apparence</h4><div class="ph-seg full">${[['auto', 'Système'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => `<button data-mode="${k}" aria-pressed="${mode === k}">${l}</button>`).join('')}</div>
       <h4>Couleur d’accent</h4><div class="ph-accs">${acc.map(a => `<button data-acc="${a.value}" style="--c:${a.value}" aria-label="${esc(a.name)}" aria-pressed="${String(curA).toLowerCase() === a.value.toLowerCase()}"></button>`).join('')}</div>
       <div id="stSync" class="ph-sync">${syncPane()}</div>
       <p class="ph-ver">PLUM ${esc(APP_VERSION)} · iPhone<br>Les boards s’ouvrent sur le PC et l’iPad.</p></div>` });
     bindSyncPane(sh.el);
     sh.el.addEventListener('click', e => {
-      const m = e.target.closest('[data-mode]'); if (m) { S.prefs.theme = m.dataset.mode; save(); applyTheme(); statusBar(); for (const b of $$('[data-mode]', sh.el)) b.setAttribute('aria-pressed', b === m); }
-      const a = e.target.closest('[data-acc]'); if (a) { setLook({ accent: a.dataset.acc }); for (const b of $$('[data-acc]', sh.el)) b.setAttribute('aria-pressed', b === a); }
+      const pc = e.target.closest('[data-pc]'); if (pc) { P().pc = P().pc === false; save(); pc.setAttribute('aria-pressed', P().pc !== false); if (P().pc !== false) { pcLook(true); settings(); } return; }
+      const own = () => { if (P().pc !== false && Object.keys(S.prefs.looksIn || {}).length) { P().pc = false; const t = $('[data-pc]', sh.el); if (t) t.setAttribute('aria-pressed', false); } };
+      const m = e.target.closest('[data-mode]'); if (m) { own(); S.prefs.theme = m.dataset.mode; save(); applyTheme(); statusBar(); for (const b of $$('[data-mode]', sh.el)) b.setAttribute('aria-pressed', b === m); }
+      const a = e.target.closest('[data-acc]'); if (a) { own(); setLook({ accent: a.dataset.acc }); for (const b of $$('[data-acc]', sh.el)) b.setAttribute('aria-pressed', b === a); }
     });
   }
 
@@ -513,6 +532,6 @@ const Phone = (() => {
     refreshAll();
   }
 
-  const api = { boot, remote, push, pop, setTab, render, newNote, taskSheet, settings, get tab() { return tab; }, get depth() { return stack.length; } };
+  const api = { boot, remote, pcLook, push, pop, setTab, render, newNote, taskSheet, settings, get tab() { return tab; }, get depth() { return stack.length; } };
   return api;
 })();

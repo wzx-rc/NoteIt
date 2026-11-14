@@ -4289,6 +4289,16 @@ html[data-phone] .ph-nhost .nbody figure { max-width: 100% !important; }
 
 @media (prefers-reduced-motion: reduce) { .ph-main, .ph-scr, .ph-sheet, .ph-tabbar, .ph-fab, .ph-fmt { transition: none !important; } .ph-task.ticking { animation: none; } }
 
+/* « Couleurs du PC » switch in Réglages */
+.ph-tg { display: flex; align-items: center; gap: 12px; width: calc(100% - 40px); margin: 4px 20px 6px; padding: 12px 14px !important; border-radius: 14px; background: var(--sunk) !important; text-align: left; }
+.ph-tg span { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.ph-tg b { font-weight: 600; font-size: 15.5px; }
+.ph-tg small { font-size: 12.5px; color: var(--ink-3); }
+.ph-tg i { flex: none; width: 50px; height: 30px; border-radius: 15px; background: var(--line-2); position: relative; transition: background .2s; }
+.ph-tg i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 26px; height: 26px; border-radius: 13px; background: #fff; box-shadow: 0 2px 4px rgb(0 0 0 / .2); transition: transform .2s; }
+.ph-tg[aria-pressed="true"] i { background: var(--accent); }
+.ph-tg[aria-pressed="true"] i::after { transform: translateX(20px); }
+
 </style>
 </head>
 <body>
@@ -24231,6 +24241,7 @@ const Sync = (() => {
     h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
     return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36) + '.' + s.length.toString(36);
   }
+  const devId = () => { let v = ''; try { v = localStorage.getItem('plum.devid') || ''; if (!v) { v = uid('dv'); localStorage.setItem('plum.devid', v); } } catch (e) { v = 'dv-mem'; } return v; };
   const split = k => { const i = k.indexOf(':'); return [k.slice(0, i), k.slice(i + 1)]; };
   const payload = (kind, o) => { if (kind !== 'doc' || !('view' in o)) return o; const { view, ...rest } = o; return rest; };
   function entities() {
@@ -24240,6 +24251,10 @@ const Sync = (() => {
     for (const t of S.tasks) m.set('task:' + t.id, t);
     m.set('meta:order', { spaces: S.spaces.map(s => s.id), docs: S.docs.map(d => d.id), tasks: S.tasks.map(t => t.id), taskOrder: S.prefs.taskOrder || [] });
     if (S.hub) m.set('meta:hub', S.hub);
+    /* 0.3.24: the colours of the PC (light / dark, tint, accent) reach the iPhone. Each PC writes its own row (meta:look.<device>);
+       the rows of the other devices are kept as received, so this device never deletes nor rewrites them */
+    for (const [id, x] of Object.entries(S.prefs.looksIn || {})) if (id !== devId()) m.set('meta:look.' + id, x.data);
+    if (DESKTOP) { const sk = S.prefs.skin; m.set('meta:look.' + devId(), { theme: S.prefs.theme || 'auto', skin: sk, look: (S.prefs.look && S.prefs.look[sk]) || {} }); }
     return m;
   }
   /* what changed on this device since the last agreement with the cloud */
@@ -24339,6 +24354,13 @@ const Sync = (() => {
     const [kind, id] = split(k);
     snap[k] = r.deleted ? { h: '', t: r.updated_at, del: true } : { h: rh, t: r.updated_at };
     delete dirty[k];
+    if (kind === 'meta' && id.startsWith('look.')) {
+      const dev = id.slice(5); if (dev === devId()) return;
+      const L = S.prefs.looksIn || (S.prefs.looksIn = {});
+      if (r.deleted || !r.data) delete L[dev]; else L[dev] = { data: r.data, t: Number(r.updated_at) || Date.now() };
+      if (PHONE) Phone.pcLook();
+      return;
+    }
     if (kind === 'meta') { if (id === 'order' && r.data && !r.deleted) order(r.data); if (id === 'hub' && r.data && !r.deleted) { S.hub = r.data; if (R.name === 'hub') renderHubMods(); } return; }
     const arr = kind === 'space' ? S.spaces : kind === 'doc' ? S.docs : kind === 'task' ? S.tasks : null;
     if (!arr) return;
@@ -24768,9 +24790,25 @@ const Phone = (() => {
     addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); else if (!stack.length) render(); });
     window.__nh = { S: () => S, Sync, Assets, Phone: api, save, applyTheme, newTask, createSpace };
+    pcLook(true);
     tab = TABS.some(t => t[0] === P().tab) ? P().tab : 'notes';
     setTab(tab); statusBar();
     try { await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1200))]); } catch (e) {}
+  }
+  /* the PC's colours (Réglages of the Windows app: Système / Clair / Sombre, tint, accent), received by the sync.
+     Minimal and Minimal Sommet share their tints and accents, so they are taken as they are; from another theme only the
+     mode and a hand-picked accent. Changing them on the phone stops following the PC until « Couleurs du PC » is on again. */
+  function pcLook(quiet) {
+    if (P().pc === false) return;
+    const all = Object.values(S.prefs.looksIn || {}).filter(x => x && x.data); if (!all.length) return;
+    const x = all.sort((a, b) => b.t - a.t)[0], d = x.data, lk = d.look || {};
+    const same = d.skin === 'minimal' || d.skin === 'minsom';
+    const mine = same ? JSON.parse(JSON.stringify(lk)) : (/^#[0-9a-f]{6}$/i.test(lk.accent || '') ? { accent: lk.accent } : {});
+    const look = S.prefs.look || (S.prefs.look = {});
+    if (JSON.stringify(look.minimal || {}) === JSON.stringify(mine) && S.prefs.theme === (d.theme || 'auto')) return;
+    look.minimal = mine; S.prefs.theme = ['auto', 'light', 'dark'].includes(d.theme) ? d.theme : 'auto';
+    save(); applyTheme(); statusBar();
+    if (!quiet && sheetEl && $('.ph-set', sheetEl.el)) settings();
   }
   /* the status bar of the shell follows light / dark */
   function statusBar() { try { window.webkit.messageHandlers.hubUI.postMessage({ bar: isDarkTheme() ? 'light' : 'dark', bg: getComputedStyle(document.body).backgroundColor }); } catch (e) {} }
@@ -25114,14 +25152,17 @@ const Phone = (() => {
     const th = THEMES.minimal, look = themeLook('minimal', S.prefs), mode = S.prefs.theme || 'auto';
     const acc = (th.accents || []), curA = look.accent || (acc[0] && acc[0].value);
     const sh = sheet({ title: 'Réglages', cls: 'tall', html: `<div class="ph-set">
+      ${Object.keys(S.prefs.looksIn || {}).length ? `<button class="ph-tg" data-pc aria-pressed="${P().pc !== false}"><span><b>Couleurs du PC</b><small>Mode, teinte et accent repris de PLUM sur le PC</small></span><i></i></button>` : ''}
       <h4>Apparence</h4><div class="ph-seg full">${[['auto', 'Système'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => `<button data-mode="${k}" aria-pressed="${mode === k}">${l}</button>`).join('')}</div>
       <h4>Couleur d’accent</h4><div class="ph-accs">${acc.map(a => `<button data-acc="${a.value}" style="--c:${a.value}" aria-label="${esc(a.name)}" aria-pressed="${String(curA).toLowerCase() === a.value.toLowerCase()}"></button>`).join('')}</div>
       <div id="stSync" class="ph-sync">${syncPane()}</div>
       <p class="ph-ver">PLUM ${esc(APP_VERSION)} · iPhone<br>Les boards s’ouvrent sur le PC et l’iPad.</p></div>` });
     bindSyncPane(sh.el);
     sh.el.addEventListener('click', e => {
-      const m = e.target.closest('[data-mode]'); if (m) { S.prefs.theme = m.dataset.mode; save(); applyTheme(); statusBar(); for (const b of $$('[data-mode]', sh.el)) b.setAttribute('aria-pressed', b === m); }
-      const a = e.target.closest('[data-acc]'); if (a) { setLook({ accent: a.dataset.acc }); for (const b of $$('[data-acc]', sh.el)) b.setAttribute('aria-pressed', b === a); }
+      const pc = e.target.closest('[data-pc]'); if (pc) { P().pc = P().pc === false; save(); pc.setAttribute('aria-pressed', P().pc !== false); if (P().pc !== false) { pcLook(true); settings(); } return; }
+      const own = () => { if (P().pc !== false && Object.keys(S.prefs.looksIn || {}).length) { P().pc = false; const t = $('[data-pc]', sh.el); if (t) t.setAttribute('aria-pressed', false); } };
+      const m = e.target.closest('[data-mode]'); if (m) { own(); S.prefs.theme = m.dataset.mode; save(); applyTheme(); statusBar(); for (const b of $$('[data-mode]', sh.el)) b.setAttribute('aria-pressed', b === m); }
+      const a = e.target.closest('[data-acc]'); if (a) { own(); setLook({ accent: a.dataset.acc }); for (const b of $$('[data-acc]', sh.el)) b.setAttribute('aria-pressed', b === a); }
     });
   }
 
@@ -25245,7 +25286,7 @@ const Phone = (() => {
     refreshAll();
   }
 
-  const api = { boot, remote, push, pop, setTab, render, newNote, taskSheet, settings, get tab() { return tab; }, get depth() { return stack.length; } };
+  const api = { boot, remote, pcLook, push, pop, setTab, render, newNote, taskSheet, settings, get tab() { return tab; }, get depth() { return stack.length; } };
   return api;
 })();
 
