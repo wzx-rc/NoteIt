@@ -38,6 +38,10 @@ export interface WidgetConfig {
   /** 0.4 to 1. */
   opacity: number;
   onTop: boolean;
+  /** "auto": soonest to 100 % first. "custom": the order below. */
+  order: "auto" | "custom";
+  familyOrder: string[];
+  groupOrder: TimerGroup[];
 }
 
 /** What the preload script exposes on window.harvest. */

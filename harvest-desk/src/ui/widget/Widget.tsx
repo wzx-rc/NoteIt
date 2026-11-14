@@ -3,11 +3,23 @@ import { countdown, farmTimers, summarize, TIMER_FAMILIES, type GroupSummary } f
 import { Icon } from "../icons";
 import { bridge, useAppState } from "../useAppState";
 import { clock, GROUP_COLOR, subLine, useNow, useWidgetConfig } from "./timerUi";
+import type { WidgetConfig } from "../../shared/types";
 
-/** Ready first, then the soonest. Groups waiting on you (empty, paused) come right after the ready ones. */
-export function sortSummaries(list: GroupSummary[]): GroupSummary[] {
+/**
+ * Automatic order: whatever reaches 100 % first comes first. Ready rows are at 100 % already; rows waiting
+ * on you (empty plot, hive without flowers) come next; then the soonest timer.
+ * Custom order: the order set in the Minuteurs tab.
+ */
+export function sortSummaries(list: GroupSummary[], cfg?: Pick<WidgetConfig, "order" | "groupOrder">): GroupSummary[] {
+  if (cfg?.order === "custom") return [...list].sort((a, b) => rankIn(cfg.groupOrder, a.key) - rankIn(cfg.groupOrder, b.key));
   const rank = (g: GroupSummary) => (g.ready > 0 ? 0 : g.empty + g.blocked > 0 ? 1 : 2);
   return [...list].sort((a, b) => rank(a) - rank(b) || (a.nextAt ?? Infinity) - (b.nextAt ?? Infinity));
+}
+
+/** Position in a saved order; anything not in it goes last, in its default place. */
+export function rankIn<T>(order: T[], key: T, fallback: T[] = []) {
+  const i = order.indexOf(key);
+  return i >= 0 ? i : 1000 + fallback.indexOf(key);
 }
 
 /** The desktop widget: a small see-through list of what is ready and what comes next. */
@@ -16,7 +28,7 @@ export function Widget() {
   const [cfg, update] = useWidgetConfig();
   const now = useNow();
   const timers = useMemo(() => (state.farm ? farmTimers(state.farm) : []), [state.farm]);
-  const rows = useMemo(() => sortSummaries(summarize(timers, now).filter((g) => cfg.groups.includes(g.key))), [timers, now, cfg.groups]);
+  const rows = useMemo(() => sortSummaries(summarize(timers, now).filter((g) => cfg.groups.includes(g.key)), cfg), [timers, now, cfg]);
   const b = bridge();
   // The window follows the content's height, so nothing is cut and there is no empty space.
   const box = useRef<HTMLDivElement>(null);
@@ -51,7 +63,7 @@ export function Widget() {
         </div>
       </header>
       {rows.length ? (
-        <Families rows={rows} now={now} />
+        <Families rows={rows} now={now} cfg={cfg} />
       ) : (
         <p className="wg-empty">{state.farm ? "Choisis quoi suivre dans Harvest Desk, onglet Minuteurs." : "Lecture de la ferme…"}</p>
       )}
@@ -60,10 +72,12 @@ export function Widget() {
 }
 
 /** Rows boxed by family (cultures, ressources, animaux…), the family with the most urgent row first. */
-export function Families({ rows, now }: { rows: GroupSummary[]; now: number }) {
+export function Families({ rows, now, cfg }: { rows: GroupSummary[]; now: number; cfg: Pick<WidgetConfig, "order" | "familyOrder"> }) {
   const fams = TIMER_FAMILIES.map((f) => ({ ...f, rows: rows.filter((r) => f.groups.includes(r.key)) })).filter((f) => f.rows.length);
   const first = (f: { rows: GroupSummary[] }) => rows.indexOf(f.rows[0]);
-  fams.sort((a, b) => first(a) - first(b));
+  const defaults = TIMER_FAMILIES.map((f) => f.key);
+  if (cfg.order === "custom") fams.sort((a, b) => rankIn(cfg.familyOrder, a.key, defaults) - rankIn(cfg.familyOrder, b.key, defaults));
+  else fams.sort((a, b) => first(a) - first(b));
   return (
     <div className="wg-list">
       {fams.map((f) => (

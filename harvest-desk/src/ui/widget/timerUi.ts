@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { TimerGroup } from "../../core/timers";
+import { TIMER_FAMILIES, TIMER_GROUPS, type TimerGroup } from "../../core/timers";
 import type { WidgetConfig } from "../../shared/types";
 import { bridge } from "../useAppState";
 import { frCrop } from "../format";
@@ -56,6 +56,7 @@ export function clock(at: number, now: number): string {
 export const WIDGET_DEFAULT: WidgetConfig = {
   groups: ["crops", "greenhouse", "trees", "stone", "iron", "gold", "sheep", "cooking", "power"],
   notify: [], open: false, opacity: 0.92, onTop: false,
+  order: "auto", familyOrder: TIMER_FAMILIES.map((f) => f.key), groupOrder: TIMER_GROUPS.map((g) => g.key),
 };
 
 /** The widget settings, kept by the desktop app (or in this browser for the demo). */

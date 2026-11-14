@@ -6,7 +6,7 @@ import type { Farm, Order } from "../src/core/farm";
 import { type FarmMeta, ledgerFromMetas, metaOf, thinMetas } from "../src/core/ledger";
 import { parseMarket } from "../src/core/market";
 import type { AppState, ManualEntry, Settings, Snapshot, WidgetConfig } from "../src/shared/types";
-import { farmTimers, TIMER_GROUPS, type TimerGroup } from "../src/core/timers";
+import { farmTimers, TIMER_FAMILIES, TIMER_GROUPS, type TimerGroup } from "../src/core/timers";
 import { SflClient, cleanKey, farmFromDump, trimActivity } from "./sfl";
 import { installCrashHandlers, log, logDir, setSecrets } from "./log";
 
@@ -168,6 +168,7 @@ type WidgetFile = WidgetConfig & { bounds?: { x: number; y: number; width: numbe
 const WIDGET_DEFAULT: WidgetFile = {
   groups: ["crops", "greenhouse", "trees", "stone", "iron", "gold", "sheep", "cooking", "power"],
   notify: [], open: false, opacity: 0.92, onTop: false,
+  order: "auto", familyOrder: TIMER_FAMILIES.map((f) => f.key), groupOrder: TIMER_GROUPS.map((g) => g.key),
 };
 let widgetCfg: WidgetFile = { ...WIDGET_DEFAULT, ...readJson<Partial<WidgetFile>>("widget.json", {}) };
 let widget: BrowserWindow | null = null;
@@ -191,6 +192,10 @@ function setWidget(patch: Partial<WidgetConfig>): WidgetConfig {
   if (typeof patch.opacity === "number") clean.opacity = Math.min(1, Math.max(0.4, patch.opacity));
   if (typeof patch.onTop === "boolean") clean.onTop = patch.onTop;
   if (typeof patch.open === "boolean") clean.open = patch.open;
+  if (patch.order === "auto" || patch.order === "custom") clean.order = patch.order;
+  const fams = new Set(TIMER_FAMILIES.map((f) => f.key));
+  if (Array.isArray(patch.familyOrder)) clean.familyOrder = [...new Set(patch.familyOrder)].filter((k) => fams.has(k));
+  if (Array.isArray(patch.groupOrder)) clean.groupOrder = [...new Set(patch.groupOrder)].filter((g) => known.has(g));
   saveWidget(clean);
   if (clean.open === true) openWidget();
   if (clean.open === false) widget?.close();

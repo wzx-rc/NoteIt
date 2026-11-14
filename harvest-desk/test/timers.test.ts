@@ -43,3 +43,13 @@ describe("farmTimers", () => {
     expect(countdown(28 * H)).toBe("1 j 4 h");
   });
 });
+
+import { sortSummaries } from "../src/ui/widget/Widget";
+describe("widget order", () => {
+  const g = (key: any, ready: number, nextAt: number | null) => ({ key, label: key, icon: "", total: 1, ready, empty: 0, blocked: 0, nextAt, allAt: nextAt, what: "", progress: 0 });
+  const rows = [g("iron", 0, 300), g("stone", 0, 100), g("trees", 1, null)];
+  it("auto: ready first, then soonest to 100 %", () => expect(sortSummaries(rows).map((r) => r.key)).toEqual(["trees", "stone", "iron"]));
+  it("custom: the saved order", () => {
+    expect(sortSummaries(rows, { order: "custom", groupOrder: ["iron", "trees", "stone"] }).map((r) => r.key)).toEqual(["iron", "trees", "stone"]);
+  });
+});
