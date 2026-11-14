@@ -122,7 +122,7 @@ export class Engine {
 
   crops(): Category {
     const lines: Line[] = [];
-    let machineSeeds = 0;
+    let machineSeeds = 0, machineCropHours = 0;
     for (const crop of Object.keys(CROPS)) {
       const harvested = this.rate(`${crop} Harvested`);
       if (!harvested) continue;
@@ -138,9 +138,14 @@ export class Engine {
         lines.push(line(`machine:${crop}`, `${crop} (Crop Machine)`, qty * this.price(crop), machine * this.seedCost(crop), qty));
       }
       machineSeeds += machine;
+      machineCropHours += Math.max(0, machine) * (CROPS[crop].seconds / 3600);
     }
-    // The crop machine burns oil around the clock while it has seeds to grow.
-    if (machineSeeds > 0) lines.push(line("machine-oil", "Huile de la Crop Machine", 0, 24 * this.machineOilPerHour() * this.oilPrice()));
+    // The crop machine burns oil only while it grows something: hours per day = the seeds you feed it,
+    // at the pace its current queue shows (grow time spread over its plots, speed skills included).
+    if (machineSeeds > 0) {
+      const hours = Math.min(24, machineCropHours * this.machinePace());
+      lines.push(line("machine-oil", "Huile de la Crop Machine", 0, hours * this.machineOilPerHour() * this.oilPrice()));
+    }
     return sumCat("crops", lines.sort((a, b) => b.net - a.net));
   }
 
@@ -204,6 +209,23 @@ export class Engine {
     if (slick) use -= OIL.slickSaver[slick - 1];
     if (crop === "Rice" && f.wears("Rice Shirt")) use *= 0.5;
     return Math.max(0, use);
+  }
+
+  /**
+   * Machine hours per hour of crop grow time, read from the packs in its queue (totalGrowTime over
+   * seeds × crop time). 1 / plots before speed skills. Without a queue, assume it runs around the clock.
+   */
+  machinePace(): number {
+    let machineMs = 0, cropMs = 0;
+    for (const m of (this.f.raw as any).buildings?.["Crop Machine"] ?? []) {
+      for (const q of m.queue ?? []) {
+        const c = CROPS[q.crop];
+        if (!c || !q.seeds || !q.totalGrowTime) continue;
+        machineMs += q.totalGrowTime;
+        cropMs += q.seeds * c.seconds * 1000;
+      }
+    }
+    return cropMs > 0 ? machineMs / cropMs : Infinity;
   }
 
   /** Crop machine oil per hour (supplyCropMachine.ts → OIL_PER_HOUR_CONSUMPTION). */
