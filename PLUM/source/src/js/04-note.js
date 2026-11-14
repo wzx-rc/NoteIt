@@ -111,6 +111,7 @@ const Note = (() => {
       }
       case 'bold': case 'italic': case 'underline': case 'strikeThrough': document.execCommand(c); break;
       case 'ul': { const ul = s && s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentNode).closest('ul'); if (ul && ul.classList.contains('chk')) { ul.classList.remove('chk'); break; } document.execCommand('insertUnorderedList'); break; }
+      case 'ol': document.execCommand('insertOrderedList'); break;
       case 'chk': {
         const el = s && s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentNode), ul = el && el.closest('ul');
         if (ul && body.contains(ul)) { ul.classList.toggle('chk'); break; }
@@ -484,7 +485,7 @@ const Note = (() => {
     const s = selInBody(); if (!s || !s.isCollapsed) return;
     const blk = blockOf(s.anchorNode); if (!blk || blk.tagName === 'LI' && blk.closest('ul.chk')) return;
     const r = s.getRangeAt(0), pre = document.createRange(); pre.setStart(blk, 0); pre.setEnd(r.startContainer, r.startOffset);
-    const t = pre.toString(); const map = { '#': 'h1', '##': 'h2', '###': 'h3', '-': 'ul', '*': 'ul', '[]': 'chk', '[ ]': 'chk', '>': 'quote', '1.': 'ol' };
+    const t = pre.toString(); const map = { '#': 'h1', '##': 'h2', '###': 'h3', '-': 'ul', '*': 'ul', '[]': 'chk', '[ ]': 'chk', '>': 'quote', '1.': 'ol', '1)': 'ol', '1-': 'ol' };
     const c = map[t]; if (!c) return;
     e.preventDefault(); pre.deleteContents();
     if (!blk.textContent && !blk.querySelector('br,img')) blk.innerHTML = '<br>';
@@ -496,7 +497,7 @@ const Note = (() => {
     const s = selInBody(), el = s && s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentNode), blk = s && blockOf(s.anchorNode);
     const st = { fold: !!(blk && /^H[1-3]$/.test(blk.tagName)), h1: blk && blk.tagName === 'H1', h2: blk && blk.tagName === 'H2', quote: blk && blk.tagName === 'BLOCKQUOTE', hand: blk && blk.classList.contains('hand-p'),
       bold: s && document.queryCommandState('bold'), italic: s && document.queryCommandState('italic'), mark: !!(el && el.closest('mark')),
-      chk: !!(el && el.closest('ul.chk')), ul: !!(el && el.closest('ul:not(.chk)')) };
+      chk: !!(el && el.closest('ul.chk')), ul: !!(el && el.closest('ul:not(.chk)')), ol: !!(el && el.closest('ol')) };
     for (const b of $$('[data-cmd]', tool)) if (b.dataset.cmd in st) b.setAttribute('aria-pressed', !!st[b.dataset.cmd]);
   }
   function sanitize(html) {
@@ -824,7 +825,7 @@ const Note = (() => {
     const pr = penPref(pen === 'eraser' ? 'pen' : pen), cols = pen === 'highlight' ? themeColors('hl', HL_COLORS) : themeColors('ink', INK_COLORS), b = (c, ic, t, extra = '') => `<button class="nb" data-cmd="${c}" title="${t}" aria-label="${t}" ${extra}>${ic}</button>`;
     const textG = `<div class="grp">${b('fold', FOLD_IC, 'Section repliable : la ligne devient un titre qui replie ce qu’il y a dessous (re-clic : replier / déplier)')}${b('h2', '<span class="txt">T2</span>', 'Sous-titre (##)')}${b('bold', icon('bold'), 'Gras (Ctrl B)')}${b('italic', icon('ital'), 'Italique (Ctrl I)')}${b('mark', icon('hl'), 'Surligner')}</div><span class="vs"></span>
       <div class="grp tfmt"><button class="nb tx" data-tx="font" title="Police" aria-label="Police"><span class="txt" style="font-family:'Instrument Serif',Georgia,serif;font-size:17px">Aa</span>${icon('chevd', 'sm')}</button><button class="nb tx" data-tx="size" title="Taille du texte" aria-label="Taille du texte"><span class="txt tsz">T<small>T</small></span>${icon('chevd', 'sm')}</button><button class="nb tx" data-tx="color" title="Couleur du texte" aria-label="Couleur du texte"><span class="tca">A<i style="background:${S.prefs.noteColor || '#E03131'}"></i></span>${icon('chevd', 'sm')}</button></div><span class="vs"></span>
-      <div class="grp">${b('ul', icon('list'), 'Liste (-)')}${b('chk', icon('chk'), 'Cases à cocher ([])')}${b('quote', icon('sticky'), 'Post-it (>)')}${b('hand', '<span class="txt" style="font-family:var(--font-hand);font-size:17px">Aa</span>', 'Écriture manuscrite')}</div>`;
+      <div class="grp">${b('ul', icon('list'), 'Liste à puces (-)')}${b('ol', '<span class="txt" style="font:600 13px/1 var(--font-ui,system-ui)">1.</span>', 'Liste numérotée 1, 2, 3 (1.)')}${b('chk', icon('chk'), 'Cases à cocher ([])')}${b('quote', icon('sticky'), 'Post-it (>)')}${b('hand', '<span class="txt" style="font-family:var(--font-hand);font-size:17px">Aa</span>', 'Écriture manuscrite')}</div>`;
     if (PENS[pen] && !notePens().includes(pen)) pen = 'pen';
     const btnPens = atelierFull() ? notePens() : FAST_PENS;   // simple module: the alpha brushes live in the library chip
     const drawG = `<div class="grp">${btnPens.map(k => `<button class="nb" data-pen="${k}" title="${PENS[k].name} (${notePens().indexOf(k) + 1})" aria-label="${PENS[k].name}" aria-pressed="${pen === k}">${icon(PENS[k].icon)}</button>`).join('')}<button class="nb" data-pen="eraser" title="Gomme (E)" aria-label="Gomme" aria-pressed="${pen === 'eraser'}">${icon('eraser')}</button>${atelierFull() ? '' : BrushLib.chip(pen)}</div><span class="vs"></span>
