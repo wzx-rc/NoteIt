@@ -993,12 +993,13 @@ const Note = (() => {
     fresh = new WeakSet(); ndSel = null; ndOp = null; clearTimeout(autoFin);
     PG = []; cur = null; P = null; spr = 0; spreadOn = false; view = o.scroller || $('#view'); onChg = o.onChange || null; inPane = !!o.scroller;
     const n = 1 + (D.pages || []).length;
-    v.innerHTML = `<div class="nwrap${D.page ? ' ispage' : ''}">${D.page ? PP_OPEN : ''}<div class="ntool" role="toolbar" aria-label="Mise en forme"></div>
+    const pgv = D.page && !o.bare;   // the iPhone opens a project's Quick Note as a plain note (no project modules around it)
+    v.innerHTML = `<div class="nwrap${pgv ? ' ispage' : ''}">${pgv ? PP_OPEN : ''}<div class="ntool" role="toolbar" aria-label="Mise en forme"></div>
       ${Array.from({ length: n }, (_, i) => pageHTML(i)).join('')}
       <button class="naddpg" data-pga="add" title="Ajouter une page à cette note">${icon('plus')}<span>Ajouter une page</span></button>
-      <nav class="npager" aria-label="Pages" hidden><button class="nb" data-pga="prev" title="Pages précédentes (Page préc.)" aria-label="Pages précédentes">${icon('chev', 'flip')}</button><span class="npg-at"></span><button class="nb" data-pga="next" title="Pages suivantes (Page suiv.)" aria-label="Pages suivantes">${icon('chev')}</button><span class="vs"></span><button class="nb" data-pga="add" title="Ajouter une page">${icon('plus')}<span class="lbl">Page</span></button></nav>${D.page ? PP_CLOSE : ''}</div>`;
+      <nav class="npager" aria-label="Pages" hidden><button class="nb" data-pga="prev" title="Pages précédentes (Page préc.)" aria-label="Pages précédentes">${icon('chev', 'flip')}</button><span class="npg-at"></span><button class="nb" data-pga="next" title="Pages suivantes (Page suiv.)" aria-label="Pages suivantes">${icon('chev')}</button><span class="vs"></span><button class="nb" data-pga="add" title="Ajouter une page">${icon('plus')}<span class="lbl">Page</span></button></nav>${pgv ? PP_CLOSE : ''}</div>`;
     wrap = v.firstElementChild; tool = $('.ntool', wrap);
-    if (D.page) pageHead($('#ppage', wrap), D);
+    if (pgv) pageHead($('#ppage', wrap), D);
     const first = $('.sheet', wrap); titleIn = $('.ntitle', first); sub = $('.nsub', first);
     liveBox = document.createElement('div'); liveBox.className = 'nlivebox'; liveBox.innerHTML = '<canvas class="nlive"></canvas>'; $('#main').append(liveBox); liveCv = liveBox.firstChild;
     ink = new InkCapture(liveCv, { toLocal, xf });
@@ -1042,6 +1043,9 @@ const Note = (() => {
 
   return {
     mount, unmount, flush,
+    /* the iPhone's format bar runs the same commands as the toolbar (bold, ul, chk, h2, image…) */
+    cmd(c) { if (mounted) cmd(c); },
+    blur() { if (mounted) for (const g of PG) g.body.blur(); },
     get mounted() { return mounted; }, get doc() { return D; },
     syncTitle() { if (mounted && titleIn && document.activeElement !== titleIn) titleIn.value = D.title; },
     focusTitle() { if (!mounted) return; titleIn.focus(); titleIn.select(); },

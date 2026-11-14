@@ -99,7 +99,7 @@ const Sync = (() => {
   const openDocId = () => (R && R.name === 'doc') ? R.id : (Note.mounted && Note.doc ? Note.doc.id : null);
   function editingNow() {
     const a = document.activeElement;
-    return !!(a && a !== document.body && $('#view') && $('#view').contains(a) && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
+    return !!(a && a !== document.body && (($('#view') && $('#view').contains(a)) || ($('#ph') && $('#ph').contains(a))) && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
   }
   async function pull() {
     const first = !cfg.done; let cursor = cfg.cursor || '', rows = [], overlap = !!cursor;
@@ -170,6 +170,7 @@ const Sync = (() => {
   }
   let renderLater = false;
   function rerender(touchOpen) {
+    if (PHONE) { Phone.remote(touchOpen); return; }   // the iPhone draws its own screens
     if (!S.prefs.welcomed) return;
     if (R.name === 'welcome') { go('all'); return; }
     if (R.name === 'doc') {

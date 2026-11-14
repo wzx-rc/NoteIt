@@ -12,6 +12,9 @@ if (DESKTOP) document.documentElement.dataset.pc = '1';
 const IN_VIEWER = !!window.claude;
 /* the iPad app (WKWebView shell) sets this before the page loads */
 const IPAD = !!window.__notelyIPad;
+/* the iPhone (same app, the shell sets __plumPhone on a phone): its own interface, no boards, the main theme only (10-phone.js) */
+const PHONE = !!window.__plumPhone || /[?&]phone\b/.test(location.search);
+if (PHONE) document.documentElement.dataset.phone = '1';
 function debounce(fn, ms) { let t = 0; const d = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; d.flush = (...a) => { clearTimeout(t); fn(...a); }; return d; }
 function rng(seed) { let s = (Math.floor((seed % 1) * 4294967296) >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }

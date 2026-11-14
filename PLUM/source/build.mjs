@@ -56,7 +56,7 @@ const jsFiles = readdirSync(join(src, 'js')).filter(f => f.endsWith('.js')).sort
 /* the brush engine's alpha tips and paper grains: "brush:<file>" in the js becomes a data: URL of src/brushes/<file> */
 const brushAssets = text => text.replace(/brush:([\w.-]+\.webp)/g, (m, f) => `data:image/webp;base64,${readFileSync(join(src, 'brushes', f)).toString('base64')}`);
 const js = `const APP_VERSION = ${JSON.stringify(VERSION)};\n` + jsFiles.map(f => `/* ---- ${f} ---- */\n` + brushAssets(rd('js/' + f)) + (f.startsWith('00-') ? '\n' + themeJs : '')).join('\n');
-const css = [rd('style.css'), ...themeCss].join('\n');
+const css = [rd('style.css'), ...themeCss, rd('phone.css')].join('\n');
 /* the PLUM logo: src/brand/plum-mark.png (the feather alone) and plum-icon.jpg (the app icon), used in css as var(--plum-mark) / var(--plum-icon) */
 const brandUrl = f => `data:${MIME[f.split('.').pop()]};base64,${readFileSync(join(src, 'brand', f)).toString('base64')}`;
 const brandCss = `:root{--plum-mark:url(${brandUrl('plum-mark.png')});--plum-icon:url(${brandUrl('plum-icon.jpg')})}`;

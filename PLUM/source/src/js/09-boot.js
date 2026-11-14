@@ -128,6 +128,7 @@ async function boot() {
   if (!st || !Array.isArray(st.docs)) { S = { v: 3, spaces: [], docs: [], tasks: [], prefs: mergePrefs({ defSkin: DEFAULT_PREFS.skin }) }; ensureDefaultSpace(S); await persist(); }
   else { S = migrateState(st); S.prefs = mergePrefs(S.prefs); S.tasks = S.tasks || []; ensureDefaultSpace(S); }
   if (S.prefs.defSkin !== DEFAULT_PREFS.skin) { S.prefs.defSkin = DEFAULT_PREFS.skin; S.prefs.skin = DEFAULT_PREFS.skin; save(); }
+  if (PHONE) { S.prefs.skin = 'minimal'; await Phone.boot(); Sync.start(); return; }
   try { await Promise.race([Promise.all(['400 14px Figtree', '600 14px Figtree', '700 14px Figtree', '400 24px Caveat', '700 24px Caveat'].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 1500))]); } catch (e) {}
   applyTheme(); applyUiScale(); setSideFold(!!S.prefs.sideFold);
   bindShell();
