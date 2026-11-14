@@ -126,7 +126,7 @@ const Board = (() => {
   function sigOf(it) {
     switch (it.k) {
       case 'note': return `n${it.w}|${it.h}|${it.c}|${it.fs}|${it.font}|${it.al}|${it.ls || ''}|${it.txt}|${skin()}`;
-      case 'text': return `t${it.fw ? it.w : ''}|${it.fs}|${it.font}|${it.color}|${it.bold}|${it.ital}|${it.al}|${it.ls || ''}|${it.txt}|${theme()}`;
+      case 'text': return `t${it.fw ? it.w : ''}|${it.fs}|${it.font}|${it.color}|${it.bold}|${it.ital}|${it.und ? 1 : ''}|${it.al}|${it.ls || ''}|${it.txt}|${theme()}`;
       case 'shape': return `s${it.w}|${it.h}|${it.sh}|${it.rad}|${it.fo}|${it.so}|${it.sc}|${it.fc}|${it.sw}|${it.sty}|${it.dash}|${it.fill}|${it.txt}|${it.fs}|${it.font}|${it.color}|${theme()}`;
       case 'image': return `i${it.asset}|${it.frm}|${it.cap}|${it.rad}|${Assets.has(it.asset)}`;
       case 'file': return `f${it.asset}|${it.name}|${it.mime}`;
@@ -164,7 +164,7 @@ const Board = (() => {
         fitNote(n, it); break;
       case 'text':
         n.className = 'it text' + (it.fw ? '' : ' auto');
-        n.innerHTML = `<div class="txt l-${it.al || 'left'}" style="font:${it.ital ? 'italic ' : ''}${it.bold ? 700 : 500} ${it.fs}px/1.12 ${fontCSS(it)};color:${textColor(it.color, (it.font || HAND) === HAND)};text-align:${it.al || 'left'}">${fmtText(it.txt, it.ls) || '<div><br></div>'}</div>`;
+        n.innerHTML = `<div class="txt l-${it.al || 'left'}" style="font:${it.ital ? 'italic ' : ''}${it.bold ? 700 : 500} ${it.fs}px/1.12 ${fontCSS(it)};color:${textColor(it.color, (it.font || HAND) === HAND)};text-align:${it.al || 'left'}${it.und ? ';text-decoration:underline;text-underline-offset:.12em' : ''}">${fmtText(it.txt, it.ls) || '<div><br></div>'}</div>`;
         measureText(n, it); break;
       case 'shape':
         n.className = 'it shape';
@@ -983,6 +983,7 @@ const Board = (() => {
       case 'bold': return it.k === 'text' ? { bold: v === true || v === 'true' } : null;
       case 'ls': return it.k === 'text' || it.k === 'note' ? { ls: v || undefined } : null;
       case 'ital': return it.k === 'text' ? { ital: v === true || v === 'true' } : null;
+      case 'und': return it.k === 'text' ? { und: v === true || v === 'true' || undefined } : null;
       case 'op': return { op: +v >= 1 ? undefined : +v };
       case 'fo': case 'so': return it.k === 'shape' ? { [prop]: +v >= 1 ? undefined : +v } : null;
       case 'rad': return it.k === 'shape' && (it.sh === 'rect' || it.sh === 'round') ? { sh: 'rect', rad: Math.max(0, Math.round(+v)) } : it.k === 'image' && it.frm !== 'polaroid' ? { rad: Math.max(0, Math.round(+v)) } : null;
@@ -1265,6 +1266,7 @@ const Board = (() => {
       ev.stopPropagation();
       const c0 = byId.get(id);
       if (ev.key === 'Escape') { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); return; }
+      if (c0 && c0.k === 'text' && styleKey(ev)) { const c1 = byId.get(id) || c0; el.style.fontWeight = c1.bold ? 700 : 500; el.style.fontStyle = c1.ital ? 'italic' : 'normal'; el.style.textDecoration = c1.und ? 'underline' : 'none'; return; }
       if (c0 && c0.k === 'todo') { todoKey(ev, c0, sub, el); return; }
       if (c0 && c0.k === 'sheet') { if (sheetAssistKey(ev, el)) return; sheetKey(ev, c0, sub); return; }
       if (c0 && c0.k === 'mind' && ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); finishEdit(); host.focus({ preventScroll: true }); if (byId.has(id)) { sel = new Set([id]); mindAdd(c0.parent ? 'sibling' : 'child'); } return; }
@@ -3480,7 +3482,15 @@ const Board = (() => {
 
   /* ---------- keyboard ---------- */
   const TOOL_KEYS = { u: 'frame', v: 'select', h: 'hand', p: 'pen', d: 'pen', e: 'eraser', n: 'note', t: 'text', r: 'shape', o: 'shape', a: 'conn', l: 'line', c: 'todo', g: 'sheet', m: 'mind', k: 'pick', b: 'pen', q: 'lasso' };
+  // 0.3.20: Ctrl B / I / U = bold, italic, underline of the selected texts (also while typing in one)
+  function styleKey(e) {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return false;
+    const p = { b: 'bold', i: 'ital', u: 'und' }[(e.key || '').toLowerCase()]; if (!p) return false;
+    const L = editing ? [byId.get(editing)].filter(Boolean) : selItems(); if (!L.length || !L.every(i => i.k === 'text')) return false;
+    e.preventDefault(); setProp(p, !L.every(i => i[p])); propSig = ''; qSig = ''; return true;
+  }
   function key(e) {
+    if (mounted && styleKey(e)) return true;
     if (!mounted || editing) return false;
     const t = e.target; if (t && (t.closest('input,textarea,select,[contenteditable="true"],[contenteditable="plaintext-only"]'))) return false;
     const mod = e.ctrlKey || e.metaKey, k = e.key;
