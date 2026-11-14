@@ -9,12 +9,13 @@ html[data-phone] #toast { bottom: calc(var(--ph-bot) + var(--ph-tab) + 78px); bo
 html[data-phone] #ph.kb ~ #toast, html[data-phone] #toast:has(~ #ph.kb) { bottom: calc(var(--kb) + 64px); }
 
 #ph { position: fixed; inset: 0; overflow: hidden; background: var(--paper); font-size: 16px; }
-#ph button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:where(#ph button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 #ph :not(input, textarea, [contenteditable="true"], [contenteditable="true"] *) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #ph .i { width: 22px; height: 22px; stroke-width: 1.6; }
 #ph .i.sm { width: 14px; height: 14px; }
 #ph .i.flip { transform: scaleX(-1); }
 #ph :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#ph :is(input, textarea, [contenteditable]):focus, #ph :is(input, textarea, [contenteditable]):focus-visible { outline: 0; }
 
 /* screens: the tab's screen and the screens pushed on top of it */
 .ph-main, .ph-scr { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--paper); transition: transform .34s cubic-bezier(.2, .8, .2, 1), filter .34s; will-change: transform; }
@@ -183,7 +184,7 @@ html[data-phone] #ph.kb ~ #toast, html[data-phone] #toast:has(~ #ph.kb) { bottom
 
 /* a note: the app's editor, at phone width */
 .ph-bar.note { background: color-mix(in oklab, var(--paper) 86%, transparent); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
-.ph-bar.note .ph-bar-t { display: none; }
+.ph-bar.note .ph-bar-t { visibility: hidden; }
 .ph-done { display: none; height: 32px; padding: 0 14px !important; margin-left: 4px; border-radius: 16px; background: var(--accent) !important; color: var(--on-accent) !important; font-weight: 600 !important; font-size: 15px !important; }
 #ph.editing .ph-done { display: block; }
 #ph.editing .ph-bar.note [data-act="nfav"] { display: none; }

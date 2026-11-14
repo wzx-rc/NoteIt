@@ -8,10 +8,13 @@ final class HubViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     private let voice = HubVoice()
     private var webView: WKWebView!
     private static let background = UIColor(red: 0x17 / 255, green: 0x18 / 255, blue: 0x1C / 255, alpha: 1)
+    /// Sur iPhone, la page dessine sa propre interface (sans boards) et passe sous la barre d'état.
+    private let isPhone = UIDevice.current.userInterfaceIdiom == .phone
+    private var barStyle: UIStatusBarStyle = .lightContent
 
     override func loadView() {
         let content = WKUserContentController()
-        content.addUserScript(WKUserScript(source: "window.__notelyIPad = true;",
+        content.addUserScript(WKUserScript(source: isPhone ? "window.__notelyIPad = true; window.__plumPhone = true;" : "window.__notelyIPad = true;",
                                            injectionTime: .atDocumentStart, forMainFrameOnly: true))
         // pas de zoom de page ni de double-tap zoom : le board gère lui-même le pincement
         content.addUserScript(WKUserScript(source: """
@@ -21,6 +24,7 @@ final class HubViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         content.add(WeakHandler(self), name: "hubStore")
         content.add(WeakHandler(self), name: "hubFile")
         content.add(WeakHandler(self), name: "hubVoice")
+        content.add(WeakHandler(self), name: "hubUI")
 
         let config = WKWebViewConfiguration()
         config.userContentController = content
@@ -47,7 +51,7 @@ final class HubViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         web.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(web)
         NSLayoutConstraint.activate([
-            web.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
+            web.topAnchor.constraint(equalTo: isPhone ? root.topAnchor : root.safeAreaLayoutGuide.topAnchor),
             web.bottomAnchor.constraint(equalTo: root.bottomAnchor),
             web.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             web.trailingAnchor.constraint(equalTo: root.trailingAnchor)
@@ -60,7 +64,7 @@ final class HubViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         if let url = URL(string: "notely://app/index.html") { webView.load(URLRequest(url: url)) }
     }
 
-    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+    override var preferredStatusBarStyle: UIStatusBarStyle { barStyle }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         webView.scrollView.pinchGestureRecognizer?.isEnabled = false
@@ -72,6 +76,12 @@ final class HubViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         guard let body = message.body as? [String: Any] else { return }
         if message.name == "hubStore" { store.handle(body); return }
         if message.name == "hubVoice" { voice.handle(body); return }
+        if message.name == "hubUI" {
+            // iPhone : la barre d'état suit le mode clair / sombre de la page
+            if let bar = body["bar"] as? String { barStyle = bar == "dark" ? .darkContent : .lightContent; setNeedsStatusBarAppearanceUpdate() }
+            if let bg = body["bg"] as? String, let c = Self.color(css: bg) { view.backgroundColor = c; webView.backgroundColor = c; webView.scrollView.backgroundColor = c }
+            return
+        }
         if message.name == "hubFile", let name = body["name"] as? String, let data = body["data"] as? String,
            let url = store.saveExport(name: name, base64: data) {
             let share = UIActivityViewController(activityItems: [url], applicationActivities: nil)
@@ -100,6 +110,13 @@ final class HubViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = navigationAction.request.url, ["http", "https"].contains(url.scheme?.lowercased() ?? "") { UIApplication.shared.open(url) }
         return nil
+    }
+
+    /// "rgb(255, 255, 255)" -> UIColor
+    private static func color(css: String) -> UIColor? {
+        let n = css.components(separatedBy: CharacterSet(charactersIn: "0123456789.").inverted).compactMap { Double($0) }
+        guard n.count >= 3 else { return nil }
+        return UIColor(red: n[0] / 255, green: n[1] / 255, blue: n[2] / 255, alpha: 1)
     }
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { webView.reload() }

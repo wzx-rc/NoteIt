@@ -14,6 +14,8 @@ const Phone = (() => {
   const spName = id => { const s = spaceById(id); return s ? s.name : DEF_NAME; };
   const dot = id => { const s = spaceById(id); return `<i class="ph-dot${!s || s.id === DEF_SPACE ? ' none' : ''}" style="${s && s.id !== DEF_SPACE ? `background:${s.color}` : ''}"></i>`; };
   const plain = s => String(s || '').replace(/\s+/g, ' ').trim();
+  /* the text of a note for a preview: a space between paragraphs and list lines (docText runs them together) */
+  const preview = d => { const t = document.createElement('div'); t.innerHTML = noteHTML(d, ' ').replace(/<\/(p|li|h[1-6]|div|blockquote|figure)>|<br\s*\/?>/gi, '$& '); return plain(t.textContent); };
   const haptic = () => { try { navigator.vibrate && navigator.vibrate(8); } catch (e) {} };
 
   /* ---------- shell ---------- */
@@ -68,7 +70,7 @@ const Phone = (() => {
 
   /* ---------- Notes ---------- */
   function noteRow(d, o = {}) {
-    const txt = plain(docText(d)), th = noteThumb(d);
+    const txt = preview(d), th = noteThumb(d);
     return `<div class="ph-sw" data-swipe="note:${d.id}"><div class="ph-sw-acts"><button data-act="fav" data-id="${d.id}" class="fav">${icon('star')}<span>${d.fav ? 'Retirer' : 'Favori'}</span></button><button data-act="trash" data-id="${d.id}" class="del">${icon('trash')}<span>Supprimer</span></button></div>
       <button class="ph-note" data-open="note:${d.id}">
         <span class="ph-note-tx"><b>${d.fav ? `<span class="ph-favmark">${icon('star', 'sm')}</span>` : ''}${esc(d.title || 'Sans titre')}</b>
@@ -142,7 +144,7 @@ const Phone = (() => {
     const nl = notes().filter(d => d.sp === s.id).sort((a, b) => (b.updated || 0) - (a.updated || 0));
     const open = S.tasks.filter(t => t.sp === s.id && !t.done).sort(taskSort), nDone = S.tasks.filter(t => t.sp === s.id && t.done).length;
     const boxes = boxesOf(s), loose = open.filter(t => !t.box || !tboxOf(s, t.box));
-    const qn = pg ? plain(docText(pg)) : '';
+    const qn = pg ? preview(pg) : '';
     const cov = s.cover && Assets.url(s.cover);
     return `${head(s.name, { back: 'Espaces', right: isDef ? '<span></span>' : `<button class="ph-ib" data-act="spmenu" data-id="${s.id}" aria-label="Options de l’espace">${icon('dots')}</button>` })}
       <div class="ph-scroll"><div class="ph-hero${cov ? ' cov' : ''}" style="--sc:${isDef ? 'var(--ink-3)' : s.color}">${cov ? `<img src="${cov}" alt="">` : ''}<div class="ph-hero-tx"><h1>${esc(s.name)}</h1><p>${spaceCount(s)}</p></div></div>
