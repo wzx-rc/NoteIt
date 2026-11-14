@@ -3553,4 +3553,6 @@ body.sorting .tbox-l { min-height: 34px; border-radius: 8px; box-shadow: inset 0
 .nbody ol { list-style: decimal; }
 .nbody ol ol { list-style: lower-alpha; }
 .nbody ol ol ol { list-style: lower-roman; }
-.nbody ol > li::marker { font-variant-numeric: tabular-nums; color: var(--ink-2, currentColor); }
+.nbody ol > li::marker { content: counter(list-item) " - "; font-variant-numeric: tabular-nums; color: currentColor; font-size: .78em; font-weight: 300; }
+.nbody ol ol > li::marker { content: counter(list-item, lower-alpha) " - "; }
+.nbody ol ol ol > li::marker { content: counter(list-item, lower-roman) " - "; }
