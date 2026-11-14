@@ -3539,3 +3539,12 @@ body.sorting .tbox-l { min-height: 34px; border-radius: 8px; box-shadow: inset 0
   .hdl.crad { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-top-width: 1.8px; border-right-width: 1.8px; }
   .hdl.crad::after { display: none; }
 }
+
+/* 0.3.18: folded titles without the dots, smaller and quieter grip + fold arrow */
+.nbody :is(h1, h2, h3)[data-fold]::after { content: none; display: none; }
+.ngut { gap: 1px; opacity: .6; transition: opacity .12s; }
+.ngut:hover { opacity: 1; }
+.ngut button { width: 13px; height: 18px; border-radius: 4px; }
+.ngut .ng-grip::before { left: 4px; width: 2px; height: 2px; margin-top: -1px; box-shadow: 3.4px 0 currentColor, 0 -3.8px currentColor, 3.4px -3.8px currentColor, 0 3.8px currentColor, 3.4px 3.8px currentColor; }
+.ngut .ng-fold { width: 15px; background: none; }
+.ngut .ng-fold .i { width: 11px; height: 11px; }

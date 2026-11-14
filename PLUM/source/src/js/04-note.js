@@ -467,6 +467,8 @@ const Note = (() => {
       else if (!e.shiftKey) document.execCommand('insertText', false, '\u2003');
       return;
     }
+    // 0.3.18: Enter on a folded title opens it first, else the new lines land hidden (or the text stays in the title)
+    if (e.key === 'Enter') { const s0 = selInBody(), h0 = s0 && blockOf(s0.anchorNode); if (h0 && isHead(h0) && h0.hasAttribute('data-fold')) { h0.removeAttribute('data-fold'); applyFolds(body); } }
     if (e.key === 'Enter' && !e.shiftKey) {
       const s = selInBody(); if (!s || !s.isCollapsed) return;
       const blk = blockOf(s.anchorNode); if (!blk || blk.tagName !== 'BLOCKQUOTE') return;
