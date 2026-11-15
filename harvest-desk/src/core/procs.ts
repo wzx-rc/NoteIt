@@ -36,7 +36,7 @@ const TREE_KINDS: Record<string, string> = { Tree: "Basic Tree", "Ancient Tree":
 export const TREE_FR: Record<string, string> = { "Basic Tree": "Arbre", "Ancient Tree": "Arbre ancien", "Sacred Tree": "Arbre sacré" };
 
 /** Two readings further apart than this leave a gap: what happened in between is not counted. */
-export const MAX_GAP = 25 * 60_000;
+export const MAX_GAP = 40 * 60_000;
 const KEEP = 90 * 86_400_000;
 
 type FarmLike = {
@@ -72,6 +72,42 @@ export function updateProcs(log: ProcLog | null, farm: FarmLike, now: number): P
       ...(first || at < out.since ? { before: true } : {}),
     });
   }
+  out.events.sort((a, b) => a.at - b.at);
+  return out;
+}
+
+/** One reading made by the GitHub task (.github/scripts/sfl-reads.mjs), one JSON object per line. */
+export interface RemoteRead { at: number; c: [number, number, number]; mt?: number; tree?: string; mult?: number }
+
+export function parseRemoteReads(text: string): RemoteRead[] {
+  const out: RemoteRead[] = [];
+  for (const line of text.split("\n")) {
+    try {
+      const r = JSON.parse(line);
+      if (typeof r?.at === "number" && Array.isArray(r.c) && r.c.length === 3) out.push(r);
+    } catch { /* skip a broken line */ }
+  }
+  return out;
+}
+
+/** Adds the readings made while the app was closed. Readings within a minute of one already kept are skipped. */
+export function mergeRemoteReads(log: ProcLog | null, rows: RemoteRead[]): ProcLog | null {
+  if (!rows.length) return log;
+  const sorted = [...rows].sort((a, b) => a.at - b.at);
+  const out: ProcLog = log
+    ? { since: Math.min(log.since, sorted[0].at), events: log.events.map((e) => ({ ...e })), reads: [...(log.reads ?? [])] }
+    : { since: sorted[0].at, events: [], reads: [] };
+  const def = TRACKED["Money Tree"];
+  for (const r of sorted) {
+    if (!out.reads.some((x) => Math.abs(x[0] - r.at) < 60_000)) out.reads.push([r.at, ...r.c] as ProcRead);
+    if (!r.mt) continue;
+    const known = out.events.find((e) => e.boost === "Money Tree" && e.at === r.mt);
+    const tree = r.tree && r.mult ? { tree: r.tree, mult: r.mult, coins: def.coinsPer * r.mult } : {};
+    if (!known) out.events.push({ at: r.mt, boost: "Money Tree", ...tree });
+    else if (known.coins === undefined) Object.assign(known, tree);
+  }
+  for (const e of out.events) { if (e.at < out.since) e.before = true; else delete e.before; }
+  out.reads.sort((a, b) => a[0] - b[0]);
   out.events.sort((a, b) => a.at - b.at);
   return out;
 }

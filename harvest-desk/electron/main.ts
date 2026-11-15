@@ -6,7 +6,7 @@ import type { Farm, Order } from "../src/core/farm";
 import { type FarmMeta, ledgerFromMetas, metaOf, thinMetas } from "../src/core/ledger";
 import { parseMarket } from "../src/core/market";
 import type { AppState, ManualEntry, Settings, Snapshot, WidgetConfig } from "../src/shared/types";
-import { updateProcs, type ProcLog } from "../src/core/procs";
+import { mergeRemoteReads, parseRemoteReads, updateProcs, type ProcLog } from "../src/core/procs";
 import { farmTimers, TIMER_FAMILIES, TIMER_GROUPS, type TimerGroup } from "../src/core/timers";
 import { SflClient, cleanKey, farmFromDump, trimActivity } from "./sfl";
 import { installCrashHandlers, log, logDir, setSecrets } from "./log";
@@ -22,6 +22,9 @@ const MARKET_EVERY = 6 * 3_600_000;
 const KEEP_DAYS = 35;
 const HOUR = 3_600_000;
 const MAX_ORDERS = 3000;
+/** Readings made every 10 minutes by the GitHub task (.github/workflows/money-tree.yml), app open or not. */
+const REMOTE_READS = process.env.HD_REMOTE_READS || "https://raw.githubusercontent.com/wzx-rc/NoteIt/procs-data/reads.jsonl";
+const REMOTE_EVERY = HOUR;
 
 const dir = () => app.getPath("userData");
 const file = (n: string) => join(dir(), n);
@@ -96,6 +99,23 @@ function record(at: number, farm: Farm & { farmActivity?: Record<string, number>
   }
   state.snapshots = snapshots;
   return { snapshots, orders, ledger: ledger(), procs: procs ?? undefined };
+}
+
+/** Pulls the GitHub readings into the Money Tree log. Missing file or offline: nothing changes. */
+async function pullRemoteReads() {
+  try {
+    const res = await fetch(`${REMOTE_READS}?t=${Date.now()}`);
+    if (!res.ok) { log("info", "procs", `remote readings: HTTP ${res.status}`); return; }
+    const rows = parseRemoteReads(await res.text());
+    const next = mergeRemoteReads(procs, rows);
+    if (!next || next === procs) return;
+    procs = next;
+    writeJson("procs.json", procs);
+    publish({ procs });
+    log("info", "procs", `remote readings: ${rows.length} rows, ${procs.events.length} pops`);
+  } catch (e) {
+    log("info", "procs", `remote readings unavailable: ${(e as Error).message}`);
+  }
 }
 
 let running: Promise<AppState> | null = null;
@@ -356,6 +376,8 @@ app.whenReady().then(() => {
     if (s.status === "ready" && span < 2 * 86_400_000) importHistory();
   });
   setInterval(() => refresh(), FARM_EVERY);
+  pullRemoteReads();
+  setInterval(pullRemoteReads, REMOTE_EVERY);
 });
 
 /** Dev helper: HARVEST_SHOTS=<folder> saves one PNG per view with the real farm, then quits. */

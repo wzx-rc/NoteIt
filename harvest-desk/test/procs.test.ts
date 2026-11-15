@@ -44,3 +44,27 @@ describe("Money Tree pops", () => {
     expect(log.events).toHaveLength(1);
   });
 });
+
+describe("GitHub readings", () => {
+  it("merges readings made while the app was closed, with their pops", async () => {
+    const { mergeRemoteReads, parseRemoteReads, procStats } = await import("../src/core/procs");
+    let log = updateProcs(null, farm(T0 + 60 * MIN, [100, 0, 20]), T0 + 60 * MIN);
+    const rows = parseRemoteReads([
+      JSON.stringify({ at: T0, c: [0, 0, 0] }),
+      JSON.stringify({ at: T0 + 10 * MIN, c: [40, 0, 5], mt: T0 + 9 * MIN, tree: "Sacred Tree", mult: 16 }),
+      "broken",
+      JSON.stringify({ at: T0 + 20 * MIN, c: [60, 0, 10], mt: T0 + 9 * MIN }),
+      JSON.stringify({ at: T0 + 30 * MIN, c: [80, 0, 15], mt: T0 + 9 * MIN }),
+      JSON.stringify({ at: T0 + 45 * MIN, c: [90, 0, 18], mt: T0 + 9 * MIN }),
+      JSON.stringify({ at: T0 + 60 * MIN + 20_000, c: [100, 0, 20], mt: T0 + 9 * MIN }),
+    ].join("\n"));
+    expect(rows).toHaveLength(6);
+    log = mergeRemoteReads(log, rows)!;
+    expect(log.since).toBe(T0);
+    expect(log.reads).toHaveLength(6); // the last row duplicates the app's own reading
+    const s = procStats(log, 1, { "Basic Tree": 1, "Sacred Tree": 16 });
+    expect(s.pops).toBe(1);
+    expect(s.coins).toBe(3200);
+    expect(s.chops).toBe(120);
+  });
+});
