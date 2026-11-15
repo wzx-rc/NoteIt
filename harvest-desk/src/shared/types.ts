@@ -1,3 +1,4 @@
+import type { ProcLog } from "../core/procs";
 import type { Farm, Order } from "../core/farm";
 import type { Market } from "../core/engine";
 import type { LedgerEntry } from "../core/ledger";
@@ -22,6 +23,8 @@ export interface AppState {
   orders: Order[];
   /** FLOWER moves found between farm readings, plus the ones typed by hand. */
   ledger: LedgerEntry[];
+  /** Pops of chance skills (Money Tree) seen between farm readings. */
+  procs?: ProcLog;
 }
 
 /** A move typed by hand in the ledger tab, in dollars. */

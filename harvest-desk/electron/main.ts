@@ -6,6 +6,7 @@ import type { Farm, Order } from "../src/core/farm";
 import { type FarmMeta, ledgerFromMetas, metaOf, thinMetas } from "../src/core/ledger";
 import { parseMarket } from "../src/core/market";
 import type { AppState, ManualEntry, Settings, Snapshot, WidgetConfig } from "../src/shared/types";
+import { updateProcs, type ProcLog } from "../src/core/procs";
 import { farmTimers, TIMER_FAMILIES, TIMER_GROUPS, type TimerGroup } from "../src/core/timers";
 import { SflClient, cleanKey, farmFromDump, trimActivity } from "./sfl";
 import { installCrashHandlers, log, logDir, setSecrets } from "./log";
@@ -47,6 +48,7 @@ function settings(): Settings {
 let metas = readJson<FarmMeta[]>("metas.json", []);
 let manual = readJson<(ManualEntry & { id: string })[]>("manual.json", []);
 let orders = readJson<Order[]>("orders.json", []);
+let procs = readJson<ProcLog | null>("procs.json", null);
 
 /** Ledger = moves found between readings + moves typed by hand. */
 function ledger() {
@@ -57,7 +59,7 @@ function ledger() {
 
 let state: AppState = {
   mode: "live", status: "idle", snapshots: readJson<Snapshot[]>("snapshots.json", []),
-  orders, ledger: ledger(),
+  orders, ledger: ledger(), procs: procs ?? undefined,
 };
 let marketAt = 0;
 let win: BrowserWindow | null = null;
@@ -86,8 +88,14 @@ function record(at: number, farm: Farm & { farmActivity?: Record<string, number>
   for (const o of farm.delivery?.orders ?? []) if (Object.keys(o.items ?? {}).length) byId.set(o.id, o);
   orders = [...byId.values()].sort((a, b) => b.createdAt - a.createdAt).slice(0, MAX_ORDERS);
   writeJson("orders.json", orders);
+  // Pops are read from live readings only: an old nightly dump would open a gap in the log.
+  if (Date.now() - at < 30 * 60_000) {
+    const nextProcs = updateProcs(procs, farm as any, at);
+    if (!procs || nextProcs.events.length !== procs.events.length) writeJson("procs.json", nextProcs);
+    procs = nextProcs;
+  }
   state.snapshots = snapshots;
-  return { snapshots, orders, ledger: ledger() };
+  return { snapshots, orders, ledger: ledger(), procs: procs ?? undefined };
 }
 
 let running: Promise<AppState> | null = null;

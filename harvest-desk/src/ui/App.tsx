@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { DeliveriesView } from "./components/DeliveriesView";
 import { FarmValueView } from "./components/FarmValueView";
+import { ProcsView } from "./components/ProcsView";
 import { TimersView } from "./components/TimersView";
 import { GrowthCurve } from "./components/GrowthCurve";
 import { LedgerView } from "./components/LedgerView";
@@ -47,6 +48,7 @@ export function App() {
             : !ready ? null
             : current === "timers" ? <TimersView state={state} />
             : current === "value" ? <FarmValueView state={state} />
+            : current === "procs" ? <ProcsView state={state} />
             : current === "market" ? <MarketView state={state} />
             : current === "deliveries" ? <DeliveriesView state={state} />
             : current === "skills" ? <SkillsView state={state} />

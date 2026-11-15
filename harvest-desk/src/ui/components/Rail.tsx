@@ -1,11 +1,12 @@
 import { Icon } from "../icons";
 
-export type View = "revenue" | "timers" | "value" | "market" | "deliveries" | "skills" | "ledger" | "settings";
+export type View = "revenue" | "timers" | "value" | "procs" | "market" | "deliveries" | "skills" | "ledger" | "settings";
 
 export const VIEWS: { v: View; label: string; icon: string }[] = [
   { v: "revenue", label: "Revenus", icon: "revenue" },
   { v: "timers", label: "Minuteurs", icon: "timers" },
   { v: "value", label: "Valeur de la ferme", icon: "coins" },
+  { v: "procs", label: "Pops Money Tree", icon: "wood" },
   { v: "market", label: "Marketplace", icon: "market" },
   { v: "deliveries", label: "Livraisons", icon: "delivery" },
   { v: "skills", label: "Skills", icon: "skills" },
