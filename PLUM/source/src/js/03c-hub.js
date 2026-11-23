@@ -403,6 +403,77 @@ function hubNotePop(anchor) {
   $('[data-hfile]', p).onclick = e => openPop(e.currentTarget, userSpaces().map(s => ({ label: s.name, dot: s.color, run: () => hubNoteOut(s.id) })).concat([{ label: DEF_NAME, icon: 'inbox', run: () => hubNoteOut(DEF_SPACE) }]));
 }
 
+/* ---------- HUB v3 (0.3.25, maquette A « Bureau ») ----------
+   The HUB is less about projects: three general blocks fill it (Note principale, À faire with Ce soir / Demain /
+   Plus tard, Agenda), and the projects sit folded as small coloured tiles in a bar at the bottom. « Aperçu projets »
+   unfolds the full project cards and the three blocks shrink above them. S.hub: mainNote (doc id), projOpen,
+   addTo ('soir' | 'demain' | 'tard'), agDay (yyyy-mm-dd picked in the agenda). */
+function hubMainNote() {
+  const H = hubState(); let d = H.mainNote && docById(H.mainNote);
+  if (!d || d.trash) { d = newDoc('note', { title: 'Note principale', sp: DEF_SPACE }); H.mainNote = d.id; save(); }
+  return d;
+}
+const h3Words = d => { const n = stripHtml(d.html).split(/\s+/).filter(Boolean).length; return `${n} mot${n > 1 ? 's' : ''}`; };
+function h3NoteMod(compact) {
+  const d = hubMainNote();
+  return `<div class="h3-h"><span class="lab">Note principale</span><button class="h3-lnk" data-hgo="doc:${d.id}">Ouvrir ${icon('ext', 'sm')}</button></div>
+    <div class="h3-ed nbody" contenteditable="true" data-h3note="${d.id}" data-ph="Écris ici : idées, choses à ne pas oublier…" role="textbox" aria-multiline="true" aria-label="Note principale" spellcheck="false">${d.html || ''}</div>
+    ${compact ? '' : `<div class="h3-foot"><span>Modifiée ${ago(d.updated)}</span><span>${h3Words(d)}</span></div>`}`;
+}
+/* the general to-do: tasks of « Non classées » plus any task due today or tomorrow, whatever its project */
+const H3_B = [['soir', 'Ce soir', 'moon'], ['demain', 'Demain', ''], ['tard', 'Plus tard', '']];
+function h3Buckets() {
+  const now = new Date(), td = ymd(now), tm = ymd(dAdd(now, 1)), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const out = { soir: [], demain: [], tard: [] };
+  for (const t of S.tasks) {
+    if (t.done && !(t.doneAt >= t0)) continue;
+    const mine = t.sp === DEF_SPACE || !spaceById(t.sp);
+    if (t.due && t.due <= td) out.soir.push(t);
+    else if (t.due === tm) out.demain.push(t);
+    else if (mine) out.tard.push(t);
+  }
+  const ord = (a, b) => (a.done - b.done) || ((a.time || '99') < (b.time || '99') ? -1 : (a.time || '99') > (b.time || '99') ? 1 : 0) || (a.created || 0) - (b.created || 0);
+  for (const k in out) out[k].sort(ord);
+  return out;
+}
+function h3TodoMod(compact) {
+  const H = hubState(), B = h3Buckets(), to = H.addTo || 'soir';
+  const open = Object.values(B).flat().filter(t => !t.done).length, all = Object.values(B).flat().length;
+  const row = t => { const sp = t.sp !== DEF_SPACE && spaceById(t.sp); return `<div class="h3-tk${t.done ? ' done' : ''}"><button class="h3-bx" data-htk="${t.id}" role="checkbox" aria-checked="${t.done}" aria-label="${t.done ? 'Rouvrir' : 'Terminer'} ${esc(t.t)}">${icon('check', 'sm')}</button><button class="h3-tt" data-h3tk="${t.id}" title="Changer le moment">${esc(t.t)}${t.time ? `<em>${esc(t.time)}</em>` : ''}</button>${sp ? `<i class="h3-dot" style="background:${sp.color}" title="${esc(sp.name)}"></i>` : ''}</div>`; };
+  const sec = ([k, l, ic]) => { const L = B[k]; if (compact && k !== 'soir') return ''; return `<div class="h3-sec h3-${k}"><div class="h3-st">${ic ? icon(ic, 'sm') : ''}<span>${l}</span>${L.length ? `<small>${L.filter(t => !t.done).length}</small>` : ''}</div>${L.length ? L.map(row).join('') : `<div class="h3-none">${k === 'soir' ? 'Rien pour ce soir.' : 'Rien.'}</div>`}</div>`; };
+  return `<div class="h3-h"><span class="lab">${compact ? 'À faire · ce soir' : 'À faire'}</span><small>${open ? `${open} à faire` : all ? 'tout est fait' : ''}</small></div>
+    ${compact ? '' : `<form class="h3-add" data-h3add><span aria-hidden="true">${icon('plus', 'sm')}</span><input data-h3in placeholder="Ajouter pour ${to === 'soir' ? 'ce soir' : to === 'demain' ? 'demain' : 'plus tard'}…" aria-label="Nouvelle tâche" autocomplete="off"><button type="button" class="h3-to" data-h3to="${H3_B[(H3_B.findIndex(b => b[0] === to) + 1) % 3][0]}" title="Changer : ce soir, demain ou plus tard">${H3_B.find(b => b[0] === to)[1]}${icon('chevd', 'sm')}</button></form>`}
+    <div class="h3-tks">${H3_B.map(sec).join('')}</div>`;
+}
+function h3Move(anchor, t) {
+  const td = ymd(new Date()), tm = ymd(dAdd(new Date(), 1));
+  const set = due => { t.due = due; save(); renderHubMods(); renderSide(); };
+  openPop(anchor, [{ label: 'Ce soir', icon: 'moon', run: () => set(td) }, { label: 'Demain', icon: 'cal', run: () => set(tm) }, { label: 'Plus tard', icon: 'clock', run: () => set('') }, '-', { label: 'Ouvrir dans Tâches', icon: 'tasks', run: () => go('todo') }]);
+}
+function h3AgendaMod(compact) {
+  const H = hubState(), now = new Date(), today = ymd(now), mon = weekStart(now), ev = weekEvents(), hm = ymdhm(now);
+  const day = H.agDay && H.agDay >= ymd(mon) && H.agDay <= ymd(dAdd(mon, 6)) ? H.agDay : today;
+  const lab = e => (e[2] || '').split(/\s+[-–]\s+/)[0];
+  const col = e => e[6] ? gcalColor(e[6]) : e[5] === 'g' ? '#4285F4' : PLAN_COLORS[Math.floor(hashStr(lab(e).toUpperCase()) * PLAN_COLORS.length)];
+  const days = Array.from({ length: 7 }, (_, i) => dAdd(mon, i)).map(d => { const k = ymd(d), n = ev.filter(e => String(e[0]).slice(0, 10) === k).length; return `<button class="h3-d${k === day ? ' on' : ''}${k === today ? ' today' : ''}" data-h3day="${k}" aria-pressed="${k === day}"><span>${d.toLocaleDateString('fr-FR', { weekday: 'narrow' })}</span><b>${d.getDate()}</b><i${n ? '' : ' class="no"'}></i></button>`; }).join('');
+  const list = ev.filter(e => String(e[0]).slice(0, 10) === day);
+  const row = e => `<div class="h3-ev${e[1] <= hm ? ' past' : ''}" style="--c:${col(e)}"><span class="t">${e[4] & 2 ? 'Jour' : e[0].slice(11, 16)}</span><div><b>${esc(lab(e))}</b>${e[3] ? `<small>${esc(e[3])}</small>` : ''}</div></div>`;
+  const dd = new Date(day + 'T12:00'), dl = day === today ? 'Aujourd’hui' : dd.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' });
+  const empty = calSrcs(H).length || ev.length ? `<div class="h3-none">Rien ${day === today ? 'aujourd’hui' : 'ce jour-là'}.</div>` : `<button class="h3-conn" data-gapps>${icon('cal', 'sm')}Connecter Google Agenda ou PRONOTE</button>`;
+  return `<div class="h3-h"><span class="lab">Agenda</span><button class="h3-lnk" data-wkset aria-label="Réglages de l’agenda" title="Réglages de l’agenda">${icon('sliders', 'sm')}</button></div>
+    ${compact ? '' : `<div class="h3-week">${days}</div>`}
+    <div class="h3-dl">${compact ? 'Aujourd’hui' : dl}</div>
+    <div class="h3-evs">${(compact ? ev.filter(e => String(e[0]).slice(0, 10) === today) : list).slice(0, compact ? 4 : 12).map(row).join('') || empty}</div>`;
+}
+function h3Tile(sp) {
+  const pal = projPal(sp.color), pg = pageOf(sp), cov = sp.cover && Assets.url(sp.cover), n = S.tasks.filter(t => t.sp === sp.id && !t.done).length;
+  const ini = esc(((sp.name || '?').trim().replace(/\s+/g, ' ').split(' ').map(w => w[0]).join('').slice(0, 2) || '?').toUpperCase());
+  return `<button class="h3-pj" data-hproj="${sp.id}" data-hgo="doc:${pg ? pg.id : ''}" style="--pc1:${pal.c1};--pc2:${pal.c2}" title="${esc(sp.name)}${n ? ` · ${n} tâche${n > 1 ? 's' : ''}` : ''}" aria-label="${esc(sp.name)}">${cov ? `<img src="${cov}" alt="" draggable="false">` : `<span>${ini}</span>`}</button>`;
+}
+function h3Bar(list) {
+  return `<span class="lab">Projets</span><div class="h3-pjs">${list.map(h3Tile).join('')}<button class="h3-pj add" data-qs="proj" title="Nouveau projet" aria-label="Nouveau projet">${icon('plus', 'sm')}</button></div><div class="h3-sp"></div><button class="h3-more" data-hopts>Personnaliser</button><button class="h3-tog" data-h3open aria-expanded="false">Aperçu projets${icon('chev', 'sm')}</button>`;
+}
+
 /* ---------- the page ---------- */
 let hubScroll = 0;
 function renderHub(v) {
@@ -413,12 +484,12 @@ function renderHub(v) {
   v.innerHTML = `<div class="hubpage cc hub2">
     <div class="hub2-top${hubCovOn() ? ' own' : ''}"${hubCovOn() ? ` style="--hub-cov:url('${Assets.url(hubState().cov)}')"` : ''}><button class="hub-covbtn" data-hcov title="Changer la couverture" aria-label="Changer la couverture">${icon('image', 'sm')}<span>Couverture</span></button><div class="hub-hello"><span>${date.charAt(0).toUpperCase() + date.slice(1)}${wxs}${nEv ? ` · ${nEv} évènement${nEv > 1 ? 's' : ''} aujourd’hui` : ''}</span><div class="hub-hi">${DESKTOP ? `<span id="hubWx">${hubWxIcon()}</span>` : ''}<h1>${name ? `Bonjour ${esc(name)}` : 'Bonjour'}</h1>${DESKTOP ? '' : `<span id="hubWx">${hubWxIcon()}</span>`}</div></div>
       <div class="hub2-create" id="hubCreate" role="toolbar" aria-label="Créer">${createHTML()}</div></div>
-    <div class="hub-main${H.sideFold ? ' side-off' : ''}">
+    <div class="hub-main hub3${H.sideFold ? ' side-off' : ''}${H.projOpen ? ' pj-open' : ''}">
       <div class="hub-col">
-        <section class="hub-week" id="hubWeek"></section>
-        <section class="hub-sec" id="hubProj"></section>
+        <div class="h3-grid" id="hub3"><section class="h3-mod h3-note" id="h3Note"></section><section class="h3-mod h3-todo" id="h3Todo"></section><section class="h3-mod h3-ag" id="h3Ag"></section></div>
+        <section class="hub-sec h3-proj" id="hubProj"></section>
       </div>
-      <aside class="hub-side"><button class="hub-sfold" data-hsfold aria-expanded="${!H.sideFold}" aria-label="${H.sideFold ? 'Ouvrir le panneau' : 'Réduire le panneau'}" title="${H.sideFold ? 'Ouvrir Aujourd’hui et le Moodboard' : 'Réduire le panneau'}">${icon('chev', 'sm')}</button><button class="hub-srail" data-hsfold aria-hidden="true" tabindex="-1"><span>Moodboard</span></button><section class="hmod hm-cal" id="hubCal"></section><section class="hmod hm-mood" id="hubMood"></section></aside>
+      <aside class="hub-side"><button class="hub-sfold" data-hsfold aria-expanded="${!H.sideFold}" aria-label="${H.sideFold ? 'Ouvrir le panneau' : 'Réduire le panneau'}" title="${H.sideFold ? 'Ouvrir le Moodboard' : 'Réduire le panneau'}">${icon('chev', 'sm')}</button><button class="hub-srail" data-hsfold aria-hidden="true" tabindex="-1"><span>Moodboard</span></button><section class="hmod hm-mood" id="hubMood"></section></aside>
     </div></div>`;
   renderHubMods();
   bindHub(v);
@@ -426,16 +497,22 @@ function renderHub(v) {
 }
 function renderHubMods() {
   const pj = $('#hubProj'); if (!pj) return;
-  const H = hubState(), list = hubProjects(), fold = !!H.fold;
-  pj.innerHTML = `<div class="h2">Projets en cours<button class="hub-fold" data-hfold aria-expanded="${!fold}" aria-label="${fold ? 'Déplier les cartes' : 'Replier en capsules'}" title="${fold ? 'Déplier' : 'Replier'}">${icon('chev', 'sm')}</button><small>${list.length ? `${list.length} projet${list.length > 1 ? 's' : ''} · la carte montre la synthèse de la PAGE` : ''}</small><button class="more" data-hopts>Personnaliser</button></div>
+  const H = hubState(), list = hubProjects(), open = !!H.projOpen;
+  const main = $('.hub3'); if (main) main.classList.toggle('pj-open', open);
+  // the three general blocks (a block being typed in keeps its text field)
+  const ae = document.activeElement;
+  const put = (id, html) => { const el = $('#' + id); if (!el || (ae && el.contains(ae) && ae.matches('[contenteditable="true"], input'))) return; el.innerHTML = html; };
+  put('h3Note', h3NoteMod(open)); put('h3Todo', h3TodoMod(open)); put('h3Ag', h3AgendaMod(open));
+  pj.classList.toggle('open', open);
+  pj.innerHTML = !open ? `<div class="h3-bar">${h3Bar(list)}</div>`
+    : `<div class="h2">Projets en cours<small>${list.length ? `${list.length} projet${list.length > 1 ? 's' : ''}` : ''}</small><button class="more" data-hopts>Personnaliser</button><button class="h3-tog" data-h3open aria-expanded="true">Replier${icon('chev', 'sm')}</button></div>
     ${!list.length ? `<button class="hub-empty" data-qs="proj">${icon('plus')}Crée ton premier projet</button>`
-      : fold ? `<div class="hub-caps">${list.map(projCap).join('')}<button class="hcap add" data-qs="proj"><span class="hcap-i">${icon('plus')}</span><b>Nouveau projet</b></button></div>`
       : `<div class="hub-rowwrap hub2-wrap"><div class="hub-row hub2-row">${list.map(p => projCard(p)).join('')}<button class="pc2 add" data-qs="proj"><span class="pc2-addi">${icon('plus', 'lg')}</span><b>Nouveau projet</b><small>Un nom, une couleur, une image. Sa PAGE est créée avec lui.</small></button></div></div>`}`;
   const r2 = $('.hub2-row', pj); if (r2) { r2.scrollLeft = hubScroll; hubRowEdges(r2); }
   renderCreate();
   const wk = $('#hubWeek'); if (wk) wk.innerHTML = weekMod();
   const wx = $('#hubWx'); if (wx) wx.innerHTML = hubWxIcon();
-  $('#hubCal').innerHTML = calMod({ sz: 'M' });
+  const hc = $('#hubCal'); if (hc) hc.innerHTML = calMod({ sz: 'M' });
   const mo = $('#hubMood'), ta = document.activeElement;
   if (!(ta && mo.contains(ta) && ta.matches('input'))) mo.innerHTML = moodMod({ sz: 'M' });
   if (moodList().some(x => !x.pv)) moodUnfurl();
@@ -502,6 +579,10 @@ function bindHub(v) {
     const qs = e.target.closest('[data-qs]'); if (qs) { quickStart(qs.dataset.qs, qs); return; }
     if (e.target.closest('[data-hsfold]')) { const H = hubState(); H.sideFold = !H.sideFold; save(); const m = $('.hub-main', root), b = $('.hub-sfold', root); m.classList.toggle('side-off', H.sideFold); b.setAttribute('aria-expanded', !H.sideFold); b.title = H.sideFold ? 'Ouvrir Aujourd’hui et le Moodboard' : 'Réduire le panneau'; b.setAttribute('aria-label', H.sideFold ? 'Ouvrir le panneau' : 'Réduire le panneau'); return; }
     if (e.target.closest('[data-hfold]')) { const H = hubState(); H.fold = !H.fold; save(); renderHubMods(); return; }
+    if (e.target.closest('[data-h3open]')) { const H = hubState(); H.projOpen = !H.projOpen; save(); renderHubMods(); if (H.projOpen) { const p = $('#hubProj'); if (p) p.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' }); } return; }
+    const h3d = e.target.closest('[data-h3day]'); if (h3d) { hubState().agDay = h3d.dataset.h3day; save(); const a = $('#h3Ag'); if (a) a.innerHTML = h3AgendaMod(!!hubState().projOpen); return; }
+    const h3to = e.target.closest('[data-h3to]'); if (h3to) { hubState().addTo = h3to.dataset.h3to; save(); const tw = $('#h3Todo'); if (tw) { tw.innerHTML = h3TodoMod(false); const i = $('[data-h3in]', tw); if (i) i.focus(); } return; }
+    const h3t = e.target.closest('[data-h3tk]'); if (h3t) { const t = taskById(h3t.dataset.h3tk); if (t) h3Move(h3t, t); return; }
     if (e.target.closest('[data-hopts]')) { hubOptions(e.target.closest('[data-hopts]')); return; }
     const mv = e.target.closest('[data-hmv]'); if (mv) { moodFileMenu(mv, mv.dataset.hmv); return; }
     if (e.target.closest('[data-hmadd]')) { const i = $('#fileIn'); i.accept = ''; i.onchange = async () => { const f = [...i.files]; i.value = ''; if (f.length && (await addMedia(DEF_SPACE, f)).length) { renderHubMods(); renderSide(); } }; i.click(); return; }
@@ -533,7 +614,7 @@ function bindHub(v) {
   const HOLD_MS = { mouse: 260, touch: 320, pen: 320 };
   root.addEventListener('pointerdown', e => {
     if (sorting || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    const card = e.target.closest('.pc2[data-hproj], .hcap[data-hproj]'); if (!card) return;
+    const card = e.target.closest('.pc2[data-hproj], .hcap[data-hproj], .h3-pj[data-hproj]'); if (!card) return;
     const btn = e.target.closest('button, textarea, input, a, [contenteditable="true"]'); if (btn && btn !== card) return;
     const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
     const cancel = () => { clearTimeout(t); removeEventListener('pointermove', early, true); removeEventListener('pointerup', cancel, true); removeEventListener('pointercancel', cancel, true); card.classList.remove('hs-press'); };
@@ -596,6 +677,20 @@ function bindHub(v) {
     };
     addEventListener('pointermove', mv, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true); addEventListener('keydown', key, true);
   }
+  /* 0.3.25: the HUB's own blocks: the main note is typed in place, the to-do adds on Enter */
+  let h3T = 0;
+  root.addEventListener('input', e => { const ed = e.target.closest && e.target.closest('[data-h3note]'); if (!ed) return; const d = docById(ed.dataset.h3note); if (!d) return; d.html = /\S/.test(ed.textContent) || /<(figure|img)\b/i.test(ed.innerHTML) ? ed.innerHTML : ''; clearTimeout(h3T); h3T = setTimeout(() => touch(d), 300); });
+  root.addEventListener('focusin', e => { if (e.target.matches && e.target.matches('[data-h3note]')) try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (er) {} });
+  root.addEventListener('paste', e => { const ed = e.target.closest && e.target.closest('[data-h3note]'); if (!ed) return; e.preventDefault(); const t = (e.clipboardData && e.clipboardData.getData('text/plain')) || ''; document.execCommand('insertText', false, t); });
+  root.addEventListener('focusout', e => { if (e.target.matches && e.target.matches('[data-h3note]')) setTimeout(() => { if (!root.contains(document.activeElement) || !document.activeElement.matches('[data-h3note]')) { const f = $('.h3-foot', root), d = docById(e.target.dataset.h3note); if (f && d) f.innerHTML = `<span>Modifiée ${ago(d.updated)}</span><span>${h3Words(d)}</span>`; } }, 0); });
+  root.addEventListener('submit', e => {
+    const f = e.target.closest && e.target.closest('[data-h3add]'); if (!f) return; e.preventDefault();
+    const i = $('[data-h3in]', f), txt = i.value.trim(); if (!txt) return;
+    const to = hubState().addTo || 'soir', now = new Date();
+    newTask({ t: txt, sp: DEF_SPACE, due: to === 'soir' ? ymd(now) : to === 'demain' ? ymd(dAdd(now, 1)) : '' });
+    i.value = ''; renderSide(); const tw = $('#h3Todo'); if (tw) { tw.innerHTML = h3TodoMod(false); const j = $('[data-h3in]', tw); if (j) j.focus(); }
+  });
+  root.addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.matches && e.target.matches('[data-h3note], [data-h3in]')) e.target.blur(); });
   /* the card's synthesis is typed in place: it is the PAGE's synthesis (saved as you type) */
   let synT = 0;
   root.addEventListener('input', e => { const ta = e.target.closest && e.target.closest('[data-hsynin]'); if (!ta) return; const sp = spaceById(ta.dataset.hsynin); const pg = sp && ensurePage(sp); if (!pg) return; const h = ta.innerHTML; pg.html = /\S/.test(ta.textContent) || /<(figure|img)\b/i.test(h) ? h : ''; clearTimeout(synT); synT = setTimeout(() => touch(pg), 300); });
