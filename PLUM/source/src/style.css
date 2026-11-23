@@ -3656,3 +3656,6 @@ body.sorting .tbox-l { min-height: 34px; border-radius: 8px; box-shadow: inset 0
 .wk-2 > .wk-pm { padding-top: 4px; border-top: 1px dashed color-mix(in oklab, var(--ink) 12%, transparent); }
 .wk-2 > .wk-am { padding-bottom: 3px; }
 html[data-pc] .wk-2 > div { gap: 3px; }
+/* 0.3.27: open project overview, no empty gap between the HUB blocks and the project cards */
+.hub3.pj-open .hub-col { min-height: 0; }
+.hub3.pj-open .h3-grid { flex: 0 0 auto; }
