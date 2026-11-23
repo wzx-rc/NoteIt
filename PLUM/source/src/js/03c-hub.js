@@ -169,8 +169,12 @@ function weekMod() {
   const col = e => e[6] ? gcalColor(e[6]) : e[5] === 'g' ? '#4285F4' : PLAN_COLORS[Math.floor(hashStr(lab(e).toUpperCase()) * PLAN_COLORS.length)];
   const days = Array.from({ length: 7 }, (_, i) => dAdd(mon, i)).map(d => {
     const k = ymd(d), list = ev.filter(e => String(e[0]).slice(0, 10) === k), past = k < today;
-    return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b>${list.length > WK_MAX ? `<small class="wk-more">+${list.length - WK_MAX}</small>` : ''}</div>
-      <div class="wk-l">${list.slice(0, WK_MAX).map(e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i><span>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}</em>`}${esc(lab(e))}</span></div>`).join('')}</div></div>`;
+    // 0.3.26: the morning fills the top half of the day, the afternoon (from noon) the bottom half
+    const pm = e => !(e[4] & 2) && String(e[0]).slice(11, 13) >= '12', am = list.filter(e => !pm(e)), af = list.filter(pm), half = DESKTOP ? 2 : 1;
+    const hid = Math.max(0, am.length - half) + Math.max(0, af.length - half);
+    const one = e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i><span>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}</em>`}${esc(lab(e))}</span></div>`;
+    return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b>${hid ? `<small class="wk-more">+${hid}</small>` : ''}</div>
+      <div class="wk-l wk-2"><div class="wk-am">${am.slice(0, half).map(one).join('')}</div><div class="wk-pm">${af.slice(0, half).map(one).join('')}</div></div></div>`;
   }).join('');
   const mon2 = mon.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
   return `<div class="wk-top"><span class="lab">Semaine du ${mon2}</span>${calSrcs(H).length ? '' : `<button class="wk-link" data-gapps>${icon('cal', 'sm')}Connecter Google Agenda</button>`}<button class="wk-set" data-wkset title="Affichage de la semaine" aria-label="Affichage de la semaine">${icon('sliders', 'sm')}</button></div><div class="wk-g${H.wkBox ? ' box' : ''}">${days}</div>`;
@@ -486,7 +490,8 @@ function renderHub(v) {
       <div class="hub2-create" id="hubCreate" role="toolbar" aria-label="Créer">${createHTML()}</div></div>
     <div class="hub-main hub3${H.sideFold ? ' side-off' : ''}${H.projOpen ? ' pj-open' : ''}">
       <div class="hub-col">
-        <div class="h3-grid" id="hub3"><section class="h3-mod h3-note" id="h3Note"></section><section class="h3-mod h3-todo" id="h3Todo"></section><section class="h3-mod h3-ag" id="h3Ag"></section></div>
+        <section class="hub-week" id="hubWeek"></section>
+        <div class="h3-grid" id="hub3"><section class="h3-mod h3-note" id="h3Note"></section><section class="h3-mod h3-todo" id="h3Todo"></section></div>
         <section class="hub-sec h3-proj" id="hubProj"></section>
       </div>
       <aside class="hub-side"><button class="hub-sfold" data-hsfold aria-expanded="${!H.sideFold}" aria-label="${H.sideFold ? 'Ouvrir le panneau' : 'Réduire le panneau'}" title="${H.sideFold ? 'Ouvrir le Moodboard' : 'Réduire le panneau'}">${icon('chev', 'sm')}</button><button class="hub-srail" data-hsfold aria-hidden="true" tabindex="-1"><span>Moodboard</span></button><section class="hmod hm-mood" id="hubMood"></section></aside>
@@ -502,7 +507,7 @@ function renderHubMods() {
   // the three general blocks (a block being typed in keeps its text field)
   const ae = document.activeElement;
   const put = (id, html) => { const el = $('#' + id); if (!el || (ae && el.contains(ae) && ae.matches('[contenteditable="true"], input'))) return; el.innerHTML = html; };
-  put('h3Note', h3NoteMod(open)); put('h3Todo', h3TodoMod(open)); put('h3Ag', h3AgendaMod(open));
+  put('h3Note', h3NoteMod(open)); put('h3Todo', h3TodoMod(open));
   pj.classList.toggle('open', open);
   pj.innerHTML = !open ? `<div class="h3-bar">${h3Bar(list)}</div>`
     : `<div class="h2">Projets en cours<small>${list.length ? `${list.length} projet${list.length > 1 ? 's' : ''}` : ''}</small><button class="more" data-hopts>Personnaliser</button><button class="h3-tog" data-h3open aria-expanded="true">Replier${icon('chev', 'sm')}</button></div>
