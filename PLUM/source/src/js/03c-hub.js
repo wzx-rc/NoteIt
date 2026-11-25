@@ -58,7 +58,7 @@ async function hubCalRefresh(force) {
   if (!key || hubCalBusy || (!force && C && C.src === key && Date.now() - C.at < 3600e3)) return;
   hubCalBusy = true;
   try {
-    const mon = weekStart(new Date()), from = ymd(dAdd(mon, -1)), to = ymd(dAdd(mon, 15));
+    const mon = weekStart(new Date()), from = ymd(dAdd(mon, -36)), to = ymd(dAdd(mon, 50));
     let ev = [], okN = 0;
     let cals = null, gwhy = '';
     if (H.gapps) {   // the whole Google account, through the user's own Apps Script (see gappsSetup)
@@ -97,7 +97,7 @@ const gappsScript = key => `// PLUM · tout Google Agenda dans le HUB
 var KEY = '${key}';
 function doGet(e) {
   if (!e || !e.parameter || e.parameter.k !== KEY) return ContentService.createTextOutput('BEGIN:VCALENDAR\\nEND:VCALENDAR');
-  var now = new Date(), from = new Date(now.getTime() - 10 * 864e5), to = new Date(now.getTime() + 30 * 864e5);
+  var now = new Date(), from = new Date(now.getTime() - 40 * 864e5), to = new Date(now.getTime() + 50 * 864e5);
   var out = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PLUM//Google Agenda//FR'];
   CalendarApp.getAllCalendars().forEach(function (c) {
     try {
@@ -163,8 +163,10 @@ function weekSettings(anchor) {
   p.addEventListener('change', e => { const c = e.target.closest('[data-gcal]'); if (!c) return; const id = c.dataset.gcal; H.gcalOff = (H.gcalOff || []).filter(x => x !== id); if (!c.checked) H.gcalOff.push(id); save(); renderHubMods(); });
 }
 const WK_MAX = DESKTOP ? 5 : 3;
+let wkOff = 0, wkEv = [];   // 0.3.28: week shown (0 = this week) and the events drawn, for the hover card
 function weekMod() {
-  const H = hubState(), mon = weekStart(new Date()), today = ymd(new Date()), now = ymdhm(new Date()), ev = weekEvents();
+  const H = hubState(), mon = dAdd(weekStart(new Date()), 7 * wkOff), today = ymd(new Date()), now = ymdhm(new Date()), ev = weekEvents();
+  wkEv = [];
   const lab = e => (e[2] || '').split(/\s+[-–]\s+/)[0];
   const col = e => e[6] ? gcalColor(e[6]) : e[5] === 'g' ? '#4285F4' : PLAN_COLORS[Math.floor(hashStr(lab(e).toUpperCase()) * PLAN_COLORS.length)];
   const days = Array.from({ length: 7 }, (_, i) => dAdd(mon, i)).map(d => {
@@ -172,13 +174,30 @@ function weekMod() {
     // 0.3.26: the morning fills the top half of the day, the afternoon (from noon) the bottom half
     const pm = e => !(e[4] & 2) && String(e[0]).slice(11, 13) >= '12', am = list.filter(e => !pm(e)), af = list.filter(pm), half = DESKTOP ? 2 : 1;
     const hid = Math.max(0, am.length - half) + Math.max(0, af.length - half);
-    const one = e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" title="${esc(lab(e))}${e[3] ? ' · ' + esc(e[3]) : ''}"><i></i><span>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}</em>`}${esc(lab(e))}</span></div>`;
-    return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b>${hid ? `<small class="wk-more">+${hid}</small>` : ''}</div>
+    const one = e => `<div class="wk-e${e[1] <= now ? ' done' : ''}" style="--c:${col(e)}" data-wke="${wkEv.push(e) - 1}"><i></i><span>${e[4] & 2 ? '' : `<em>${e[0].slice(11, 16)}</em>`}${esc(lab(e))}</span></div>`;
+    return `<div class="wk-d${k === today ? ' today' : ''}${past ? ' past' : ''}"><div class="wk-h"><span>${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}</span><b>${d.getDate()}</b>${hid ? `<small class="wk-more" data-wkday="${k}">+${hid}</small>` : ''}</div>
       <div class="wk-l wk-2"><div class="wk-am">${am.slice(0, half).map(one).join('')}</div><div class="wk-pm">${af.slice(0, half).map(one).join('')}</div></div></div>`;
   }).join('');
   const mon2 = mon.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-  return `<div class="wk-top"><span class="lab">Semaine du ${mon2}</span>${calSrcs(H).length ? '' : `<button class="wk-link" data-gapps>${icon('cal', 'sm')}Connecter Google Agenda</button>`}<button class="wk-set" data-wkset title="Affichage de la semaine" aria-label="Affichage de la semaine">${icon('sliders', 'sm')}</button></div><div class="wk-g${H.wkBox ? ' box' : ''}">${days}</div>`;
+  return `<div class="wk-top"><span class="wk-nav"><button type="button" data-wknav="-1" title="Semaine précédente" aria-label="Semaine précédente">${icon('chev', 'sm')}</button><button type="button" data-wknav="1" title="Semaine suivante" aria-label="Semaine suivante">${icon('chev', 'sm')}</button></span><span class="lab">Semaine du ${mon2}</span>${wkOff ? `<button type="button" class="wk-now" data-wknav="0">Cette semaine</button>` : ''}${calSrcs(H).length ? '' : `<button class="wk-link" data-gapps>${icon('cal', 'sm')}Connecter Google Agenda</button>`}<button class="wk-set" data-wkset title="Affichage de la semaine" aria-label="Affichage de la semaine">${icon('sliders', 'sm')}</button></div><div class="wk-g${H.wkBox ? ' box' : ''}">${days}</div>`;
 }
+function wkCardHtml(list) {
+  const lab = e => e[2] || '(sans titre)';
+  const cal = e => { const C = S.prefs.hubCal, c = e[6] && C && C.cals && C.cals.find(x => x.id === e[6]); return c ? c.n : e[5] === 'p' ? 'PRONOTE' : e[5] === 'g' ? 'Google Agenda' : ''; };
+  const col = e => e[6] ? gcalColor(e[6]) : e[5] === 'g' ? '#4285F4' : PLAN_COLORS[Math.floor(hashStr(String(e[2] || '').split(/\s+[-–]\s+/)[0].toUpperCase()) * PLAN_COLORS.length)];
+  const when = e => { const d = new Date(String(e[0]).slice(0, 10) + 'T12:00'), ds = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); return e[4] & 2 ? ds + ' · toute la journée' : `${ds} · ${e[0].slice(11, 16)} – ${String(e[1]).slice(11, 16)}`; };
+  return list.map(e => `<div class="wkc-e" style="--c:${col(e)}"><b>${esc(lab(e))}</b><span>${esc(when(e))}</span>${e[3] ? `<span>${icon('pin', 'sm')}${esc(e[3])}</span>` : ''}${cal(e) ? `<small>${esc(cal(e))}</small>` : ''}</div>`).join('');
+}
+function wkCard(el) {
+  let card = $('#wkCard'); const list = el.dataset.wke != null ? [wkEv[+el.dataset.wke]].filter(Boolean) : weekEvents().filter(e => String(e[0]).slice(0, 10) === el.dataset.wkday);
+  if (!list.length) return;
+  if (!card) { card = document.createElement('div'); card.id = 'wkCard'; card.className = 'wk-card'; document.body.appendChild(card); }
+  card.innerHTML = wkCardHtml(list); card.classList.add('on');
+  const r = el.getBoundingClientRect(), w = card.offsetWidth, h = card.offsetHeight;
+  let x = Math.min(Math.max(8, r.left), innerWidth - w - 8), y = r.bottom + 6; if (y + h > innerHeight - 8) y = Math.max(8, r.top - h - 6);
+  card.style.left = x + 'px'; card.style.top = y + 'px';
+}
+const wkCardOff = () => { const c = $('#wkCard'); if (c) c.classList.remove('on'); };
 function calMod(m) {
   const ev = hubEvents(), now = ymdhm(new Date()), next = ev.find(e => e[1] > now) || null;
   const d = new Date(), wd = d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '').toUpperCase();
@@ -579,6 +598,8 @@ function hubOptions(anchor) {
 function bindHub(v) {
   const root = $('.hubpage', v);
   let dragged = 0, sorting = null;
+  root.addEventListener('mouseover', e => { const t = e.target.closest && e.target.closest('[data-wke],[data-wkday]'); if (t) wkCard(t); else wkCardOff(); });
+  root.addEventListener('mouseleave', wkCardOff);
   root.addEventListener('click', e => {
     if (Date.now() - dragged < 250) { e.preventDefault(); e.stopPropagation(); return; }
     const qs = e.target.closest('[data-qs]'); if (qs) { quickStart(qs.dataset.qs, qs); return; }
@@ -595,6 +616,7 @@ function bindHub(v) {
     const mn = e.target.closest('[data-hmenu]'); if (mn) { projMenu(mn, spaceById(mn.dataset.hmenu)); return; }
     const dn = e.target.closest('[data-hdone]'); if (dn) { const tk = taskById(dn.dataset.hdone); if (!tk) return; dn.classList.add('ticked'); setTimeout(() => { setTaskDone(tk, true); renderHubMods(); renderSide(); toast('Tâche terminée', { label: 'Annuler', run: () => { setTaskDone(tk, false); renderHubMods(); renderSide(); } }); }, 280); return; }
     const ws = e.target.closest('[data-wkset]'); if (ws) { weekSettings(ws); return; }
+    const wn = e.target.closest('[data-wknav]'); if (wn) { wkOff = +wn.dataset.wknav ? wkOff + +wn.dataset.wknav : 0; wkCardOff(); const wk = $('#hubWeek'); if (wk) wk.innerHTML = weekMod(); return; }
     const hc = e.target.closest('[data-hcov]'); if (hc) { hubCovMenu(hc); return; }
     if (e.target.closest('[data-gapps]')) { gappsSetup(); return; }
     if (e.target.closest('[data-hdest]')) { destMenu(e.target.closest('[data-hdest]')); return; }
